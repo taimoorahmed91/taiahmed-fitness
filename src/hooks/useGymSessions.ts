@@ -35,5 +35,22 @@ export const useGymSessions = () => {
     });
   };
 
-  return { sessions, addSession, deleteSession, getThisWeekSessions };
+  const getWeeklyWorkoutData = () => {
+    const days: { date: string; duration: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayDuration = sessions
+        .filter((session) => session.date === dateStr)
+        .reduce((sum, session) => sum + session.duration, 0);
+      days.push({
+        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        duration: dayDuration,
+      });
+    }
+    return days;
+  };
+
+  return { sessions, addSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData };
 };

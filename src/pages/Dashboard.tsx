@@ -1,14 +1,19 @@
 import { StatsCards } from '@/components/StatsCards';
 import { CalorieChart } from '@/components/CalorieChart';
+import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
+import { MealTimeChart } from '@/components/MealTimeChart';
+import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
 
+const DAILY_CALORIE_GOAL = 2000;
+
 const Dashboard = () => {
-  const { meals, getTodayCalories, getWeeklyData } = useMeals();
-  const { getThisWeekSessions } = useGymSessions();
+  const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay } = useMeals();
+  const { getThisWeekSessions, getWeeklyWorkoutData } = useGymSessions();
 
   const todayMeals = meals.filter(
     (meal) => meal.date === new Date().toISOString().split('T')[0]
@@ -28,42 +33,48 @@ const Dashboard = () => {
       />
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <CalorieChart data={getWeeklyData()} />
-        
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Flame className="h-5 w-5 text-primary" />
-              Today's Meals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {todayMeals.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No meals logged today. Start tracking!
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {todayMeals.map((meal: Meal) => (
-                  <div
-                    key={meal.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-background border"
-                  >
-                    <div>
-                      <p className="font-medium">{meal.food}</p>
-                      <span className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {meal.time}
-                      </span>
-                    </div>
-                    <span className="font-semibold text-primary">{meal.calories} cal</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <CalorieGoalProgress current={getTodayCalories()} goal={DAILY_CALORIE_GOAL} />
+        <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <CalorieChart data={getWeeklyData()} />
+        <WorkoutDurationChart data={getWeeklyWorkoutData()} />
+      </div>
+
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Flame className="h-5 w-5 text-primary" />
+            Today's Meals
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {todayMeals.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No meals logged today. Start tracking!
+            </p>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {todayMeals.map((meal: Meal) => (
+                <div
+                  key={meal.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-background border"
+                >
+                  <div>
+                    <p className="font-medium">{meal.food}</p>
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {meal.time}
+                    </span>
+                  </div>
+                  <span className="font-semibold text-primary">{meal.calories} cal</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
