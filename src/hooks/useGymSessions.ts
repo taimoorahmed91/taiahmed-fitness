@@ -2,13 +2,20 @@ import { useState, useEffect } from 'react';
 import { GymSession } from '@/types';
 
 export const useGymSessions = () => {
+  const getUserId = () => {
+    const stored = localStorage.getItem('fittrack-user');
+    return stored ? JSON.parse(stored).id : 'default';
+  };
+
+  const getStorageKey = () => `fittrack-gym-${getUserId()}`;
+
   const [sessions, setSessions] = useState<GymSession[]>(() => {
-    const stored = localStorage.getItem('fittrack-gym');
+    const stored = localStorage.getItem(getStorageKey());
     return stored ? JSON.parse(stored) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('fittrack-gym', JSON.stringify(sessions));
+    localStorage.setItem(getStorageKey(), JSON.stringify(sessions));
   }, [sessions]);
 
   const addSession = (session: Omit<GymSession, 'id'>) => {

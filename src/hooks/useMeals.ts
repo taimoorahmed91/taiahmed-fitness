@@ -10,13 +10,20 @@ const getMealPeriod = (time: string): string => {
 };
 
 export const useMeals = () => {
+  const getUserId = () => {
+    const stored = localStorage.getItem('fittrack-user');
+    return stored ? JSON.parse(stored).id : 'default';
+  };
+
+  const getStorageKey = () => `fittrack-meals-${getUserId()}`;
+
   const [meals, setMeals] = useState<Meal[]>(() => {
-    const stored = localStorage.getItem('fittrack-meals');
+    const stored = localStorage.getItem(getStorageKey());
     return stored ? JSON.parse(stored) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('fittrack-meals', JSON.stringify(meals));
+    localStorage.setItem(getStorageKey(), JSON.stringify(meals));
   }, [meals]);
 
   const addMeal = (meal: Omit<Meal, 'id'>) => {
