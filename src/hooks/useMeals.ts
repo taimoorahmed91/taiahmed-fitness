@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Meal } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const getMealPeriod = (time: string): string => {
   const hour = parseInt(time.split(':')[0], 10);
@@ -10,32 +12,122 @@ const getMealPeriod = (time: string): string => {
 };
 
 export const useMeals = () => {
-  const getUserId = () => {
-    const stored = localStorage.getItem('fittrack-user');
-    return stored ? JSON.parse(stored).id : 'default';
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchMeals = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setMeals([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('fittrack_meals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedMeals: Meal[] = (data || []).map((meal) => ({
+        id: meal.id,
+        food: meal.food,
+        calories: meal.calories,
+        time: meal.time,
+        date: meal.date,
+      }));
+
+      setMeals(formattedMeals);
+    } catch (error) {
+      console.error('Error fetching meals:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch meals',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const getStorageKey = () => `fittrack-meals-${getUserId()}`;
-
-  const [meals, setMeals] = useState<Meal[]>(() => {
-    const stored = localStorage.getItem(getStorageKey());
-    return stored ? JSON.parse(stored) : [];
-  });
 
   useEffect(() => {
-    localStorage.setItem(getStorageKey(), JSON.stringify(meals));
-  }, [meals]);
+    fetchMeals();
 
-  const addMeal = (meal: Omit<Meal, 'id'>) => {
-    const newMeal: Meal = {
-      ...meal,
-      id: crypto.randomUUID(),
-    };
-    setMeals((prev) => [...prev, newMeal]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchMeals();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const addMeal = async (meal: Omit<Meal, 'id'>) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to add meals',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('fittrack_meals')
+        .insert({
+          user_id: user.id,
+          food: meal.food,
+          calories: meal.calories,
+          time: meal.time,
+          date: meal.date,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newMeal: Meal = {
+        id: data.id,
+        food: data.food,
+        calories: data.calories,
+        time: data.time,
+        date: data.date,
+      };
+
+      setMeals((prev) => [newMeal, ...prev]);
+    } catch (error) {
+      console.error('Error adding meal:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add meal',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const deleteMeal = (id: string) => {
-    setMeals((prev) => prev.filter((meal) => meal.id !== id));
+  const deleteMeal = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('fittrack_meals')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setMeals((prev) => prev.filter((meal) => meal.id !== id));
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete meal',
+        variant: 'destructive',
+      });
+    }
   };
 
   const getTodayCalories = () => {
@@ -83,5 +175,5 @@ export const useMeals = () => {
     }));
   };
 
-  return { meals, addMeal, deleteMeal, getTodayCalories, getWeeklyData, getMealsByTimeOfDay };
+  return { meals, loading, addMeal, deleteMeal, getTodayCalories, getWeeklyData, getMealsByTimeOfDay };
 };

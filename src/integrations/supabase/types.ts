@@ -451,6 +451,72 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_gym_sessions: {
+        Row: {
+          created_at: string
+          date: string
+          duration: number
+          exercise: string
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          duration: number
+          exercise: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          duration?: number
+          exercise?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fittrack_meals: {
+        Row: {
+          calories: number
+          created_at: string
+          date: string
+          food: string
+          id: string
+          time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calories: number
+          created_at?: string
+          date: string
+          food: string
+          id?: string
+          time: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          created_at?: string
+          date?: string
+          food?: string
+          id?: string
+          time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           added_by: string

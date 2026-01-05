@@ -1,33 +1,124 @@
 import { useState, useEffect } from 'react';
 import { GymSession } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export const useGymSessions = () => {
-  const getUserId = () => {
-    const stored = localStorage.getItem('fittrack-user');
-    return stored ? JSON.parse(stored).id : 'default';
+  const [sessions, setSessions] = useState<GymSession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchSessions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSessions([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('fittrack_gym_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedSessions: GymSession[] = (data || []).map((session) => ({
+        id: session.id,
+        exercise: session.exercise,
+        duration: session.duration,
+        date: session.date,
+        notes: session.notes || undefined,
+      }));
+
+      setSessions(formattedSessions);
+    } catch (error) {
+      console.error('Error fetching gym sessions:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch gym sessions',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const getStorageKey = () => `fittrack-gym-${getUserId()}`;
-
-  const [sessions, setSessions] = useState<GymSession[]>(() => {
-    const stored = localStorage.getItem(getStorageKey());
-    return stored ? JSON.parse(stored) : [];
-  });
 
   useEffect(() => {
-    localStorage.setItem(getStorageKey(), JSON.stringify(sessions));
-  }, [sessions]);
+    fetchSessions();
 
-  const addSession = (session: Omit<GymSession, 'id'>) => {
-    const newSession: GymSession = {
-      ...session,
-      id: crypto.randomUUID(),
-    };
-    setSessions((prev) => [...prev, newSession]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchSessions();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const addSession = async (session: Omit<GymSession, 'id'>) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to add sessions',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('fittrack_gym_sessions')
+        .insert({
+          user_id: user.id,
+          exercise: session.exercise,
+          duration: session.duration,
+          date: session.date,
+          notes: session.notes || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newSession: GymSession = {
+        id: data.id,
+        exercise: data.exercise,
+        duration: data.duration,
+        date: data.date,
+        notes: data.notes || undefined,
+      };
+
+      setSessions((prev) => [newSession, ...prev]);
+    } catch (error) {
+      console.error('Error adding gym session:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add gym session',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const deleteSession = (id: string) => {
-    setSessions((prev) => prev.filter((session) => session.id !== id));
+  const deleteSession = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('fittrack_gym_sessions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSessions((prev) => prev.filter((session) => session.id !== id));
+    } catch (error) {
+      console.error('Error deleting gym session:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete gym session',
+        variant: 'destructive',
+      });
+    }
   };
 
   const getThisWeekSessions = () => {
@@ -35,7 +126,7 @@ export const useGymSessions = () => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay());
     weekStart.setHours(0, 0, 0, 0);
-    
+
     return sessions.filter((session) => {
       const sessionDate = new Date(session.date);
       return sessionDate >= weekStart;
@@ -59,5 +150,5 @@ export const useGymSessions = () => {
     return days;
   };
 
-  return { sessions, addSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData };
+  return { sessions, loading, addSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData };
 };
