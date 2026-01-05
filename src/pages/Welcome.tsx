@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dumbbell, Utensils, Activity } from "lucide-react";
-import { useUser } from "@/hooks/useUser";
+import { useUser } from "@/contexts/UserContext";
 
 const Welcome = () => {
   const [name, setName] = useState("");
