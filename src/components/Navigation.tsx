@@ -1,17 +1,17 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { LayoutDashboard, Utensils, Dumbbell, LogOut, User } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Utensils, LogOut, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
-import { Button } from './ui/button';
 import { useUser } from '@/contexts/UserContext';
+import { cn } from '@/lib/utils';
 
 export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useUser();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -20,6 +20,9 @@ export const Navigation = () => {
     { to: '/meals', label: 'Meals', icon: Utensils },
     { to: '/gym', label: 'Gym', icon: Dumbbell },
   ];
+
+  // Get display name from user metadata or email
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
@@ -52,7 +55,7 @@ export const Navigation = () => {
             {user && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <User className="h-4 w-4" />
-                <span className="hidden sm:inline">{user.name}</span>
+                <span className="hidden sm:inline">{displayName}</span>
               </div>
             )}
             <ThemeToggle />
