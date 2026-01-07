@@ -101,6 +101,33 @@ export const useGymSessions = () => {
     }
   };
 
+  const updateSession = async (id: string, updates: Partial<Omit<GymSession, 'id'>>) => {
+    try {
+      const { error } = await supabase
+        .from('fittrack_gym_sessions')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSessions((prev) =>
+        prev.map((session) => (session.id === id ? { ...session, ...updates } : session))
+      );
+
+      toast({
+        title: 'Success',
+        description: 'Workout updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating gym session:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update gym session',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const deleteSession = async (id: string) => {
     try {
       const { error } = await supabase
@@ -150,5 +177,5 @@ export const useGymSessions = () => {
     return days;
   };
 
-  return { sessions, loading, addSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData };
+  return { sessions, loading, addSession, updateSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData };
 };
