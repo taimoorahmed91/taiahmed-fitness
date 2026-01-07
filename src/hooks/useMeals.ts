@@ -110,6 +110,33 @@ export const useMeals = () => {
     }
   };
 
+  const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>) => {
+    try {
+      const { error } = await supabase
+        .from('fittrack_meals')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setMeals((prev) =>
+        prev.map((meal) => (meal.id === id ? { ...meal, ...updates } : meal))
+      );
+
+      toast({
+        title: 'Success',
+        description: 'Meal updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating meal:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update meal',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const deleteMeal = async (id: string) => {
     try {
       const { error } = await supabase
@@ -175,5 +202,5 @@ export const useMeals = () => {
     }));
   };
 
-  return { meals, loading, addMeal, deleteMeal, getTodayCalories, getWeeklyData, getMealsByTimeOfDay };
+  return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getWeeklyData, getMealsByTimeOfDay };
 };
