@@ -4,21 +4,32 @@ import { CalorieChart } from '@/components/CalorieChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
+import { YesterdayStatus } from '@/components/YesterdayStatus';
 import { SearchFilter } from '@/components/SearchFilter';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
 
-const DAILY_CALORIE_GOAL = 2000;
-
 const Dashboard = () => {
   const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay } = useMeals();
   const { getThisWeekSessions, getWeeklyWorkoutData } = useGymSessions();
+  const { settings, updateCalorieGoal } = useUserSettings();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('today');
+
+  // Calculate yesterday's calories
+  const yesterdayCalories = useMemo(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    return meals
+      .filter((meal) => meal.date === yesterdayStr)
+      .reduce((sum, meal) => sum + meal.calories, 0);
+  }, [meals]);
 
   const filteredMeals = useMemo(() => {
     const now = new Date();
@@ -63,8 +74,16 @@ const Dashboard = () => {
         totalMeals={meals.length}
       />
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <CalorieGoalProgress current={getTodayCalories()} goal={DAILY_CALORIE_GOAL} />
+      <div className="grid lg:grid-cols-3 gap-6">
+        <CalorieGoalProgress 
+          current={getTodayCalories()} 
+          goal={settings.daily_calorie_goal} 
+          onGoalChange={updateCalorieGoal}
+        />
+        <YesterdayStatus 
+          yesterdayCalories={yesterdayCalories} 
+          goal={settings.daily_calorie_goal} 
+        />
         <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>
 
@@ -92,14 +111,14 @@ const Dashboard = () => {
                   key={meal.id}
                   className="flex items-center justify-between p-3 rounded-lg bg-background border"
                 >
-                  <div>
-                    <p className="font-medium">{meal.food}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium break-words">{meal.food}</p>
                     <span className="text-sm text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {meal.time}
                     </span>
                   </div>
-                  <span className="font-semibold text-primary">{meal.calories} cal</span>
+                  <span className="font-semibold text-primary shrink-0 ml-2">{meal.calories} cal</span>
                 </div>
               ))}
             </div>
