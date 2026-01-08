@@ -5,10 +5,14 @@ import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
+import { WeightChart } from '@/components/WeightChart';
+import { SleepChart } from '@/components/SleepChart';
 import { SearchFilter } from '@/components/SearchFilter';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useWeight } from '@/hooks/useWeight';
+import { useSleep } from '@/hooks/useSleep';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
@@ -17,6 +21,18 @@ const Dashboard = () => {
   const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay } = useMeals();
   const { getThisWeekSessions, getWeeklyWorkoutData } = useGymSessions();
   const { settings, updateCalorieGoal } = useUserSettings();
+  const { entries: weightEntries } = useWeight();
+  const { entries: sleepEntries } = useSleep();
+
+  const weightChartData = useMemo(() => 
+    weightEntries.map(e => ({ date: e.date.slice(5), weight: e.weight })), 
+    [weightEntries]
+  );
+
+  const sleepChartData = useMemo(() => 
+    sleepEntries.map(e => ({ date: e.date.slice(5), hours: e.hours })), 
+    [sleepEntries]
+  );
   
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('today');
@@ -90,6 +106,11 @@ const Dashboard = () => {
       <div className="grid lg:grid-cols-2 gap-6">
         <CalorieChart data={getWeeklyData()} />
         <WorkoutDurationChart data={getWeeklyWorkoutData()} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <WeightChart data={weightChartData} />
+        <SleepChart data={sleepChartData} />
       </div>
 
       <Card className="shadow-md">
