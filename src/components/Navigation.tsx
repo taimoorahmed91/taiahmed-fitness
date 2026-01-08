@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Utensils, LogOut, User } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { useUser } from '@/contexts/UserContext';
@@ -19,6 +19,8 @@ export const Navigation = () => {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/meals', label: 'Meals', icon: Utensils },
     { to: '/gym', label: 'Gym', icon: Dumbbell },
+    { to: '/weight', label: 'Weight', icon: Scale },
+    { to: '/sleep', label: 'Sleep', icon: Moon },
   ];
 
   // Get display name from user metadata or email
