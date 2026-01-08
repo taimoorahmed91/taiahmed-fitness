@@ -8,6 +8,8 @@ import { UserProvider, useUser } from "@/contexts/UserContext";
 import Dashboard from "./pages/Dashboard";
 import Meals from "./pages/Meals";
 import Gym from "./pages/Gym";
+import Weight from "./pages/Weight";
+import Sleep from "./pages/Sleep";
 import Welcome from "./pages/Welcome";
 import NotFound from "./pages/NotFound";
 import { Navigation } from "./components/Navigation";
@@ -73,6 +75,22 @@ const AppRoutes = () => {
               <Navigation />
               <Gym />
             </div>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/weight"
+        element={
+          <ProtectedRoute>
+            <Weight />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sleep"
+        element={
+          <ProtectedRoute>
+            <Sleep />
           </ProtectedRoute>
         }
       />
