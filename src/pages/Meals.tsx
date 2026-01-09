@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { MealForm } from '@/components/MealForm';
 import { MealList } from '@/components/MealList';
+import { DataFilter } from '@/components/DataFilter';
 import { useMeals } from '@/hooks/useMeals';
+import { useDataFilter } from '@/hooks/useDataFilter';
 import { Meal } from '@/types';
 import {
   Dialog,
@@ -17,6 +19,18 @@ const Meals = () => {
   const { meals, addMeal, deleteMeal, updateMeal } = useMeals();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [editForm, setEditForm] = useState({ food: '', calories: '', time: '', date: '' });
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    timeFilter,
+    setTimeFilter,
+    filteredData: filteredMeals,
+  } = useDataFilter({
+    data: meals,
+    searchFields: ['food'] as (keyof Meal)[],
+    dateField: 'date' as keyof Meal,
+  });
 
   const handleEditClick = (meal: Meal) => {
     setEditingMeal(meal);
@@ -48,9 +62,17 @@ const Meals = () => {
         <p className="text-muted-foreground mt-1">Log your meals and track your calories</p>
       </div>
 
+      <DataFilter
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        timeFilter={timeFilter}
+        onTimeFilterChange={setTimeFilter}
+        searchPlaceholder="Search meals..."
+      />
+
       <div className="grid lg:grid-cols-2 gap-6">
         <MealForm onSubmit={addMeal} />
-        <MealList meals={meals} onDelete={deleteMeal} onEdit={handleEditClick} />
+        <MealList meals={filteredMeals} onDelete={deleteMeal} onEdit={handleEditClick} />
       </div>
 
       {/* Edit Modal */}

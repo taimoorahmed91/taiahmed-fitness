@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DataFilter } from '@/components/DataFilter';
 import { Moon, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useSleep, SleepEntry } from '@/hooks/useSleep';
+import { useDataFilter } from '@/hooks/useDataFilter';
 
 const Sleep = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useSleep();
@@ -17,6 +19,18 @@ const Sleep = () => {
   const [notes, setNotes] = useState('');
   const [editEntry, setEditEntry] = useState<SleepEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    timeFilter,
+    setTimeFilter,
+    filteredData: filteredEntries,
+  } = useDataFilter({
+    data: entries,
+    searchFields: ['notes'] as (keyof SleepEntry)[],
+    dateField: 'date' as keyof SleepEntry,
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,6 +176,17 @@ const Sleep = () => {
           </Card>
         </div>
 
+        {/* Search and Filter */}
+        <div className="mt-6">
+          <DataFilter
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            timeFilter={timeFilter}
+            onTimeFilterChange={setTimeFilter}
+            searchPlaceholder="Search by notes..."
+          />
+        </div>
+
         {/* Sleep History */}
         <Card className="mt-6">
           <CardHeader>
@@ -170,11 +195,13 @@ const Sleep = () => {
           <CardContent>
             {loading ? (
               <p className="text-muted-foreground">Loading...</p>
-            ) : entries.length === 0 ? (
-              <p className="text-muted-foreground">No sleep entries yet</p>
+            ) : filteredEntries.length === 0 ? (
+              <p className="text-muted-foreground">
+                {entries.length === 0 ? 'No sleep entries yet' : 'No entries match your filters'}
+              </p>
             ) : (
               <div className="space-y-3">
-                {entries.map((entry) => {
+                {filteredEntries.map((entry) => {
                   const quality = getSleepQuality(entry.hours);
                   return (
                     <div

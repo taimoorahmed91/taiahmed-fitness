@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { GymForm } from '@/components/GymForm';
 import { GymList } from '@/components/GymList';
+import { DataFilter } from '@/components/DataFilter';
 import { useGymSessions } from '@/hooks/useGymSessions';
+import { useDataFilter } from '@/hooks/useDataFilter';
 import { GymSession } from '@/types';
 import {
   Dialog,
@@ -18,6 +20,18 @@ const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession } = useGymSessions();
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [editForm, setEditForm] = useState({ exercise: '', duration: '', date: '', notes: '' });
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    timeFilter,
+    setTimeFilter,
+    filteredData: filteredSessions,
+  } = useDataFilter({
+    data: sessions,
+    searchFields: ['exercise', 'notes'] as (keyof GymSession)[],
+    dateField: 'date' as keyof GymSession,
+  });
 
   const handleEditClick = (session: GymSession) => {
     setEditingSession(session);
@@ -49,9 +63,17 @@ const Gym = () => {
         <p className="text-muted-foreground mt-1">Log your workouts and track your progress</p>
       </div>
 
+      <DataFilter
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        timeFilter={timeFilter}
+        onTimeFilterChange={setTimeFilter}
+        searchPlaceholder="Search workouts..."
+      />
+
       <div className="grid lg:grid-cols-2 gap-6">
         <GymForm onSubmit={addSession} />
-        <GymList sessions={sessions} onDelete={deleteSession} onEdit={handleEditClick} />
+        <GymList sessions={filteredSessions} onDelete={deleteSession} onEdit={handleEditClick} />
       </div>
 
       {/* Edit Modal */}

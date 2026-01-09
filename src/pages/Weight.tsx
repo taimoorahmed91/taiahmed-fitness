@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DataFilter } from '@/components/DataFilter';
 import { Scale, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useWeight, WeightEntry } from '@/hooks/useWeight';
+import { useDataFilter } from '@/hooks/useDataFilter';
 
 const Weight = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useWeight();
@@ -17,6 +19,18 @@ const Weight = () => {
   const [notes, setNotes] = useState('');
   const [editEntry, setEditEntry] = useState<WeightEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    timeFilter,
+    setTimeFilter,
+    filteredData: filteredEntries,
+  } = useDataFilter({
+    data: entries,
+    searchFields: ['notes'] as (keyof WeightEntry)[],
+    dateField: 'date' as keyof WeightEntry,
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +163,17 @@ const Weight = () => {
           </Card>
         </div>
 
+        {/* Search and Filter */}
+        <div className="mt-6">
+          <DataFilter
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            timeFilter={timeFilter}
+            onTimeFilterChange={setTimeFilter}
+            searchPlaceholder="Search by notes..."
+          />
+        </div>
+
         {/* Weight History */}
         <Card className="mt-6">
           <CardHeader>
@@ -157,11 +182,13 @@ const Weight = () => {
           <CardContent>
             {loading ? (
               <p className="text-muted-foreground">Loading...</p>
-            ) : entries.length === 0 ? (
-              <p className="text-muted-foreground">No weight entries yet</p>
+            ) : filteredEntries.length === 0 ? (
+              <p className="text-muted-foreground">
+                {entries.length === 0 ? 'No weight entries yet' : 'No entries match your filters'}
+              </p>
             ) : (
               <div className="space-y-3">
-                {entries.map((entry) => (
+                {filteredEntries.map((entry) => (
                   <div
                     key={entry.id}
                     className="flex items-center justify-between p-4 rounded-lg border bg-card"
