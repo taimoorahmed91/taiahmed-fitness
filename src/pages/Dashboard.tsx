@@ -84,35 +84,6 @@ const Dashboard = () => {
         onTimeFilterChange={setTimeFilter}
       />
 
-      <StatsCards
-        todayCalories={getTodayCalories()}
-        weeklyWorkouts={getThisWeekSessions().length}
-        totalMeals={meals.length}
-      />
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        <CalorieGoalProgress 
-          current={getTodayCalories()} 
-          goal={settings.daily_calorie_goal} 
-          onGoalChange={updateCalorieGoal}
-        />
-        <YesterdayStatus 
-          yesterdayCalories={yesterdayCalories} 
-          goal={settings.daily_calorie_goal} 
-        />
-        <MealTimeChart data={getMealsByTimeOfDay()} />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <CalorieChart data={getWeeklyData()} />
-        <WorkoutDurationChart data={getWeeklyWorkoutData()} />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <WeightChart data={weightChartData} />
-        <SleepChart data={sleepChartData} />
-      </div>
-
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -146,6 +117,36 @@ const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      <StatsCards
+        todayCalories={getTodayCalories()}
+        weeklyWorkouts={getThisWeekSessions().length}
+        totalMeals={meals.length}
+      />
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        <CalorieGoalProgress 
+          current={getTodayCalories()} 
+          goal={settings.daily_calorie_goal} 
+          onGoalChange={updateCalorieGoal}
+        />
+        <YesterdayStatus 
+          yesterdayCalories={yesterdayCalories} 
+          goal={settings.daily_calorie_goal} 
+        />
+        <MealTimeChart data={getMealsByTimeOfDay()} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <CalorieChart data={getWeeklyData()} />
+        <WorkoutDurationChart data={getWeeklyWorkoutData()} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <WeightChart data={weightChartData} />
+        <SleepChart data={sleepChartData} />
+      </div>
+
     </div>
   );
 };
