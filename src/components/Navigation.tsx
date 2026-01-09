@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
+import { ExportButton } from './ExportButton';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +61,7 @@ export const Navigation = () => {
                 <span className="hidden sm:inline">{displayName}</span>
               </div>
             )}
+            <ExportButton />
             <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
               <LogOut className="h-4 w-4" />
