@@ -64,6 +64,7 @@ export const MealForm = ({ onSubmit }: MealFormProps) => {
               <Input
                 id="calories"
                 type="number"
+                inputMode="numeric"
                 placeholder="e.g., 450"
                 value={calories}
                 onChange={(e) => setCalories(e.target.value)}

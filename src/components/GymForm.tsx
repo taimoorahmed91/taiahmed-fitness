@@ -69,6 +69,7 @@ export const GymForm = ({ onSubmit }: GymFormProps) => {
               <Input
                 id="duration"
                 type="number"
+                inputMode="numeric"
                 placeholder="e.g., 60"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
