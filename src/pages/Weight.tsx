@@ -102,6 +102,7 @@ const Weight = () => {
                     <Input
                       id="weight"
                       type="number"
+                      inputMode="decimal"
                       step="0.1"
                       placeholder="70.5"
                       value={weight}
@@ -238,6 +239,7 @@ const Weight = () => {
                     <Input
                       id="edit-weight"
                       type="number"
+                      inputMode="decimal"
                       step="0.1"
                       value={editEntry.weight}
                       onChange={(e) => setEditEntry({ ...editEntry, weight: parseFloat(e.target.value) })}

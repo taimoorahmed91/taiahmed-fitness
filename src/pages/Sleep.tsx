@@ -110,6 +110,7 @@ const Sleep = () => {
                     <Input
                       id="hours"
                       type="number"
+                      inputMode="decimal"
                       step="0.5"
                       min="0"
                       max="24"
@@ -259,6 +260,7 @@ const Sleep = () => {
                     <Input
                       id="edit-hours"
                       type="number"
+                      inputMode="decimal"
                       step="0.5"
                       min="0"
                       max="24"
