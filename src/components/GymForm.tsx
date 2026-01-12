@@ -23,11 +23,19 @@ export const GymForm = ({ onSubmit }: GymFormProps) => {
       toast.error('Please fill in required fields');
       return;
     }
+    if (exercise.length > 500) {
+      toast.error('Exercise name must be 500 characters or less');
+      return;
+    }
+    if (notes && notes.length > 2000) {
+      toast.error('Notes must be 2000 characters or less');
+      return;
+    }
     onSubmit({
-      exercise,
+      exercise: exercise.trim(),
       duration: parseInt(duration),
       date,
-      notes: notes || undefined,
+      notes: notes?.trim() || undefined,
     });
     setExercise('');
     setDuration('');
@@ -52,6 +60,7 @@ export const GymForm = ({ onSubmit }: GymFormProps) => {
               placeholder="e.g., Chest & Triceps"
               value={exercise}
               onChange={(e) => setExercise(e.target.value)}
+              maxLength={500}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -83,6 +92,7 @@ export const GymForm = ({ onSubmit }: GymFormProps) => {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
+              maxLength={2000}
             />
           </div>
           <Button type="submit" className="w-full">

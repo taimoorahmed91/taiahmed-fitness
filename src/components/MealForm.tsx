@@ -22,8 +22,12 @@ export const MealForm = ({ onSubmit }: MealFormProps) => {
       toast.error('Please fill in all fields');
       return;
     }
+    if (food.length > 500) {
+      toast.error('Food description must be 500 characters or less');
+      return;
+    }
     onSubmit({
-      food,
+      food: food.trim(),
       calories: parseInt(calories),
       time,
       date,
@@ -51,6 +55,7 @@ export const MealForm = ({ onSubmit }: MealFormProps) => {
               placeholder="e.g., Grilled chicken salad"
               value={food}
               onChange={(e) => setFood(e.target.value)}
+              maxLength={500}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">

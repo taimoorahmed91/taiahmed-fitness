@@ -35,11 +35,14 @@ const Sleep = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hours || !date) return;
+    if (notes && notes.length > 2000) {
+      return;
+    }
 
     addEntry({
       hours: parseFloat(hours),
       date,
-      notes: notes || undefined,
+      notes: notes?.trim() || undefined,
     });
 
     setHours('');
@@ -55,11 +58,14 @@ const Sleep = () => {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editEntry) return;
+    if (editEntry.notes && editEntry.notes.length > 2000) {
+      return;
+    }
 
     updateEntry(editEntry.id, {
       hours: editEntry.hours,
       date: editEntry.date,
-      notes: editEntry.notes,
+      notes: editEntry.notes?.trim(),
     });
 
     setEditDialogOpen(false);
@@ -131,6 +137,7 @@ const Sleep = () => {
                     placeholder="Any notes about your sleep..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
+                    maxLength={2000}
                   />
                 </div>
                 <Button type="submit" className="w-full">
@@ -277,6 +284,7 @@ const Sleep = () => {
                     id="edit-notes"
                     value={editEntry.notes || ''}
                     onChange={(e) => setEditEntry({ ...editEntry, notes: e.target.value })}
+                    maxLength={2000}
                   />
                 </div>
                 <Button type="submit" className="w-full">Save Changes</Button>
