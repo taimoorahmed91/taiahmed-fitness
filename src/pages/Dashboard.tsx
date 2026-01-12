@@ -122,6 +122,7 @@ const Dashboard = () => {
         todayCalories={getTodayCalories()}
         weeklyWorkouts={getThisWeekSessions().length}
         totalMeals={meals.length}
+        calorieGoal={settings.daily_calorie_goal}
       />
 
       <div className="grid lg:grid-cols-3 gap-6">
