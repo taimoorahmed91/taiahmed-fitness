@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { Flame, Dumbbell, Target, Utensils } from 'lucide-react';
+import { Flame, Dumbbell, Utensils } from 'lucide-react';
 
 interface StatsCardsProps {
   todayCalories: number;
@@ -36,16 +36,10 @@ export const StatsCards = ({
       icon: Utensils,
       subtitle: 'All time',
     },
-    {
-      label: 'Daily Goal',
-      value: calorieGoal,
-      icon: Target,
-      subtitle: 'Calories target',
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {stats.map((stat) => (
         <Card key={stat.label} className="shadow-md">
           <CardContent className="pt-6">
