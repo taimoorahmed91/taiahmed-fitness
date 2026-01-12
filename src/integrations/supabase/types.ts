@@ -854,6 +854,13 @@ export type Database = {
             referencedRelation: "static_users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "static_user_sessions_static_user_id_fkey"
+            columns: ["static_user_id"]
+            isOneToOne: false
+            referencedRelation: "static_users_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       static_users: {
@@ -888,7 +895,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      static_users_safe: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string | null
+          is_active: boolean | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       archive_old_orders: { Args: { days_old?: number }; Returns: Json }

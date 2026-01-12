@@ -35,11 +35,14 @@ const Weight = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!weight || !date) return;
+    if (notes && notes.length > 2000) {
+      return;
+    }
 
     addEntry({
       weight: parseFloat(weight),
       date,
-      notes: notes || undefined,
+      notes: notes?.trim() || undefined,
     });
 
     setWeight('');
@@ -55,11 +58,14 @@ const Weight = () => {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editEntry) return;
+    if (editEntry.notes && editEntry.notes.length > 2000) {
+      return;
+    }
 
     updateEntry(editEntry.id, {
       weight: editEntry.weight,
       date: editEntry.date,
-      notes: editEntry.notes,
+      notes: editEntry.notes?.trim(),
     });
 
     setEditDialogOpen(false);
@@ -121,6 +127,7 @@ const Weight = () => {
                     placeholder="Any notes about this weigh-in..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
+                    maxLength={2000}
                   />
                 </div>
                 <Button type="submit" className="w-full">
@@ -254,6 +261,7 @@ const Weight = () => {
                     id="edit-notes"
                     value={editEntry.notes || ''}
                     onChange={(e) => setEditEntry({ ...editEntry, notes: e.target.value })}
+                    maxLength={2000}
                   />
                 </div>
                 <Button type="submit" className="w-full">Save Changes</Button>
