@@ -1,7 +1,12 @@
 import { useState, useMemo } from 'react';
-import { startOfDay, startOfWeek, startOfMonth, isAfter, parseISO } from 'date-fns';
+import { startOfDay, startOfWeek, startOfMonth, isAfter, parseISO, isWithinInterval, endOfDay } from 'date-fns';
 
-type TimeFilter = 'all' | 'today' | 'week' | 'month';
+type TimeFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
+
+export interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
 
 interface UseDataFilterOptions<T> {
   data: T[];
@@ -16,6 +21,7 @@ export const useDataFilter = <T,>({
 }: UseDataFilterOptions<T>) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
 
   const filteredData = useMemo(() => {
     let result = [...data];
@@ -32,7 +38,19 @@ export const useDataFilter = <T,>({
     }
 
     // Apply time filter
-    if (timeFilter !== 'all') {
+    if (timeFilter === 'custom' && dateRange.from && dateRange.to) {
+      result = result.filter((item) => {
+        const dateValue = item[dateField];
+        if (typeof dateValue === 'string') {
+          const itemDate = parseISO(dateValue);
+          return isWithinInterval(itemDate, {
+            start: startOfDay(dateRange.from!),
+            end: endOfDay(dateRange.to!),
+          });
+        }
+        return true;
+      });
+    } else if (timeFilter !== 'all' && timeFilter !== 'custom') {
       const now = new Date();
       let startDate: Date;
 
@@ -61,10 +79,20 @@ export const useDataFilter = <T,>({
     }
 
     return result;
-  }, [data, searchQuery, timeFilter, searchFields, dateField]);
+  }, [data, searchQuery, timeFilter, searchFields, dateField, dateRange]);
 
   const handleTimeFilterChange = (filter: string) => {
     setTimeFilter(filter as TimeFilter);
+    if (filter !== 'custom') {
+      setDateRange({ from: undefined, to: undefined });
+    }
+  };
+
+  const handleDateRangeChange = (range: DateRange) => {
+    setDateRange(range);
+    if (range.from && range.to) {
+      setTimeFilter('custom');
+    }
   };
 
   return {
@@ -72,6 +100,8 @@ export const useDataFilter = <T,>({
     setSearchQuery,
     timeFilter,
     setTimeFilter: handleTimeFilterChange,
+    dateRange,
+    setDateRange: handleDateRangeChange,
     filteredData,
   };
 };

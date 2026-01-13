@@ -25,6 +25,8 @@ const Sleep = () => {
     setSearchQuery,
     timeFilter,
     setTimeFilter,
+    dateRange,
+    setDateRange,
     filteredData: filteredEntries,
   } = useDataFilter({
     data: entries,
@@ -192,6 +194,9 @@ const Sleep = () => {
             timeFilter={timeFilter}
             onTimeFilterChange={setTimeFilter}
             searchPlaceholder="Search by notes..."
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            showDateRange
           />
         </div>
 
