@@ -65,20 +65,21 @@ const Gym = () => {
         <p className="text-muted-foreground mt-1">Log your workouts and track your progress</p>
       </div>
 
-      <DataFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        timeFilter={timeFilter}
-        onTimeFilterChange={setTimeFilter}
-        searchPlaceholder="Search workouts..."
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        showDateRange
-      />
-
       <div className="grid lg:grid-cols-2 gap-6">
         <GymForm onSubmit={addSession} />
-        <GymList sessions={filteredSessions} onDelete={deleteSession} onEdit={handleEditClick} />
+        <div className="space-y-4">
+          <DataFilter
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            timeFilter={timeFilter}
+            onTimeFilterChange={setTimeFilter}
+            searchPlaceholder="Search workouts..."
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            showDateRange
+          />
+          <GymList sessions={filteredSessions} onDelete={deleteSession} onEdit={handleEditClick} />
+        </div>
       </div>
 
       {/* Edit Modal */}

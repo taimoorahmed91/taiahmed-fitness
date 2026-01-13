@@ -64,20 +64,21 @@ const Meals = () => {
         <p className="text-muted-foreground mt-1">Log your meals and track your calories</p>
       </div>
 
-      <DataFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        timeFilter={timeFilter}
-        onTimeFilterChange={setTimeFilter}
-        searchPlaceholder="Search meals..."
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        showDateRange
-      />
-
       <div className="grid lg:grid-cols-2 gap-6">
         <MealForm onSubmit={addMeal} />
-        <MealList meals={filteredMeals} onDelete={deleteMeal} onEdit={handleEditClick} />
+        <div className="space-y-4">
+          <DataFilter
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            timeFilter={timeFilter}
+            onTimeFilterChange={setTimeFilter}
+            searchPlaceholder="Search meals..."
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            showDateRange
+          />
+          <MealList meals={filteredMeals} onDelete={deleteMeal} onEdit={handleEditClick} />
+        </div>
       </div>
 
       {/* Edit Modal */}

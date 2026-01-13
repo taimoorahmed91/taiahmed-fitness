@@ -10,6 +10,7 @@ import Meals from "./pages/Meals";
 import Gym from "./pages/Gym";
 import Weight from "./pages/Weight";
 import Sleep from "./pages/Sleep";
+import Calendar from "./pages/Calendar";
 import Reports from "./pages/Reports";
 import Welcome from "./pages/Welcome";
 import NotFound from "./pages/NotFound";
@@ -92,6 +93,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Sleep />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calendar"
+        element={
+          <ProtectedRoute>
+            <Calendar />
           </ProtectedRoute>
         }
       />
