@@ -26,6 +26,8 @@ const Gym = () => {
     setSearchQuery,
     timeFilter,
     setTimeFilter,
+    dateRange,
+    setDateRange,
     filteredData: filteredSessions,
   } = useDataFilter({
     data: sessions,
@@ -69,6 +71,9 @@ const Gym = () => {
         timeFilter={timeFilter}
         onTimeFilterChange={setTimeFilter}
         searchPlaceholder="Search workouts..."
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        showDateRange
       />
 
       <div className="grid lg:grid-cols-2 gap-6">

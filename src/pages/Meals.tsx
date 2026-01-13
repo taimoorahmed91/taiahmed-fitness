@@ -25,6 +25,8 @@ const Meals = () => {
     setSearchQuery,
     timeFilter,
     setTimeFilter,
+    dateRange,
+    setDateRange,
     filteredData: filteredMeals,
   } = useDataFilter({
     data: meals,
@@ -68,6 +70,9 @@ const Meals = () => {
         timeFilter={timeFilter}
         onTimeFilterChange={setTimeFilter}
         searchPlaceholder="Search meals..."
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        showDateRange
       />
 
       <div className="grid lg:grid-cols-2 gap-6">
