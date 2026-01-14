@@ -4,22 +4,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/contexts/UserContext';
 
 interface Message {
   id: string;
   content: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+  statusCode?: number;
 }
 
 const ChatBot = () => {
+  const { isLoggedIn } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Only render for authenticated users
+  if (!isLoggedIn) return null;
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -36,22 +43,31 @@ const ChatBot = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('chat-webhook', {
+      const response = await supabase.functions.invoke('chat-webhook', {
         body: { message: userMessage.content },
       });
 
-      if (error) throw error;
-
+      const statusCode = response.error ? 500 : 200;
+      
       const botMessage: Message = {
         id: crypto.randomUUID(),
-        content: data.response || 'Message sent successfully!',
+        content: response.data?.response || response.error?.message || 'Message sent successfully!',
         sender: 'bot',
         timestamp: new Date(),
+        statusCode,
       };
 
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        content: 'Failed to send message. Please try again.',
+        sender: 'bot',
+        timestamp: new Date(),
+        statusCode: 500,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
       toast({
         title: 'Error',
         description: 'Failed to send message. Please try again.',
@@ -67,6 +83,12 @@ const ChatBot = () => {
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  const getStatusBadgeVariant = (code: number) => {
+    if (code >= 200 && code < 300) return 'default';
+    if (code >= 400) return 'destructive';
+    return 'secondary';
   };
 
   return (
@@ -91,7 +113,7 @@ const ChatBot = () => {
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-80 px-4">
-              {messages.length === 0 ? (
+              {messages.length === 0 && !isLoading ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                   Start a conversation...
                 </div>
@@ -100,7 +122,7 @@ const ChatBot = () => {
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
                     >
                       <div
                         className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
@@ -111,12 +133,23 @@ const ChatBot = () => {
                       >
                         {msg.content}
                       </div>
+                      {msg.sender === 'bot' && msg.statusCode && (
+                        <Badge 
+                          variant={getStatusBadgeVariant(msg.statusCode)} 
+                          className="mt-1 text-xs"
+                        >
+                          HTTP {msg.statusCode}
+                        </Badge>
+                      )}
                     </div>
                   ))}
                   {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-muted rounded-lg px-3 py-2">
+                    <div className="flex flex-col items-start">
+                      <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm text-muted-foreground animate-pulse">
+                          Agent is typing...
+                        </span>
                       </div>
                     </div>
                   )}
