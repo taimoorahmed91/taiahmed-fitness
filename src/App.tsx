@@ -16,6 +16,7 @@ import Reports from "./pages/Reports";
 import Welcome from "./pages/Welcome";
 import NotFound from "./pages/NotFound";
 import { Navigation } from "./components/Navigation";
+import ChatBot from "./components/ChatBot";
 
 const queryClient = new QueryClient();
 
@@ -133,6 +134,7 @@ const AppContent = () => {
       <Sonner />
       <BrowserRouter>
         <AppRoutes />
+        <ChatBot />
       </BrowserRouter>
     </UserProvider>
   );
