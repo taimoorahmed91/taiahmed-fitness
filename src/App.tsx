@@ -11,6 +11,7 @@ import Gym from "./pages/Gym";
 import Weight from "./pages/Weight";
 import Sleep from "./pages/Sleep";
 import Calendar from "./pages/Calendar";
+import Compare from "./pages/Compare";
 import Reports from "./pages/Reports";
 import Welcome from "./pages/Welcome";
 import NotFound from "./pages/NotFound";
@@ -101,6 +102,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Calendar />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/compare"
+        element={
+          <ProtectedRoute>
+            <Compare />
           </ProtectedRoute>
         }
       />
