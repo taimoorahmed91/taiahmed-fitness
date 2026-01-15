@@ -12,11 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { message } = await req.json();
+    const { action, message, userid, question } = await req.json();
 
-    if (!message) {
+    if (!message || !userid || !question) {
       return new Response(
-        JSON.stringify({ error: 'Message is required' }),
+        JSON.stringify({ error: 'Message, userid, and question are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -29,20 +29,20 @@ serve(async (req) => {
       );
     }
 
-    const response = await fetch('https://hook.eu2.make.com/jfag2cg6pdoqla3e71reoomqo8hje8su', {
+    const response = await fetch('https://hook.eu1.make.com/vw7n0cczsnfstgqf39rg4x2231a7vuet', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-make-apikey': apiKey,
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ action, message, userid, question }),
     });
 
     const data = await response.text();
 
     return new Response(
-      JSON.stringify({ success: true, response: data }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: true, response: data, statusCode: response.status }),
+      { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error:', error);
