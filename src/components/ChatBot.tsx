@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Utensils, Dumbbell, Scale, Moon, Zap, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,19 +17,48 @@ interface Message {
   statusCode?: number;
 }
 
+type Category = 'meals' | 'gym' | 'weight' | 'sleep' | 'action' | null;
+
+const categoryConfig = {
+  meals: { label: 'Meals', icon: Utensils, message: 'fittrack_meals' },
+  gym: { label: 'Gym', icon: Dumbbell, message: 'fittrack_gym_sessions' },
+  weight: { label: 'Weight', icon: Scale, message: 'fittrack_weight' },
+  sleep: { label: 'Sleep', icon: Moon, message: 'fittrack_sleep' },
+  action: { label: 'Action', icon: Zap, message: null },
+};
+
 const ChatBot = () => {
-  const { isLoggedIn } = useUser();
+  const { isLoggedIn, user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const { toast } = useToast();
 
   // Only render for authenticated users
   if (!isLoggedIn) return null;
 
+  const handleCategorySelect = (category: Category) => {
+    if (category === 'action') {
+      const actionMessage: Message = {
+        id: crypto.randomUUID(),
+        content: 'This feature is not available yet',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, actionMessage]);
+      return;
+    }
+    setSelectedCategory(category);
+  };
+
+  const handleBack = () => {
+    setSelectedCategory(null);
+  };
+
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !selectedCategory) return;
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -43,11 +72,18 @@ const ChatBot = () => {
     setIsLoading(true);
 
     try {
+      const categoryMessage = categoryConfig[selectedCategory].message;
+      
       const response = await supabase.functions.invoke('chat-webhook', {
-        body: { message: userMessage.content },
+        body: { 
+          action: 'chat',
+          message: categoryMessage,
+          userid: user?.id,
+          question: userMessage.content
+        },
       });
 
-      const statusCode = response.error ? 500 : 200;
+      const statusCode = response.data?.statusCode || (response.error ? 500 : 200);
       
       const botMessage: Message = {
         id: crypto.randomUUID(),
@@ -91,11 +127,20 @@ const ChatBot = () => {
     return 'secondary';
   };
 
+  const resetChat = () => {
+    setMessages([]);
+    setSelectedCategory(null);
+    setInput('');
+  };
+
   return (
     <>
       {/* Floating Button */}
       <Button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (!isOpen) resetChat();
+        }}
         className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg"
         size="icon"
       >
@@ -107,74 +152,107 @@ const ChatBot = () => {
         <Card className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 shadow-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
+              {selectedCategory && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 mr-1" onClick={handleBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
               <MessageCircle className="h-5 w-5" />
-              Chat Assistant
+              {selectedCategory 
+                ? `Chat - ${categoryConfig[selectedCategory].label}` 
+                : 'Chat Assistant'}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-80 px-4">
-              {messages.length === 0 && !isLoading ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                  Start a conversation...
-                </div>
-              ) : (
-                <div className="space-y-3 py-4">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+            {!selectedCategory ? (
+              // Category Selection
+              <div className="p-4 space-y-2">
+                <p className="text-sm text-muted-foreground mb-4">Select a topic to chat about:</p>
+                {(Object.keys(categoryConfig) as Category[]).map((category) => {
+                  if (!category) return null;
+                  const config = categoryConfig[category];
+                  const Icon = config.icon;
+                  return (
+                    <Button
+                      key={category}
+                      variant="outline"
+                      className="w-full justify-start gap-3"
+                      onClick={() => handleCategorySelect(category)}
                     >
-                      <div
-                        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                          msg.sender === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
-                      {msg.sender === 'bot' && msg.statusCode && (
-                        <Badge 
-                          variant={getStatusBadgeVariant(msg.statusCode)} 
-                          className="mt-1 text-xs"
+                      <Icon className="h-4 w-4" />
+                      {config.label}
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : (
+              // Chat Interface
+              <>
+                <ScrollArea className="h-80 px-4">
+                  {messages.length === 0 && !isLoading ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                      Ask about your {categoryConfig[selectedCategory].label.toLowerCase()}...
+                    </div>
+                  ) : (
+                    <div className="space-y-3 py-4">
+                      {messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
                         >
-                          HTTP {msg.statusCode}
-                        </Badge>
+                          <div
+                            className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                              msg.sender === 'user'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                          {msg.sender === 'bot' && msg.statusCode && (
+                            <Badge 
+                              variant={getStatusBadgeVariant(msg.statusCode)} 
+                              className="mt-1 text-xs"
+                            >
+                              HTTP {msg.statusCode}
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
+                      {isLoading && (
+                        <div className="flex flex-col items-start">
+                          <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm text-muted-foreground animate-pulse">
+                              Agent is typing...
+                            </span>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex flex-col items-start">
-                      <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-2">
+                  )}
+                </ScrollArea>
+                <div className="p-4 border-t">
+                  <div className="flex gap-2">
+                    <Input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Type a message..."
+                      disabled={isLoading}
+                      className="flex-1"
+                    />
+                    <Button onClick={sendMessage} disabled={isLoading || !input.trim()} size="icon">
+                      {isLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground animate-pulse">
-                          Agent is typing...
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </ScrollArea>
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type a message..."
-                  disabled={isLoading}
-                  className="flex-1"
-                />
-                <Button onClick={sendMessage} disabled={isLoading || !input.trim()} size="icon">
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
