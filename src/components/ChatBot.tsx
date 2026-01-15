@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageCircle, X, Send, Loader2, Utensils, Dumbbell, Scale, Moon, Zap, ArrowLeft } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Utensils, Dumbbell, Scale, Moon, Zap, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,13 +41,10 @@ const ChatBot = () => {
 
   const handleCategorySelect = (category: Category) => {
     if (category === 'action') {
-      const actionMessage: Message = {
-        id: crypto.randomUUID(),
-        content: 'This feature is not available yet',
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, actionMessage]);
+      toast({
+        title: 'Action',
+        description: 'This feature is not available yet',
+      });
       return;
     }
     setSelectedCategory(category);
@@ -55,6 +52,10 @@ const ChatBot = () => {
 
   const handleBack = () => {
     setSelectedCategory(null);
+  };
+
+  const handleClearChat = () => {
+    setMessages([]);
   };
 
   const sendMessage = async () => {
@@ -151,16 +152,23 @@ const ChatBot = () => {
       {isOpen && (
         <Card className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 shadow-xl">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2">
               {selectedCategory && (
                 <Button variant="ghost" size="icon" className="h-6 w-6 mr-1" onClick={handleBack}>
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
               <MessageCircle className="h-5 w-5" />
-              {selectedCategory 
-                ? `Chat - ${categoryConfig[selectedCategory].label}` 
-                : 'Chat Assistant'}
+              <span className="flex-1">
+                {selectedCategory 
+                  ? `Chat - ${categoryConfig[selectedCategory].label}` 
+                  : 'Chat Assistant'}
+              </span>
+              {selectedCategory && messages.length > 0 && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearChat} title="Clear chat">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
