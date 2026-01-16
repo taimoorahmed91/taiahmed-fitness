@@ -6,6 +6,7 @@ import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
 import { WeightChart } from '@/components/WeightChart';
+import { WeightDeltaChart } from '@/components/WeightDeltaChart';
 import { SleepChart } from '@/components/SleepChart';
 import { SearchFilter } from '@/components/SearchFilter';
 import { useMeals } from '@/hooks/useMeals';
@@ -148,6 +149,7 @@ const Dashboard = () => {
         <SleepChart data={sleepChartData} />
       </div>
 
+      <WeightDeltaChart data={weightChartData} />
     </div>
   );
 };
