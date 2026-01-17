@@ -14,6 +14,7 @@ import Calendar from "./pages/Calendar";
 import Compare from "./pages/Compare";
 import Reports from "./pages/Reports";
 import Welcome from "./pages/Welcome";
+import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
@@ -27,28 +28,40 @@ const LoadingSpinner = () => (
 );
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isLoggedIn, loading } = useUser();
+  const { isLoggedIn, loading, isApproved } = useUser();
   
-  if (loading) {
+  if (loading || isApproved === null) {
     return <LoadingSpinner />;
   }
   
   if (!isLoggedIn) {
     return <Navigate to="/" replace />;
   }
+  
+  if (!isApproved) {
+    return <Navigate to="/pending-approval" replace />;
+  }
+  
   return <>{children}</>;
 };
 
 const AppRoutes = () => {
-  const { isLoggedIn, loading } = useUser();
+  const { isLoggedIn, loading, isApproved } = useUser();
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
+  // Determine where to redirect logged in users
+  const getLoggedInRedirect = () => {
+    if (isApproved === null) return null; // Still loading approval status
+    return isApproved ? <Navigate to="/dashboard" replace /> : <Navigate to="/pending-approval" replace />;
+  };
+
   return (
     <Routes>
-      <Route path="/" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Welcome />} />
+      <Route path="/" element={isLoggedIn ? getLoggedInRedirect() : <Welcome />} />
+      <Route path="/pending-approval" element={isLoggedIn ? <PendingApproval /> : <Navigate to="/" replace />} />
       <Route
         path="/dashboard"
         element={

@@ -6,6 +6,7 @@ interface UserContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isApproved: boolean | null;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   isLoggedIn: boolean;
@@ -17,6 +18,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isApproved, setIsApproved] = useState<boolean | null>(null);
+
+  const checkApprovalStatus = async (userId: string) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('approved')
+      .eq('id', userId)
+      .single();
+    
+    setIsApproved(profile?.approved === 'yes');
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -25,6 +37,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Check approval status after auth state change
+        if (session?.user) {
+          setTimeout(() => {
+            checkApprovalStatus(session.user.id);
+          }, 0);
+        } else {
+          setIsApproved(null);
+        }
       }
     );
 
@@ -33,6 +54,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      if (session?.user) {
+        checkApprovalStatus(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -69,6 +94,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       user, 
       session,
       loading,
+      isApproved,
       signInWithGoogle, 
       logout, 
       isLoggedIn: !!session 
