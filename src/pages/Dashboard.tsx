@@ -14,16 +14,20 @@ import { useGymSessions } from '@/hooks/useGymSessions';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useWeight } from '@/hooks/useWeight';
 import { useSleep } from '@/hooks/useSleep';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
 
 const Dashboard = () => {
-  const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay } = useMeals();
-  const { getThisWeekSessions, getWeeklyWorkoutData } = useGymSessions();
-  const { settings, updateCalorieGoal } = useUserSettings();
-  const { entries: weightEntries } = useWeight();
-  const { entries: sleepEntries } = useSleep();
+  const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
+  const { getThisWeekSessions, getWeeklyWorkoutData, refetch: refetchGym } = useGymSessions();
+  const { settings, updateCalorieGoal, refetch: refetchSettings } = useUserSettings();
+  const { entries: weightEntries, refetch: refetchWeight } = useWeight();
+  const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
+
+  // Auto-refresh every 30 seconds (only on Dashboard)
+  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchSleep]);
 
   const weightChartData = useMemo(() => 
     weightEntries.map(e => ({ date: e.date.slice(5), weight: e.weight })), 

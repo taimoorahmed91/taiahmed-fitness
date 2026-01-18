@@ -202,5 +202,5 @@ export const useMeals = () => {
     }));
   };
 
-  return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getWeeklyData, getMealsByTimeOfDay };
+  return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: fetchMeals };
 };

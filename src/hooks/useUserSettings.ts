@@ -92,5 +92,5 @@ export const useUserSettings = () => {
     }
   };
 
-  return { settings, loading, updateCalorieGoal };
+  return { settings, loading, updateCalorieGoal, refetch: fetchSettings };
 };

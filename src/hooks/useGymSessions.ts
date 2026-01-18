@@ -177,5 +177,5 @@ export const useGymSessions = () => {
     return days;
   };
 
-  return { sessions, loading, addSession, updateSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData };
+  return { sessions, loading, addSession, updateSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData, refetch: fetchSessions };
 };
