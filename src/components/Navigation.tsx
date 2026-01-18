@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon, BarChart3, Menu, Calendar, ArrowLeftRight } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon, BarChart3, Menu, Calendar, ArrowLeftRight, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { ExportButton } from './ExportButton';
@@ -17,7 +17,7 @@ import { useState } from 'react';
 export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useUser();
+  const { user, logout, isOwner } = useUser();
   const [open, setOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -34,6 +34,7 @@ export const Navigation = () => {
     { to: '/calendar', label: 'Calendar', icon: Calendar },
     { to: '/compare', label: 'Compare', icon: ArrowLeftRight },
     { to: '/reports', label: 'Reports', icon: BarChart3 },
+    ...(isOwner ? [{ to: '/admin/approval', label: 'User Approval', icon: UserCheck }] : []),
   ];
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
