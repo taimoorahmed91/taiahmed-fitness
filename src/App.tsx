@@ -15,6 +15,7 @@ import Compare from "./pages/Compare";
 import Reports from "./pages/Reports";
 import Welcome from "./pages/Welcome";
 import PendingApproval from "./pages/PendingApproval";
+import AdminApproval from "./pages/AdminApproval";
 import NotFound from "./pages/NotFound";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
@@ -132,6 +133,17 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Reports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/approval"
+        element={
+          <ProtectedRoute>
+            <div className="min-h-screen bg-background">
+              <Navigation />
+              <AdminApproval />
+            </div>
           </ProtectedRoute>
         }
       />

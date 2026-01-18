@@ -7,6 +7,7 @@ interface UserContextType {
   session: Session | null;
   loading: boolean;
   isApproved: boolean | null;
+  isOwner: boolean | null;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   isLoggedIn: boolean;
@@ -19,15 +20,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
+  const [isOwner, setIsOwner] = useState<boolean | null>(null);
 
-  const checkApprovalStatus = async (userId: string) => {
+  const checkProfileStatus = async (userId: string) => {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('approved')
+      .select('approved, owner')
       .eq('id', userId)
       .single();
     
     setIsApproved(profile?.approved === 'yes');
+    setIsOwner(profile?.owner === 'yes');
   };
 
   useEffect(() => {
@@ -38,13 +41,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Check approval status after auth state change
+        // Check profile status after auth state change
         if (session?.user) {
           setTimeout(() => {
-            checkApprovalStatus(session.user.id);
+            checkProfileStatus(session.user.id);
           }, 0);
         } else {
           setIsApproved(null);
+          setIsOwner(null);
         }
       }
     );
@@ -56,7 +60,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       
       if (session?.user) {
-        checkApprovalStatus(session.user.id);
+        checkProfileStatus(session.user.id);
       }
     });
 
@@ -95,6 +99,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       session,
       loading,
       isApproved,
+      isOwner,
       signInWithGoogle, 
       logout, 
       isLoggedIn: !!session 
