@@ -103,12 +103,17 @@ const Weight = () => {
                     <Label htmlFor="weight">Weight (kg)</Label>
                     <Input
                       id="weight"
-                      type="number"
+                      type="text"
                       inputMode="decimal"
-                      step="0.1"
+                      pattern="[0-9]*\.?[0-9]*"
                       placeholder="70.5"
                       value={weight}
-                      onChange={(e) => setWeight(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setWeight(value);
+                        }
+                      }}
                       required
                     />
                   </div>
@@ -243,11 +248,16 @@ const Weight = () => {
                     <Label htmlFor="edit-weight">Weight (kg)</Label>
                     <Input
                       id="edit-weight"
-                      type="number"
+                      type="text"
                       inputMode="decimal"
-                      step="0.1"
+                      pattern="[0-9]*\.?[0-9]*"
                       value={editEntry.weight}
-                      onChange={(e) => setEditEntry({ ...editEntry, weight: parseFloat(e.target.value) })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setEditEntry({ ...editEntry, weight: parseFloat(value) || 0 });
+                        }
+                      }}
                       required
                     />
                   </div>
