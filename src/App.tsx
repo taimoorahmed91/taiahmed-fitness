@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Meals from "./pages/Meals";
 import Gym from "./pages/Gym";
 import Weight from "./pages/Weight";
+import Waist from "./pages/Waist";
 import Sleep from "./pages/Sleep";
 import Calendar from "./pages/Calendar";
 import Compare from "./pages/Compare";
@@ -101,6 +102,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Weight />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/waist"
+        element={
+          <ProtectedRoute>
+            <Waist />
           </ProtectedRoute>
         }
       />

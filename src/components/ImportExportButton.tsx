@@ -20,6 +20,7 @@ import {
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useWeight } from '@/hooks/useWeight';
+import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { exportToCSV, exportAllToCSV } from '@/lib/exportData';
 import { exportToJSON, readJSONFile, ExportedData } from '@/lib/jsonExportImport';
@@ -29,6 +30,7 @@ export const ImportExportButton = () => {
   const { meals, addMeal, refetch: refetchMeals } = useMeals();
   const { sessions, addSession, refetch: refetchGym } = useGymSessions();
   const { entries: weightEntries, addEntry: addWeight, refetch: refetchWeight } = useWeight();
+  const { entries: waistEntries, addEntry: addWaist, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, addEntry: addSleep, refetch: refetchSleep } = useSleep();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -40,6 +42,7 @@ export const ImportExportButton = () => {
     meals,
     workouts: sessions,
     weight: weightEntries,
+    waist: waistEntries,
     sleep: sleepEntries,
   };
 
@@ -103,10 +106,16 @@ export const ImportExportButton = () => {
         await addSleep(sleep);
       }
       
-      // Refresh all data
-      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchSleep()]);
+      // Import waist entries
+      for (const waist of importData.data.waist || []) {
+        await addWaist(waist);
+      }
       
-      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight entries, ${importData.data.sleep.length} sleep entries`);
+      // Refresh all data
+      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep()]);
+      
+      const waistCount = importData.data.waist?.length || 0;
+      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep entries`);
       setImportDialogOpen(false);
       setImportData(null);
     } catch (error) {
@@ -180,6 +189,7 @@ export const ImportExportButton = () => {
                 <li>{importData.data.meals.length} meals</li>
                 <li>{importData.data.workouts.length} workouts</li>
                 <li>{importData.data.weight.length} weight entries</li>
+                <li>{importData.data.waist?.length || 0} waist entries</li>
                 <li>{importData.data.sleep.length} sleep entries</li>
               </ul>
             </div>
