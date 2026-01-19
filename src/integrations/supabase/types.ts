@@ -571,6 +571,36 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_waist: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+          waist: number
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          waist: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          waist?: number
+        }
+        Relationships: []
+      }
       fittrack_weight: {
         Row: {
           created_at: string

@@ -1,5 +1,6 @@
 import { Meal, GymSession } from '@/types';
 import { WeightEntry } from '@/hooks/useWeight';
+import { WaistEntry } from '@/hooks/useWaist';
 import { SleepEntry } from '@/hooks/useSleep';
 
 export interface ExportedData {
@@ -9,6 +10,7 @@ export interface ExportedData {
     meals: Omit<Meal, 'id'>[];
     workouts: Omit<GymSession, 'id'>[];
     weight: Omit<WeightEntry, 'id'>[];
+    waist: Omit<WaistEntry, 'id'>[];
     sleep: Omit<SleepEntry, 'id'>[];
   };
 }
@@ -17,17 +19,19 @@ interface FullExportData {
   meals: Meal[];
   workouts: GymSession[];
   weight: WeightEntry[];
+  waist: WaistEntry[];
   sleep: SleepEntry[];
 }
 
 export const exportToJSON = (data: FullExportData): void => {
   const exportData: ExportedData = {
-    version: '1.0',
+    version: '1.1',
     exportDate: new Date().toISOString(),
     data: {
       meals: data.meals.map(({ id, ...rest }) => rest),
       workouts: data.workouts.map(({ id, ...rest }) => rest),
       weight: data.weight.map(({ id, ...rest }) => rest),
+      waist: data.waist.map(({ id, ...rest }) => rest),
       sleep: data.sleep.map(({ id, ...rest }) => rest),
     },
   };
@@ -54,6 +58,16 @@ export const validateImportData = (data: unknown): ExportedData | null => {
       !Array.isArray(innerData.weight) || 
       !Array.isArray(innerData.sleep)) {
     return null;
+  }
+
+  // Waist is optional for backward compatibility with v1.0 exports
+  if (innerData.waist !== undefined && !Array.isArray(innerData.waist)) {
+    return null;
+  }
+
+  // Add empty waist array if not present (backward compatibility)
+  if (!innerData.waist) {
+    innerData.waist = [];
   }
 
   return data as ExportedData;

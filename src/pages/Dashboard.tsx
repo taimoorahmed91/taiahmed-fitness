@@ -7,12 +7,15 @@ import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
 import { WeightChart } from '@/components/WeightChart';
 import { WeightDeltaChart } from '@/components/WeightDeltaChart';
+import { WaistChart } from '@/components/WaistChart';
+import { WaistDeltaChart } from '@/components/WaistDeltaChart';
 import { SleepChart } from '@/components/SleepChart';
 import { SearchFilter } from '@/components/SearchFilter';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useWeight } from '@/hooks/useWeight';
+import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,14 +27,20 @@ const Dashboard = () => {
   const { getThisWeekSessions, getWeeklyWorkoutData, refetch: refetchGym } = useGymSessions();
   const { settings, updateCalorieGoal, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
+  const { entries: waistEntries, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
 
   // Auto-refresh every 30 seconds (only on Dashboard)
-  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchSleep]);
+  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep]);
 
   const weightChartData = useMemo(() => 
     weightEntries.map(e => ({ date: e.date.slice(5), weight: e.weight })), 
     [weightEntries]
+  );
+
+  const waistChartData = useMemo(() => 
+    waistEntries.map(e => ({ date: e.date.slice(5), waist: e.waist })), 
+    [waistEntries]
   );
 
   const sleepChartData = useMemo(() => 
@@ -150,10 +159,15 @@ const Dashboard = () => {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <WeightChart data={weightChartData} />
-        <SleepChart data={sleepChartData} />
+        <WaistChart data={waistChartData} />
       </div>
 
-      <WeightDeltaChart data={weightChartData} />
+      <div className="grid lg:grid-cols-2 gap-6">
+        <WeightDeltaChart data={weightChartData} />
+        <WaistDeltaChart data={waistChartData} />
+      </div>
+
+      <SleepChart data={sleepChartData} />
     </div>
   );
 };
