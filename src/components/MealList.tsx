@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Clock, Calendar, Pencil, Search, X } from 'lucide-react';
+import { SortControl } from '@/components/SortControl';
 
 interface MealListProps {
   meals: Meal[];
@@ -18,12 +19,24 @@ export const MealList = ({ meals, onDelete, onEdit }: MealListProps) => {
   const [filterType, setFilterType] = useState<'all' | 'date' | 'time' | 'calories'>('all');
   const [dateFilter, setDateFilter] = useState('');
   const [calorieFilter, setCalorieFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
 
-  const sortedMeals = [...meals].sort((a, b) => {
-    const dateCompare = b.date.localeCompare(a.date);
-    if (dateCompare !== 0) return dateCompare;
-    return b.time.localeCompare(a.time);
-  });
+  const sortedMeals = useMemo(() => {
+    let sorted = [...meals];
+    
+    if (sortOrder) {
+      sorted.sort((a, b) => sortOrder === 'asc' ? a.calories - b.calories : b.calories - a.calories);
+    } else {
+      // Default: sort by date and time
+      sorted.sort((a, b) => {
+        const dateCompare = b.date.localeCompare(a.date);
+        if (dateCompare !== 0) return dateCompare;
+        return b.time.localeCompare(a.time);
+      });
+    }
+    
+    return sorted;
+  }, [meals, sortOrder]);
 
   const filteredMeals = sortedMeals.filter((meal) => {
     // Text search
@@ -62,14 +75,17 @@ export const MealList = ({ meals, onDelete, onEdit }: MealListProps) => {
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-lg">Recent Meals</CardTitle>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
-              <X className="h-3 w-3 mr-1" />
-              Clear filters
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <SortControl label="Calories" sortOrder={sortOrder} onSortChange={setSortOrder} />
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
+                <X className="h-3 w-3 mr-1" />
+                Clear filters
+              </Button>
+            )}
+          </div>
         </div>
         
         {/* Search and Filter Controls */}
