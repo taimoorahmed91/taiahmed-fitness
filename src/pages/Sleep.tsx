@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataFilter } from '@/components/DataFilter';
+import { SortControl, SortOrder } from '@/components/SortControl';
 import { Moon, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useSleep, SleepEntry } from '@/hooks/useSleep';
 import { useDataFilter } from '@/hooks/useDataFilter';
@@ -19,6 +20,7 @@ const Sleep = () => {
   const [notes, setNotes] = useState('');
   const [editEntry, setEditEntry] = useState<SleepEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null);
 
   const {
     searchQuery,
@@ -33,6 +35,13 @@ const Sleep = () => {
     searchFields: ['notes'] as (keyof SleepEntry)[],
     dateField: 'date' as keyof SleepEntry,
   });
+
+  const sortedEntries = useMemo(() => {
+    if (sortOrder === null) return filteredEntries;
+    return [...filteredEntries].sort((a, b) => {
+      return sortOrder === 'asc' ? a.hours - b.hours : b.hours - a.hours;
+    });
+  }, [filteredEntries, sortOrder]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,14 +120,20 @@ const Sleep = () => {
                     <Label htmlFor="hours">Hours Slept</Label>
                     <Input
                       id="hours"
-                      type="number"
+                      type="text"
                       inputMode="decimal"
-                      step="0.5"
-                      min="0"
-                      max="24"
+                      pattern="[0-9]*\.?[0-9]*"
                       placeholder="7.5"
                       value={hours}
-                      onChange={(e) => setHours(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          const numValue = parseFloat(value);
+                          if (value === '' || (numValue >= 0 && numValue <= 24)) {
+                            setHours(value);
+                          }
+                        }
+                      }}
                       required
                     />
                   </div>
@@ -202,8 +217,9 @@ const Sleep = () => {
 
         {/* Sleep History */}
         <Card className="mt-6">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Sleep History</CardTitle>
+            <SortControl label="Hours" sortOrder={sortOrder} onSortChange={setSortOrder} />
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -214,7 +230,7 @@ const Sleep = () => {
               </p>
             ) : (
               <div className="space-y-3">
-                {filteredEntries.map((entry) => {
+                {sortedEntries.map((entry) => {
                   const quality = getSleepQuality(entry.hours);
                   return (
                     <div
@@ -264,13 +280,19 @@ const Sleep = () => {
                     <Label htmlFor="edit-hours">Hours Slept</Label>
                     <Input
                       id="edit-hours"
-                      type="number"
+                      type="text"
                       inputMode="decimal"
-                      step="0.5"
-                      min="0"
-                      max="24"
+                      pattern="[0-9]*\.?[0-9]*"
                       value={editEntry.hours}
-                      onChange={(e) => setEditEntry({ ...editEntry, hours: parseFloat(e.target.value) })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          const numValue = parseFloat(value);
+                          if (value === '' || (numValue >= 0 && numValue <= 24)) {
+                            setEditEntry({ ...editEntry, hours: numValue || 0 });
+                          }
+                        }
+                      }}
                       required
                     />
                   </div>
