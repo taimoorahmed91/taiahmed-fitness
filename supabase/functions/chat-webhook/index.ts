@@ -21,19 +21,25 @@ serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get('MAKE_WEBHOOK_API_KEY');
-    if (!apiKey) {
+    const username = Deno.env.get('N8N_WEBHOOK_USERNAME');
+    const password = Deno.env.get('N8N_WEBHOOK_PASSWORD');
+    
+    if (!username || !password) {
+      console.error('N8N webhook credentials not configured');
       return new Response(
-        JSON.stringify({ error: 'API key not configured' }),
+        JSON.stringify({ error: 'Webhook credentials not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const response = await fetch('https://hook.eu1.make.com/vw7n0cczsnfstgqf39rg4x2231a7vuet', {
+    // Create Basic Auth header
+    const basicAuth = btoa(`${username}:${password}`);
+
+    const response = await fetch('https://n8n.taimoorahmed.com/webhook/app', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-make-apikey': apiKey,
+        'Authorization': `Basic ${basicAuth}`,
       },
       body: JSON.stringify({ action, message, userid, question }),
     });
