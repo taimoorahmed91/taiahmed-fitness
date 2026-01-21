@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataFilter } from '@/components/DataFilter';
+import { SortControl, SortOrder } from '@/components/SortControl';
 import { Ruler, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useWaist, WaistEntry } from '@/hooks/useWaist';
 import { useDataFilter } from '@/hooks/useDataFilter';
@@ -19,6 +20,7 @@ const Waist = () => {
   const [notes, setNotes] = useState('');
   const [editEntry, setEditEntry] = useState<WaistEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null);
 
   const {
     searchQuery,
@@ -33,6 +35,13 @@ const Waist = () => {
     searchFields: ['notes'] as (keyof WaistEntry)[],
     dateField: 'date' as keyof WaistEntry,
   });
+
+  const sortedEntries = useMemo(() => {
+    if (sortOrder === null) return filteredEntries;
+    return [...filteredEntries].sort((a, b) => {
+      return sortOrder === 'asc' ? a.waist - b.waist : b.waist - a.waist;
+    });
+  }, [filteredEntries, sortOrder]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,8 +203,9 @@ const Waist = () => {
 
         {/* Waist History */}
         <Card className="mt-6">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Waist History</CardTitle>
+            <SortControl label="Waist" sortOrder={sortOrder} onSortChange={setSortOrder} />
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -206,7 +216,7 @@ const Waist = () => {
               </p>
             ) : (
               <div className="space-y-3">
-                {filteredEntries.map((entry) => (
+                {sortedEntries.map((entry) => (
                   <div
                     key={entry.id}
                     className="flex items-center justify-between p-4 rounded-lg border bg-card"

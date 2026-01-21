@@ -4,17 +4,18 @@ import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Utensils, Dumbbell, Scale, Moon } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Utensils, Dumbbell, Scale, Moon, Ruler } from 'lucide-react';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useWeight } from '@/hooks/useWeight';
 import { useSleep } from '@/hooks/useSleep';
+import { useWaist } from '@/hooks/useWaist';
 import { cn } from '@/lib/utils';
 
-type DisplayFilter = 'all' | 'meals' | 'gym' | 'weight' | 'sleep';
+type DisplayFilter = 'all' | 'meals' | 'gym' | 'weight' | 'sleep' | 'waist';
 
 interface DayEntry {
-  type: 'meal' | 'gym' | 'weight' | 'sleep';
+  type: 'meal' | 'gym' | 'weight' | 'sleep' | 'waist';
   data: any;
 }
 
@@ -27,6 +28,7 @@ const Calendar = () => {
   const { sessions } = useGymSessions();
   const { entries: weightEntries } = useWeight();
   const { entries: sleepEntries } = useSleep();
+  const { entries: waistEntries } = useWaist();
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -76,8 +78,17 @@ const Calendar = () => {
       });
     }
 
+    if (displayFilter === 'all' || displayFilter === 'waist') {
+      waistEntries.forEach((entry) => {
+        const dateKey = entry.date;
+        const existing = map.get(dateKey) || [];
+        existing.push({ type: 'waist', data: entry });
+        map.set(dateKey, existing);
+      });
+    }
+
     return map;
-  }, [meals, sessions, weightEntries, sleepEntries, displayFilter]);
+  }, [meals, sessions, weightEntries, sleepEntries, waistEntries, displayFilter]);
 
   const getEntriesForDate = (date: Date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
@@ -94,6 +105,8 @@ const Calendar = () => {
         return <Scale className="h-3 w-3 text-green-500" />;
       case 'sleep':
         return <Moon className="h-3 w-3 text-purple-500" />;
+      case 'waist':
+        return <Ruler className="h-3 w-3 text-teal-500" />;
       default:
         return null;
     }
@@ -143,6 +156,16 @@ const Calendar = () => {
             </div>
           </div>
         );
+      case 'waist':
+        return (
+          <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
+            <Ruler className="h-4 w-4 text-teal-500" />
+            <div className="flex-1">
+              <p className="font-medium text-sm">{entry.data.waist} cm</p>
+              {entry.data.notes && <p className="text-xs text-muted-foreground">{entry.data.notes}</p>}
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -180,6 +203,7 @@ const Calendar = () => {
                   <SelectItem value="gym">Gym Only</SelectItem>
                   <SelectItem value="weight">Weight Only</SelectItem>
                   <SelectItem value="sleep">Sleep Only</SelectItem>
+                  <SelectItem value="waist">Waist Only</SelectItem>
                 </SelectContent>
               </Select>
             </CardHeader>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataFilter } from '@/components/DataFilter';
+import { SortControl, SortOrder } from '@/components/SortControl';
 import { Scale, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useWeight, WeightEntry } from '@/hooks/useWeight';
 import { useDataFilter } from '@/hooks/useDataFilter';
@@ -19,6 +20,7 @@ const Weight = () => {
   const [notes, setNotes] = useState('');
   const [editEntry, setEditEntry] = useState<WeightEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null);
 
   const {
     searchQuery,
@@ -33,6 +35,13 @@ const Weight = () => {
     searchFields: ['notes'] as (keyof WeightEntry)[],
     dateField: 'date' as keyof WeightEntry,
   });
+
+  const sortedEntries = useMemo(() => {
+    if (sortOrder === null) return filteredEntries;
+    return [...filteredEntries].sort((a, b) => {
+      return sortOrder === 'asc' ? a.weight - b.weight : b.weight - a.weight;
+    });
+  }, [filteredEntries, sortOrder]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,8 +203,9 @@ const Weight = () => {
 
         {/* Weight History */}
         <Card className="mt-6">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Weight History</CardTitle>
+            <SortControl label="Weight" sortOrder={sortOrder} onSortChange={setSortOrder} />
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -206,7 +216,7 @@ const Weight = () => {
               </p>
             ) : (
               <div className="space-y-3">
-                {filteredEntries.map((entry) => (
+                {sortedEntries.map((entry) => (
                   <div
                     key={entry.id}
                     className="flex items-center justify-between p-4 rounded-lg border bg-card"
