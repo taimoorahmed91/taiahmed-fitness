@@ -14,6 +14,7 @@ import Sleep from "./pages/Sleep";
 import Calendar from "./pages/Calendar";
 import Compare from "./pages/Compare";
 import Reports from "./pages/Reports";
+import Messaging from "./pages/Messaging";
 import Welcome from "./pages/Welcome";
 import PendingApproval from "./pages/PendingApproval";
 import AdminApproval from "./pages/AdminApproval";
@@ -142,6 +143,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Reports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/messaging"
+        element={
+          <ProtectedRoute>
+            <div className="min-h-screen bg-background">
+              <Messaging />
+            </div>
           </ProtectedRoute>
         }
       />

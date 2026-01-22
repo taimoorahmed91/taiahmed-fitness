@@ -588,6 +588,8 @@ export type Database = {
           created_at: string
           daily_calorie_goal: number
           id: string
+          telegram_chat_id: string | null
+          telegram_chat_id_set: boolean
           updated_at: string
           user_id: string
         }
@@ -595,6 +597,8 @@ export type Database = {
           created_at?: string
           daily_calorie_goal?: number
           id?: string
+          telegram_chat_id?: string | null
+          telegram_chat_id_set?: boolean
           updated_at?: string
           user_id: string
         }
@@ -602,6 +606,8 @@ export type Database = {
           created_at?: string
           daily_calorie_goal?: number
           id?: string
+          telegram_chat_id?: string | null
+          telegram_chat_id_set?: boolean
           updated_at?: string
           user_id?: string
         }

@@ -1,0 +1,165 @@
+import { useState, useEffect } from 'react';
+import { Navigation } from '@/components/Navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Info, MessageCircle, Save } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+const Messaging = () => {
+  const [telegramChatId, setTelegramChatId] = useState('');
+  const [hasTelegramSet, setHasTelegramSet] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('fittrack_user_settings')
+          .select('telegram_chat_id_set')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setHasTelegramSet(data.telegram_chat_id_set || false);
+        }
+      } catch (error) {
+        console.error('Error fetching messaging settings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  const handleSave = async () => {
+    if (!telegramChatId.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a Telegram Chat ID',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to save settings',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('fittrack_user_settings')
+        .update({ 
+          telegram_chat_id: telegramChatId.trim(),
+          telegram_chat_id_set: true 
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setHasTelegramSet(true);
+      setTelegramChatId('');
+      toast({
+        title: 'Success',
+        description: 'Telegram Chat ID saved successfully',
+      });
+    } catch (error) {
+      console.error('Error saving Telegram Chat ID:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save Telegram Chat ID',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8">Messaging Settings</h1>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                Telegram Integration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="telegram-chat-id">Telegram Chat ID</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>Find the bot "n8n-fitness" in Telegram and send a hello message to get the chatID.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Input
+                  id="telegram-chat-id"
+                  type="text"
+                  placeholder={hasTelegramSet ? "Leave blank if unchanged" : "Enter your Telegram Chat ID"}
+                  value={telegramChatId}
+                  onChange={(e) => setTelegramChatId(e.target.value)}
+                />
+                {hasTelegramSet && (
+                  <p className="text-sm text-muted-foreground">
+                    ✓ Telegram Chat ID is configured. Enter a new value only if you want to change it.
+                  </p>
+                )}
+              </div>
+
+              <Button onClick={handleSave} disabled={saving || !telegramChatId.trim()}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default Messaging;
