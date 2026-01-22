@@ -587,6 +587,7 @@ export type Database = {
         Row: {
           created_at: string
           daily_calorie_goal: number
+          email_subscribed: boolean
           id: string
           telegram_chat_id: string | null
           telegram_chat_id_set: boolean
@@ -597,6 +598,7 @@ export type Database = {
         Insert: {
           created_at?: string
           daily_calorie_goal?: number
+          email_subscribed?: boolean
           id?: string
           telegram_chat_id?: string | null
           telegram_chat_id_set?: boolean
@@ -607,6 +609,7 @@ export type Database = {
         Update: {
           created_at?: string
           daily_calorie_goal?: number
+          email_subscribed?: boolean
           id?: string
           telegram_chat_id?: string | null
           telegram_chat_id_set?: boolean

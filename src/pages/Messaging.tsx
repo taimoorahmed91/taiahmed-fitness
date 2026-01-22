@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Info, MessageCircle, Save, Bell, BellOff } from 'lucide-react';
+import { Info, MessageCircle, Save, Bell, BellOff, Mail } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -13,9 +13,12 @@ const Messaging = () => {
   const [telegramChatId, setTelegramChatId] = useState('');
   const [hasTelegramSet, setHasTelegramSet] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [isEmailSubscribed, setIsEmailSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  const [emailSubscribing, setEmailSubscribing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,9 +30,12 @@ const Messaging = () => {
           return;
         }
 
+        // Set user email
+        setUserEmail(user.email || '');
+
         const { data, error } = await supabase
           .from('fittrack_user_settings')
-          .select('telegram_chat_id_set, telegram_subscribed')
+          .select('telegram_chat_id_set, telegram_subscribed, email_subscribed')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -38,6 +44,7 @@ const Messaging = () => {
         if (data) {
           setHasTelegramSet(data.telegram_chat_id_set || false);
           setIsSubscribed(data.telegram_subscribed || false);
+          setIsEmailSubscribed(data.email_subscribed || false);
         }
       } catch (error) {
         console.error('Error fetching messaging settings:', error);
@@ -136,6 +143,43 @@ const Messaging = () => {
     }
   };
 
+  const handleEmailSubscriptionToggle = async (subscribe: boolean) => {
+    setEmailSubscribing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to change subscription',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('fittrack_user_settings')
+        .update({ email_subscribed: subscribe })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setIsEmailSubscribed(subscribe);
+      toast({
+        title: 'Success',
+        description: subscribe ? 'Subscribed to email notifications' : 'Unsubscribed from email notifications',
+      });
+    } catch (error) {
+      console.error('Error updating email subscription:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update email subscription',
+        variant: 'destructive',
+      });
+    } finally {
+      setEmailSubscribing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -156,78 +200,139 @@ const Messaging = () => {
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">Messaging Settings</h1>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Telegram Integration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Chat ID Section */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="telegram-chat-id">Telegram Chat ID</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Find the bot "n8n-fitness" in Telegram and send a hello message to get the chatID.</p>
-                    </TooltipContent>
-                  </Tooltip>
+          <div className="space-y-6">
+            {/* Telegram Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5" />
+                  Telegram Integration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Chat ID Section */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="telegram-chat-id">Telegram Chat ID</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Find the bot "n8n-fitness" in Telegram and send a hello message to get the chatID.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Input
+                    id="telegram-chat-id"
+                    type="text"
+                    placeholder={hasTelegramSet ? "Leave blank if unchanged" : "Enter your Telegram Chat ID"}
+                    value={telegramChatId}
+                    onChange={(e) => setTelegramChatId(e.target.value)}
+                  />
+                  {hasTelegramSet && (
+                    <p className="text-sm text-muted-foreground">
+                      ✓ Telegram Chat ID is configured. Enter a new value only if you want to change it.
+                    </p>
+                  )}
+                  <Button onClick={handleSave} disabled={saving || !telegramChatId.trim()}>
+                    <Save className="h-4 w-4 mr-2" />
+                    {saving ? 'Saving...' : 'Save'}
+                  </Button>
                 </div>
-                <Input
-                  id="telegram-chat-id"
-                  type="text"
-                  placeholder={hasTelegramSet ? "Leave blank if unchanged" : "Enter your Telegram Chat ID"}
-                  value={telegramChatId}
-                  onChange={(e) => setTelegramChatId(e.target.value)}
-                />
-                {hasTelegramSet && (
-                  <p className="text-sm text-muted-foreground">
-                    ✓ Telegram Chat ID is configured. Enter a new value only if you want to change it.
-                  </p>
-                )}
-                <Button onClick={handleSave} disabled={saving || !telegramChatId.trim()}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
 
-              {/* Subscription Section */}
-              <div className="pt-4 border-t space-y-3">
-                <Label>Notification Subscription</Label>
-                <p className="text-sm text-muted-foreground">
-                  {isSubscribed 
-                    ? '✓ You are subscribed to Telegram notifications.' 
-                    : 'You are not subscribed to Telegram notifications.'}
-                </p>
-                <div className="flex gap-2">
-                  {!isSubscribed && (
-                    <Button 
-                      onClick={() => handleSubscriptionToggle(true)} 
-                      disabled={subscribing}
-                      variant="default"
-                    >
-                      <Bell className="h-4 w-4 mr-2" />
-                      {subscribing ? 'Subscribing...' : 'Subscribe'}
-                    </Button>
-                  )}
-                  {isSubscribed && (
-                    <Button 
-                      onClick={() => handleSubscriptionToggle(false)} 
-                      disabled={subscribing}
-                      variant="outline"
-                    >
-                      <BellOff className="h-4 w-4 mr-2" />
-                      {subscribing ? 'Unsubscribing...' : 'Unsubscribe'}
-                    </Button>
-                  )}
+                {/* Subscription Section */}
+                <div className="pt-4 border-t space-y-3">
+                  <Label>Notification Subscription</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {isSubscribed 
+                      ? '✓ You are subscribed to Telegram notifications.' 
+                      : 'You are not subscribed to Telegram notifications.'}
+                  </p>
+                  <div className="flex gap-2">
+                    {!isSubscribed && (
+                      <Button 
+                        onClick={() => handleSubscriptionToggle(true)} 
+                        disabled={subscribing}
+                        variant="default"
+                      >
+                        <Bell className="h-4 w-4 mr-2" />
+                        {subscribing ? 'Subscribing...' : 'Subscribe'}
+                      </Button>
+                    )}
+                    {isSubscribed && (
+                      <Button 
+                        onClick={() => handleSubscriptionToggle(false)} 
+                        disabled={subscribing}
+                        variant="outline"
+                      >
+                        <BellOff className="h-4 w-4 mr-2" />
+                        {subscribing ? 'Unsubscribing...' : 'Unsubscribe'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Email Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Email Notifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Email Display */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={userEmail}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    This is your registered email address.
+                  </p>
+                </div>
+
+                {/* Email Subscription Section */}
+                <div className="pt-4 border-t space-y-3">
+                  <Label>Email Subscription</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {isEmailSubscribed 
+                      ? '✓ You are subscribed to email notifications.' 
+                      : 'You are not subscribed to email notifications.'}
+                  </p>
+                  <div className="flex gap-2">
+                    {!isEmailSubscribed && (
+                      <Button 
+                        onClick={() => handleEmailSubscriptionToggle(true)} 
+                        disabled={emailSubscribing}
+                        variant="default"
+                      >
+                        <Bell className="h-4 w-4 mr-2" />
+                        {emailSubscribing ? 'Subscribing...' : 'Subscribe'}
+                      </Button>
+                    )}
+                    {isEmailSubscribed && (
+                      <Button 
+                        onClick={() => handleEmailSubscriptionToggle(false)} 
+                        disabled={emailSubscribing}
+                        variant="outline"
+                      >
+                        <BellOff className="h-4 w-4 mr-2" />
+                        {emailSubscribing ? 'Unsubscribing...' : 'Unsubscribe'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
     </div>
