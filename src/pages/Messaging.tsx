@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Info, MessageCircle, Save } from 'lucide-react';
+import { Info, MessageCircle, Save, Bell, BellOff } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -12,8 +12,10 @@ import { useToast } from '@/hooks/use-toast';
 const Messaging = () => {
   const [telegramChatId, setTelegramChatId] = useState('');
   const [hasTelegramSet, setHasTelegramSet] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,7 +29,7 @@ const Messaging = () => {
 
         const { data, error } = await supabase
           .from('fittrack_user_settings')
-          .select('telegram_chat_id_set')
+          .select('telegram_chat_id_set, telegram_subscribed')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -35,6 +37,7 @@ const Messaging = () => {
 
         if (data) {
           setHasTelegramSet(data.telegram_chat_id_set || false);
+          setIsSubscribed(data.telegram_subscribed || false);
         }
       } catch (error) {
         console.error('Error fetching messaging settings:', error);
@@ -96,6 +99,43 @@ const Messaging = () => {
     }
   };
 
+  const handleSubscriptionToggle = async (subscribe: boolean) => {
+    setSubscribing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to change subscription',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('fittrack_user_settings')
+        .update({ telegram_subscribed: subscribe })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setIsSubscribed(subscribe);
+      toast({
+        title: 'Success',
+        description: subscribe ? 'Subscribed to Telegram notifications' : 'Unsubscribed from Telegram notifications',
+      });
+    } catch (error) {
+      console.error('Error updating subscription:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update subscription',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -123,7 +163,8 @@ const Messaging = () => {
                 Telegram Integration
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              {/* Chat ID Section */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="telegram-chat-id">Telegram Chat ID</Label>
@@ -148,12 +189,43 @@ const Messaging = () => {
                     ✓ Telegram Chat ID is configured. Enter a new value only if you want to change it.
                   </p>
                 )}
+                <Button onClick={handleSave} disabled={saving || !telegramChatId.trim()}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save'}
+                </Button>
               </div>
 
-              <Button onClick={handleSave} disabled={saving || !telegramChatId.trim()}>
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? 'Saving...' : 'Save'}
-              </Button>
+              {/* Subscription Section */}
+              <div className="pt-4 border-t space-y-3">
+                <Label>Notification Subscription</Label>
+                <p className="text-sm text-muted-foreground">
+                  {isSubscribed 
+                    ? '✓ You are subscribed to Telegram notifications.' 
+                    : 'You are not subscribed to Telegram notifications.'}
+                </p>
+                <div className="flex gap-2">
+                  {!isSubscribed && (
+                    <Button 
+                      onClick={() => handleSubscriptionToggle(true)} 
+                      disabled={subscribing}
+                      variant="default"
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      {subscribing ? 'Subscribing...' : 'Subscribe'}
+                    </Button>
+                  )}
+                  {isSubscribed && (
+                    <Button 
+                      onClick={() => handleSubscriptionToggle(false)} 
+                      disabled={subscribing}
+                      variant="outline"
+                    >
+                      <BellOff className="h-4 w-4 mr-2" />
+                      {subscribing ? 'Unsubscribing...' : 'Unsubscribe'}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
