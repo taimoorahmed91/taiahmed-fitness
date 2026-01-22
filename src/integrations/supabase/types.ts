@@ -590,6 +590,7 @@ export type Database = {
           id: string
           telegram_chat_id: string | null
           telegram_chat_id_set: boolean
+          telegram_subscribed: boolean
           updated_at: string
           user_id: string
         }
@@ -599,6 +600,7 @@ export type Database = {
           id?: string
           telegram_chat_id?: string | null
           telegram_chat_id_set?: boolean
+          telegram_subscribed?: boolean
           updated_at?: string
           user_id: string
         }
@@ -608,6 +610,7 @@ export type Database = {
           id?: string
           telegram_chat_id?: string | null
           telegram_chat_id_set?: boolean
+          telegram_subscribed?: boolean
           updated_at?: string
           user_id?: string
         }
