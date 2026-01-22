@@ -451,6 +451,42 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_daily_summary: {
+        Row: {
+          calorie_goal: number
+          calories_consumed: number
+          calories_remaining: number
+          created_at: string
+          date: string
+          id: string
+          updated_at: string
+          user_id: string
+          workout_status: string
+        }
+        Insert: {
+          calorie_goal?: number
+          calories_consumed?: number
+          calories_remaining?: number
+          created_at?: string
+          date?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          workout_status?: string
+        }
+        Update: {
+          calorie_goal?: number
+          calories_consumed?: number
+          calories_remaining?: number
+          created_at?: string
+          date?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          workout_status?: string
+        }
+        Relationships: []
+      }
       fittrack_gym_sessions: {
         Row: {
           created_at: string
@@ -992,6 +1028,26 @@ export type Database = {
       generate_secure_guest_token: { Args: never; Returns: string }
       get_active_session_count: { Args: never; Returns: number }
       get_database_stats: { Args: never; Returns: Json }
+      get_or_create_daily_summary: {
+        Args: { p_user_id: string }
+        Returns: {
+          calorie_goal: number
+          calories_consumed: number
+          calories_remaining: number
+          created_at: string
+          date: string
+          id: string
+          updated_at: string
+          user_id: string
+          workout_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "fittrack_daily_summary"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_user_groups: {
         Args: { target_user_id?: string }
         Returns: {
