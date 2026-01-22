@@ -92,26 +92,27 @@ const Weight = () => {
     if (!latestWeight || entries.length < 2) return { day7: null, day15: null, day30: null };
 
     const today = new Date();
-    const findClosestEntry = (targetDate: Date) => {
-      // Find entry closest to target date (within 3 days tolerance)
-      const targetTime = targetDate.getTime();
-      let closest: { weight: number; diff: number } | null = null;
+    
+    // Find the oldest entry within the given period (days ago from today)
+    const findOldestInPeriod = (daysAgo: number) => {
+      const cutoffDate = subDays(today, daysAgo);
+      let oldest: { weight: number; date: Date } | null = null;
 
       for (const entry of entries) {
         const entryDate = parseISO(entry.date);
-        const diff = Math.abs(entryDate.getTime() - targetTime);
-        const daysDiff = diff / (1000 * 60 * 60 * 24);
-
-        if (daysDiff <= 3 && (!closest || diff < closest.diff)) {
-          closest = { weight: entry.weight, diff };
+        // Entry must be within the period (between cutoffDate and today)
+        if (entryDate >= cutoffDate && entryDate <= today) {
+          if (!oldest || entryDate < oldest.date) {
+            oldest = { weight: entry.weight, date: entryDate };
+          }
         }
       }
-      return closest?.weight ?? null;
+      return oldest?.weight ?? null;
     };
 
-    const weight7 = findClosestEntry(subDays(today, 7));
-    const weight15 = findClosestEntry(subDays(today, 15));
-    const weight30 = findClosestEntry(subDays(today, 30));
+    const weight7 = findOldestInPeriod(7);
+    const weight15 = findOldestInPeriod(15);
+    const weight30 = findOldestInPeriod(30);
 
     return {
       day7: weight7 !== null ? latestWeight - weight7 : null,
