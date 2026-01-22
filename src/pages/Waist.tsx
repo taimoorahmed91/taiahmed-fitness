@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
+import { format, subDays, parseISO } from 'date-fns';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,6 +86,40 @@ const Waist = () => {
   const latestWaist = entries[0]?.waist;
   const previousWaist = entries[1]?.waist;
   const waistChange = latestWaist && previousWaist ? latestWaist - previousWaist : null;
+
+  // Calculate waist differences for 7, 15, and 30 days ago
+  const periodChanges = useMemo(() => {
+    if (!latestWaist || entries.length < 2) return { day7: null, day15: null, day30: null };
+
+    const today = new Date();
+    
+    // Find the oldest entry within the given period (days ago from today)
+    const findOldestInPeriod = (daysAgo: number) => {
+      const cutoffDate = subDays(today, daysAgo);
+      let oldest: { waist: number; date: Date } | null = null;
+
+      for (const entry of entries) {
+        const entryDate = parseISO(entry.date);
+        // Entry must be within the period (between cutoffDate and today)
+        if (entryDate >= cutoffDate && entryDate <= today) {
+          if (!oldest || entryDate < oldest.date) {
+            oldest = { waist: entry.waist, date: entryDate };
+          }
+        }
+      }
+      return oldest?.waist ?? null;
+    };
+
+    const waist7 = findOldestInPeriod(7);
+    const waist15 = findOldestInPeriod(15);
+    const waist30 = findOldestInPeriod(30);
+
+    return {
+      day7: waist7 !== null ? latestWaist - waist7 : null,
+      day15: waist15 !== null ? latestWaist - waist15 : null,
+      day30: waist30 !== null ? latestWaist - waist30 : null,
+    };
+  }, [entries, latestWaist]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -178,6 +212,43 @@ const Waist = () => {
                   <div>
                     <p className="text-sm text-muted-foreground">Total Entries</p>
                     <p className="text-xl font-semibold">{entries.length}</p>
+                  </div>
+
+                  {/* Period Changes */}
+                  <div className="pt-4 border-t">
+                    <p className="text-sm text-muted-foreground mb-3">Waist Change Over Time</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center p-2 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">7 Days</p>
+                        {periodChanges.day7 !== null ? (
+                          <p className={`text-sm font-semibold ${periodChanges.day7 > 0 ? 'text-destructive' : periodChanges.day7 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            {periodChanges.day7 > 0 ? '+' : ''}{periodChanges.day7.toFixed(1)} cm
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">—</p>
+                        )}
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">15 Days</p>
+                        {periodChanges.day15 !== null ? (
+                          <p className={`text-sm font-semibold ${periodChanges.day15 > 0 ? 'text-destructive' : periodChanges.day15 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            {periodChanges.day15 > 0 ? '+' : ''}{periodChanges.day15.toFixed(1)} cm
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">—</p>
+                        )}
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">30 Days</p>
+                        {periodChanges.day30 !== null ? (
+                          <p className={`text-sm font-semibold ${periodChanges.day30 > 0 ? 'text-destructive' : periodChanges.day30 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            {periodChanges.day30 > 0 ? '+' : ''}{periodChanges.day30.toFixed(1)} cm
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">—</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </>
               ) : (
