@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon, BarChart3, Menu, Calendar, ArrowLeftRight, UserCheck, Ruler, MessageCircle } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon, BarChart3, Menu, Calendar, ArrowLeftRight, UserCheck, Ruler, MessageCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { ImportExportButton } from './ImportExportButton';
@@ -95,6 +95,9 @@ export const Navigation = () => {
             </div>
           )}
           <ImportExportButton />
+          <Button variant="ghost" size="icon" onClick={() => window.location.reload()} title="Refresh">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
           <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
             <LogOut className="h-4 w-4" />
