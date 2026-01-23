@@ -3,12 +3,12 @@ import { StatsCards } from '@/components/StatsCards';
 import { CalorieChart } from '@/components/CalorieChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
-import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
 import { WeightChart } from '@/components/WeightChart';
 import { WaistChart } from '@/components/WaistChart';
 import { SleepChart } from '@/components/SleepChart';
 import { GoalsCard } from '@/components/GoalsCard';
+import { WorkoutStatusCard } from '@/components/WorkoutStatusCard';
 import { SearchFilter } from '@/components/SearchFilter';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
@@ -139,11 +139,7 @@ const Dashboard = () => {
       />
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <CalorieGoalProgress 
-          current={getTodayCalories()} 
-          goal={settings.daily_calorie_goal} 
-          onGoalChange={updateCalorieGoal}
-        />
+        <WorkoutStatusCard />
         <YesterdayStatus 
           yesterdayCalories={yesterdayCalories} 
           goal={settings.daily_calorie_goal} 
