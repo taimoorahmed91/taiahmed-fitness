@@ -18,6 +18,8 @@ export interface GoalProgress {
   goal: Goal;
   current_value: number;
   percentage: number;
+  days_passed: number; // includes today
+  week_start_date: Date;
 }
 
 export const useGoals = () => {
@@ -36,15 +38,16 @@ export const useGoals = () => {
         return;
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayDate = new Date();
       
       // Fetch active goals
       const { data, error } = await supabase
         .from('fittrack_goals')
         .select('*')
         .eq('user_id', user.id)
-        .lte('start_date', today)
-        .gte('end_date', today)
+        .lte('start_date', todayStr)
+        .gte('end_date', todayStr)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -87,10 +90,21 @@ export const useGoals = () => {
           currentValue = (sleepData || []).reduce((sum, s) => sum + Number(s.hours), 0);
         }
 
+        // Calculate days passed for weekly goals
+        const weekStart = new Date(goal.start_date);
+        let daysPassed = 1; // at least today
+        if (goal.goal_type === 'weekly') {
+          const diffTime = todayDate.getTime() - weekStart.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          daysPassed = Math.min(7, Math.max(1, diffDays + 1)); // +1 to include today
+        }
+
         progressList.push({
           goal,
           current_value: currentValue,
-          percentage: Math.min(100, Math.round((currentValue / goal.target_value) * 100))
+          percentage: Math.min(100, Math.round((currentValue / goal.target_value) * 100)),
+          days_passed: daysPassed,
+          week_start_date: weekStart
         });
       }
 
@@ -116,13 +130,14 @@ export const useGoals = () => {
       let endDate: Date;
 
       if (goalType === 'weekly') {
-        // Start from this week's Monday
+        // Start from this week's Monday (Monday = 1, Sunday = 0)
         const dayOfWeek = today.getDay();
-        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        // If Sunday (0), go back 6 days; otherwise go back (dayOfWeek - 1) days
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
         startDate = new Date(today);
-        startDate.setDate(today.getDate() + diff);
+        startDate.setDate(today.getDate() - daysToMonday);
         endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 6);
+        endDate.setDate(startDate.getDate() + 6); // Sunday
       } else {
         // Start from this month's first day
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
