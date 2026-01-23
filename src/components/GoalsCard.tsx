@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useGoals, GoalProgress } from '@/hooks/useGoals';
 import { Target, Plus, Trash2, Flame, Dumbbell, Moon } from 'lucide-react';
 
@@ -24,6 +25,8 @@ const categoryUnits = {
   workouts: 'sessions',
   sleep: 'hours',
 };
+
+const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export const GoalsCard = () => {
   const { goalsProgress, loading, addGoal, deleteGoal } = useGoals();
@@ -118,13 +121,14 @@ export const GoalsCard = () => {
           <div className="space-y-3">
             {goalsProgress.map((gp: GoalProgress) => {
               const Icon = categoryIcons[gp.goal.category as keyof typeof categoryIcons];
+              const isWeekly = gp.goal.goal_type === 'weekly';
               return (
                 <div key={gp.goal.id} className="space-y-2 p-3 border rounded-lg">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium text-sm">
-                        {gp.goal.goal_type === 'weekly' ? 'Weekly' : 'Monthly'} {categoryLabels[gp.goal.category as keyof typeof categoryLabels]}
+                        {isWeekly ? 'Weekly' : 'Monthly'} {categoryLabels[gp.goal.category as keyof typeof categoryLabels]}
                       </span>
                     </div>
                     <Button
@@ -136,6 +140,29 @@ export const GoalsCard = () => {
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
+                  
+                  {/* Weekly day tracker */}
+                  {isWeekly && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-1">
+                        {weekDays.map((day, index) => {
+                          const isPastOrToday = index < gp.days_passed;
+                          return (
+                            <div key={day} className="flex flex-col items-center gap-0.5">
+                              <span className="text-[10px] text-muted-foreground">{day}</span>
+                              <Checkbox 
+                                checked={isPastOrToday} 
+                                disabled 
+                                className="h-3 w-3 cursor-default"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <span className="text-xs text-muted-foreground">Days {gp.days_passed}/7</span>
+                    </div>
+                  )}
+                  
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>{gp.current_value} / {gp.goal.target_value} {categoryUnits[gp.goal.category as keyof typeof categoryUnits]}</span>
