@@ -10,6 +10,7 @@ import { WaistChart } from '@/components/WaistChart';
 import { SleepChart } from '@/components/SleepChart';
 import { GoalsCard } from '@/components/GoalsCard';
 import { SearchFilter } from '@/components/SearchFilter';
+import { WeightIntervalSetting } from '@/components/WeightIntervalSetting';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -24,7 +25,7 @@ import { Clock, Flame } from 'lucide-react';
 const Dashboard = () => {
   const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
   const { getThisWeekSessions, getWeeklyWorkoutData, refetch: refetchGym } = useGymSessions();
-  const { settings, updateCalorieGoal, refetch: refetchSettings } = useUserSettings();
+  const { settings, updateCalorieGoal, updateWeightInterval, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
   const { entries: waistEntries, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
@@ -138,7 +139,7 @@ const Dashboard = () => {
         calorieGoal={settings.daily_calorie_goal}
       />
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-4 gap-6">
         <CalorieGoalProgress 
           current={getTodayCalories()} 
           goal={settings.daily_calorie_goal} 
@@ -147,6 +148,10 @@ const Dashboard = () => {
         <YesterdayStatus 
           yesterdayCalories={yesterdayCalories} 
           goal={settings.daily_calorie_goal} 
+        />
+        <WeightIntervalSetting
+          interval={settings.weight_measurement_interval}
+          onIntervalChange={updateWeightInterval}
         />
         <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>
