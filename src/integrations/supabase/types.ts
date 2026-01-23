@@ -630,6 +630,7 @@ export type Database = {
           telegram_subscribed: boolean
           updated_at: string
           user_id: string
+          weight_measurement_interval: number
         }
         Insert: {
           created_at?: string
@@ -641,6 +642,7 @@ export type Database = {
           telegram_subscribed?: boolean
           updated_at?: string
           user_id: string
+          weight_measurement_interval?: number
         }
         Update: {
           created_at?: string
@@ -652,6 +654,7 @@ export type Database = {
           telegram_subscribed?: boolean
           updated_at?: string
           user_id?: string
+          weight_measurement_interval?: number
         }
         Relationships: []
       }
