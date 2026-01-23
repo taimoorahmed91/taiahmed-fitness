@@ -3,12 +3,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dumbbell, CalendarOff, Scale } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-export const StatsCards = () => {
+interface StatsCardsProps {
+  weightMeasurementInterval: number;
+}
+
+export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
   const [workoutStatus, setWorkoutStatus] = useState<string | null>(null);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
+  const [lastWeightDiffDays, setLastWeightDiffDays] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch workout status and last weight date on mount
   useEffect(() => {
     const fetchStatus = async () => {
       try {
@@ -31,15 +37,6 @@ export const StatsCards = () => {
         if (summaryError) throw summaryError;
         setWorkoutStatus(summaryData?.workout_status || 'yes');
 
-        // Fetch weight measurement interval from settings
-        const { data: settingsData } = await supabase
-          .from('fittrack_user_settings')
-          .select('weight_measurement_interval')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        const interval = settingsData?.weight_measurement_interval || 3;
-
         // Fetch last weight entry
         const { data: weightData } = await supabase
           .from('fittrack_weight')
@@ -53,23 +50,14 @@ export const StatsCards = () => {
           const lastWeightDate = new Date(weightData.date);
           const todayDate = new Date(today);
           const diffDays = Math.floor((todayDate.getTime() - lastWeightDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          if (diffDays >= interval) {
-            setWeightDueToday(true);
-            setDaysUntilWeight(0);
-          } else {
-            setWeightDueToday(false);
-            setDaysUntilWeight(interval - diffDays);
-          }
+          setLastWeightDiffDays(diffDays);
         } else {
-          // No weight entries yet, measurement is due
-          setWeightDueToday(true);
-          setDaysUntilWeight(0);
+          // No weight entries yet
+          setLastWeightDiffDays(null);
         }
       } catch (error) {
         console.error('Error fetching status:', error);
         setWorkoutStatus('yes');
-        setWeightDueToday(null);
       } finally {
         setLoading(false);
       }
@@ -77,6 +65,23 @@ export const StatsCards = () => {
 
     fetchStatus();
   }, []);
+
+  // Recalculate weight status when interval or lastWeightDiffDays changes
+  useEffect(() => {
+    if (lastWeightDiffDays === null) {
+      // No weight entries yet, measurement is due
+      setWeightDueToday(true);
+      setDaysUntilWeight(0);
+    } else {
+      if (lastWeightDiffDays >= weightMeasurementInterval) {
+        setWeightDueToday(true);
+        setDaysUntilWeight(0);
+      } else {
+        setWeightDueToday(false);
+        setDaysUntilWeight(weightMeasurementInterval - lastWeightDiffDays);
+      }
+    }
+  }, [weightMeasurementInterval, lastWeightDiffDays]);
 
   const isWorkoutDay = workoutStatus === 'yes';
 
