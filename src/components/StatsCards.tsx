@@ -1,19 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dumbbell, Utensils, CalendarOff, Scale } from 'lucide-react';
+import { Dumbbell, CalendarOff, Scale } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface StatsCardsProps {
-  todayCalories: number;
-  weeklyWorkouts: number;
-  totalMeals: number;
-  calorieGoal?: number;
-}
-
-export const StatsCards = ({
-  weeklyWorkouts,
-  totalMeals,
-}: StatsCardsProps) => {
+export const StatsCards = () => {
   const [workoutStatus, setWorkoutStatus] = useState<string | null>(null);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
@@ -90,84 +80,46 @@ export const StatsCards = ({
 
   const isWorkoutDay = workoutStatus === 'yes';
 
-  const stats = [
-    {
-      label: 'Weekly Workouts',
-      value: weeklyWorkouts,
-      icon: Dumbbell,
-      subtitle: 'This week',
-    },
-    {
-      label: 'Total Meals Logged',
-      value: totalMeals,
-      icon: Utensils,
-      subtitle: 'All time',
-    },
-  ];
-
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      {/* Combined Status Card */}
-      <Card className="shadow-md">
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            {/* Workout Status */}
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Workout</p>
-                <p className={`text-sm font-medium mt-1 ${!isWorkoutDay ? 'text-muted-foreground' : ''}`}>
-                  {loading ? '...' : (isWorkoutDay ? 'Today is a workout day' : 'Today is not a workout day')}
-                </p>
-                <p className="text-xs text-muted-foreground">{isWorkoutDay ? 'Get moving!' : 'Rest day'}</p>
-              </div>
-              <div className={`p-2 rounded-lg ${!isWorkoutDay ? 'bg-muted' : 'bg-primary/10'}`}>
-                {isWorkoutDay ? (
-                  <Dumbbell className="h-5 w-5 text-primary" />
-                ) : (
-                  <CalendarOff className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
+    <Card className="shadow-md">
+      <CardContent className="pt-6">
+        <div className="space-y-4">
+          {/* Workout Status */}
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Workout</p>
+              <p className={`text-sm font-medium mt-1 ${!isWorkoutDay ? 'text-muted-foreground' : ''}`}>
+                {loading ? '...' : (isWorkoutDay ? 'Today is a workout day' : 'Today is not a workout day')}
+              </p>
+              <p className="text-xs text-muted-foreground">{isWorkoutDay ? 'Get moving!' : 'Rest day'}</p>
             </div>
-
-            {/* Divider */}
-            <div className="border-t border-border" />
-
-            {/* Weight Status */}
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Weight</p>
-                <p className={`text-sm font-medium mt-1 ${!weightDueToday ? 'text-muted-foreground' : ''}`}>
-                  {loading ? '...' : (weightDueToday ? 'Measure your weight today' : `Next measurement in ${daysUntilWeight} day${daysUntilWeight !== 1 ? 's' : ''}`)}
-                </p>
-                <p className="text-xs text-muted-foreground">{weightDueToday ? 'Time to check in!' : 'On track'}</p>
-              </div>
-              <div className={`p-2 rounded-lg ${!weightDueToday ? 'bg-muted' : 'bg-primary/10'}`}>
-                <Scale className={`h-5 w-5 ${weightDueToday ? 'text-primary' : 'text-muted-foreground'}`} />
-              </div>
+            <div className={`p-2 rounded-lg ${!isWorkoutDay ? 'bg-muted' : 'bg-primary/10'}`}>
+              {isWorkoutDay ? (
+                <Dumbbell className="h-5 w-5 text-primary" />
+              ) : (
+                <CalendarOff className="h-5 w-5 text-muted-foreground" />
+              )}
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Other Stats */}
-      {stats.map((stat) => (
-        <Card key={stat.label} className="shadow-md">
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-2xl font-bold mt-1">
-                  {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{stat.subtitle}</p>
-              </div>
-              <div className="p-2 rounded-lg bg-primary/10">
-                <stat.icon className="h-5 w-5 text-primary" />
-              </div>
+          {/* Divider */}
+          <div className="border-t border-border" />
+
+          {/* Weight Status */}
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Weight</p>
+              <p className={`text-sm font-medium mt-1 ${!weightDueToday ? 'text-muted-foreground' : ''}`}>
+                {loading ? '...' : (weightDueToday ? 'Measure your weight today' : `Next measurement in ${daysUntilWeight} day${daysUntilWeight !== 1 ? 's' : ''}`)}
+              </p>
+              <p className="text-xs text-muted-foreground">{weightDueToday ? 'Time to check in!' : 'On track'}</p>
             </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+            <div className={`p-2 rounded-lg ${!weightDueToday ? 'bg-muted' : 'bg-primary/10'}`}>
+              <Scale className={`h-5 w-5 ${weightDueToday ? 'text-primary' : 'text-muted-foreground'}`} />
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

@@ -132,12 +132,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      <StatsCards
-        todayCalories={getTodayCalories()}
-        weeklyWorkouts={getThisWeekSessions().length}
-        totalMeals={meals.length}
-        calorieGoal={settings.daily_calorie_goal}
-      />
+      <StatsCards />
 
       <div className="grid lg:grid-cols-4 gap-6">
         <CalorieGoalProgress 
