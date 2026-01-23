@@ -6,10 +6,9 @@ import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
 import { WeightChart } from '@/components/WeightChart';
-import { WeightDeltaChart } from '@/components/WeightDeltaChart';
 import { WaistChart } from '@/components/WaistChart';
-import { WaistDeltaChart } from '@/components/WaistDeltaChart';
 import { SleepChart } from '@/components/SleepChart';
+import { GoalsCard } from '@/components/GoalsCard';
 import { SearchFilter } from '@/components/SearchFilter';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
@@ -18,7 +17,6 @@ import { useWeight } from '@/hooks/useWeight';
 import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
-import { useDailySummary } from '@/hooks/useDailySummary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
@@ -30,10 +28,9 @@ const Dashboard = () => {
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
   const { entries: waistEntries, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
-  const { summary: dailySummary, refetch: refetchSummary } = useDailySummary();
 
   // Auto-refresh every 30 seconds (only on Dashboard)
-  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary]);
+  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep]);
 
   const weightChartData = useMemo(() => 
     weightEntries.map(e => ({ date: e.date.slice(5), weight: e.weight })), 
@@ -165,11 +162,9 @@ const Dashboard = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <WeightDeltaChart data={weightChartData} />
-        <WaistDeltaChart data={waistChartData} />
+        <SleepChart data={sleepChartData} />
+        <GoalsCard />
       </div>
-
-      <SleepChart data={sleepChartData} />
     </div>
   );
 };
