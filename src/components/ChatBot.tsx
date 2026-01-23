@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Loader2, Utensils, Dumbbell, Scale, Moon, Zap, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,9 @@ const categoryConfig = {
   action: { label: 'Action', icon: Zap, message: null },
 };
 
+const MAX_MESSAGES_PER_HOUR = 5;
+const RATE_LIMIT_KEY = 'chatbot_message_timestamps';
+
 const ChatBot = () => {
   const { isLoggedIn, user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +37,42 @@ const ChatBot = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
+  const [messageCount, setMessageCount] = useState(0);
   const { toast } = useToast();
+
+  // Get valid timestamps from localStorage (within the last hour)
+  const getValidTimestamps = useCallback((): number[] => {
+    const stored = localStorage.getItem(RATE_LIMIT_KEY);
+    if (!stored) return [];
+    
+    const timestamps: number[] = JSON.parse(stored);
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    return timestamps.filter(ts => ts > oneHourAgo);
+  }, []);
+
+  // Update message count on mount and when messages are sent
+  const updateMessageCount = useCallback(() => {
+    const validTimestamps = getValidTimestamps();
+    // Clean up old timestamps
+    localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(validTimestamps));
+    setMessageCount(validTimestamps.length);
+  }, [getValidTimestamps]);
+
+  useEffect(() => {
+    updateMessageCount();
+    // Update count every minute to handle expiring timestamps
+    const interval = setInterval(updateMessageCount, 60000);
+    return () => clearInterval(interval);
+  }, [updateMessageCount]);
+
+  const canSendMessage = messageCount < MAX_MESSAGES_PER_HOUR;
+
+  const recordMessageSent = () => {
+    const validTimestamps = getValidTimestamps();
+    validTimestamps.push(Date.now());
+    localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(validTimestamps));
+    setMessageCount(validTimestamps.length);
+  };
 
   // Only render for authenticated users
   if (!isLoggedIn) return null;
@@ -61,6 +99,15 @@ const ChatBot = () => {
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !selectedCategory) return;
 
+    if (!canSendMessage) {
+      toast({
+        title: 'Rate limit reached',
+        description: 'You can only send 5 messages per hour. Please wait.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const userMessage: Message = {
       id: crypto.randomUUID(),
       content: input.trim(),
@@ -71,6 +118,7 @@ const ChatBot = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    recordMessageSent();
 
     try {
       const categoryMessage = categoryConfig[selectedCategory].message;
@@ -152,7 +200,7 @@ const ChatBot = () => {
       {isOpen && (
         <Card className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 shadow-xl">
           <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
               {selectedCategory && (
                 <Button variant="ghost" size="icon" className="h-6 w-6 mr-1" onClick={handleBack}>
                   <ArrowLeft className="h-4 w-4" />
@@ -164,6 +212,9 @@ const ChatBot = () => {
                   ? `Chat - ${categoryConfig[selectedCategory].label}` 
                   : 'Chat Assistant'}
               </span>
+              <Badge variant={canSendMessage ? 'secondary' : 'destructive'} className="text-xs">
+                {messageCount}/{MAX_MESSAGES_PER_HOUR}
+              </Badge>
               {selectedCategory && messages.length > 0 && (
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearChat} title="Clear chat">
                   <Trash2 className="h-4 w-4" />
