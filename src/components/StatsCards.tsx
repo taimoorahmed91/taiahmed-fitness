@@ -86,10 +86,10 @@ export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
   const isWorkoutDay = workoutStatus === 'yes';
 
   return (
-    <Card className="shadow-md">
-      <CardContent className="pt-6">
-        <div className="space-y-4">
-          {/* Workout Status */}
+    <div className="grid md:grid-cols-2 gap-6">
+      {/* Workout Status Card */}
+      <Card className="shadow-md">
+        <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Workout</p>
@@ -106,11 +106,12 @@ export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
               )}
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Divider */}
-          <div className="border-t border-border" />
-
-          {/* Weight Status */}
+      {/* Weight Status Card */}
+      <Card className="shadow-md">
+        <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Weight</p>
@@ -123,8 +124,8 @@ export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
               <Scale className={`h-5 w-5 ${weightDueToday ? 'text-primary' : 'text-muted-foreground'}`} />
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
