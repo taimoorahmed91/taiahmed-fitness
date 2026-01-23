@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageCircle, X, Send, Loader2, Utensils, Dumbbell, Scale, Moon, Zap, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ const ChatBot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [messageCount, setMessageCount] = useState(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Get valid timestamps from localStorage (within the last hour)
@@ -64,6 +65,15 @@ const ChatBot = () => {
     const interval = setInterval(updateMessageCount, 60000);
     return () => clearInterval(interval);
   }, [updateMessageCount]);
+
+  // Auto-scroll to bottom when messages change or loading state changes
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading, scrollToBottom]);
 
   const canSendMessage = messageCount < MAX_MESSAGES_PER_HOUR;
 
@@ -288,6 +298,7 @@ const ChatBot = () => {
                           </div>
                         </div>
                       )}
+                      <div ref={messagesEndRef} />
                     </div>
                   )}
                 </ScrollArea>
