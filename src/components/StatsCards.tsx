@@ -9,6 +9,7 @@ interface StatsCardsProps {
 
 export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
   const [workoutStatus, setWorkoutStatus] = useState<string | null>(null);
+  const [didWorkoutToday, setDidWorkoutToday] = useState<boolean>(false);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
   const [lastWeightDiffDays, setLastWeightDiffDays] = useState<number | null>(null);
@@ -36,6 +37,16 @@ export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
 
         if (summaryError) throw summaryError;
         setWorkoutStatus(summaryData?.workout_status || 'yes');
+
+        // Check if user has logged a gym session today
+        const { data: gymData } = await supabase
+          .from('fittrack_gym_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .limit(1);
+
+        setDidWorkoutToday(gymData && gymData.length > 0);
 
         // Fetch last weight entry
         const { data: weightData } = await supabase
@@ -84,6 +95,7 @@ export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
   }, [weightMeasurementInterval, lastWeightDiffDays]);
 
   const isWorkoutDay = workoutStatus === 'yes';
+  const showWorkoutReminder = isWorkoutDay && !didWorkoutToday;
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -93,13 +105,19 @@ export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Workout</p>
-              <p className={`text-sm font-medium mt-1 ${!isWorkoutDay ? 'text-muted-foreground' : ''}`}>
-                {loading ? '...' : (isWorkoutDay ? 'Today is a workout day' : 'Today is not a workout day')}
+              <p className={`text-sm font-medium mt-1 ${!showWorkoutReminder ? 'text-muted-foreground' : ''}`}>
+                {loading ? '...' : (
+                  didWorkoutToday 
+                    ? 'You did workout today' 
+                    : (isWorkoutDay ? 'Today is a workout day' : 'Today is not a workout day')
+                )}
               </p>
-              <p className="text-xs text-muted-foreground">{isWorkoutDay ? 'Get moving!' : 'Rest day'}</p>
+              <p className="text-xs text-muted-foreground">
+                {didWorkoutToday ? 'Rest now!' : (isWorkoutDay ? 'Get moving!' : 'Rest day')}
+              </p>
             </div>
-            <div className={`p-2 rounded-lg ${!isWorkoutDay ? 'bg-muted' : 'bg-primary/10'}`}>
-              {isWorkoutDay ? (
+            <div className={`p-2 rounded-lg ${!showWorkoutReminder ? 'bg-muted' : 'bg-primary/10'}`}>
+              {showWorkoutReminder ? (
                 <Dumbbell className="h-5 w-5 text-primary" />
               ) : (
                 <CalendarOff className="h-5 w-5 text-muted-foreground" />
