@@ -241,6 +241,8 @@ const Messaging = () => {
         <h1 className="text-3xl font-bold mb-8">Messaging Settings</h1>
 
         <div className="grid lg:grid-cols-2 gap-6">
+          {/* Left Column: Telegram + Email */}
+          <div className="space-y-6">
             {/* Telegram Card */}
             <Card>
               <CardHeader>
@@ -372,7 +374,10 @@ const Messaging = () => {
                 </div>
               </CardContent>
             </Card>
-            {/* Notification Schedule Card */}
+          </div>
+
+          {/* Right Column: Schedule */}
+          <div>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -398,6 +403,7 @@ const Messaging = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
         </main>
       </div>
   );
