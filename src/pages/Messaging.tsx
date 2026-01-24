@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Info, MessageCircle, Save, Bell, BellOff, Mail } from 'lucide-react';
+import { Info, MessageCircle, Save, Bell, BellOff, Mail, Clock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationScheduleForm } from '@/components/NotificationScheduleForm';
 
 const Messaging = () => {
   const [telegramChatId, setTelegramChatId] = useState('');
@@ -15,10 +16,12 @@ const Messaging = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [isEmailSubscribed, setIsEmailSubscribed] = useState(false);
+  const [notificationSchedule, setNotificationSchedule] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [emailSubscribing, setEmailSubscribing] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,7 +38,7 @@ const Messaging = () => {
 
         const { data, error } = await supabase
           .from('fittrack_user_settings')
-          .select('telegram_chat_id_set, telegram_subscribed, email_subscribed')
+          .select('telegram_chat_id_set, telegram_subscribed, email_subscribed, notification_schedule')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -45,6 +48,7 @@ const Messaging = () => {
           setHasTelegramSet(data.telegram_chat_id_set || false);
           setIsSubscribed(data.telegram_subscribed || false);
           setIsEmailSubscribed(data.email_subscribed || false);
+          setNotificationSchedule(data.notification_schedule || null);
         }
       } catch (error) {
         console.error('Error fetching messaging settings:', error);
@@ -177,6 +181,43 @@ const Messaging = () => {
       });
     } finally {
       setEmailSubscribing(false);
+    }
+  };
+
+  const handleScheduleSave = async (schedule: string) => {
+    setScheduleSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to save schedule',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('fittrack_user_settings')
+        .update({ notification_schedule: schedule })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setNotificationSchedule(schedule);
+      toast({
+        title: 'Success',
+        description: 'Notification schedule saved successfully',
+      });
+    } catch (error) {
+      console.error('Error saving notification schedule:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save notification schedule',
+        variant: 'destructive',
+      });
+    } finally {
+      setScheduleSaving(false);
     }
   };
 
@@ -330,6 +371,31 @@ const Messaging = () => {
                     )}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+            {/* Notification Schedule Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Notification Schedule
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Configure when you want to receive notifications. This generates a cron expression for n8n.
+                </p>
+                <NotificationScheduleForm
+                  initialSchedule={notificationSchedule}
+                  onSave={handleScheduleSave}
+                  saving={scheduleSaving}
+                />
+                {notificationSchedule && (
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Current schedule:</p>
+                    <code className="text-sm font-mono text-primary">{notificationSchedule}</code>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

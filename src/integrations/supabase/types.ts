@@ -625,6 +625,7 @@ export type Database = {
           daily_calorie_goal: number
           email_subscribed: boolean
           id: string
+          notification_schedule: string | null
           telegram_chat_id: string | null
           telegram_chat_id_set: boolean
           telegram_subscribed: boolean
@@ -637,6 +638,7 @@ export type Database = {
           daily_calorie_goal?: number
           email_subscribed?: boolean
           id?: string
+          notification_schedule?: string | null
           telegram_chat_id?: string | null
           telegram_chat_id_set?: boolean
           telegram_subscribed?: boolean
@@ -649,6 +651,7 @@ export type Database = {
           daily_calorie_goal?: number
           email_subscribed?: boolean
           id?: string
+          notification_schedule?: string | null
           telegram_chat_id?: string | null
           telegram_chat_id_set?: boolean
           telegram_subscribed?: boolean
