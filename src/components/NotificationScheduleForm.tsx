@@ -12,13 +12,13 @@ interface NotificationScheduleFormProps {
 }
 
 const DAYS_OF_WEEK = [
-  { value: '0', label: 'Sun' },
   { value: '1', label: 'Mon' },
   { value: '2', label: 'Tue' },
   { value: '3', label: 'Wed' },
   { value: '4', label: 'Thu' },
   { value: '5', label: 'Fri' },
   { value: '6', label: 'Sat' },
+  { value: '7', label: 'Sun' },
 ];
 
 const HOURS = Array.from({ length: 24 }, (_, i) => ({
@@ -45,7 +45,7 @@ export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: No
   const [startHour, setStartHour] = useState('9');
   const [endHour, setEndHour] = useState('21');
   const [frequency, setFrequency] = useState('3');
-  const [selectedDays, setSelectedDays] = useState<string[]>(['1', '2', '3', '4', '5', '6', '0']);
+  const [selectedDays, setSelectedDays] = useState<string[]>(['1', '2', '3', '4', '5', '6', '7']);
 
   // Parse initial schedule if provided
   useEffect(() => {
@@ -80,7 +80,7 @@ export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: No
           // Parse days of week
           const daysPart = parts[4];
           if (daysPart === '*') {
-            setSelectedDays(['0', '1', '2', '3', '4', '5', '6']);
+            setSelectedDays(['1', '2', '3', '4', '5', '6', '7']);
           } else {
             const days = daysPart.split(',');
             setSelectedDays(days);
