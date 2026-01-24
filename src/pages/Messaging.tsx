@@ -238,10 +238,9 @@ const Messaging = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Messaging Settings</h1>
+        <h1 className="text-3xl font-bold mb-8">Messaging Settings</h1>
 
-          <div className="space-y-6">
+        <div className="grid lg:grid-cols-2 gap-6">
             {/* Telegram Card */}
             <Card>
               <CardHeader>
@@ -399,9 +398,8 @@ const Messaging = () => {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
   );
 };
 
