@@ -17,6 +17,7 @@ import { useUserSettings } from '@/hooks/useUserSettings';
 import { useWeight } from '@/hooks/useWeight';
 import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
+import { useDailySummary } from '@/hooks/useDailySummary';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
@@ -29,9 +30,10 @@ const Dashboard = () => {
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
   const { entries: waistEntries, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
+  const { summary, refetch: refetchSummary } = useDailySummary();
 
-  // Auto-refresh every 30 seconds (only on Dashboard)
-  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep]);
+  // Auto-refresh every 30 seconds (only on Dashboard) - includes daily summary to keep it updated
+  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary]);
 
   const weightChartData = useMemo(() => 
     weightEntries.map(e => ({ date: e.date.slice(5), weight: e.weight })), 
@@ -132,7 +134,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} />
+      <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} dailySummary={summary} />
 
       <div className="grid lg:grid-cols-4 gap-6">
         <CalorieGoalProgress 
