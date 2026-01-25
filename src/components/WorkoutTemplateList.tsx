@@ -2,15 +2,16 @@ import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Play, ClipboardList } from 'lucide-react';
+import { Trash2, Play, ClipboardList, Pencil } from 'lucide-react';
 
 interface WorkoutTemplateListProps {
   templates: WorkoutTemplate[];
   onDelete: (id: string) => void;
   onStart: (template: WorkoutTemplate) => void;
+  onEdit: (template: WorkoutTemplate) => void;
 }
 
-export const WorkoutTemplateList = ({ templates, onDelete, onStart }: WorkoutTemplateListProps) => {
+export const WorkoutTemplateList = ({ templates, onDelete, onStart, onEdit }: WorkoutTemplateListProps) => {
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-4">
@@ -60,6 +61,14 @@ export const WorkoutTemplateList = ({ templates, onDelete, onStart }: WorkoutTem
                     >
                       <Play className="h-4 w-4 mr-1" />
                       Start
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEdit(template)}
+                      className="h-8 w-8"
+                    >
+                      <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
                     <Button
                       variant="ghost"

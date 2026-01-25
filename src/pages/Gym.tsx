@@ -8,6 +8,7 @@ import { useWorkoutTemplates, WorkoutTemplate } from '@/hooks/useWorkoutTemplate
 import { WorkoutTemplateForm } from '@/components/WorkoutTemplateForm';
 import { WorkoutTemplateList } from '@/components/WorkoutTemplateList';
 import { ActiveWorkoutModal } from '@/components/ActiveWorkoutModal';
+import { EditTemplateModal } from '@/components/EditTemplateModal';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -26,10 +27,11 @@ import { toast } from 'sonner';
 
 const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions } = useGymSessions();
-  const { templates, addTemplate, deleteTemplate } = useWorkoutTemplates();
+  const { templates, addTemplate, updateTemplate, deleteTemplate } = useWorkoutTemplates();
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [editForm, setEditForm] = useState({ exercise: '', duration: '', date: '', notes: '' });
   const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
 
   const {
     searchQuery,
@@ -72,9 +74,17 @@ const Gym = () => {
     setActiveTemplate(template);
   };
 
-  const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string }) => {
+  const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string; notes?: string }) => {
     await addSession(data);
     toast.success('Workout logged!');
+  };
+
+  const handleEditTemplate = (template: WorkoutTemplate) => {
+    setEditingTemplate(template);
+  };
+
+  const handleSaveTemplate = async (id: string, updates: { name: string; exercises: string[] }) => {
+    await updateTemplate(id, updates);
   };
 
   // Calculate stats
@@ -179,6 +189,7 @@ const Gym = () => {
               templates={templates}
               onDelete={deleteTemplate}
               onStart={handleStartWorkout}
+              onEdit={handleEditTemplate}
             />
           </div>
         </TabsContent>
@@ -244,6 +255,14 @@ const Gym = () => {
         open={!!activeTemplate}
         onClose={() => setActiveTemplate(null)}
         onFinish={handleFinishWorkout}
+      />
+
+      {/* Edit Template Modal */}
+      <EditTemplateModal
+        template={editingTemplate}
+        open={!!editingTemplate}
+        onClose={() => setEditingTemplate(null)}
+        onSave={handleSaveTemplate}
       />
     </div>
   );
