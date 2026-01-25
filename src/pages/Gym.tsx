@@ -4,6 +4,10 @@ import { GymList } from '@/components/GymList';
 import { DataFilter } from '@/components/DataFilter';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useDataFilter } from '@/hooks/useDataFilter';
+import { useWorkoutTemplates, WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
+import { WorkoutTemplateForm } from '@/components/WorkoutTemplateForm';
+import { WorkoutTemplateList } from '@/components/WorkoutTemplateList';
+import { ActiveWorkoutModal } from '@/components/ActiveWorkoutModal';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,12 +20,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dumbbell } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dumbbell, ClipboardList } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions } = useGymSessions();
+  const { templates, addTemplate, deleteTemplate } = useWorkoutTemplates();
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [editForm, setEditForm] = useState({ exercise: '', duration: '', date: '', notes: '' });
+  const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
 
   const {
     searchQuery,
@@ -60,6 +68,15 @@ const Gym = () => {
     setEditingSession(null);
   };
 
+  const handleStartWorkout = (template: WorkoutTemplate) => {
+    setActiveTemplate(template);
+  };
+
+  const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string }) => {
+    await addSession(data);
+    toast.success('Workout logged!');
+  };
+
   // Calculate stats
   const thisWeekSessions = getThisWeekSessions();
   const thisWeekCount = thisWeekSessions.length;
@@ -92,54 +109,80 @@ const Gym = () => {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <GymForm onSubmit={addSession} />
-        
-        {/* Stats Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Stats</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">This Week's Workouts</p>
-              <p className="text-3xl font-bold">{thisWeekCount}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">This Week's Duration</p>
-              <p className="text-xl font-semibold">{thisWeekDuration} min</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-              <div>
-                <p className="text-sm text-muted-foreground">Today's Workouts</p>
-                <p className="text-xl font-semibold">{todayWorkouts}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Workouts</p>
-                <p className="text-xl font-semibold">{sessions.length}</p>
-              </div>
-            </div>
-            <div className="pt-4 border-t">
-              <p className="text-sm text-muted-foreground">Average Workout Duration</p>
-              <p className="text-xl font-semibold">{avgDuration} min</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="log" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="log" className="flex items-center gap-2">
+            <Dumbbell className="h-4 w-4" />
+            Log Workout
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Templates
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Filter and List */}
-      <DataFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        timeFilter={timeFilter}
-        onTimeFilterChange={setTimeFilter}
-        searchPlaceholder="Search workouts..."
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        showDateRange
-      />
-      
-      <GymList sessions={filteredSessions} onDelete={deleteSession} onEdit={handleEditClick} />
+        <TabsContent value="log" className="space-y-6 mt-6">
+          <div className="grid lg:grid-cols-2 gap-6">
+            <GymForm onSubmit={addSession} />
+            
+            {/* Stats Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Stats</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">This Week's Workouts</p>
+                  <p className="text-3xl font-bold">{thisWeekCount}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">This Week's Duration</p>
+                  <p className="text-xl font-semibold">{thisWeekDuration} min</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Today's Workouts</p>
+                    <p className="text-xl font-semibold">{todayWorkouts}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Workouts</p>
+                    <p className="text-xl font-semibold">{sessions.length}</p>
+                  </div>
+                </div>
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">Average Workout Duration</p>
+                  <p className="text-xl font-semibold">{avgDuration} min</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filter and List */}
+          <DataFilter
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            timeFilter={timeFilter}
+            onTimeFilterChange={setTimeFilter}
+            searchPlaceholder="Search workouts..."
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            showDateRange
+          />
+          
+          <GymList sessions={filteredSessions} onDelete={deleteSession} onEdit={handleEditClick} />
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-6 mt-6">
+          <div className="grid lg:grid-cols-2 gap-6">
+            <WorkoutTemplateForm onSubmit={addTemplate} />
+            <WorkoutTemplateList
+              templates={templates}
+              onDelete={deleteTemplate}
+              onStart={handleStartWorkout}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Modal */}
       <Dialog open={!!editingSession} onOpenChange={(open) => !open && setEditingSession(null)}>
@@ -194,6 +237,14 @@ const Gym = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Active Workout Modal */}
+      <ActiveWorkoutModal
+        template={activeTemplate}
+        open={!!activeTemplate}
+        onClose={() => setActiveTemplate(null)}
+        onFinish={handleFinishWorkout}
+      />
     </div>
   );
 };
