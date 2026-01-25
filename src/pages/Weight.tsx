@@ -148,7 +148,6 @@ const Weight = () => {
                       id="weight"
                       type="text"
                       inputMode="decimal"
-                      pattern="[0-9]*\.?[0-9]*"
                       placeholder="70.5"
                       value={weight}
                       onChange={(e) => {
@@ -331,7 +330,7 @@ const Weight = () => {
                       id="edit-weight"
                       type="text"
                       inputMode="decimal"
-                      pattern="[0-9]*\.?[0-9]*"
+                      placeholder="70.5"
                       value={editEntry.weight}
                       onChange={(e) => {
                         const value = e.target.value;
