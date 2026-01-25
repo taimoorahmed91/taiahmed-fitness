@@ -3,19 +3,32 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dumbbell, CalendarOff, Scale } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface StatsCardsProps {
-  weightMeasurementInterval: number;
+interface DailySummary {
+  id: string;
+  user_id: string;
+  date: string;
+  calories_consumed: number;
+  calories_remaining: number;
+  calorie_goal: number;
+  workout_status: string;
 }
 
-export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
-  const [workoutStatus, setWorkoutStatus] = useState<string | null>(null);
+interface StatsCardsProps {
+  weightMeasurementInterval: number;
+  dailySummary: DailySummary | null;
+}
+
+export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCardsProps) => {
   const [didWorkoutToday, setDidWorkoutToday] = useState<boolean>(false);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
   const [lastWeightDiffDays, setLastWeightDiffDays] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch workout status and last weight date on mount
+  // Get workout status from daily summary (passed via props, always fresh from RPC)
+  const workoutStatus = dailySummary?.workout_status || 'yes';
+
+  // Fetch gym session for today and last weight date on mount
   useEffect(() => {
     const fetchStatus = async () => {
       try {
@@ -26,17 +39,6 @@ export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
         }
 
         const today = new Date().toISOString().split('T')[0];
-        
-        // Fetch workout status
-        const { data: summaryData, error: summaryError } = await supabase
-          .from('fittrack_daily_summary')
-          .select('workout_status')
-          .eq('user_id', user.id)
-          .eq('date', today)
-          .maybeSingle();
-
-        if (summaryError) throw summaryError;
-        setWorkoutStatus(summaryData?.workout_status || 'yes');
 
         // Check if user has logged a gym session today
         const { data: gymData } = await supabase
@@ -68,14 +70,13 @@ export const StatsCards = ({ weightMeasurementInterval }: StatsCardsProps) => {
         }
       } catch (error) {
         console.error('Error fetching status:', error);
-        setWorkoutStatus('yes');
       } finally {
         setLoading(false);
       }
     };
 
     fetchStatus();
-  }, []);
+  }, [dailySummary]); // Re-fetch when summary updates
 
   // Recalculate weight status when interval or lastWeightDiffDays changes
   useEffect(() => {
