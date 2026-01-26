@@ -165,7 +165,7 @@ export const useMeals = () => {
   };
 
   const getWeeklyData = () => {
-    const days: { date: string; calories: number }[] = [];
+    const days: { date: string; fullDate: string; calories: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
@@ -175,6 +175,7 @@ export const useMeals = () => {
         .reduce((sum, meal) => sum + meal.calories, 0);
       days.push({
         date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        fullDate: dateStr,
         calories: dayCalories,
       });
     }

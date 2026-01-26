@@ -5,18 +5,20 @@ import { DailyNote } from '@/hooks/useDailyNotes';
 import { Badge } from '@/components/ui/badge';
 
 interface CalorieChartProps {
-  data: { date: string; calories: number }[];
+  data: { date: string; fullDate: string; calories: number }[];
   notesMap?: Map<string, DailyNote>;
 }
 
-const CustomTooltip = ({ active, payload, label, notesMap }: any) => {
+const CustomTooltip = ({ active, payload, notesMap }: any) => {
   if (!active || !payload || !payload.length) return null;
 
-  const note = notesMap?.get(label);
+  const fullDate = payload[0]?.payload?.fullDate;
+  const displayDate = payload[0]?.payload?.date;
+  const note = notesMap?.get(fullDate);
 
   return (
     <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
-      <p className="font-medium text-foreground mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">{displayDate} ({fullDate})</p>
       <p className="text-sm text-muted-foreground">
         Calories: <span className="font-semibold text-foreground">{payload[0].value}</span>
       </p>
@@ -47,9 +49,9 @@ export const CalorieChart = ({ data, notesMap }: CalorieChartProps) => {
     data.reduce((sum, d) => sum + d.calories, 0) / data.filter((d) => d.calories > 0).length || 0
   );
 
-  // Find dates with notes to render indicators
+  // Find dates with notes to render indicators (use fullDate for matching)
   const datesWithNotes = notesMap
-    ? data.filter((d) => notesMap.has(d.date)).map((d) => d.date)
+    ? data.filter((d) => notesMap.has(d.fullDate))
     : [];
 
   return (
@@ -91,21 +93,17 @@ export const CalorieChart = ({ data, notesMap }: CalorieChartProps) => {
                 maxBarSize={50}
               />
               {/* Note indicators */}
-              {datesWithNotes.map((date) => {
-                const dataIndex = data.findIndex((d) => d.date === date);
-                if (dataIndex === -1) return null;
-                return (
-                  <ReferenceDot
-                    key={date}
-                    x={date}
-                    y={data[dataIndex].calories}
-                    r={6}
-                    fill="hsl(var(--destructive))"
-                    stroke="hsl(var(--background))"
-                    strokeWidth={2}
-                  />
-                );
-              })}
+              {datesWithNotes.map((item) => (
+                <ReferenceDot
+                  key={item.fullDate}
+                  x={item.date}
+                  y={item.calories}
+                  r={6}
+                  fill="hsl(var(--destructive))"
+                  stroke="hsl(var(--background))"
+                  strokeWidth={2}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
