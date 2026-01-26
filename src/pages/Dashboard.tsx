@@ -18,6 +18,7 @@ import { useWeight } from '@/hooks/useWeight';
 import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { useDailySummary } from '@/hooks/useDailySummary';
+import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
@@ -31,24 +32,33 @@ const Dashboard = () => {
   const { entries: waistEntries, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
   const { summary, refetch: refetchSummary } = useDailySummary();
+  const { getNotesMap, refetch: refetchNotes } = useDailyNotes();
 
   // Auto-refresh every 30 seconds (only on Dashboard) - includes daily summary to keep it updated
-  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary]);
+  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes]);
+
+  const notesMap = useMemo(() => getNotesMap(), [getNotesMap]);
 
   const weightChartData = useMemo(() => 
-    weightEntries.map(e => ({ date: e.date.slice(5), weight: e.weight })), 
+    weightEntries.map(e => ({ date: e.date, weight: e.weight })), 
     [weightEntries]
   );
 
   const waistChartData = useMemo(() => 
-    waistEntries.map(e => ({ date: e.date.slice(5), waist: e.waist })), 
+    waistEntries.map(e => ({ date: e.date, waist: e.waist })), 
     [waistEntries]
   );
 
   const sleepChartData = useMemo(() => 
-    sleepEntries.map(e => ({ date: e.date.slice(5), hours: e.hours })), 
+    sleepEntries.map(e => ({ date: e.date, hours: e.hours })), 
     [sleepEntries]
   );
+
+  const calorieChartData = useMemo(() => {
+    const data = getWeeklyData();
+    // Keep full date for notes matching
+    return data;
+  }, [getWeeklyData]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('today');
@@ -154,17 +164,17 @@ const Dashboard = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <CalorieChart data={getWeeklyData()} />
+        <CalorieChart data={calorieChartData} notesMap={notesMap} />
         <WorkoutDurationChart data={getWeeklyWorkoutData()} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <WeightChart data={weightChartData} />
-        <WaistChart data={waistChartData} />
+        <WeightChart data={weightChartData} notesMap={notesMap} />
+        <WaistChart data={waistChartData} notesMap={notesMap} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <SleepChart data={sleepChartData} />
+        <SleepChart data={sleepChartData} notesMap={notesMap} />
         <GoalsCard />
       </div>
     </div>

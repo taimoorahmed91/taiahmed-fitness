@@ -3,19 +3,21 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameM
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Utensils, Dumbbell, Scale, Moon, Ruler } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Utensils, Dumbbell, Scale, Moon, Ruler, FileText } from 'lucide-react';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useWeight } from '@/hooks/useWeight';
 import { useSleep } from '@/hooks/useSleep';
 import { useWaist } from '@/hooks/useWaist';
+import { useDailyNotes, DailyNote } from '@/hooks/useDailyNotes';
 import { cn } from '@/lib/utils';
 
-type DisplayFilter = 'all' | 'meals' | 'gym' | 'weight' | 'sleep' | 'waist';
+type DisplayFilter = 'all' | 'meals' | 'gym' | 'weight' | 'sleep' | 'waist' | 'notes';
 
 interface DayEntry {
-  type: 'meal' | 'gym' | 'weight' | 'sleep' | 'waist';
+  type: 'meal' | 'gym' | 'weight' | 'sleep' | 'waist' | 'note';
   data: any;
 }
 
@@ -29,6 +31,7 @@ const Calendar = () => {
   const { entries: weightEntries } = useWeight();
   const { entries: sleepEntries } = useSleep();
   const { entries: waistEntries } = useWaist();
+  const { notes } = useDailyNotes();
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -87,8 +90,17 @@ const Calendar = () => {
       });
     }
 
+    if (displayFilter === 'all' || displayFilter === 'notes') {
+      notes.forEach((note) => {
+        const dateKey = note.date;
+        const existing = map.get(dateKey) || [];
+        existing.push({ type: 'note', data: note });
+        map.set(dateKey, existing);
+      });
+    }
+
     return map;
-  }, [meals, sessions, weightEntries, sleepEntries, waistEntries, displayFilter]);
+  }, [meals, sessions, weightEntries, sleepEntries, waistEntries, notes, displayFilter]);
 
   const getEntriesForDate = (date: Date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
@@ -107,6 +119,8 @@ const Calendar = () => {
         return <Moon className="h-3 w-3 text-purple-500" />;
       case 'waist':
         return <Ruler className="h-3 w-3 text-teal-500" />;
+      case 'note':
+        return <FileText className="h-3 w-3 text-destructive" />;
       default:
         return null;
     }
@@ -166,6 +180,26 @@ const Calendar = () => {
             </div>
           </div>
         );
+      case 'note':
+        const note = entry.data as DailyNote;
+        return (
+          <div className="flex items-start gap-2 p-2 rounded bg-destructive/10 border border-destructive/20">
+            <FileText className="h-4 w-4 text-destructive mt-0.5" />
+            <div className="flex-1">
+              <div className="flex flex-wrap gap-1 mb-1">
+                {note.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="text-xs py-0">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+              {note.severity && (
+                <p className="text-xs text-muted-foreground">Severity: {note.severity}/5</p>
+              )}
+              {note.notes && <p className="text-xs text-muted-foreground">{note.notes}</p>}
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -204,6 +238,7 @@ const Calendar = () => {
                   <SelectItem value="weight">Weight Only</SelectItem>
                   <SelectItem value="sleep">Sleep Only</SelectItem>
                   <SelectItem value="waist">Waist Only</SelectItem>
+                  <SelectItem value="notes">Notes Only</SelectItem>
                 </SelectContent>
               </Select>
             </CardHeader>
@@ -226,6 +261,7 @@ const Calendar = () => {
                   const isToday = isSameDay(day, new Date());
                   const isSelected = selectedDate && isSameDay(day, selectedDate);
                   const uniqueTypes = [...new Set(entries.map((e) => e.type))];
+                  const hasNote = uniqueTypes.includes('note');
 
                   return (
                     <button
@@ -235,6 +271,7 @@ const Calendar = () => {
                         'aspect-square p-1 rounded-lg border transition-colors flex flex-col items-center justify-start gap-1',
                         isToday && 'border-primary',
                         isSelected && 'bg-primary/10 border-primary',
+                        hasNote && 'bg-destructive/5',
                         !isToday && !isSelected && 'border-transparent hover:bg-muted/50'
                       )}
                     >
