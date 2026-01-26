@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
-import { Plus, X, Pencil } from 'lucide-react';
+import { Plus, X, Pencil, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 interface EditTemplateModalProps {
   template: WorkoutTemplate | null;
@@ -41,6 +42,16 @@ export const EditTemplateModal = ({ template, open, onClose, onSave }: EditTempl
     const updated = [...exercises];
     updated[index] = value;
     setExercises(updated);
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(exercises);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    setExercises(items);
   };
 
   const handleSave = () => {
@@ -85,28 +96,54 @@ export const EditTemplateModal = ({ template, open, onClose, onSave }: EditTempl
           </div>
           
           <div className="space-y-2">
-            <Label>Exercises</Label>
-            <div className="space-y-2 max-h-[200px] overflow-y-auto">
-              {exercises.map((exercise, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    placeholder={`Exercise ${index + 1}`}
-                    value={exercise}
-                    onChange={(e) => handleExerciseChange(index, e.target.value)}
-                    maxLength={200}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveExercise(index)}
-                    className="shrink-0"
+            <Label>Exercises (drag to reorder)</Label>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="exercises">
+                {(provided) => (
+                  <div
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="space-y-2 max-h-[200px] overflow-y-auto"
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                    {exercises.map((exercise, index) => (
+                      <Draggable key={index} draggableId={`exercise-${index}`} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`flex gap-2 ${snapshot.isDragging ? 'opacity-70' : ''}`}
+                          >
+                            <div
+                              {...provided.dragHandleProps}
+                              className="flex items-center justify-center px-2 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+                            >
+                              <GripVertical className="h-4 w-4" />
+                            </div>
+                            <Input
+                              placeholder={`Exercise ${index + 1}`}
+                              value={exercise}
+                              onChange={(e) => handleExerciseChange(index, e.target.value)}
+                              maxLength={200}
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveExercise(index)}
+                              className="shrink-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
             <Button
               type="button"
               variant="outline"
