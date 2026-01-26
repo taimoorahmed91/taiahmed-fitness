@@ -17,7 +17,7 @@ interface Message {
   statusCode?: number;
 }
 
-type Category = 'meals' | 'gym' | 'weight' | 'sleep' | 'action' | null;
+type Category = 'meals' | 'gym' | 'weight' | 'sleep' | 'action' | 'test' | null;
 
 const categoryConfig = {
   meals: { label: 'Meals', icon: Utensils, message: 'fittrack_meals' },
@@ -107,6 +107,9 @@ const ChatBot = () => {
       });
       return;
     }
+
+    // Set to test mode to show chat interface
+    setSelectedCategory('test');
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -280,9 +283,11 @@ const ChatBot = () => {
               )}
               <MessageCircle className="h-5 w-5" />
               <span className="flex-1">
-                {selectedCategory 
-                  ? `Chat - ${categoryConfig[selectedCategory].label}` 
-                  : 'Chat Assistant'}
+                {selectedCategory === 'test'
+                  ? 'Test Function'
+                  : selectedCategory 
+                    ? `Chat - ${categoryConfig[selectedCategory].label}` 
+                    : 'Chat Assistant'}
               </span>
               <Badge variant={canSendMessage ? 'secondary' : 'destructive'} className="text-xs">
                 {messageCount}/{MAX_MESSAGES_PER_HOUR}
@@ -331,7 +336,9 @@ const ChatBot = () => {
                 <ScrollArea className="h-80 px-4">
                   {messages.length === 0 && !isLoading ? (
                     <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                      Ask about your {categoryConfig[selectedCategory].label.toLowerCase()}...
+                      {selectedCategory === 'test' 
+                        ? 'Test function results will appear here...'
+                        : `Ask about your ${categoryConfig[selectedCategory]?.label.toLowerCase()}...`}
                     </div>
                   ) : (
                     <div className="space-y-3 py-4">
@@ -373,25 +380,27 @@ const ChatBot = () => {
                     </div>
                   )}
                 </ScrollArea>
-                <div className="p-4 border-t">
-                  <div className="flex gap-2">
-                    <Input
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Type a message..."
-                      disabled={isLoading}
-                      className="flex-1"
-                    />
-                    <Button onClick={sendMessage} disabled={isLoading || !input.trim()} size="icon">
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
+                {selectedCategory !== 'test' && (
+                  <div className="p-4 border-t">
+                    <div className="flex gap-2">
+                      <Input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Type a message..."
+                        disabled={isLoading}
+                        className="flex-1"
+                      />
+                      <Button onClick={sendMessage} disabled={isLoading || !input.trim()} size="icon">
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
           </CardContent>
