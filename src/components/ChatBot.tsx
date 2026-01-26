@@ -98,6 +98,68 @@ const ChatBot = () => {
     setSelectedCategory(category);
   };
 
+  const handleTestFunction = async () => {
+    if (!canSendMessage) {
+      toast({
+        title: 'Rate limit reached',
+        description: 'You can only send 5 messages per hour. Please wait.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      content: 'Testing demo webhook...',
+      sender: 'user',
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+    recordMessageSent();
+
+    try {
+      const response = await fetch('https://n8n.taimoorahmed.com/webhook/demo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'test' }),
+      });
+
+      const data = await response.text();
+      const statusCode = response.status;
+
+      const botMessage: Message = {
+        id: crypto.randomUUID(),
+        content: data || 'No response received',
+        sender: 'bot',
+        timestamp: new Date(),
+        statusCode,
+      };
+
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error calling test function:', error);
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        content: 'Failed to call test function. Please try again.',
+        sender: 'bot',
+        timestamp: new Date(),
+        statusCode: 500,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      toast({
+        title: 'Error',
+        description: 'Failed to call test function.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleBack = () => {
     setSelectedCategory(null);
   };
@@ -236,6 +298,15 @@ const ChatBot = () => {
             {!selectedCategory ? (
               // Category Selection
               <div className="p-4 space-y-2">
+                <Button
+                  variant="secondary"
+                  className="w-full justify-start gap-3 mb-4"
+                  onClick={handleTestFunction}
+                  disabled={isLoading}
+                >
+                  <Zap className="h-4 w-4" />
+                  Test Function
+                </Button>
                 <p className="text-sm text-muted-foreground mb-4">Select a topic to chat about:</p>
                 {(Object.keys(categoryConfig) as Category[]).map((category) => {
                   if (!category) return null;
