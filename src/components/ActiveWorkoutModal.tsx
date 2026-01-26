@@ -98,16 +98,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish }: Active
 
     const endTime = new Date();
     const durationMinutes = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
-    
-    const completedExercises = template.exercises.filter((_, i) => isExerciseComplete(i));
-    const exerciseText = completedExercises.length > 0 
-      ? `${template.name}: ${completedExercises.join(', ')}`
-      : template.name;
 
     const notes = formatSetsForNotes();
 
     onFinish({
-      exercise: exerciseText,
+      exercise: template.name,
       duration: durationMinutes,
       date: new Date().toISOString().split('T')[0],
       notes: notes || undefined,
