@@ -1,15 +1,56 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
-import { TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, ReferenceDot } from 'recharts';
+import { TrendingUp, AlertCircle } from 'lucide-react';
+import { DailyNote } from '@/hooks/useDailyNotes';
+import { Badge } from '@/components/ui/badge';
 
 interface CalorieChartProps {
   data: { date: string; calories: number }[];
+  notesMap?: Map<string, DailyNote>;
 }
 
-export const CalorieChart = ({ data }: CalorieChartProps) => {
+const CustomTooltip = ({ active, payload, label, notesMap }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const note = notesMap?.get(label);
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      <p className="text-sm text-muted-foreground">
+        Calories: <span className="font-semibold text-foreground">{payload[0].value}</span>
+      </p>
+      {note && (
+        <div className="mt-2 pt-2 border-t border-border">
+          <div className="flex items-center gap-1 text-destructive text-xs font-medium mb-1">
+            <AlertCircle className="h-3 w-3" />
+            Note
+          </div>
+          <div className="flex flex-wrap gap-1 mb-1">
+            {note.tags.map((tag: string) => (
+              <Badge key={tag} variant="secondary" className="text-xs py-0">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+          {note.notes && (
+            <p className="text-xs text-muted-foreground">{note.notes}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const CalorieChart = ({ data, notesMap }: CalorieChartProps) => {
   const avgCalories = Math.round(
     data.reduce((sum, d) => sum + d.calories, 0) / data.filter((d) => d.calories > 0).length || 0
   );
+
+  // Find dates with notes to render indicators
+  const datesWithNotes = notesMap
+    ? data.filter((d) => notesMap.has(d.date)).map((d) => d.date)
+    : [];
 
   return (
     <Card className="shadow-md">
@@ -29,7 +70,7 @@ export const CalorieChart = ({ data }: CalorieChartProps) => {
       <CardContent>
         <div className="h-[250px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={data} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis
                 dataKey="date"
@@ -42,20 +83,29 @@ export const CalorieChart = ({ data }: CalorieChartProps) => {
                 tickLine={false}
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-                labelStyle={{ color: 'hsl(var(--foreground))' }}
-              />
+              <Tooltip content={<CustomTooltip notesMap={notesMap} />} />
               <Bar
                 dataKey="calories"
                 fill="hsl(var(--primary))"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={50}
               />
+              {/* Note indicators */}
+              {datesWithNotes.map((date) => {
+                const dataIndex = data.findIndex((d) => d.date === date);
+                if (dataIndex === -1) return null;
+                return (
+                  <ReferenceDot
+                    key={date}
+                    x={date}
+                    y={data[dataIndex].calories}
+                    r={6}
+                    fill="hsl(var(--destructive))"
+                    stroke="hsl(var(--background))"
+                    strokeWidth={2}
+                  />
+                );
+              })}
             </BarChart>
           </ResponsiveContainer>
         </div>

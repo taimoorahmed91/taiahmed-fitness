@@ -451,6 +451,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_daily_notes: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          severity: number | null
+          tags: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          severity?: number | null
+          tags?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          severity?: number | null
+          tags?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fittrack_daily_summary: {
         Row: {
           calorie_goal: number

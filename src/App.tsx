@@ -15,6 +15,7 @@ import Calendar from "./pages/Calendar";
 import Compare from "./pages/Compare";
 import Reports from "./pages/Reports";
 import Messaging from "./pages/Messaging";
+import DailyNotes from "./pages/DailyNotes";
 import Welcome from "./pages/Welcome";
 import PendingApproval from "./pages/PendingApproval";
 import AdminApproval from "./pages/AdminApproval";
@@ -153,6 +154,14 @@ const AppRoutes = () => {
             <div className="min-h-screen bg-background">
               <Messaging />
             </div>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/daily-notes"
+        element={
+          <ProtectedRoute>
+            <DailyNotes />
           </ProtectedRoute>
         }
       />
