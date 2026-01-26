@@ -14,13 +14,6 @@ serve(async (req) => {
   try {
     const { action, message, userid, question } = await req.json();
 
-    if (!message || !userid || !question) {
-      return new Response(
-        JSON.stringify({ error: 'Message, userid, and question are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const username = Deno.env.get('N8N_WEBHOOK_USERNAME');
     const password = Deno.env.get('N8N_WEBHOOK_PASSWORD');
     
@@ -34,6 +27,33 @@ serve(async (req) => {
 
     // Create Basic Auth header
     const basicAuth = btoa(`${username}:${password}`);
+
+    // Handle test action - route to demo webhook with same auth
+    if (action === 'test') {
+      const response = await fetch('https://n8n.taimoorahmed.com/webhook/demo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${basicAuth}`,
+        },
+        body: JSON.stringify({ action: 'test' }),
+      });
+
+      const data = await response.text();
+
+      return new Response(
+        JSON.stringify({ success: true, response: data, statusCode: response.status }),
+        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Regular chat action - requires message, userid, and question
+    if (!message || !userid || !question) {
+      return new Response(
+        JSON.stringify({ error: 'Message, userid, and question are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const response = await fetch('https://n8n.taimoorahmed.com/webhook/app', {
       method: 'POST',

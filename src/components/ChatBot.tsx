@@ -123,20 +123,15 @@ const ChatBot = () => {
     recordMessageSent();
 
     try {
-      const response = await fetch('https://n8n.taimoorahmed.com/webhook/demo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'test' }),
+      const response = await supabase.functions.invoke('chat-webhook', {
+        body: { action: 'test' },
       });
 
-      const data = await response.text();
-      const statusCode = response.status;
+      const statusCode = response.data?.statusCode || (response.error ? 500 : 200);
 
       const botMessage: Message = {
         id: crypto.randomUUID(),
-        content: data || 'No response received',
+        content: response.data?.response || response.error?.message || 'No response received',
         sender: 'bot',
         timestamp: new Date(),
         statusCode,
