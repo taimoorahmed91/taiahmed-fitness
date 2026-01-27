@@ -564,6 +564,7 @@ export type Database = {
           exercise: string
           id: string
           notes: string | null
+          start_time: string | null
           updated_at: string
           user_id: string
         }
@@ -574,6 +575,7 @@ export type Database = {
           exercise: string
           id?: string
           notes?: string | null
+          start_time?: string | null
           updated_at?: string
           user_id: string
         }
@@ -584,6 +586,7 @@ export type Database = {
           exercise?: string
           id?: string
           notes?: string | null
+          start_time?: string | null
           updated_at?: string
           user_id?: string
         }

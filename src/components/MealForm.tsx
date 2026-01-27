@@ -13,8 +13,19 @@ interface MealFormProps {
 export const MealForm = ({ onSubmit }: MealFormProps) => {
   const [food, setFood] = useState('');
   const [calories, setCalories] = useState('');
-  const [time, setTime] = useState('');
+  const [time, setTime] = useState(() => {
+    const now = new Date();
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  });
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleCaloriesChange = (value: string) => {
+    // Allow digits and decimal separators, convert comma to dot
+    const sanitized = value.replace(',', '.');
+    if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
+      setCalories(sanitized);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,11 +74,11 @@ export const MealForm = ({ onSubmit }: MealFormProps) => {
               <Label htmlFor="calories">Calories</Label>
               <Input
                 id="calories"
-                type="number"
-                inputMode="numeric"
+                type="text"
+                inputMode="decimal"
                 placeholder="e.g., 450"
                 value={calories}
-                onChange={(e) => setCalories(e.target.value)}
+                onChange={(e) => handleCaloriesChange(e.target.value)}
               />
             </div>
             <div className="space-y-2">

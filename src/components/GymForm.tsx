@@ -8,13 +8,17 @@ import { Dumbbell } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface GymFormProps {
-  onSubmit: (session: { exercise: string; duration: number; date: string; notes?: string }) => void;
+  onSubmit: (session: { exercise: string; duration: number; date: string; notes?: string; start_time?: string }) => void;
 }
 
 export const GymForm = ({ onSubmit }: GymFormProps) => {
   const [exercise, setExercise] = useState('');
   const [duration, setDuration] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startTime, setStartTime] = useState(() => {
+    const now = new Date();
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  });
   const [notes, setNotes] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -36,9 +40,14 @@ export const GymForm = ({ onSubmit }: GymFormProps) => {
       duration: parseInt(duration),
       date,
       notes: notes?.trim() || undefined,
+      start_time: startTime || undefined,
     });
     setExercise('');
     setDuration('');
+    setStartTime(() => {
+      const now = new Date();
+      return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    });
     setNotes('');
     toast.success('Workout logged!');
   };
@@ -76,14 +85,23 @@ export const GymForm = ({ onSubmit }: GymFormProps) => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="gym-date">Date</Label>
+              <Label htmlFor="start-time">Start Time</Label>
               <Input
-                id="gym-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                id="start-time"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="gym-date">Date</Label>
+            <Input
+              id="gym-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="notes">Notes (optional)</Label>

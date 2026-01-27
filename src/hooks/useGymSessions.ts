@@ -31,6 +31,7 @@ export const useGymSessions = () => {
         duration: session.duration,
         date: session.date,
         notes: session.notes || undefined,
+        start_time: session.start_time || undefined,
       }));
 
       setSessions(formattedSessions);
@@ -76,6 +77,7 @@ export const useGymSessions = () => {
           duration: session.duration,
           date: session.date,
           notes: session.notes || null,
+          start_time: session.start_time || null,
         })
         .select()
         .single();
@@ -88,6 +90,7 @@ export const useGymSessions = () => {
         duration: data.duration,
         date: data.date,
         notes: data.notes || undefined,
+        start_time: data.start_time || undefined,
       };
 
       setSessions((prev) => [newSession, ...prev]);
