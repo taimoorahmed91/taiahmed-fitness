@@ -12,4 +12,5 @@ export interface GymSession {
   duration: number;
   date: string;
   notes?: string;
+  start_time?: string;
 }

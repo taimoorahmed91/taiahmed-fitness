@@ -2,7 +2,7 @@ import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Timer, Calendar, Pencil } from 'lucide-react';
+import { Trash2, Timer, Calendar, Pencil, Clock } from 'lucide-react';
 
 interface GymListProps {
   sessions: GymSession[];
@@ -36,6 +36,12 @@ export const GymList = ({ sessions, onDelete, onEdit }: GymListProps) => {
                         <Timer className="h-3 w-3" />
                         {session.duration} min
                       </span>
+                      {session.start_time && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {session.start_time}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(session.date).toLocaleDateString('en-US', {

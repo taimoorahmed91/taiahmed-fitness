@@ -17,7 +17,7 @@ interface ActiveWorkoutModalProps {
   template: WorkoutTemplate | null;
   open: boolean;
   onClose: () => void;
-  onFinish: (data: { exercise: string; duration: number; date: string; notes?: string }) => void;
+  onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string }) => void;
 }
 
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish }: ActiveWorkoutModalProps) => {
@@ -100,12 +100,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish }: Active
     const durationMinutes = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
 
     const notes = formatSetsForNotes();
+    
+    // Format start time as HH:MM
+    const formattedStartTime = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`;
 
     onFinish({
       exercise: template.name,
       duration: durationMinutes,
       date: new Date().toISOString().split('T')[0],
       notes: notes || undefined,
+      start_time: formattedStartTime,
     });
 
     onClose();
