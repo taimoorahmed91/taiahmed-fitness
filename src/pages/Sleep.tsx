@@ -122,11 +122,10 @@ const Sleep = () => {
                       id="hours"
                       type="text"
                       inputMode="decimal"
-                      pattern="[0-9]*\.?[0-9]*"
                       placeholder="7.5"
                       value={hours}
                       onChange={(e) => {
-                        const value = e.target.value;
+                        const value = e.target.value.replace(',', '.');
                         if (value === '' || /^\d*\.?\d*$/.test(value)) {
                           const numValue = parseFloat(value);
                           if (value === '' || (numValue >= 0 && numValue <= 24)) {
@@ -282,10 +281,9 @@ const Sleep = () => {
                       id="edit-hours"
                       type="text"
                       inputMode="decimal"
-                      pattern="[0-9]*\.?[0-9]*"
                       value={editEntry.hours}
                       onChange={(e) => {
-                        const value = e.target.value;
+                        const value = e.target.value.replace(',', '.');
                         if (value === '' || /^\d*\.?\d*$/.test(value)) {
                           const numValue = parseFloat(value);
                           if (value === '' || (numValue >= 0 && numValue <= 24)) {
