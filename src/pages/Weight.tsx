@@ -147,12 +147,13 @@ const Weight = () => {
                     <Input
                       id="weight"
                       type="text"
+                      inputMode="decimal"
                       placeholder="70.5"
                       value={weight}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === '' || /^\d*[.,]?\d*$/.test(value)) {
-                          setWeight(value.replace(',', '.'));
+                        const value = e.target.value.replace(',', '.');
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setWeight(value);
                         }
                       }}
                       required
@@ -328,12 +329,13 @@ const Weight = () => {
                     <Input
                       id="edit-weight"
                       type="text"
+                      inputMode="decimal"
                       placeholder="70.5"
                       value={editEntry.weight}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === '' || /^\d*[.,]?\d*$/.test(value)) {
-                          setEditEntry({ ...editEntry, weight: parseFloat(value.replace(',', '.')) || 0 });
+                        const value = e.target.value.replace(',', '.');
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setEditEntry({ ...editEntry, weight: parseFloat(value) || 0 });
                         }
                       }}
                       required
