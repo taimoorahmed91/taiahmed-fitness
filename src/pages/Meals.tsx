@@ -23,6 +23,15 @@ const Meals = () => {
   const { settings } = useUserSettings();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [editForm, setEditForm] = useState({ food: '', calories: '', time: '', date: '' });
+  const [prefillData, setPrefillData] = useState<{ food: string; calories: number } | null>(null);
+
+  const handleCopyMeal = (meal: Meal) => {
+    setPrefillData({ food: meal.food, calories: meal.calories });
+  };
+
+  const handlePrefillConsumed = () => {
+    setPrefillData(null);
+  };
 
   const {
     searchQuery,
@@ -92,7 +101,7 @@ const Meals = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <MealForm onSubmit={addMeal} />
+        <MealForm onSubmit={addMeal} prefillData={prefillData} onPrefillConsumed={handlePrefillConsumed} />
         
         {/* Stats Card */}
         <Card>
@@ -140,7 +149,7 @@ const Meals = () => {
         showDateRange
       />
       
-      <MealList meals={filteredMeals} onDelete={deleteMeal} onEdit={handleEditClick} />
+      <MealList meals={filteredMeals} onDelete={deleteMeal} onEdit={handleEditClick} onCopy={handleCopyMeal} />
 
       {/* Edit Modal */}
       <Dialog open={!!editingMeal} onOpenChange={(open) => !open && setEditingMeal(null)}>

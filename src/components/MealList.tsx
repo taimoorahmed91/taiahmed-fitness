@@ -5,16 +5,17 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Clock, Calendar, Pencil, Search, X } from 'lucide-react';
+import { Trash2, Clock, Calendar, Pencil, Search, X, Copy } from 'lucide-react';
 import { SortControl } from '@/components/SortControl';
 
 interface MealListProps {
   meals: Meal[];
   onDelete: (id: string) => void;
   onEdit: (meal: Meal) => void;
+  onCopy?: (meal: Meal) => void;
 }
 
-export const MealList = ({ meals, onDelete, onEdit }: MealListProps) => {
+export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'date' | 'time' | 'calories'>('all');
   const [dateFilter, setDateFilter] = useState('');
@@ -134,7 +135,7 @@ export const MealList = ({ meals, onDelete, onEdit }: MealListProps) => {
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">Today</h4>
                   <div className="space-y-2">
                     {todayMeals.map((meal) => (
-                      <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} />
+                      <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} onCopy={onCopy} />
                     ))}
                   </div>
                 </div>
@@ -144,7 +145,7 @@ export const MealList = ({ meals, onDelete, onEdit }: MealListProps) => {
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">Previous</h4>
                   <div className="space-y-2">
                     {previousMeals.slice(0, 20).map((meal) => (
-                      <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} showDate />
+                      <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} onCopy={onCopy} showDate />
                     ))}
                   </div>
                 </div>
@@ -161,11 +162,13 @@ const MealItem = ({
   meal,
   onDelete,
   onEdit,
+  onCopy,
   showDate,
 }: {
   meal: Meal;
   onDelete: (id: string) => void;
   onEdit: (meal: Meal) => void;
+  onCopy?: (meal: Meal) => void;
   showDate?: boolean;
 }) => (
   <div className="flex items-start justify-between p-3 rounded-lg bg-card border gap-3">
@@ -186,6 +189,11 @@ const MealItem = ({
     </div>
     <div className="flex items-center gap-2 shrink-0">
       <span className="font-semibold text-primary text-sm">{meal.calories} cal</span>
+      {onCopy && (
+        <Button variant="ghost" size="icon" onClick={() => onCopy(meal)} className="h-8 w-8" title="Copy to form">
+          <Copy className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      )}
       <Button variant="ghost" size="icon" onClick={() => onEdit(meal)} className="h-8 w-8">
         <Pencil className="h-4 w-4 text-muted-foreground" />
       </Button>
