@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,16 +8,32 @@ import { toast } from 'sonner';
 
 interface MealFormProps {
   onSubmit: (meal: { food: string; calories: number; time: string; date: string }) => void;
+  prefillData?: { food: string; calories: number } | null;
+  onPrefillConsumed?: () => void;
 }
 
-export const MealForm = ({ onSubmit }: MealFormProps) => {
+const getCurrentTime = () => {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+};
+
+export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormProps) => {
   const [food, setFood] = useState('');
   const [calories, setCalories] = useState('');
-  const [time, setTime] = useState(() => {
-    const now = new Date();
-    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-  });
+  const [time, setTime] = useState(getCurrentTime);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Handle prefill when a meal is copied
+  useEffect(() => {
+    if (prefillData) {
+      setFood(prefillData.food);
+      setCalories(prefillData.calories.toString());
+      setTime(getCurrentTime());
+      setDate(new Date().toISOString().split('T')[0]);
+      onPrefillConsumed?.();
+      toast.info('Meal copied to form');
+    }
+  }, [prefillData, onPrefillConsumed]);
 
   const handleCaloriesChange = (value: string) => {
     // Allow digits and decimal separators, convert comma to dot
