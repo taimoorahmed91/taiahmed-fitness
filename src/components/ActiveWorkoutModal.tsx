@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
 import { Timer, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { GymSession } from '@/types';
 
 interface ExerciseSets {
   set1: string;
@@ -13,15 +14,49 @@ interface ExerciseSets {
   set3: string;
 }
 
+interface PreviousReps {
+  [exerciseName: string]: ExerciseSets;
+}
+
 interface ActiveWorkoutModalProps {
   template: WorkoutTemplate | null;
   open: boolean;
   onClose: () => void;
   onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string }) => void;
+  getLastSession?: (templateName: string) => Promise<GymSession | null>;
 }
 
-export const ActiveWorkoutModal = ({ template, open, onClose, onFinish }: ActiveWorkoutModalProps) => {
+// Parse notes like "Knee Pushup: S1:12 S2:10 S3:8 | Squats: S1:15 S2:12 S3:10"
+const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
+  const result: PreviousReps = {};
+  if (!notes) return result;
+
+  const exerciseParts = notes.split(' | ');
+  for (const part of exerciseParts) {
+    const colonIndex = part.indexOf(':');
+    if (colonIndex === -1) continue;
+    
+    const exerciseName = part.substring(0, colonIndex).trim();
+    const setsText = part.substring(colonIndex + 1).trim();
+    
+    const sets: ExerciseSets = { set1: '', set2: '', set3: '' };
+    const setMatches = setsText.match(/S(\d):(\d+)/g);
+    if (setMatches) {
+      for (const match of setMatches) {
+        const [, setNum, reps] = match.match(/S(\d):(\d+)/) || [];
+        if (setNum === '1') sets.set1 = reps;
+        else if (setNum === '2') sets.set2 = reps;
+        else if (setNum === '3') sets.set3 = reps;
+      }
+    }
+    result[exerciseName] = sets;
+  }
+  return result;
+};
+
+export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession }: ActiveWorkoutModalProps) => {
   const [exerciseSets, setExerciseSets] = useState<Record<number, ExerciseSets>>({});
+  const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -31,6 +66,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish }: Active
       setStartTime(new Date());
       setElapsedSeconds(0);
       setExpandedExercise(0); // Open first exercise by default
+      setPreviousReps({});
       
       // Initialize empty sets for all exercises
       const initialSets: Record<number, ExerciseSets> = {};
@@ -38,8 +74,18 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish }: Active
         initialSets[index] = { set1: '', set2: '', set3: '' };
       });
       setExerciseSets(initialSets);
+
+      // Fetch previous workout data
+      if (getLastSession) {
+        getLastSession(template.name).then((lastSession) => {
+          if (lastSession?.notes) {
+            const parsed = parseNotesToPreviousReps(lastSession.notes);
+            setPreviousReps(parsed);
+          }
+        });
+      }
     }
-  }, [open, template]);
+  }, [open, template, getLastSession]);
 
   useEffect(() => {
     if (!open || !startTime) return;
@@ -175,45 +221,29 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish }: Active
                       Enter reps for each set
                     </Label>
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="space-y-1">
-                        <Label htmlFor={`set1-${index}`} className="text-xs">Set 1</Label>
-                        <Input
-                          id={`set1-${index}`}
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="Reps"
-                          value={exerciseSets[index]?.set1 || ''}
-                          onChange={(e) => updateSet(index, 'set1', e.target.value)}
-                          className="h-9"
-                          maxLength={3}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`set2-${index}`} className="text-xs">Set 2</Label>
-                        <Input
-                          id={`set2-${index}`}
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="Reps"
-                          value={exerciseSets[index]?.set2 || ''}
-                          onChange={(e) => updateSet(index, 'set2', e.target.value)}
-                          className="h-9"
-                          maxLength={3}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`set3-${index}`} className="text-xs">Set 3</Label>
-                        <Input
-                          id={`set3-${index}`}
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="Reps"
-                          value={exerciseSets[index]?.set3 || ''}
-                          onChange={(e) => updateSet(index, 'set3', e.target.value)}
-                          className="h-9"
-                          maxLength={3}
-                        />
-                      </div>
+                      {(['set1', 'set2', 'set3'] as const).map((setKey, setIndex) => {
+                        const prevReps = previousReps[exercise]?.[setKey] || '0';
+                        return (
+                          <div key={setKey} className="space-y-1">
+                            <Label htmlFor={`${setKey}-${index}`} className="text-xs">
+                              Set {setIndex + 1}
+                            </Label>
+                            <Input
+                              id={`${setKey}-${index}`}
+                              type="text"
+                              inputMode="numeric"
+                              placeholder={prevReps}
+                              value={exerciseSets[index]?.[setKey] || ''}
+                              onChange={(e) => updateSet(index, setKey, e.target.value)}
+                              className="h-9"
+                              maxLength={3}
+                            />
+                            <p className="text-[10px] text-muted-foreground text-center">
+                              Last: {prevReps}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </CollapsibleContent>

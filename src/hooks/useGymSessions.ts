@@ -180,5 +180,36 @@ export const useGymSessions = () => {
     return days;
   };
 
-  return { sessions, loading, addSession, updateSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData, refetch: fetchSessions };
+  const getLastSessionByTemplateName = async (templateName: string): Promise<GymSession | null> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('fittrack_gym_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('exercise', templateName)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) return null;
+
+      return {
+        id: data.id,
+        exercise: data.exercise,
+        duration: data.duration,
+        date: data.date,
+        notes: data.notes || undefined,
+        start_time: data.start_time || undefined,
+      };
+    } catch (error) {
+      console.error('Error fetching last session:', error);
+      return null;
+    }
+  };
+
+  return { sessions, loading, addSession, updateSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData, getLastSessionByTemplateName, refetch: fetchSessions };
 };
