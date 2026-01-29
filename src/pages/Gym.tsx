@@ -26,7 +26,7 @@ import { Dumbbell, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Gym = () => {
-  const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions } = useGymSessions();
+  const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions, getLastSessionByTemplateName } = useGymSessions();
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useWorkoutTemplates();
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [editForm, setEditForm] = useState({ exercise: '', duration: '', date: '', notes: '' });
@@ -255,6 +255,7 @@ const Gym = () => {
         open={!!activeTemplate}
         onClose={() => setActiveTemplate(null)}
         onFinish={handleFinishWorkout}
+        getLastSession={getLastSessionByTemplateName}
       />
 
       {/* Edit Template Modal */}
