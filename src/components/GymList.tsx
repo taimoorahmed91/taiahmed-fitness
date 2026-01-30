@@ -2,15 +2,17 @@ import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Timer, Calendar, Pencil, Clock } from 'lucide-react';
+import { Trash2, Timer, Calendar, Pencil, Clock, ClipboardPlus } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GymListProps {
   sessions: GymSession[];
   onDelete: (id: string) => void;
   onEdit: (session: GymSession) => void;
+  onCreateTemplate?: (session: GymSession) => void;
 }
 
-export const GymList = ({ sessions, onDelete, onEdit }: GymListProps) => {
+export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymListProps) => {
   const sortedSessions = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
@@ -55,6 +57,21 @@ export const GymList = ({ sessions, onDelete, onEdit }: GymListProps) => {
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    {onCreateTemplate && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onCreateTemplate(session)}
+                            className="h-8 w-8"
+                          >
+                            <ClipboardPlus className="h-4 w-4 text-primary" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Create template from this workout</TooltipContent>
+                      </Tooltip>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
