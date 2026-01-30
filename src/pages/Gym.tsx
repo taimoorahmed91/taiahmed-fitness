@@ -87,6 +87,45 @@ const Gym = () => {
     await updateTemplate(id, updates);
   };
 
+  // Parse notes to extract exercise names for creating template
+  const parseNotesToExercises = (notes: string | undefined): string[] => {
+    if (!notes) return [];
+    
+    // Notes format: "Exercise1: S1:12 S2:10 | Exercise2: S1:15 S2:12"
+    const exerciseParts = notes.split(' | ');
+    const exercises: string[] = [];
+    
+    for (const part of exerciseParts) {
+      const colonIndex = part.indexOf(':');
+      if (colonIndex !== -1) {
+        const exerciseName = part.substring(0, colonIndex).trim();
+        if (exerciseName) {
+          exercises.push(exerciseName);
+        }
+      }
+    }
+    
+    return exercises;
+  };
+
+  const handleCreateTemplateFromSession = async (session: GymSession) => {
+    // Try to extract exercises from notes first
+    let exercises = parseNotesToExercises(session.notes);
+    
+    // If no exercises found in notes, use the exercise name as a single exercise
+    if (exercises.length === 0) {
+      exercises = [session.exercise];
+    }
+    
+    // Create template with the session's exercise name as the template name
+    await addTemplate({
+      name: session.exercise,
+      exercises,
+    });
+    
+    toast.success(`Template "${session.exercise}" created with ${exercises.length} exercise(s)`);
+  };
+
   // Calculate stats
   const thisWeekSessions = getThisWeekSessions();
   const thisWeekCount = thisWeekSessions.length;
@@ -179,7 +218,12 @@ const Gym = () => {
             showDateRange
           />
           
-          <GymList sessions={filteredSessions} onDelete={deleteSession} onEdit={handleEditClick} />
+          <GymList 
+            sessions={filteredSessions} 
+            onDelete={deleteSession} 
+            onEdit={handleEditClick}
+            onCreateTemplate={handleCreateTemplateFromSession}
+          />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6 mt-6">
