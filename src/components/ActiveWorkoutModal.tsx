@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,8 @@ import { Timer, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { GymSession } from '@/types';
 
+const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
+
 interface ExerciseSets {
   set1: string;
   set2: string;
@@ -16,6 +18,15 @@ interface ExerciseSets {
 
 interface PreviousReps {
   [exerciseName: string]: ExerciseSets;
+}
+
+interface ActiveWorkoutState {
+  templateId: string;
+  templateName: string;
+  exercises: string[];
+  startTime: string; // ISO string
+  exerciseSets: Record<number, ExerciseSets>;
+  expandedExercise: number | null;
 }
 
 interface ActiveWorkoutModalProps {
@@ -54,26 +65,83 @@ const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
   return result;
 };
 
+const saveActiveWorkout = (state: ActiveWorkoutState) => {
+  localStorage.setItem(ACTIVE_WORKOUT_KEY, JSON.stringify(state));
+};
+
+const loadActiveWorkout = (): ActiveWorkoutState | null => {
+  try {
+    const saved = localStorage.getItem(ACTIVE_WORKOUT_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load active workout:', e);
+  }
+  return null;
+};
+
+const clearActiveWorkout = () => {
+  localStorage.removeItem(ACTIVE_WORKOUT_KEY);
+};
+
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession }: ActiveWorkoutModalProps) => {
   const [exerciseSets, setExerciseSets] = useState<Record<number, ExerciseSets>>({});
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isRestored, setIsRestored] = useState(false);
+
+  // Save state to localStorage whenever it changes
+  const persistState = useCallback(() => {
+    if (open && template && startTime) {
+      const state: ActiveWorkoutState = {
+        templateId: template.id,
+        templateName: template.name,
+        exercises: template.exercises,
+        startTime: startTime.toISOString(),
+        exerciseSets,
+        expandedExercise,
+      };
+      saveActiveWorkout(state);
+    }
+  }, [open, template, startTime, exerciseSets, expandedExercise]);
+
+  // Persist state on changes
+  useEffect(() => {
+    if (isRestored || (open && startTime)) {
+      persistState();
+    }
+  }, [persistState, isRestored, open, startTime]);
 
   useEffect(() => {
     if (open && template) {
-      setStartTime(new Date());
-      setElapsedSeconds(0);
-      setExpandedExercise(0); // Open first exercise by default
-      setPreviousReps({});
+      // Check for saved workout state
+      const savedState = loadActiveWorkout();
       
-      // Initialize empty sets for all exercises
-      const initialSets: Record<number, ExerciseSets> = {};
-      template.exercises.forEach((_, index) => {
-        initialSets[index] = { set1: '', set2: '', set3: '' };
-      });
-      setExerciseSets(initialSets);
+      if (savedState && savedState.templateId === template.id) {
+        // Restore saved state
+        setStartTime(new Date(savedState.startTime));
+        setExerciseSets(savedState.exerciseSets);
+        setExpandedExercise(savedState.expandedExercise);
+        setIsRestored(true);
+      } else {
+        // Start fresh workout
+        setStartTime(new Date());
+        setElapsedSeconds(0);
+        setExpandedExercise(0);
+        setIsRestored(false);
+        
+        // Initialize empty sets for all exercises
+        const initialSets: Record<number, ExerciseSets> = {};
+        template.exercises.forEach((_, index) => {
+          initialSets[index] = { set1: '', set2: '', set3: '' };
+        });
+        setExerciseSets(initialSets);
+      }
+      
+      setPreviousReps({});
 
       // Fetch previous workout data
       if (getLastSession) {
@@ -150,6 +218,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     // Format start time as HH:MM
     const formattedStartTime = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`;
 
+    // Clear saved state
+    clearActiveWorkout();
+
     onFinish({
       exercise: template.name,
       duration: durationMinutes,
@@ -158,6 +229,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       start_time: formattedStartTime,
     });
 
+    onClose();
+  };
+
+  const handleCancel = () => {
+    clearActiveWorkout();
     onClose();
   };
 
@@ -253,7 +329,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={handleCancel} className="w-full sm:w-auto">
             Cancel
           </Button>
           <Button onClick={handleFinish} className="w-full sm:w-auto">
