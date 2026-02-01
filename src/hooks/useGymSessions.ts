@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { GymSession } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validateSessionBeforeOperation } from '@/hooks/useSessionValidator';
 
 export const useGymSessions = () => {
   const [sessions, setSessions] = useState<GymSession[]>([]);
@@ -59,6 +60,17 @@ export const useGymSessions = () => {
 
   const addSession = async (session: Omit<GymSession, 'id'>) => {
     try {
+      // Validate session before operation
+      const isSessionValid = await validateSessionBeforeOperation();
+      if (!isSessionValid) {
+        toast({
+          title: 'Session Expired',
+          description: 'Your session has expired. Please refresh the page and log in again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({

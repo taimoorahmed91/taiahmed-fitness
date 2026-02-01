@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { UserProvider, useUser } from "@/contexts/UserContext";
+import { SessionValidator } from "@/components/SessionValidator";
 import Dashboard from "./pages/Dashboard";
 import Meals from "./pages/Meals";
 import Gym from "./pages/Gym";
@@ -184,6 +185,7 @@ const AppRoutes = () => {
 const AppContent = () => {
   return (
     <UserProvider>
+      <SessionValidator />
       <Toaster />
       <Sonner />
       <BrowserRouter>
