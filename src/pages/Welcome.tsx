@@ -39,7 +39,8 @@ const Welcome = () => {
               <Activity className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Welcome to FitTrack</h1>
+          <h1 className="text-3xl font-bold text-foreground">Fittrack Fitness</h1>
+          <p className="text-lg text-primary font-medium">Track. Transform. Thrive.</p>
           <p className="text-muted-foreground">
             Your personal fitness and nutrition companion
           </p>
