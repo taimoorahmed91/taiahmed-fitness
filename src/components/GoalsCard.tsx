@@ -138,6 +138,9 @@ export const GoalsCard = () => {
                       mode="single"
                       selected={startDate}
                       onSelect={setStartDate}
+                      captionLayout="dropdown-buttons"
+                      fromYear={new Date().getFullYear()}
+                      toYear={new Date().getFullYear() + 5}
                       initialFocus
                       className="pointer-events-auto"
                     />
@@ -165,6 +168,9 @@ export const GoalsCard = () => {
                       selected={endDate}
                       onSelect={setEndDate}
                       disabled={(date) => startDate ? date < startDate : false}
+                      captionLayout="dropdown-buttons"
+                      fromYear={new Date().getFullYear()}
+                      toYear={new Date().getFullYear() + 5}
                       initialFocus
                       className="pointer-events-auto"
                     />
