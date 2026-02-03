@@ -207,7 +207,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     return lines.join(' | ');
   };
 
-  const handleFinish = () => {
+  const handleComplete = () => {
     if (!template || !startTime) return;
 
     const endTime = new Date();
@@ -218,7 +218,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     // Format start time as HH:MM
     const formattedStartTime = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`;
 
-    // Clear saved state
+    // Clear saved state - workout is complete
     clearActiveWorkout();
 
     onFinish({
@@ -232,7 +232,14 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     onClose();
   };
 
+  const handlePause = () => {
+    // Just close the modal - state is already saved in localStorage
+    // User can resume later, no entry is created
+    onClose();
+  };
+
   const handleCancel = () => {
+    // Cancel completely - clear saved state and don't create entry
     clearActiveWorkout();
     onClose();
   };
@@ -329,11 +336,14 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
-          <Button variant="outline" onClick={handleCancel} className="w-full sm:w-auto">
-            Cancel
+          <Button variant="ghost" onClick={handleCancel} className="w-full sm:w-auto text-destructive hover:text-destructive">
+            Cancel Workout
           </Button>
-          <Button onClick={handleFinish} className="w-full sm:w-auto">
-            {allCompleted ? 'Finish Workout' : 'Finish (Partial)'}
+          <Button variant="outline" onClick={handlePause} className="w-full sm:w-auto">
+            Pause & Resume Later
+          </Button>
+          <Button onClick={handleComplete} className="w-full sm:w-auto">
+            Complete Workout
           </Button>
         </DialogFooter>
       </DialogContent>

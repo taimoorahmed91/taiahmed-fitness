@@ -35,12 +35,20 @@ const LoadingSpinner = () => (
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isLoggedIn, loading, isApproved } = useUser();
   
-  if (loading || isApproved === null) {
+  // Only show loading spinner for a reasonable time during initial load
+  // After that, treat as not logged in to avoid infinite spinning
+  if (loading) {
     return <LoadingSpinner />;
   }
   
+  // If not logged in, redirect immediately (no waiting for isApproved)
   if (!isLoggedIn) {
     return <Navigate to="/" replace />;
+  }
+  
+  // User is logged in but approval status still loading
+  if (isApproved === null) {
+    return <LoadingSpinner />;
   }
   
   if (!isApproved) {

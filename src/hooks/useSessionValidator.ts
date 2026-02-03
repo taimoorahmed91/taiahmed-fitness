@@ -6,6 +6,16 @@ import { toast } from 'sonner';
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 const SESSION_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
 const LAST_ACTIVITY_KEY = 'fittrack-last-activity';
+const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
+
+// Check if there's an active workout session
+const hasActiveWorkout = (): boolean => {
+  try {
+    return localStorage.getItem(ACTIVE_WORKOUT_KEY) !== null;
+  } catch {
+    return false;
+  }
+};
 
 export const useSessionValidator = () => {
   const { logout, isLoggedIn } = useUser();
@@ -62,6 +72,13 @@ export const useSessionValidator = () => {
 
   // Check for inactivity
   const checkInactivity = useCallback(async () => {
+    // Skip inactivity check if there's an active workout
+    if (hasActiveWorkout()) {
+      console.log('Active workout detected, skipping inactivity check');
+      updateActivity(); // Keep the session active
+      return;
+    }
+
     const lastActivity = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || '0', 10);
     const now = Date.now();
     
@@ -77,7 +94,7 @@ export const useSessionValidator = () => {
     if (!isValid && isLoggedIn) {
       await handleSessionExpiry();
     }
-  }, [logout, validateSession, isLoggedIn, handleSessionExpiry]);
+  }, [logout, validateSession, isLoggedIn, handleSessionExpiry, updateActivity]);
 
   // Reset inactivity timer on user activity
   const resetInactivityTimer = useCallback(() => {
@@ -88,7 +105,8 @@ export const useSessionValidator = () => {
     }
     
     inactivityTimerRef.current = setTimeout(() => {
-      if (isLoggedIn) {
+      // Don't logout if there's an active workout
+      if (isLoggedIn && !hasActiveWorkout()) {
         toast.warning('You have been logged out due to inactivity.');
         logout();
       }
