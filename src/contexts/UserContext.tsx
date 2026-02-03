@@ -34,37 +34,72 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!isMounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
         
         // Check profile status after auth state change
         if (session?.user) {
           setTimeout(() => {
-            checkProfileStatus(session.user.id);
+            if (isMounted) {
+              checkProfileStatus(session.user.id).finally(() => {
+                if (isMounted) setLoading(false);
+              });
+            }
           }, 0);
         } else {
           setIsApproved(null);
           setIsOwner(null);
+          setLoading(false);
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
-      if (session?.user) {
-        checkProfileStatus(session.user.id);
+    const initSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (error) {
+          console.error('Session fetch error:', error);
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await checkProfileStatus(session.user.id);
+        }
+        
+        if (isMounted) setLoading(false);
+      } catch (err) {
+        console.error('Session init error:', err);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+        }
       }
-    });
+    };
+    
+    initSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithGoogle = async () => {
