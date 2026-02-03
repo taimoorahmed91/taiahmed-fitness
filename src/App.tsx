@@ -193,10 +193,10 @@ const AppRoutes = () => {
 const AppContent = () => {
   return (
     <UserProvider>
-      <SessionValidator />
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <SessionValidator />
         <AppRoutes />
         <ChatBot />
       </BrowserRouter>
