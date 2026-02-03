@@ -119,29 +119,35 @@ export const useGoals = () => {
   const addGoal = async (
     goalType: 'weekly' | 'monthly',
     category: 'calories' | 'workouts' | 'sleep',
-    targetValue: number
+    targetValue: number,
+    customStartDate?: Date,
+    customEndDate?: Date
   ) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const today = new Date();
       let startDate: Date;
       let endDate: Date;
 
-      if (goalType === 'weekly') {
-        // Start from this week's Monday (Monday = 1, Sunday = 0)
-        const dayOfWeek = today.getDay();
-        // If Sunday (0), go back 6 days; otherwise go back (dayOfWeek - 1) days
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        startDate = new Date(today);
-        startDate.setDate(today.getDate() - daysToMonday);
-        endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 6); // Sunday
+      if (customStartDate && customEndDate) {
+        // Use custom dates provided by user
+        startDate = customStartDate;
+        endDate = customEndDate;
       } else {
-        // Start from this month's first day
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        // Auto-calculate based on goal type (legacy behavior)
+        const today = new Date();
+        if (goalType === 'weekly') {
+          const dayOfWeek = today.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - daysToMonday);
+          endDate = new Date(startDate);
+          endDate.setDate(startDate.getDate() + 6);
+        } else {
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        }
       }
 
       const { error } = await supabase

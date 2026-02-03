@@ -1,12 +1,17 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
 import { useGoals, GoalProgress } from '@/hooks/useGoals';
-import { Target, Plus, Trash2, Flame, Dumbbell, Moon } from 'lucide-react';
+import { Target, Plus, Trash2, Flame, Dumbbell, Moon, CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const categoryIcons = {
   calories: Flame,
@@ -34,14 +39,25 @@ export const GoalsCard = () => {
   const [goalType, setGoalType] = useState<'weekly' | 'monthly'>('weekly');
   const [category, setCategory] = useState<'calories' | 'workouts' | 'sleep'>('workouts');
   const [targetValue, setTargetValue] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 7);
+    return date;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetValue) return;
+    if (!targetValue || !startDate || !endDate) return;
     
-    await addGoal(goalType, category, parseInt(targetValue));
+    await addGoal(goalType, category, parseInt(targetValue), startDate, endDate);
     setTargetValue('');
     setShowForm(false);
+    // Reset dates for next goal
+    setStartDate(new Date());
+    const newEndDate = new Date();
+    newEndDate.setDate(newEndDate.getDate() + 7);
+    setEndDate(newEndDate);
   };
 
   const getProgressColor = (percentage: number) => {
@@ -100,6 +116,63 @@ export const GoalsCard = () => {
                 </SelectContent>
               </Select>
             </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Start Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-9 text-xs",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-1 h-3 w-3" />
+                      {startDate ? format(startDate, "MMM d, yyyy") : "Pick date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">End Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-9 text-xs",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-1 h-3 w-3" />
+                      {endDate ? format(endDate, "MMM d, yyyy") : "Pick date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => startDate ? date < startDate : false}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <Input
                 type="number"
