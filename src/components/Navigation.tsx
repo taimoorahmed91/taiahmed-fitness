@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon, BarChart3, Menu, Calendar, ArrowLeftRight, UserCheck, Ruler, MessageCircle, RefreshCw, FileText } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon, BarChart3, Menu, Calendar, ArrowLeftRight, UserCheck, Ruler, MessageCircle, RefreshCw, FileText, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { ImportExportButton } from './ImportExportButton';
@@ -36,6 +36,7 @@ export const Navigation = () => {
     { to: '/calendar', label: 'Calendar', icon: Calendar },
     { to: '/compare', label: 'Compare', icon: ArrowLeftRight },
     { to: '/reports', label: 'Reports', icon: BarChart3 },
+    { to: '/achievements', label: 'Achievements', icon: Trophy },
     { to: '/messaging', label: 'Messaging', icon: MessageCircle },
     ...(isOwner ? [{ to: '/admin/approval', label: 'User Approval', icon: UserCheck }] : []),
   ];
