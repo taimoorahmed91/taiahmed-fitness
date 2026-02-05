@@ -21,6 +21,7 @@ import Welcome from "./pages/Welcome";
 import PendingApproval from "./pages/PendingApproval";
 import AdminApproval from "./pages/AdminApproval";
 import NotFound from "./pages/NotFound";
+import Achievements from "./pages/Achievements";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
 
@@ -182,6 +183,14 @@ const AppRoutes = () => {
               <Navigation />
               <AdminApproval />
             </div>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/achievements"
+        element={
+          <ProtectedRoute>
+            <Achievements />
           </ProtectedRoute>
         }
       />

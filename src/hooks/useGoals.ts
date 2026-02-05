@@ -20,7 +20,28 @@ export interface GoalProgress {
   percentage: number;
   days_passed: number; // includes today
   week_start_date: Date;
+  current_period_start: Date;
+  current_period_end: Date;
 }
+
+// Helper to get the Monday of the current week
+const getCurrentWeekMonday = (): Date => {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - daysToMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+};
+
+// Helper to get the Sunday of the current week
+const getCurrentWeekSunday = (): Date => {
+  const monday = getCurrentWeekMonday();
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return sunday;
+};
 
 export const useGoals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -61,13 +82,29 @@ export const useGoals = () => {
       for (const goal of typedGoals) {
         let currentValue = 0;
         
+        // For weekly goals, always use the current week (Mon-Sun)
+        // For monthly goals, use the goal's date range
+        let queryStartDate = goal.start_date;
+        let queryEndDate = goal.end_date;
+        let currentPeriodStart = new Date(goal.start_date);
+        let currentPeriodEnd = new Date(goal.end_date);
+        
+        if (goal.goal_type === 'weekly') {
+          const weekMonday = getCurrentWeekMonday();
+          const weekSunday = getCurrentWeekSunday();
+          queryStartDate = weekMonday.toISOString().split('T')[0];
+          queryEndDate = weekSunday.toISOString().split('T')[0];
+          currentPeriodStart = weekMonday;
+          currentPeriodEnd = weekSunday;
+        }
+        
         if (goal.category === 'calories') {
           const { data: meals } = await supabase
             .from('fittrack_meals')
             .select('calories')
             .eq('user_id', user.id)
-            .gte('date', goal.start_date)
-            .lte('date', goal.end_date);
+            .gte('date', queryStartDate)
+            .lte('date', queryEndDate);
           
           currentValue = (meals || []).reduce((sum, m) => sum + m.calories, 0);
         } else if (goal.category === 'workouts') {
@@ -75,8 +112,8 @@ export const useGoals = () => {
             .from('fittrack_gym_sessions')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id)
-            .gte('date', goal.start_date)
-            .lte('date', goal.end_date);
+            .gte('date', queryStartDate)
+            .lte('date', queryEndDate);
           
           currentValue = count || 0;
         } else if (goal.category === 'sleep') {
@@ -84,14 +121,14 @@ export const useGoals = () => {
             .from('fittrack_sleep')
             .select('hours')
             .eq('user_id', user.id)
-            .gte('date', goal.start_date)
-            .lte('date', goal.end_date);
+            .gte('date', queryStartDate)
+            .lte('date', queryEndDate);
           
           currentValue = (sleepData || []).reduce((sum, s) => sum + Number(s.hours), 0);
         }
 
         // Calculate days passed for weekly goals
-        const weekStart = new Date(goal.start_date);
+        const weekStart = getCurrentWeekMonday();
         let daysPassed = 1; // at least today
         if (goal.goal_type === 'weekly') {
           const diffTime = todayDate.getTime() - weekStart.getTime();
@@ -104,7 +141,9 @@ export const useGoals = () => {
           current_value: currentValue,
           percentage: Math.min(100, Math.round((currentValue / goal.target_value) * 100)),
           days_passed: daysPassed,
-          week_start_date: weekStart
+          week_start_date: weekStart,
+          current_period_start: currentPeriodStart,
+          current_period_end: currentPeriodEnd
         });
       }
 
