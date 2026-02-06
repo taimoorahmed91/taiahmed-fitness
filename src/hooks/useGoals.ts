@@ -43,6 +43,18 @@ const getCurrentWeekSunday = (): Date => {
   return sunday;
 };
 
+// Helper to get the first day of the current month
+const getCurrentMonthStart = (): Date => {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), 1);
+};
+
+// Helper to get the last day of the current month
+const getCurrentMonthEnd = (): Date => {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth() + 1, 0);
+};
+
 export const useGoals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsProgress, setGoalsProgress] = useState<GoalProgress[]>([]);
@@ -96,6 +108,13 @@ export const useGoals = () => {
           queryEndDate = weekSunday.toISOString().split('T')[0];
           currentPeriodStart = weekMonday;
           currentPeriodEnd = weekSunday;
+        } else if (goal.goal_type === 'monthly') {
+          const monthStart = getCurrentMonthStart();
+          const monthEnd = getCurrentMonthEnd();
+          queryStartDate = monthStart.toISOString().split('T')[0];
+          queryEndDate = monthEnd.toISOString().split('T')[0];
+          currentPeriodStart = monthStart;
+          currentPeriodEnd = monthEnd;
         }
         
         if (goal.category === 'calories') {
@@ -127,13 +146,20 @@ export const useGoals = () => {
           currentValue = (sleepData || []).reduce((sum, s) => sum + Number(s.hours), 0);
         }
 
-        // Calculate days passed for weekly goals
-        const weekStart = getCurrentWeekMonday();
+        // Calculate days passed for the current period
         let daysPassed = 1; // at least today
         if (goal.goal_type === 'weekly') {
+          const weekStart = getCurrentWeekMonday();
           const diffTime = todayDate.getTime() - weekStart.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          daysPassed = Math.min(7, Math.max(1, diffDays + 1)); // +1 to include today
+          daysPassed = Math.min(7, Math.max(1, diffDays + 1));
+        } else if (goal.goal_type === 'monthly') {
+          const monthStart = getCurrentMonthStart();
+          const monthEnd = getCurrentMonthEnd();
+          const totalDays = Math.ceil((monthEnd.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const diffTime = todayDate.getTime() - monthStart.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          daysPassed = Math.min(totalDays, Math.max(1, diffDays + 1));
         }
 
         progressList.push({
@@ -141,7 +167,7 @@ export const useGoals = () => {
           current_value: currentValue,
           percentage: Math.min(100, Math.round((currentValue / goal.target_value) * 100)),
           days_passed: daysPassed,
-          week_start_date: weekStart,
+          week_start_date: getCurrentWeekMonday(),
           current_period_start: currentPeriodStart,
           current_period_end: currentPeriodEnd
         });
