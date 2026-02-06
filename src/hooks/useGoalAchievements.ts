@@ -191,8 +191,11 @@
            achievedValue = (sleepData || []).reduce((sum, s) => sum + Number(s.hours), 0);
          }
  
-         const percentage = Math.min(100, Math.round((achievedValue / goal.target_value) * 100));
-         const met = percentage >= 100;
+          const isUnderGoal = goal.category === 'calories' || goal.category === 'sleep';
+          const percentage = isUnderGoal
+            ? (achievedValue <= goal.target_value ? 100 : Math.max(0, Math.round(((2 * goal.target_value - achievedValue) / goal.target_value) * 100)))
+            : Math.min(100, Math.round((achievedValue / goal.target_value) * 100));
+          const met = isUnderGoal ? achievedValue <= goal.target_value : percentage >= 100;
  
          weeklyHistory.push({
            week_start: weekKey,
