@@ -165,7 +165,9 @@ export const useGoals = () => {
         progressList.push({
           goal,
           current_value: currentValue,
-          percentage: Math.min(100, Math.round((currentValue / goal.target_value) * 100)),
+          percentage: (goal.category === 'calories' || goal.category === 'sleep')
+            ? (currentValue <= goal.target_value ? 100 : Math.max(0, Math.round(((2 * goal.target_value - currentValue) / goal.target_value) * 100)))
+            : Math.min(100, Math.round((currentValue / goal.target_value) * 100)),
           days_passed: daysPassed,
           week_start_date: getCurrentWeekMonday(),
           current_period_start: currentPeriodStart,
