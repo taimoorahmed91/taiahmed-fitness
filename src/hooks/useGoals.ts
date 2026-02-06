@@ -18,6 +18,7 @@ export interface GoalProgress {
   goal: Goal;
   current_value: number;
   percentage: number;
+  achieved: boolean;
   days_passed: number; // includes today
   week_start_date: Date;
   current_period_start: Date;
@@ -165,9 +166,10 @@ export const useGoals = () => {
         progressList.push({
           goal,
           current_value: currentValue,
-          percentage: (goal.category === 'calories' || goal.category === 'sleep')
-            ? (currentValue <= goal.target_value ? 100 : Math.max(0, Math.round(((2 * goal.target_value - currentValue) / goal.target_value) * 100)))
-            : Math.min(100, Math.round((currentValue / goal.target_value) * 100)),
+          percentage: Math.min(100, Math.round((currentValue / goal.target_value) * 100)),
+          achieved: (goal.category === 'calories' || goal.category === 'sleep')
+            ? currentValue <= goal.target_value
+            : currentValue >= goal.target_value,
           days_passed: daysPassed,
           week_start_date: getCurrentWeekMonday(),
           current_period_start: currentPeriodStart,

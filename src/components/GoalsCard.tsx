@@ -60,8 +60,8 @@ export const GoalsCard = () => {
     setEndDate(newEndDate);
   };
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage >= 100) return 'bg-green-500';
+  const getProgressColor = (percentage: number, achieved: boolean) => {
+    if (achieved) return 'bg-green-500';
     if (percentage >= 75) return 'bg-primary';
     if (percentage >= 50) return 'bg-yellow-500';
     return 'bg-orange-500';
@@ -247,7 +247,7 @@ export const GoalsCard = () => {
                       <span>{gp.current_value} / {gp.goal.target_value} {categoryUnits[gp.goal.category as keyof typeof categoryUnits]}</span>
                       <span>{gp.percentage}%</span>
                     </div>
-                    <Progress value={gp.percentage} className={`h-2 ${getProgressColor(gp.percentage)}`} />
+                    <Progress value={gp.percentage} className={`h-2 ${getProgressColor(gp.percentage, gp.achieved)}`} />
                   </div>
                 </div>
               );
