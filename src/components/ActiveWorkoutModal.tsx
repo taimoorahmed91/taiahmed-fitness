@@ -116,6 +116,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isRestored, setIsRestored] = useState(false);
+  const [isCancelled, setIsCancelled] = useState(false);
 
   // Rest timer state
   const [restTimerRemaining, setRestTimerRemaining] = useState<number>(0);
@@ -153,10 +154,10 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   }, [open, template, startTime, exerciseSets, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
-    if (isRestored || (open && startTime)) {
+    if (!isCancelled && (isRestored || (open && startTime))) {
       persistState();
     }
-  }, [persistState, isRestored, open, startTime]);
+  }, [persistState, isRestored, open, startTime, isCancelled]);
 
   useEffect(() => {
     if (open && template) {
@@ -187,6 +188,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setElapsedSeconds(0);
         setExpandedExercise(0);
         setIsRestored(false);
+        setIsCancelled(false);
         setIsRestTimerActive(false);
         setRestTimerRemaining(0);
         
@@ -336,6 +338,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   };
 
   const handleCancel = () => {
+    setIsCancelled(true);
     clearActiveWorkout();
     onClose();
   };
