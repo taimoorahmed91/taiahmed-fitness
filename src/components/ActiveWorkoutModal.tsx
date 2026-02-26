@@ -46,7 +46,7 @@ interface ActiveWorkoutModalProps {
   template: WorkoutTemplate | null;
   open: boolean;
   onClose: () => void;
-  onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string }) => void;
+  onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string }) => Promise<boolean>;
   getLastSession?: (templateName: string) => Promise<GymSession | null>;
 }
 
@@ -316,21 +316,26 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     return lines.join(' | ');
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!template || !startTime) return;
     const endTime = new Date();
     const durationMinutes = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
     const notes = formatSetsForNotes();
     const formattedStartTime = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`;
-    clearActiveWorkout();
-    onFinish({
+    
+    const success = await onFinish({
       exercise: template.name,
       duration: durationMinutes,
       date: new Date().toISOString().split('T')[0],
       notes: notes || undefined,
       start_time: formattedStartTime,
     });
-    onClose();
+    
+    if (success) {
+      clearActiveWorkout();
+      onClose();
+    }
+    // If save failed, workout data stays in localStorage so user can retry
   };
 
   const handlePause = () => {
