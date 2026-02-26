@@ -8,6 +8,7 @@ import { Timer, CheckCircle2, ChevronDown, ChevronUp, Clock, Settings2 } from 'l
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { GymSession } from '@/types';
 import { Progress } from '@/components/ui/progress';
+import { logActivity } from '@/hooks/useActivityLog';
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
@@ -198,6 +199,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
         setExerciseSets(initialSets);
         prevExerciseSets.current = JSON.parse(JSON.stringify(initialSets));
+        logActivity({ action: 'start_workout', category: 'gym', details: { template_name: template.name, exercises: template.exercises } });
       }
       
       setPreviousReps({});
@@ -332,8 +334,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     });
     
     if (success) {
+      logActivity({ action: 'finish_workout', category: 'gym', details: { template_name: template.name, duration: durationMinutes, notes } });
       clearActiveWorkout();
       onClose();
+    } else {
+      logActivity({ action: 'finish_workout', category: 'gym', status: 'error', error_message: 'Save failed, retaining data', details: { template_name: template.name } });
     }
     // If save failed, workout data stays in localStorage so user can retry
   };
@@ -344,6 +349,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   const handleCancel = () => {
     setIsCancelled(true);
+    logActivity({ action: 'cancel_workout', category: 'gym', details: { template_name: template?.name } });
     clearActiveWorkout();
     onClose();
   };

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export interface Goal {
   id: string;
@@ -19,7 +20,7 @@ export interface GoalProgress {
   current_value: number;
   percentage: number;
   achieved: boolean;
-  days_passed: number; // includes today
+  days_passed: number;
   week_start_date: Date;
   current_period_start: Date;
   current_period_end: Date;
@@ -65,17 +66,11 @@ export const useGoals = () => {
   const fetchGoals = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setGoals([]);
-        setGoalsProgress([]);
-        setLoading(false);
-        return;
-      }
+      if (!user) { setGoals([]); setGoalsProgress([]); setLoading(false); return; }
 
       const todayStr = new Date().toISOString().split('T')[0];
       const todayDate = new Date();
       
-      // Fetch active goals
       const { data, error } = await supabase
         .from('fittrack_goals')
         .select('*')
@@ -89,14 +84,10 @@ export const useGoals = () => {
       const typedGoals = (data || []) as Goal[];
       setGoals(typedGoals);
 
-      // Calculate progress for each goal
       const progressList: GoalProgress[] = [];
       
       for (const goal of typedGoals) {
         let currentValue = 0;
-        
-        // For weekly goals, always use the current week (Mon-Sun)
-        // For monthly goals, use the goal's date range
         let queryStartDate = goal.start_date;
         let queryEndDate = goal.end_date;
         let currentPeriodStart = new Date(goal.start_date);
@@ -119,36 +110,17 @@ export const useGoals = () => {
         }
         
         if (goal.category === 'calories') {
-          const { data: meals } = await supabase
-            .from('fittrack_meals')
-            .select('calories')
-            .eq('user_id', user.id)
-            .gte('date', queryStartDate)
-            .lte('date', queryEndDate);
-          
+          const { data: meals } = await supabase.from('fittrack_meals').select('calories').eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
           currentValue = (meals || []).reduce((sum, m) => sum + m.calories, 0);
         } else if (goal.category === 'workouts') {
-          const { count } = await supabase
-            .from('fittrack_gym_sessions')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .gte('date', queryStartDate)
-            .lte('date', queryEndDate);
-          
+          const { count } = await supabase.from('fittrack_gym_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
           currentValue = count || 0;
         } else if (goal.category === 'sleep') {
-          const { data: sleepData } = await supabase
-            .from('fittrack_sleep')
-            .select('hours')
-            .eq('user_id', user.id)
-            .gte('date', queryStartDate)
-            .lte('date', queryEndDate);
-          
+          const { data: sleepData } = await supabase.from('fittrack_sleep').select('hours').eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
           currentValue = (sleepData || []).reduce((sum, s) => sum + Number(s.hours), 0);
         }
 
-        // Calculate days passed for the current period
-        let daysPassed = 1; // at least today
+        let daysPassed = 1;
         if (goal.goal_type === 'weekly') {
           const weekStart = getCurrentWeekMonday();
           const diffTime = todayDate.getTime() - weekStart.getTime();
@@ -167,9 +139,7 @@ export const useGoals = () => {
           goal,
           current_value: currentValue,
           percentage: Math.min(100, Math.round((currentValue / goal.target_value) * 100)),
-          achieved: (goal.category === 'calories' || goal.category === 'sleep')
-            ? currentValue <= goal.target_value
-            : currentValue >= goal.target_value,
+          achieved: (goal.category === 'calories' || goal.category === 'sleep') ? currentValue <= goal.target_value : currentValue >= goal.target_value,
           days_passed: daysPassed,
           week_start_date: getCurrentWeekMonday(),
           current_period_start: currentPeriodStart,
@@ -180,9 +150,7 @@ export const useGoals = () => {
       setGoalsProgress(progressList);
     } catch (error) {
       console.error('Error fetching goals:', error);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, []);
 
   const addGoal = async (
@@ -200,11 +168,9 @@ export const useGoals = () => {
       let endDate: Date;
 
       if (customStartDate && customEndDate) {
-        // Use custom dates provided by user
         startDate = customStartDate;
         endDate = customEndDate;
       } else {
-        // Auto-calculate based on goal type (legacy behavior)
         const today = new Date();
         if (goalType === 'weekly') {
           const dayOfWeek = today.getDay();
@@ -219,67 +185,44 @@ export const useGoals = () => {
         }
       }
 
-      const { error } = await supabase
-        .from('fittrack_goals')
-        .insert({
-          user_id: user.id,
-          goal_type: goalType,
-          category,
-          target_value: targetValue,
-          start_date: startDate.toISOString().split('T')[0],
-          end_date: endDate.toISOString().split('T')[0]
-        });
+      const { error } = await supabase.from('fittrack_goals').insert({
+        user_id: user.id,
+        goal_type: goalType,
+        category,
+        target_value: targetValue,
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0]
+      });
 
       if (error) throw error;
 
-      toast({
-        title: 'Goal Created',
-        description: `Your ${goalType} ${category} goal has been set!`,
-      });
-
+      toast({ title: 'Goal Created', description: `Your ${goalType} ${category} goal has been set!` });
+      logActivity({ action: 'create', category: 'goals', details: { goal_type: goalType, goal_category: category, target_value: targetValue } });
       fetchGoals();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding goal:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create goal',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to create goal', variant: 'destructive' });
+      logActivity({ action: 'create', category: 'goals', status: 'error', error_message: error?.message || 'Failed', details: { goal_type: goalType, goal_category: category, target_value: targetValue } });
     }
   };
 
   const deleteGoal = async (goalId: string) => {
     try {
-      const { error } = await supabase
-        .from('fittrack_goals')
-        .delete()
-        .eq('id', goalId);
-
+      const { error } = await supabase.from('fittrack_goals').delete().eq('id', goalId);
       if (error) throw error;
-
-      toast({
-        title: 'Goal Deleted',
-        description: 'Goal has been removed',
-      });
-
+      toast({ title: 'Goal Deleted', description: 'Goal has been removed' });
+      logActivity({ action: 'delete', category: 'goals', details: { id: goalId } });
       fetchGoals();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting goal:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete goal',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to delete goal', variant: 'destructive' });
+      logActivity({ action: 'delete', category: 'goals', status: 'error', error_message: error?.message || 'Failed', details: { id: goalId } });
     }
   };
 
   useEffect(() => {
     fetchGoals();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchGoals();
-    });
-
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { fetchGoals(); });
     return () => subscription.unsubscribe();
   }, [fetchGoals]);
 

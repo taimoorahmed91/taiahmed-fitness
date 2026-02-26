@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/contexts/UserContext';
 import { useToast } from '@/hooks/use-toast';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export interface DailyNote {
   id: string;
@@ -15,21 +16,9 @@ export interface DailyNote {
 }
 
 export const SYMPTOM_TAGS = [
-  'Nausea',
-  'Upset Stomach',
-  'Headache',
-  'Fatigue',
-  'Stressed',
-  'Fever',
-  'Cold/Flu',
-  'Allergies',
-  'Poor Sleep',
-  'Overate',
-  'Skipped Meal',
-  'Alcohol',
-  'Travel',
-  'Period',
-  'Medication',
+  'Nausea', 'Upset Stomach', 'Headache', 'Fatigue', 'Stressed',
+  'Fever', 'Cold/Flu', 'Allergies', 'Poor Sleep', 'Overate',
+  'Skipped Meal', 'Alcohol', 'Travel', 'Period', 'Medication',
 ] as const;
 
 export const useDailyNotes = () => {
@@ -40,106 +29,57 @@ export const useDailyNotes = () => {
 
   const fetchNotes = async () => {
     if (!user) return;
-
     try {
-      const { data, error } = await supabase
-        .from('fittrack_daily_notes')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
+      const { data, error } = await supabase.from('fittrack_daily_notes').select('*').eq('user_id', user.id).order('date', { ascending: false });
       if (error) throw error;
       setNotes(data || []);
     } catch (error: any) {
       console.error('Error fetching daily notes:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load daily notes',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+      toast({ title: 'Error', description: 'Failed to load daily notes', variant: 'destructive' });
+    } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchNotes();
-  }, [user]);
+  useEffect(() => { fetchNotes(); }, [user]);
 
   const addNote = async (note: { date: string; tags: string[]; severity?: number | null; notes?: string }) => {
     if (!user) return;
-
     try {
       const { error } = await supabase.from('fittrack_daily_notes').upsert(
-        {
-          user_id: user.id,
-          date: note.date,
-          tags: note.tags,
-          severity: note.severity || null,
-          notes: note.notes || null,
-        },
+        { user_id: user.id, date: note.date, tags: note.tags, severity: note.severity || null, notes: note.notes || null },
         { onConflict: 'user_id,date' }
       );
-
       if (error) throw error;
-
-      toast({
-        title: 'Note saved',
-        description: 'Your daily note has been saved.',
-      });
-
+      toast({ title: 'Note saved', description: 'Your daily note has been saved.' });
+      logActivity({ action: 'create', category: 'daily_notes', details: { date: note.date, tags: note.tags, severity: note.severity, notes: note.notes } });
       fetchNotes();
     } catch (error: any) {
       console.error('Error adding daily note:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save daily note',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to save daily note', variant: 'destructive' });
+      logActivity({ action: 'create', category: 'daily_notes', status: 'error', error_message: error?.message || 'Failed', details: { date: note.date } });
     }
   };
 
   const deleteNote = async (id: string) => {
     try {
       const { error } = await supabase.from('fittrack_daily_notes').delete().eq('id', id);
-
       if (error) throw error;
-
-      toast({
-        title: 'Note deleted',
-        description: 'Your daily note has been removed.',
-      });
-
+      toast({ title: 'Note deleted', description: 'Your daily note has been removed.' });
+      logActivity({ action: 'delete', category: 'daily_notes', details: { id } });
       fetchNotes();
     } catch (error: any) {
       console.error('Error deleting daily note:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete daily note',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to delete daily note', variant: 'destructive' });
+      logActivity({ action: 'delete', category: 'daily_notes', status: 'error', error_message: error?.message || 'Failed', details: { id } });
     }
   };
 
-  const getNoteForDate = (date: string): DailyNote | undefined => {
-    return notes.find((note) => note.date === date);
-  };
+  const getNoteForDate = (date: string): DailyNote | undefined => notes.find((note) => note.date === date);
 
   const getNotesMap = (): Map<string, DailyNote> => {
     const map = new Map<string, DailyNote>();
-    notes.forEach((note) => {
-      map.set(note.date, note);
-    });
+    notes.forEach((note) => map.set(note.date, note));
     return map;
   };
 
-  return {
-    notes,
-    loading,
-    addNote,
-    deleteNote,
-    getNoteForDate,
-    getNotesMap,
-    refetch: fetchNotes,
-  };
+  return { notes, loading, addNote, deleteNote, getNoteForDate, getNotesMap, refetch: fetchNotes };
 };
