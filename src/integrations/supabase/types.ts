@@ -451,6 +451,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_activity_logs: {
+        Row: {
+          action: string
+          category: string
+          created_at: string
+          details: Json | null
+          error_message: string | null
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          category: string
+          created_at?: string
+          details?: Json | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          category?: string
+          created_at?: string
+          details?: Json | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fittrack_daily_notes: {
         Row: {
           created_at: string

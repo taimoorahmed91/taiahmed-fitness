@@ -3,6 +3,7 @@ import { Meal } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { validateSessionBeforeOperation } from '@/hooks/useSessionValidator';
+import { logActivity } from '@/hooks/useActivityLog';
 
 const getMealPeriod = (time: string): string => {
   const hour = parseInt(time.split(':')[0], 10);
@@ -68,7 +69,6 @@ export const useMeals = () => {
 
   const addMeal = async (meal: Omit<Meal, 'id'>) => {
     try {
-      // Validate session before operation
       const isSessionValid = await validateSessionBeforeOperation();
       if (!isSessionValid) {
         toast({
@@ -76,16 +76,13 @@ export const useMeals = () => {
           description: 'Your session has expired. Please refresh the page and log in again.',
           variant: 'destructive',
         });
+        logActivity({ action: 'create', category: 'meal', status: 'error', error_message: 'Session expired', details: { food: meal.food, calories: meal.calories } });
         return;
       }
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to add meals',
-          variant: 'destructive',
-        });
+        toast({ title: 'Error', description: 'You must be logged in to add meals', variant: 'destructive' });
         return;
       }
 
@@ -103,77 +100,46 @@ export const useMeals = () => {
 
       if (error) throw error;
 
-      const newMeal: Meal = {
-        id: data.id,
-        food: data.food,
-        calories: data.calories,
-        time: data.time,
-        date: data.date,
-      };
-
+      const newMeal: Meal = { id: data.id, food: data.food, calories: data.calories, time: data.time, date: data.date };
       setMeals((prev) => [newMeal, ...prev]);
-    } catch (error) {
+      logActivity({ action: 'create', category: 'meal', details: { food: meal.food, calories: meal.calories, time: meal.time, date: meal.date } });
+    } catch (error: any) {
       console.error('Error adding meal:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add meal',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to add meal', variant: 'destructive' });
+      logActivity({ action: 'create', category: 'meal', status: 'error', error_message: error?.message || 'Failed to add meal', details: { food: meal.food, calories: meal.calories } });
     }
   };
 
   const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>) => {
     try {
-      const { error } = await supabase
-        .from('fittrack_meals')
-        .update(updates)
-        .eq('id', id);
-
+      const { error } = await supabase.from('fittrack_meals').update(updates).eq('id', id);
       if (error) throw error;
-
-      setMeals((prev) =>
-        prev.map((meal) => (meal.id === id ? { ...meal, ...updates } : meal))
-      );
-
-      toast({
-        title: 'Success',
-        description: 'Meal updated successfully',
-      });
-    } catch (error) {
+      setMeals((prev) => prev.map((meal) => (meal.id === id ? { ...meal, ...updates } : meal)));
+      toast({ title: 'Success', description: 'Meal updated successfully' });
+      logActivity({ action: 'update', category: 'meal', details: { id, ...updates } });
+    } catch (error: any) {
       console.error('Error updating meal:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update meal',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to update meal', variant: 'destructive' });
+      logActivity({ action: 'update', category: 'meal', status: 'error', error_message: error?.message || 'Failed to update meal', details: { id } });
     }
   };
 
   const deleteMeal = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('fittrack_meals')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('fittrack_meals').delete().eq('id', id);
       if (error) throw error;
-
       setMeals((prev) => prev.filter((meal) => meal.id !== id));
-    } catch (error) {
+      logActivity({ action: 'delete', category: 'meal', details: { id } });
+    } catch (error: any) {
       console.error('Error deleting meal:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete meal',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to delete meal', variant: 'destructive' });
+      logActivity({ action: 'delete', category: 'meal', status: 'error', error_message: error?.message || 'Failed to delete meal', details: { id } });
     }
   };
 
   const getTodayCalories = () => {
     const today = new Date().toISOString().split('T')[0];
-    return meals
-      .filter((meal) => meal.date === today)
-      .reduce((sum, meal) => sum + meal.calories, 0);
+    return meals.filter((meal) => meal.date === today).reduce((sum, meal) => sum + meal.calories, 0);
   };
 
   const getWeeklyData = () => {
@@ -182,14 +148,8 @@ export const useMeals = () => {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      const dayCalories = meals
-        .filter((meal) => meal.date === dateStr)
-        .reduce((sum, meal) => sum + meal.calories, 0);
-      days.push({
-        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        fullDate: dateStr,
-        calories: dayCalories,
-      });
+      const dayCalories = meals.filter((meal) => meal.date === dateStr).reduce((sum, meal) => sum + meal.calories, 0);
+      days.push({ date: date.toLocaleDateString('en-US', { weekday: 'short' }), fullDate: dateStr, calories: dayCalories });
     }
     return days;
   };
@@ -201,18 +161,12 @@ export const useMeals = () => {
       Afternoon: { calories: 0, count: 0 },
       Evening: { calories: 0, count: 0 },
     };
-
     meals.forEach((meal) => {
       const period = getMealPeriod(meal.time);
       periods[period].calories += meal.calories;
       periods[period].count += 1;
     });
-
-    return Object.entries(periods).map(([name, data]) => ({
-      name,
-      calories: data.calories,
-      count: data.count,
-    }));
+    return Object.entries(periods).map(([name, data]) => ({ name, calories: data.calories, count: data.count }));
   };
 
   return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: fetchMeals };

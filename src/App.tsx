@@ -22,6 +22,7 @@ import PendingApproval from "./pages/PendingApproval";
 import AdminApproval from "./pages/AdminApproval";
 import NotFound from "./pages/NotFound";
 import Achievements from "./pages/Achievements";
+import ActivityLogs from "./pages/ActivityLogs";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
 
@@ -191,6 +192,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Achievements />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/logs"
+        element={
+          <ProtectedRoute>
+            <ActivityLogs />
           </ProtectedRoute>
         }
       />

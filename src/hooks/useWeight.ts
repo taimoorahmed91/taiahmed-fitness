@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from 'sonner';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export interface WeightEntry {
   id: string;
@@ -64,10 +65,12 @@ export const useWeight = () => {
 
       if (error) throw error;
       toast.success('Weight entry added!');
+      logActivity({ action: 'create', category: 'weight', details: { weight: entry.weight, date: entry.date, notes: entry.notes } });
       fetchEntries();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding weight entry:', error);
       toast.error('Failed to add weight entry');
+      logActivity({ action: 'create', category: 'weight', status: 'error', error_message: error?.message || 'Failed to add weight entry', details: { weight: entry.weight, date: entry.date } });
     }
   };
 
@@ -84,10 +87,12 @@ export const useWeight = () => {
 
       if (error) throw error;
       toast.success('Weight entry updated!');
+      logActivity({ action: 'update', category: 'weight', details: { id, weight: entry.weight, date: entry.date, notes: entry.notes } });
       fetchEntries();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating weight entry:', error);
       toast.error('Failed to update weight entry');
+      logActivity({ action: 'update', category: 'weight', status: 'error', error_message: error?.message || 'Failed to update weight entry', details: { id } });
     }
   };
 
@@ -96,10 +101,12 @@ export const useWeight = () => {
       const { error } = await supabase.from('fittrack_weight').delete().eq('id', id);
       if (error) throw error;
       toast.success('Weight entry deleted!');
+      logActivity({ action: 'delete', category: 'weight', details: { id } });
       fetchEntries();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting weight entry:', error);
       toast.error('Failed to delete weight entry');
+      logActivity({ action: 'delete', category: 'weight', status: 'error', error_message: error?.message || 'Failed to delete weight entry', details: { id } });
     }
   };
 
