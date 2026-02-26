@@ -59,61 +59,59 @@ export const useGymSessions = () => {
   }, []);
 
   const addSession = async (session: Omit<GymSession, 'id'>) => {
-    try {
-      // Validate session before operation
-      const isSessionValid = await validateSessionBeforeOperation();
-      if (!isSessionValid) {
-        toast({
-          title: 'Session Expired',
-          description: 'Your session has expired. Please refresh the page and log in again.',
-          variant: 'destructive',
-        });
-        return;
-      }
+    // Validate session before operation
+    const isSessionValid = await validateSessionBeforeOperation();
+    if (!isSessionValid) {
+      toast({
+        title: 'Session Expired',
+        description: 'Your session has expired. Please refresh the page and log in again.',
+        variant: 'destructive',
+      });
+      throw new Error('Session expired');
+    }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to add sessions',
-          variant: 'destructive',
-        });
-        return;
-      }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to add sessions',
+        variant: 'destructive',
+      });
+      throw new Error('Not logged in');
+    }
 
-      const { data, error } = await supabase
-        .from('fittrack_gym_sessions')
-        .insert({
-          user_id: user.id,
-          exercise: session.exercise,
-          duration: session.duration,
-          date: session.date,
-          notes: session.notes || null,
-          start_time: session.start_time || null,
-        })
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from('fittrack_gym_sessions')
+      .insert({
+        user_id: user.id,
+        exercise: session.exercise,
+        duration: session.duration,
+        date: session.date,
+        notes: session.notes || null,
+        start_time: session.start_time || null,
+      })
+      .select()
+      .single();
 
-      if (error) throw error;
-
-      const newSession: GymSession = {
-        id: data.id,
-        exercise: data.exercise,
-        duration: data.duration,
-        date: data.date,
-        notes: data.notes || undefined,
-        start_time: data.start_time || undefined,
-      };
-
-      setSessions((prev) => [newSession, ...prev]);
-    } catch (error) {
-      console.error('Error adding gym session:', error);
+    if (error) {
       toast({
         title: 'Error',
         description: 'Failed to add gym session',
         variant: 'destructive',
       });
+      throw error;
     }
+
+    const newSession: GymSession = {
+      id: data.id,
+      exercise: data.exercise,
+      duration: data.duration,
+      date: data.date,
+      notes: data.notes || undefined,
+      start_time: data.start_time || undefined,
+    };
+
+    setSessions((prev) => [newSession, ...prev]);
   };
 
   const updateSession = async (id: string, updates: Partial<Omit<GymSession, 'id'>>) => {

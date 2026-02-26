@@ -74,9 +74,14 @@ const Gym = () => {
     setActiveTemplate(template);
   };
 
-  const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string; notes?: string }) => {
-    await addSession(data);
-    toast.success('Workout logged!');
+  const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string; notes?: string }): Promise<boolean> => {
+    try {
+      await addSession(data);
+      toast.success('Workout logged!');
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const handleEditTemplate = (template: WorkoutTemplate) => {
