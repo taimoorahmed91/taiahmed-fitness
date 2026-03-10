@@ -19,8 +19,8 @@ const hasActiveWorkout = (): boolean => {
 
 export const useSessionValidator = () => {
   const { logout, isLoggedIn } = useUser();
-  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const sessionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
 
   // Update last activity timestamp

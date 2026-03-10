@@ -10,7 +10,7 @@ export const useAutoRefresh = (
   options: UseAutoRefreshOptions = {}
 ) => {
   const { intervalMs = 30000, enabled = true } = options; // Default: 30 seconds
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refetchAll = useCallback(async () => {
     await Promise.all(refetchFunctions.map(fn => fn()));

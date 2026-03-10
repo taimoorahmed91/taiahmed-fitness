@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { Navigation } from '@/components/Navigation';
-import { useWhoopData, WhoopEntry } from '@/hooks/useWhoopData';
+import { useWhoopData } from '@/hooks/useWhoopData';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -16,13 +14,9 @@ const formatMilliToHours = (milli: number | null) => {
 
 const WhoopData = () => {
   const { entries, loading, fetching, fetchFromAPI, deleteEntry } = useWhoopData();
-  const [apiKey, setApiKey] = useState('');
 
   const handleFetch = () => {
-    if (!apiKey.trim()) {
-      return;
-    }
-    fetchFromAPI(apiKey.trim());
+    fetchFromAPI();
   };
 
   const latestEntry = entries[0];
@@ -36,19 +30,10 @@ const WhoopData = () => {
             <h1 className="text-3xl font-bold">WHOOP Data</h1>
             <p className="text-muted-foreground">Fetch and track your WHOOP recovery, sleep, and strain data</p>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Input
-              placeholder="Enter API key..."
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="max-w-xs"
-            />
-            <Button onClick={handleFetch} disabled={fetching || !apiKey.trim()}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? 'animate-spin' : ''}`} />
-              {fetching ? 'Fetching...' : 'Fetch'}
-            </Button>
-          </div>
+          <Button onClick={handleFetch} disabled={fetching}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? 'animate-spin' : ''}`} />
+            {fetching ? 'Fetching...' : 'Fetch Latest'}
+          </Button>
         </div>
 
         {/* Summary Cards */}
