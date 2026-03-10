@@ -22,9 +22,12 @@ import { useGymSessions } from '@/hooks/useGymSessions';
 import { useWeight } from '@/hooks/useWeight';
 import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
+import { useWhoopData } from '@/hooks/useWhoopData';
 import { exportToCSV, exportAllToCSV } from '@/lib/exportData';
 import { exportToJSON, readJSONFile, ExportedData } from '@/lib/jsonExportImport';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/contexts/UserContext';
 
 export const ImportExportButton = () => {
   const { meals, addMeal, refetch: refetchMeals } = useMeals();
@@ -32,6 +35,8 @@ export const ImportExportButton = () => {
   const { entries: weightEntries, addEntry: addWeight, refetch: refetchWeight } = useWeight();
   const { entries: waistEntries, addEntry: addWaist, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, addEntry: addSleep, refetch: refetchSleep } = useSleep();
+  const { entries: whoopEntries, refetch: refetchWhoop } = useWhoopData();
+  const { user } = useUser();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importData, setImportData] = useState<ExportedData | null>(null);
