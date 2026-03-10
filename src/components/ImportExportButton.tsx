@@ -205,6 +205,7 @@ export const ImportExportButton = () => {
                 <li>{importData.data.weight.length} weight entries</li>
                 <li>{importData.data.waist?.length || 0} waist entries</li>
                 <li>{importData.data.sleep.length} sleep entries</li>
+                <li>{importData.data.whoop?.length || 0} whoop entries</li>
               </ul>
             </div>
           )}
