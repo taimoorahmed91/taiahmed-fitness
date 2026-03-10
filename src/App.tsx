@@ -22,6 +22,7 @@ import PendingApproval from "./pages/PendingApproval";
 import AdminApproval from "./pages/AdminApproval";
 import NotFound from "./pages/NotFound";
 import Achievements from "./pages/Achievements";
+import WhoopData from "./pages/WhoopData";
 import ActivityLogs from "./pages/ActivityLogs";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
@@ -200,6 +201,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ActivityLogs />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/whoop-data"
+        element={
+          <ProtectedRoute>
+            <WhoopData />
           </ProtectedRoute>
         }
       />

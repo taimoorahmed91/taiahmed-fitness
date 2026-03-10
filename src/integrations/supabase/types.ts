@@ -790,6 +790,87 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_whoop_data: {
+        Row: {
+          average_heart_rate: number | null
+          created_at: string
+          date: string
+          disturbance_count: number | null
+          hrv_rmssd_milli: number | null
+          id: string
+          kilojoule: number | null
+          max_heart_rate: number | null
+          recovery_score: number | null
+          respiratory_rate: number | null
+          resting_heart_rate: number | null
+          skin_temp_celsius: number | null
+          sleep_cycle_count: number | null
+          sleep_efficiency_percentage: number | null
+          sleep_performance_percentage: number | null
+          spo2_percentage: number | null
+          strain: number | null
+          total_awake_time_milli: number | null
+          total_deep_sleep_milli: number | null
+          total_in_bed_hours: number | null
+          total_light_sleep_milli: number | null
+          total_rem_sleep_milli: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          average_heart_rate?: number | null
+          created_at?: string
+          date: string
+          disturbance_count?: number | null
+          hrv_rmssd_milli?: number | null
+          id?: string
+          kilojoule?: number | null
+          max_heart_rate?: number | null
+          recovery_score?: number | null
+          respiratory_rate?: number | null
+          resting_heart_rate?: number | null
+          skin_temp_celsius?: number | null
+          sleep_cycle_count?: number | null
+          sleep_efficiency_percentage?: number | null
+          sleep_performance_percentage?: number | null
+          spo2_percentage?: number | null
+          strain?: number | null
+          total_awake_time_milli?: number | null
+          total_deep_sleep_milli?: number | null
+          total_in_bed_hours?: number | null
+          total_light_sleep_milli?: number | null
+          total_rem_sleep_milli?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          average_heart_rate?: number | null
+          created_at?: string
+          date?: string
+          disturbance_count?: number | null
+          hrv_rmssd_milli?: number | null
+          id?: string
+          kilojoule?: number | null
+          max_heart_rate?: number | null
+          recovery_score?: number | null
+          respiratory_rate?: number | null
+          resting_heart_rate?: number | null
+          skin_temp_celsius?: number | null
+          sleep_cycle_count?: number | null
+          sleep_efficiency_percentage?: number | null
+          sleep_performance_percentage?: number | null
+          spo2_percentage?: number | null
+          strain?: number | null
+          total_awake_time_milli?: number | null
+          total_deep_sleep_milli?: number | null
+          total_in_bed_hours?: number | null
+          total_light_sleep_milli?: number | null
+          total_rem_sleep_milli?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fittrack_workout_templates: {
         Row: {
           created_at: string

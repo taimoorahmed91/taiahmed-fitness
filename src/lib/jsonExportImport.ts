@@ -2,6 +2,7 @@ import { Meal, GymSession } from '@/types';
 import { WeightEntry } from '@/hooks/useWeight';
 import { WaistEntry } from '@/hooks/useWaist';
 import { SleepEntry } from '@/hooks/useSleep';
+import { WhoopEntry } from '@/hooks/useWhoopData';
 
 export interface ExportedData {
   version: string;
@@ -12,6 +13,7 @@ export interface ExportedData {
     weight: Omit<WeightEntry, 'id'>[];
     waist: Omit<WaistEntry, 'id'>[];
     sleep: Omit<SleepEntry, 'id'>[];
+    whoop?: Omit<WhoopEntry, 'id'>[];
   };
 }
 
@@ -21,11 +23,12 @@ interface FullExportData {
   weight: WeightEntry[];
   waist: WaistEntry[];
   sleep: SleepEntry[];
+  whoop?: WhoopEntry[];
 }
 
 export const exportToJSON = (data: FullExportData): void => {
   const exportData: ExportedData = {
-    version: '1.1',
+    version: '1.2',
     exportDate: new Date().toISOString(),
     data: {
       meals: data.meals.map(({ id, ...rest }) => rest),
@@ -33,6 +36,7 @@ export const exportToJSON = (data: FullExportData): void => {
       weight: data.weight.map(({ id, ...rest }) => rest),
       waist: data.waist.map(({ id, ...rest }) => rest),
       sleep: data.sleep.map(({ id, ...rest }) => rest),
+      whoop: data.whoop?.map(({ id, ...rest }) => rest) || [],
     },
   };
 
