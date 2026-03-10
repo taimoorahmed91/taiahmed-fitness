@@ -87,7 +87,7 @@ export const useWhoopData = () => {
     fetchEntries();
   }, [user]);
 
-  const fetchFromAPI = async (apiKey: string) => {
+  const fetchFromAPI = async () => {
     if (!user) {
       toast.error('Please log in first');
       return;
@@ -97,8 +97,8 @@ export const useWhoopData = () => {
     try {
       const response = await fetch(WHOOP_API_URL, {
         headers: {
-          'apikey': apiKey,
-          'Authorization': `Bearer ${apiKey}`,
+          'apikey': WHOOP_API_KEY,
+          'Authorization': `Bearer ${WHOOP_API_KEY}`,
         },
       });
 
