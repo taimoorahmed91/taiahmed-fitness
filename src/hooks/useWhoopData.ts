@@ -29,6 +29,7 @@ export interface WhoopEntry {
 }
 
 const WHOOP_API_URL = 'https://apjmwqdiqskgvzkvpjpx.supabase.co/functions/v1/get-latest-collective';
+const WHOOP_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwam13cWRpcXNrZ3Z6a3ZwanB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMzk2MDcsImV4cCI6MjA4ODcxNTYwN30.Yjhgz3lhN8b77E7HWI-IZLloxtuwSZqdOsOcAV-4II4';
 
 export const useWhoopData = () => {
   const [entries, setEntries] = useState<WhoopEntry[]>([]);
