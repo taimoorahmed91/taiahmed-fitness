@@ -49,6 +49,7 @@ export const ImportExportButton = () => {
     weight: weightEntries,
     waist: waistEntries,
     sleep: sleepEntries,
+    whoop: whoopEntries,
   };
 
   const handleExportCSV = (type: 'meals' | 'workouts' | 'weight' | 'sleep' | 'all') => {
