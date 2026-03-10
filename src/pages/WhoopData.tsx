@@ -32,7 +32,7 @@ const WhoopData = () => {
           </div>
           <Button onClick={handleFetch} disabled={fetching}>
             <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? 'animate-spin' : ''}`} />
-            {fetching ? 'Fetching...' : 'Fetch Latest'}
+            {fetching ? 'Syncing...' : 'Sync Now'}
           </Button>
         </div>
 
