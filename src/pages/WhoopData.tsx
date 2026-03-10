@@ -30,10 +30,13 @@ const WhoopData = () => {
             <h1 className="text-3xl font-bold">WHOOP Data</h1>
             <p className="text-muted-foreground">Fetch and track your WHOOP recovery, sleep, and strain data</p>
           </div>
-          <Button onClick={handleFetch} disabled={fetching}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? 'animate-spin' : ''}`} />
-            {fetching ? 'Syncing...' : 'Sync Now'}
-          </Button>
+          <div className="flex flex-col items-end gap-2">
+            <Button onClick={handleFetch} disabled={fetching}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${fetching ? 'animate-spin' : ''}`} />
+              {fetching ? 'Syncing...' : 'Sync Now'}
+            </Button>
+            <p className="text-xs text-muted-foreground">Auto-syncs daily at 14:00 CET</p>
+          </div>
         </div>
 
         {/* Summary Cards */}

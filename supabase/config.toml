@@ -2,3 +2,6 @@ project_id = "nywsjgxlnilmcztnvidc"
 
 [functions.chat-webhook]
 verify_jwt = false
+
+[functions.sync-whoop-data]
+verify_jwt = false
