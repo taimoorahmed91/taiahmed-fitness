@@ -2,6 +2,7 @@ import { Meal, GymSession } from '@/types';
 import { WeightEntry } from '@/hooks/useWeight';
 import { WaistEntry } from '@/hooks/useWaist';
 import { SleepEntry } from '@/hooks/useSleep';
+import { WhoopEntry } from '@/hooks/useWhoopData';
 
 export interface ExportedData {
   version: string;
@@ -12,6 +13,7 @@ export interface ExportedData {
     weight: Omit<WeightEntry, 'id'>[];
     waist: Omit<WaistEntry, 'id'>[];
     sleep: Omit<SleepEntry, 'id'>[];
+    whoop?: Omit<WhoopEntry, 'id'>[];
   };
 }
 
@@ -21,6 +23,7 @@ interface FullExportData {
   weight: WeightEntry[];
   waist: WaistEntry[];
   sleep: SleepEntry[];
+  whoop?: WhoopEntry[];
 }
 
 export const exportToJSON = (data: FullExportData): void => {
