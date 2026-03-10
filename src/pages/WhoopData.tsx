@@ -16,13 +16,9 @@ const formatMilliToHours = (milli: number | null) => {
 
 const WhoopData = () => {
   const { entries, loading, fetching, fetchFromAPI, deleteEntry } = useWhoopData();
-  const [apiKey, setApiKey] = useState('');
 
   const handleFetch = () => {
-    if (!apiKey.trim()) {
-      return;
-    }
-    fetchFromAPI(apiKey.trim());
+    fetchFromAPI();
   };
 
   const latestEntry = entries[0];
