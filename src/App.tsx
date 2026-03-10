@@ -204,6 +204,14 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/whoop-data"
+        element={
+          <ProtectedRoute>
+            <WhoopData />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -37,6 +37,7 @@ export const Navigation = () => {
     { to: '/compare', label: 'Compare', icon: ArrowLeftRight },
     { to: '/reports', label: 'Reports', icon: BarChart3 },
     { to: '/achievements', label: 'Achievements', icon: Trophy },
+    { to: '/whoop-data', label: 'WHOOP Data', icon: Activity },
     { to: '/logs', label: 'Activity Logs', icon: FileText },
     { to: '/messaging', label: 'Messaging', icon: MessageCircle },
     ...(isOwner ? [{ to: '/admin/approval', label: 'User Approval', icon: UserCheck }] : []),
