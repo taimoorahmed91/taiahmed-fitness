@@ -117,11 +117,19 @@ export const ImportExportButton = () => {
         await addWaist(waist);
       }
       
+      // Import whoop entries
+      for (const whoop of importData.data.whoop || []) {
+        if (user) {
+          await supabase.from('fittrack_whoop_data').insert({ ...whoop, user_id: user.id });
+        }
+      }
+      
       // Refresh all data
-      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep()]);
+      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop()]);
       
       const waistCount = importData.data.waist?.length || 0;
-      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep entries`);
+      const whoopCount = importData.data.whoop?.length || 0;
+      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries`);
       setImportDialogOpen(false);
       setImportData(null);
     } catch (error) {
