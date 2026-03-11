@@ -134,7 +134,14 @@ const WhoopData = () => {
                     <TableBody>
                       {entries.map((entry) => (
                         <TableRow key={entry.id}>
-                          <TableCell className="font-medium whitespace-nowrap">{entry.date}</TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => deleteEntry(entry.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                              {entry.date}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <Badge variant={
                               (entry.recovery_score ?? 0) >= 67 ? 'default' :
@@ -161,11 +168,6 @@ const WhoopData = () => {
                           <TableCell>{entry.kilojoule != null ? Number(entry.kilojoule).toFixed(0) : '-'}</TableCell>
                           <TableCell>{entry.average_heart_rate ?? '-'}</TableCell>
                           <TableCell>{entry.max_heart_rate ?? '-'}</TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => deleteEntry(entry.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
