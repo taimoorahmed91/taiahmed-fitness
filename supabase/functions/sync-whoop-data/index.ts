@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       message: `Synced WHOOP data for ${savedCount} user(s)`,
-      date: cycleStart,
+      date: cycleDate,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

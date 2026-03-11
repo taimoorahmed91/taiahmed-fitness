@@ -177,7 +177,7 @@ export const useWhoopData = () => {
       if (error) throw error;
 
       toast.success('WHOOP data fetched and saved!');
-      logActivity({ action: 'create', category: 'whoop', details: { date: cycleStart, recovery_score: entry.recovery_score, strain: entry.strain } });
+      logActivity({ action: 'create', category: 'whoop', details: { date: cycleDate, recovery_score: entry.recovery_score, strain: entry.strain } });
       fetchEntries();
     } catch (error: any) {
       console.error('Error fetching WHOOP data:', error);
