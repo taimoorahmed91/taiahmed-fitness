@@ -83,7 +83,7 @@ const WhoopData = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{latestEntry.strain != null ? Number(latestEntry.strain).toFixed(1) : '-'}</div>
-                <p className="text-xs text-muted-foreground">{latestEntry.kilojoule != null ? Number(latestEntry.kilojoule).toFixed(0) : '-'} kJ</p>
+                <p className="text-xs text-muted-foreground">{latestEntry.kilojoule != null ? Math.round(Number(latestEntry.kilojoule) / 4.184) : '-'} cal</p>
               </CardContent>
             </Card>
           </div>
@@ -125,7 +125,7 @@ const WhoopData = () => {
                         <TableHead>Disturbances</TableHead>
                         <TableHead>Cycles</TableHead>
                         <TableHead>Strain</TableHead>
-                        <TableHead>kJ</TableHead>
+                        <TableHead>Calories</TableHead>
                         <TableHead>Avg HR</TableHead>
                         <TableHead>Max HR</TableHead>
                         
@@ -165,7 +165,7 @@ const WhoopData = () => {
                           <TableCell>{entry.disturbance_count ?? '-'}</TableCell>
                           <TableCell>{entry.sleep_cycle_count ?? '-'}</TableCell>
                           <TableCell>{entry.strain != null ? Number(entry.strain).toFixed(1) : '-'}</TableCell>
-                          <TableCell>{entry.kilojoule != null ? Number(entry.kilojoule).toFixed(0) : '-'}</TableCell>
+                          <TableCell>{entry.kilojoule != null ? Math.round(Number(entry.kilojoule) / 4.184) : '-'}</TableCell>
                           <TableCell>{entry.average_heart_rate ?? '-'}</TableCell>
                           <TableCell>{entry.max_heart_rate ?? '-'}</TableCell>
                         </TableRow>
