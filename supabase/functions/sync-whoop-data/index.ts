@@ -57,9 +57,21 @@ Deno.serve(async (req) => {
       sleep = rawSleep.nap === false ? rawSleep : {};
     }
 
-    const cycleStart = cycle.start
-      ? new Date(cycle.start).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
+    // Use cycle.end for the date (represents the day the cycle covers)
+    let cycleDate: string;
+    if (cycle.end) {
+      const d = new Date(cycle.end);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      cycleDate = `${year}-${month}-${day}`;
+    } else {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      cycleDate = `${year}-${month}-${day}`;
+    }
 
     const totalInBedHours = sleep.total_in_bed_time_milli
       ? Number((sleep.total_in_bed_time_milli / 3600000).toFixed(2))
@@ -73,14 +85,14 @@ Deno.serve(async (req) => {
         .from('fittrack_whoop_data')
         .select('id')
         .eq('user_id', userId)
-        .eq('date', cycleStart)
+        .eq('date', cycleDate)
         .maybeSingle();
 
       if (existing) continue; // Skip if already exists
 
       const { error } = await supabase.from('fittrack_whoop_data').insert({
         user_id: userId,
-        date: cycleStart,
+        date: cycleDate,
         recovery_score: recovery.recovery_score ?? null,
         hrv_rmssd_milli: recovery.hrv_rmssd_milli ?? null,
         resting_heart_rate: recovery.resting_heart_rate ?? null,
@@ -107,7 +119,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       message: `Synced WHOOP data for ${savedCount} user(s)`,
-      date: cycleStart,
+      date: cycleDate,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

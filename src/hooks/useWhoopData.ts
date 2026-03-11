@@ -119,18 +119,26 @@ export const useWhoopData = () => {
         sleep = rawSleep.nap === false ? rawSleep : {};
       }
 
-      const cycleStart = cycle.start ? new Date(cycle.start).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      // Use cycle.end for the date (represents the day the cycle covers)
+      let cycleDate: string;
+      if (cycle.end) {
+        const d = new Date(cycle.end);
+        cycleDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      } else {
+        const d = new Date();
+        cycleDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
 
       // Check for duplicate entry
       const { data: existing } = await supabase
         .from('fittrack_whoop_data')
         .select('id')
         .eq('user_id', user.id)
-        .eq('date', cycleStart)
+        .eq('date', cycleDate)
         .maybeSingle();
 
       if (existing) {
-        toast.info(`Data for ${cycleStart} already exists. No duplicate added.`);
+        toast.info(`Data for ${cycleDate} already exists. No duplicate added.`);
         setFetching(false);
         return;
       }
@@ -142,7 +150,7 @@ export const useWhoopData = () => {
 
       const entry = {
         user_id: user.id,
-        date: cycleStart,
+        date: cycleDate,
         recovery_score: recovery.recovery_score ?? null,
         hrv_rmssd_milli: recovery.hrv_rmssd_milli ?? null,
         resting_heart_rate: recovery.resting_heart_rate ?? null,
@@ -169,7 +177,7 @@ export const useWhoopData = () => {
       if (error) throw error;
 
       toast.success('WHOOP data fetched and saved!');
-      logActivity({ action: 'create', category: 'whoop', details: { date: cycleStart, recovery_score: entry.recovery_score, strain: entry.strain } });
+      logActivity({ action: 'create', category: 'whoop', details: { date: cycleDate, recovery_score: entry.recovery_score, strain: entry.strain } });
       fetchEntries();
     } catch (error: any) {
       console.error('Error fetching WHOOP data:', error);
