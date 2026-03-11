@@ -121,6 +121,20 @@ export const useWhoopData = () => {
 
       const cycleStart = cycle.start ? new Date(cycle.start).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
 
+      // Check for duplicate entry
+      const { data: existing } = await supabase
+        .from('fittrack_whoop_data')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('date', cycleStart)
+        .maybeSingle();
+
+      if (existing) {
+        toast.info(`Data for ${cycleStart} already exists. No duplicate added.`);
+        setFetching(false);
+        return;
+      }
+
       // Convert total_in_bed_time_milli to hours
       const totalInBedHours = sleep.total_in_bed_time_milli 
         ? Number((sleep.total_in_bed_time_milli / 3600000).toFixed(2))
