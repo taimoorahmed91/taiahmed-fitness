@@ -173,7 +173,7 @@ const WhoopData = () => {
                     </TableBody>
                   </Table>
                 </div>
-              </ScrollArea>
+              </div>
             )}
           </CardContent>
         </Card>
