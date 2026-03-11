@@ -57,9 +57,21 @@ Deno.serve(async (req) => {
       sleep = rawSleep.nap === false ? rawSleep : {};
     }
 
-    const cycleStart = cycle.start
-      ? new Date(cycle.start).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
+    // Use cycle.end for the date (represents the day the cycle covers)
+    let cycleDate: string;
+    if (cycle.end) {
+      const d = new Date(cycle.end);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      cycleDate = `${year}-${month}-${day}`;
+    } else {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      cycleDate = `${year}-${month}-${day}`;
+    }
 
     const totalInBedHours = sleep.total_in_bed_time_milli
       ? Number((sleep.total_in_bed_time_milli / 3600000).toFixed(2))

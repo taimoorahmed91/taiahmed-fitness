@@ -119,7 +119,15 @@ export const useWhoopData = () => {
         sleep = rawSleep.nap === false ? rawSleep : {};
       }
 
-      const cycleStart = cycle.start ? new Date(cycle.start).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      // Use cycle.end for the date (represents the day the cycle covers)
+      let cycleDate: string;
+      if (cycle.end) {
+        const d = new Date(cycle.end);
+        cycleDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      } else {
+        const d = new Date();
+        cycleDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
 
       // Check for duplicate entry
       const { data: existing } = await supabase
