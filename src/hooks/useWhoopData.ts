@@ -108,8 +108,16 @@ export const useWhoopData = () => {
       
       // Extract fields from the API response
       const recovery = result.recovery || {};
-      const sleep = result.sleep || {};
       const cycle = result.cycle || {};
+
+      // Handle sleep: can be array or single object. Only use nap: false record.
+      let sleep: Record<string, any> = {};
+      const rawSleep = result.sleep;
+      if (Array.isArray(rawSleep)) {
+        sleep = rawSleep.find((s: any) => s.nap === false) || {};
+      } else if (rawSleep && typeof rawSleep === 'object') {
+        sleep = rawSleep.nap === false ? rawSleep : {};
+      }
 
       const cycleStart = cycle.start ? new Date(cycle.start).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
 
