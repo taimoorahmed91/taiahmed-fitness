@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
       const { error } = await supabase.from('fittrack_whoop_data').insert({
         user_id: userId,
-        date: cycleStart,
+        date: cycleDate,
         recovery_score: recovery.recovery_score ?? null,
         hrv_rmssd_milli: recovery.hrv_rmssd_milli ?? null,
         resting_heart_rate: recovery.resting_heart_rate ?? null,
