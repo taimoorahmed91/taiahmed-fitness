@@ -134,7 +134,7 @@ export const useWhoopData = () => {
         .from('fittrack_whoop_data')
         .select('id')
         .eq('user_id', user.id)
-        .eq('date', cycleStart)
+        .eq('date', cycleDate)
         .maybeSingle();
 
       if (existing) {
