@@ -125,7 +125,7 @@ const WhoopData = () => {
                         <TableHead>Disturbances</TableHead>
                         <TableHead>Cycles</TableHead>
                         <TableHead>Strain</TableHead>
-                        <TableHead>kJ</TableHead>
+                        <TableHead>Calories</TableHead>
                         <TableHead>Avg HR</TableHead>
                         <TableHead>Max HR</TableHead>
                         
