@@ -165,7 +165,7 @@ const WhoopData = () => {
                           <TableCell>{entry.disturbance_count ?? '-'}</TableCell>
                           <TableCell>{entry.sleep_cycle_count ?? '-'}</TableCell>
                           <TableCell>{entry.strain != null ? Number(entry.strain).toFixed(1) : '-'}</TableCell>
-                          <TableCell>{entry.kilojoule != null ? Number(entry.kilojoule).toFixed(0) : '-'}</TableCell>
+                          <TableCell>{entry.kilojoule != null ? Math.round(Number(entry.kilojoule) / 4.184) : '-'}</TableCell>
                           <TableCell>{entry.average_heart_rate ?? '-'}</TableCell>
                           <TableCell>{entry.max_heart_rate ?? '-'}</TableCell>
                         </TableRow>
