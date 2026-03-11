@@ -103,8 +103,8 @@ const WhoopData = () => {
             ) : entries.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No WHOOP data yet. Enter your API key and click Fetch.</p>
             ) : (
-              <ScrollArea className="w-full">
-                <div className="min-w-[1200px]">
+              <div className="overflow-x-auto border rounded-md">
+                <div className="min-w-[1400px]">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -173,7 +173,7 @@ const WhoopData = () => {
                     </TableBody>
                   </Table>
                 </div>
-              </ScrollArea>
+              </div>
             )}
           </CardContent>
         </Card>
