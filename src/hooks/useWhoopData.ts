@@ -110,13 +110,22 @@ export const useWhoopData = () => {
       const recovery = result.recovery || {};
       const cycle = result.cycle || {};
 
-      // Handle sleep: can be array or single object. Only use nap: false record.
+      // Handle sleep: combine all sleep records for summed fields, use nap:false for percentage fields
       let sleep: Record<string, any> = {};
       const rawSleep = result.sleep;
-      if (Array.isArray(rawSleep)) {
-        sleep = rawSleep.find((s: any) => s.nap === false) || {};
+      if (Array.isArray(rawSleep) && rawSleep.length > 0) {
+        if (rawSleep.length === 1) {
+          sleep = rawSleep[0];
+        } else {
+          const mainSleep = rawSleep.find((s: any) => s.nap === false) || rawSleep[0];
+          const sumFields = ['total_in_bed_time_milli', 'total_awake_time_milli', 'total_light_sleep_time_milli', 'total_slow_wave_sleep_time_milli', 'total_rem_sleep_time_milli', 'disturbance_count', 'sleep_cycle_count'];
+          sleep = { ...mainSleep };
+          for (const field of sumFields) {
+            sleep[field] = rawSleep.reduce((sum: number, s: any) => sum + (Number(s[field]) || 0), 0);
+          }
+        }
       } else if (rawSleep && typeof rawSleep === 'object') {
-        sleep = rawSleep.nap === false ? rawSleep : {};
+        sleep = rawSleep;
       }
 
       // Use cycle.end for the date (represents the day the cycle covers)
