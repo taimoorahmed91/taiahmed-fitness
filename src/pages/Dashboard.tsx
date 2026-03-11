@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { StatsCards } from '@/components/StatsCards';
 import { CalorieChart } from '@/components/CalorieChart';
+import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
@@ -20,6 +21,7 @@ import { useSleep } from '@/hooks/useSleep';
 import { useDailySummary } from '@/hooks/useDailySummary';
 import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useWhoopData } from '@/hooks/useWhoopData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
