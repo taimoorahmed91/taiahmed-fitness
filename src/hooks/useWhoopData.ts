@@ -138,7 +138,7 @@ export const useWhoopData = () => {
         .maybeSingle();
 
       if (existing) {
-        toast.info(`Data for ${cycleStart} already exists. No duplicate added.`);
+        toast.info(`Data for ${cycleDate} already exists. No duplicate added.`);
         setFetching(false);
         return;
       }
