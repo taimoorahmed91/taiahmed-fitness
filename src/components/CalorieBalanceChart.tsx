@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Cell } from 'recharts';
+import { ComposedChart, Line, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Cell, Legend } from 'recharts';
 import { Scale } from 'lucide-react';
 
 interface CalorieBalanceChartProps {
@@ -14,14 +14,15 @@ const CustomTooltip = ({ active, payload }: any) => {
   return (
     <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
       <p className="font-medium text-foreground mb-1">{entry.date}</p>
-      <p className="text-sm text-muted-foreground">
-        WHOOP Burned: <span className="font-semibold text-foreground">{entry.burned} cal</span>
+      <p className="text-sm" style={{ color: 'hsl(25, 95%, 53%)' }}>
+        WHOOP Burned: <span className="font-semibold">{entry.burned} cal</span>
       </p>
-      <p className="text-sm text-muted-foreground">
-        Meals Consumed: <span className="font-semibold text-foreground">{entry.consumed} cal</span>
+      <p className="text-sm" style={{ color: 'hsl(221, 83%, 53%)' }}>
+        Meals Consumed: <span className="font-semibold">{entry.consumed} cal</span>
       </p>
       <p className={`text-sm font-semibold ${entry.balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
         Balance: {entry.balance >= 0 ? '+' : ''}{entry.balance} cal
+        {entry.balance >= 0 ? ' (deficit)' : ' (surplus)'}
       </p>
     </div>
   );
@@ -50,17 +51,17 @@ export const CalorieBalanceChart = ({ data }: CalorieBalanceChartProps) => {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Scale className="h-5 w-5 text-primary" />
-            Calorie Balance (WHOOP vs Meals)
+            Calorie Balance
           </CardTitle>
           <span className="text-xs text-muted-foreground">
-            Green = deficit · Red = surplus
+            Bar: deficit (green) / surplus (red)
           </span>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[250px] w-full">
+        <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+            <ComposedChart data={data} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis
                 dataKey="date"
@@ -74,7 +75,18 @@ export const CalorieBalanceChart = ({ data }: CalorieBalanceChartProps) => {
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="balance" radius={[4, 4, 0, 0]} maxBarSize={50}>
+              <Legend
+                wrapperStyle={{ fontSize: 12 }}
+                formatter={(value: string) => {
+                  const labels: Record<string, string> = {
+                    burned: 'WHOOP Burned',
+                    consumed: 'Meals Consumed',
+                    balance: 'Balance',
+                  };
+                  return labels[value] || value;
+                }}
+              />
+              <Bar dataKey="balance" maxBarSize={40} radius={[4, 4, 0, 0]} opacity={0.6}>
                 {data.map((entry, index) => (
                   <Cell
                     key={index}
@@ -82,7 +94,23 @@ export const CalorieBalanceChart = ({ data }: CalorieBalanceChartProps) => {
                   />
                 ))}
               </Bar>
-            </BarChart>
+              <Line
+                type="monotone"
+                dataKey="burned"
+                stroke="hsl(25, 95%, 53%)"
+                strokeWidth={2}
+                dot={{ r: 4, fill: 'hsl(25, 95%, 53%)' }}
+                activeDot={{ r: 6 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="consumed"
+                stroke="hsl(221, 83%, 53%)"
+                strokeWidth={2}
+                dot={{ r: 4, fill: 'hsl(221, 83%, 53%)' }}
+                activeDot={{ r: 6 }}
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
