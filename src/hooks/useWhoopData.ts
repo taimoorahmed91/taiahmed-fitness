@@ -150,7 +150,7 @@ export const useWhoopData = () => {
 
       const entry = {
         user_id: user.id,
-        date: cycleStart,
+        date: cycleDate,
         recovery_score: recovery.recovery_score ?? null,
         hrv_rmssd_milli: recovery.hrv_rmssd_milli ?? null,
         resting_heart_rate: recovery.resting_heart_rate ?? null,
