@@ -83,7 +83,7 @@ const WhoopData = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{latestEntry.strain != null ? Number(latestEntry.strain).toFixed(1) : '-'}</div>
-                <p className="text-xs text-muted-foreground">{latestEntry.kilojoule != null ? Number(latestEntry.kilojoule).toFixed(0) : '-'} kJ</p>
+                <p className="text-xs text-muted-foreground">{latestEntry.kilojoule != null ? Math.round(Number(latestEntry.kilojoule) / 4.184) : '-'} cal</p>
               </CardContent>
             </Card>
           </div>
