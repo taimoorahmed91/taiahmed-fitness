@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
         .from('fittrack_whoop_data')
         .select('id')
         .eq('user_id', userId)
-        .eq('date', cycleStart)
+        .eq('date', cycleDate)
         .maybeSingle();
 
       if (existing) continue; // Skip if already exists
