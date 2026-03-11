@@ -202,6 +202,10 @@ const Dashboard = () => {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <SleepChart data={sleepChartData} notesMap={notesMap} />
+        <CalorieBalanceChart data={calorieBalanceData} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
         <GoalsCard />
       </div>
     </div>
