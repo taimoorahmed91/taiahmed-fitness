@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { StatsCards } from '@/components/StatsCards';
 import { CalorieChart } from '@/components/CalorieChart';
+import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
@@ -20,6 +21,7 @@ import { useSleep } from '@/hooks/useSleep';
 import { useDailySummary } from '@/hooks/useDailySummary';
 import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useWhoopData } from '@/hooks/useWhoopData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
@@ -33,7 +35,7 @@ const Dashboard = () => {
   const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
   const { summary, refetch: refetchSummary } = useDailySummary();
   const { getNotesMap, refetch: refetchNotes } = useDailyNotes();
-
+  const { entries: whoopEntries } = useWhoopData();
   // Auto-refresh every 30 seconds (only on Dashboard) - includes daily summary to keep it updated
   useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes]);
 
@@ -60,6 +62,31 @@ const Dashboard = () => {
     return data;
   }, [getWeeklyData]);
   
+  const calorieBalanceData = useMemo(() => {
+    // Build a map of date -> total consumed calories from meals
+    const mealsByDate = new Map<string, number>();
+    meals.forEach(meal => {
+      mealsByDate.set(meal.date, (mealsByDate.get(meal.date) || 0) + meal.calories);
+    });
+
+    // Match with WHOOP data (burned = kilojoule / 4.184)
+    return whoopEntries
+      .filter(entry => entry.kilojoule != null && mealsByDate.has(entry.date))
+      .map(entry => {
+        const burned = Math.round(Number(entry.kilojoule) / 4.184);
+        const consumed = mealsByDate.get(entry.date) || 0;
+        const balance = burned - consumed; // positive = deficit (green), negative = surplus (red)
+        const d = entry.date.split('-');
+        return {
+          date: `${d[1]}/${d[2]}`,
+          consumed,
+          burned,
+          balance,
+        };
+      })
+      .reverse(); // oldest first
+  }, [meals, whoopEntries]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('today');
 
@@ -175,6 +202,10 @@ const Dashboard = () => {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <SleepChart data={sleepChartData} notesMap={notesMap} />
+        <CalorieBalanceChart data={calorieBalanceData} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
         <GoalsCard />
       </div>
     </div>
