@@ -45,6 +45,8 @@ const Weight = () => {
     });
   }, [filteredEntries, sortOrder]);
 
+  const pagination = usePagination(sortedEntries, { pageSize: 20 });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!weight || !date) return;
