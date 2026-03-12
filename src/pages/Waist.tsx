@@ -12,6 +12,8 @@ import { SortControl, SortOrder } from '@/components/SortControl';
 import { Ruler, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useWaist, WaistEntry } from '@/hooks/useWaist';
 import { useDataFilter } from '@/hooks/useDataFilter';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 const Waist = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useWaist();
@@ -42,6 +44,8 @@ const Waist = () => {
       return sortOrder === 'asc' ? a.waist - b.waist : b.waist - a.waist;
     });
   }, [filteredEntries, sortOrder]);
+
+  const pagination = usePagination(sortedEntries, { pageSize: 20 });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,32 +290,42 @@ const Waist = () => {
                 {entries.length === 0 ? 'No waist entries yet' : 'No entries match your filters'}
               </p>
             ) : (
-              <div className="space-y-3">
-                {sortedEntries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card"
-                  >
-                    <div className="flex-1">
-                      <p className="font-semibold">{entry.waist} cm</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(entry.date), 'PPP')}
-                      </p>
-                      {entry.notes && (
-                        <p className="text-sm text-muted-foreground mt-1 break-words">{entry.notes}</p>
-                      )}
+              <>
+                <div className="space-y-3">
+                  {pagination.paginatedItems.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                    >
+                      <div className="flex-1">
+                        <p className="font-semibold">{entry.waist} cm</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(entry.date), 'PPP')}
+                        </p>
+                        {entry.notes && (
+                          <p className="text-sm text-muted-foreground mt-1 break-words">{entry.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => deleteEntry(entry.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteEntry(entry.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <PaginationControls
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalItems}
+                  onPageChange={pagination.goToPage}
+                  hasNextPage={pagination.hasNextPage}
+                  hasPrevPage={pagination.hasPrevPage}
+                />
+              </>
             )}
           </CardContent>
         </Card>

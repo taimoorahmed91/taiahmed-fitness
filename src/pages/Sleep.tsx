@@ -12,6 +12,8 @@ import { SortControl, SortOrder } from '@/components/SortControl';
 import { Moon, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useSleep, SleepEntry } from '@/hooks/useSleep';
 import { useDataFilter } from '@/hooks/useDataFilter';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 const Sleep = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useSleep();
@@ -42,6 +44,8 @@ const Sleep = () => {
       return sortOrder === 'asc' ? a.hours - b.hours : b.hours - a.hours;
     });
   }, [filteredEntries, sortOrder]);
+
+  const pagination = usePagination(sortedEntries, { pageSize: 20 });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,40 +232,50 @@ const Sleep = () => {
                 {entries.length === 0 ? 'No sleep entries yet' : 'No entries match your filters'}
               </p>
             ) : (
-              <div className="space-y-3">
-                {sortedEntries.map((entry) => {
-                  const quality = getSleepQuality(entry.hours);
-                  return (
-                    <div
-                      key={entry.id}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-card"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold">{entry.hours} hours</p>
-                          <span className={`text-xs px-2 py-0.5 rounded-full bg-muted ${quality.color}`}>
-                            {quality.label}
-                          </span>
+              <>
+                <div className="space-y-3">
+                  {pagination.paginatedItems.map((entry) => {
+                    const quality = getSleepQuality(entry.hours);
+                    return (
+                      <div
+                        key={entry.id}
+                        className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold">{entry.hours} hours</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full bg-muted ${quality.color}`}>
+                              {quality.label}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(entry.date), 'PPP')}
+                          </p>
+                          {entry.notes && (
+                            <p className="text-sm text-muted-foreground mt-1 break-words">{entry.notes}</p>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(entry.date), 'PPP')}
-                        </p>
-                        {entry.notes && (
-                          <p className="text-sm text-muted-foreground mt-1 break-words">{entry.notes}</p>
-                        )}
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteEntry(entry.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteEntry(entry.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+                <PaginationControls
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalItems}
+                  onPageChange={pagination.goToPage}
+                  hasNextPage={pagination.hasNextPage}
+                  hasPrevPage={pagination.hasPrevPage}
+                />
+              </>
             )}
           </CardContent>
         </Card>

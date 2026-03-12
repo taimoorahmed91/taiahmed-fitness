@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Trash2, Activity, Heart, Moon, Flame } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 const formatMilliToHours = (milli: number | null) => {
   if (milli === null || milli === undefined) return '-';
@@ -14,6 +15,7 @@ const formatMilliToHours = (milli: number | null) => {
 
 const WhoopData = () => {
   const { entries, loading, fetching, fetchFromAPI, deleteEntry } = useWhoopData();
+  const pagination = usePagination(entries, { pageSize: 20 });
 
   const handleFetch = () => {
     fetchFromAPI();
@@ -103,77 +105,86 @@ const WhoopData = () => {
             ) : entries.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No WHOOP data yet. Enter your API key and click Fetch.</p>
             ) : (
-              <div className="overflow-x-auto border rounded-md">
-                <div className="min-w-[1400px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Recovery</TableHead>
-                        <TableHead>HRV</TableHead>
-                        <TableHead>RHR</TableHead>
-                        <TableHead>SpO2</TableHead>
-                        <TableHead>Skin Temp</TableHead>
-                        <TableHead>Sleep Perf</TableHead>
-                        <TableHead>Sleep Eff</TableHead>
-                        <TableHead>In Bed</TableHead>
-                        <TableHead>REM</TableHead>
-                        <TableHead>Deep</TableHead>
-                        <TableHead>Light</TableHead>
-                        <TableHead>Awake</TableHead>
-                        <TableHead>Resp Rate</TableHead>
-                        <TableHead>Disturbances</TableHead>
-                        <TableHead>Cycles</TableHead>
-                        <TableHead>Strain</TableHead>
-                        <TableHead>Calories</TableHead>
-                        <TableHead>Avg HR</TableHead>
-                        <TableHead>Max HR</TableHead>
-                        
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {entries.map((entry) => (
-                        <TableRow key={entry.id}>
-                          <TableCell className="font-medium whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => deleteEntry(entry.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                              {entry.date}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              (entry.recovery_score ?? 0) >= 67 ? 'default' :
-                              (entry.recovery_score ?? 0) >= 34 ? 'secondary' : 'destructive'
-                            }>
-                              {entry.recovery_score ?? '-'}%
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{entry.hrv_rmssd_milli ?? '-'}</TableCell>
-                          <TableCell>{entry.resting_heart_rate ?? '-'}</TableCell>
-                          <TableCell>{entry.spo2_percentage ?? '-'}%</TableCell>
-                          <TableCell>{entry.skin_temp_celsius != null ? `${Number(entry.skin_temp_celsius).toFixed(1)}°C` : '-'}</TableCell>
-                          <TableCell>{entry.sleep_performance_percentage ?? '-'}%</TableCell>
-                          <TableCell>{entry.sleep_efficiency_percentage ?? '-'}%</TableCell>
-                          <TableCell>{entry.total_in_bed_hours ?? '-'}h</TableCell>
-                          <TableCell>{formatMilliToHours(entry.total_rem_sleep_milli)}</TableCell>
-                          <TableCell>{formatMilliToHours(entry.total_deep_sleep_milli)}</TableCell>
-                          <TableCell>{formatMilliToHours(entry.total_light_sleep_milli)}</TableCell>
-                          <TableCell>{formatMilliToHours(entry.total_awake_time_milli)}</TableCell>
-                          <TableCell>{entry.respiratory_rate != null ? Number(entry.respiratory_rate).toFixed(1) : '-'}</TableCell>
-                          <TableCell>{entry.disturbance_count ?? '-'}</TableCell>
-                          <TableCell>{entry.sleep_cycle_count ?? '-'}</TableCell>
-                          <TableCell>{entry.strain != null ? Number(entry.strain).toFixed(1) : '-'}</TableCell>
-                          <TableCell>{entry.kilojoule != null ? Math.round(Number(entry.kilojoule) / 4.184) : '-'}</TableCell>
-                          <TableCell>{entry.average_heart_rate ?? '-'}</TableCell>
-                          <TableCell>{entry.max_heart_rate ?? '-'}</TableCell>
+              <>
+                <div className="overflow-x-auto border rounded-md">
+                  <div className="min-w-[1400px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Recovery</TableHead>
+                          <TableHead>HRV</TableHead>
+                          <TableHead>RHR</TableHead>
+                          <TableHead>SpO2</TableHead>
+                          <TableHead>Skin Temp</TableHead>
+                          <TableHead>Sleep Perf</TableHead>
+                          <TableHead>Sleep Eff</TableHead>
+                          <TableHead>In Bed</TableHead>
+                          <TableHead>REM</TableHead>
+                          <TableHead>Deep</TableHead>
+                          <TableHead>Light</TableHead>
+                          <TableHead>Awake</TableHead>
+                          <TableHead>Resp Rate</TableHead>
+                          <TableHead>Disturbances</TableHead>
+                          <TableHead>Cycles</TableHead>
+                          <TableHead>Strain</TableHead>
+                          <TableHead>Calories</TableHead>
+                          <TableHead>Avg HR</TableHead>
+                          <TableHead>Max HR</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {pagination.paginatedItems.map((entry) => (
+                          <TableRow key={entry.id}>
+                            <TableCell className="font-medium whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => deleteEntry(entry.id)}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                                {entry.date}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                (entry.recovery_score ?? 0) >= 67 ? 'default' :
+                                (entry.recovery_score ?? 0) >= 34 ? 'secondary' : 'destructive'
+                              }>
+                                {entry.recovery_score ?? '-'}%
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{entry.hrv_rmssd_milli ?? '-'}</TableCell>
+                            <TableCell>{entry.resting_heart_rate ?? '-'}</TableCell>
+                            <TableCell>{entry.spo2_percentage ?? '-'}%</TableCell>
+                            <TableCell>{entry.skin_temp_celsius != null ? `${Number(entry.skin_temp_celsius).toFixed(1)}°C` : '-'}</TableCell>
+                            <TableCell>{entry.sleep_performance_percentage ?? '-'}%</TableCell>
+                            <TableCell>{entry.sleep_efficiency_percentage ?? '-'}%</TableCell>
+                            <TableCell>{entry.total_in_bed_hours ?? '-'}h</TableCell>
+                            <TableCell>{formatMilliToHours(entry.total_rem_sleep_milli)}</TableCell>
+                            <TableCell>{formatMilliToHours(entry.total_deep_sleep_milli)}</TableCell>
+                            <TableCell>{formatMilliToHours(entry.total_light_sleep_milli)}</TableCell>
+                            <TableCell>{formatMilliToHours(entry.total_awake_time_milli)}</TableCell>
+                            <TableCell>{entry.respiratory_rate != null ? Number(entry.respiratory_rate).toFixed(1) : '-'}</TableCell>
+                            <TableCell>{entry.disturbance_count ?? '-'}</TableCell>
+                            <TableCell>{entry.sleep_cycle_count ?? '-'}</TableCell>
+                            <TableCell>{entry.strain != null ? Number(entry.strain).toFixed(1) : '-'}</TableCell>
+                            <TableCell>{entry.kilojoule != null ? Math.round(Number(entry.kilojoule) / 4.184) : '-'}</TableCell>
+                            <TableCell>{entry.average_heart_rate ?? '-'}</TableCell>
+                            <TableCell>{entry.max_heart_rate ?? '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
-              </div>
+                <PaginationControls
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalItems}
+                  onPageChange={pagination.goToPage}
+                  hasNextPage={pagination.hasNextPage}
+                  hasPrevPage={pagination.hasPrevPage}
+                />
+              </>
             )}
           </CardContent>
         </Card>

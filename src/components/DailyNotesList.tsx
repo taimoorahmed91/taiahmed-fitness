@@ -2,9 +2,10 @@ import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Trash2, AlertCircle } from 'lucide-react';
 import { DailyNote } from '@/hooks/useDailyNotes';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 interface DailyNotesListProps {
   notes: DailyNote[];
@@ -19,6 +20,8 @@ const getSeverityColor = (severity: number | null) => {
 };
 
 export const DailyNotesList = ({ notes, onDelete }: DailyNotesListProps) => {
+  const pagination = usePagination(notes, { pageSize: 20 });
+
   return (
     <Card>
       <CardHeader>
@@ -35,9 +38,9 @@ export const DailyNotesList = ({ notes, onDelete }: DailyNotesListProps) => {
             <p className="text-sm">Add your first daily note above</p>
           </div>
         ) : (
-          <ScrollArea className="h-[400px] pr-4">
+          <>
             <div className="space-y-3">
-              {notes.map((note) => (
+              {pagination.paginatedItems.map((note) => (
                 <div
                   key={note.id}
                   className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
@@ -77,7 +80,15 @@ export const DailyNotesList = ({ notes, onDelete }: DailyNotesListProps) => {
                 </div>
               ))}
             </div>
-          </ScrollArea>
+            <PaginationControls
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              onPageChange={pagination.goToPage}
+              hasNextPage={pagination.hasNextPage}
+              hasPrevPage={pagination.hasPrevPage}
+            />
+          </>
         )}
       </CardContent>
     </Card>
