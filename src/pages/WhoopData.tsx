@@ -15,6 +15,7 @@ const formatMilliToHours = (milli: number | null) => {
 
 const WhoopData = () => {
   const { entries, loading, fetching, fetchFromAPI, deleteEntry } = useWhoopData();
+  const pagination = usePagination(entries, { pageSize: 20 });
 
   const handleFetch = () => {
     fetchFromAPI();
