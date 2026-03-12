@@ -12,6 +12,8 @@ import { SortControl, SortOrder } from '@/components/SortControl';
 import { Scale, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useWeight, WeightEntry } from '@/hooks/useWeight';
 import { useDataFilter } from '@/hooks/useDataFilter';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 const Weight = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useWeight();
