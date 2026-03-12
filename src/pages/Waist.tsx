@@ -12,6 +12,8 @@ import { SortControl, SortOrder } from '@/components/SortControl';
 import { Ruler, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useWaist, WaistEntry } from '@/hooks/useWaist';
 import { useDataFilter } from '@/hooks/useDataFilter';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 const Waist = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useWaist();
