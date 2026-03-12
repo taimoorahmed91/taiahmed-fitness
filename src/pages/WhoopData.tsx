@@ -134,7 +134,7 @@ const WhoopData = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {entries.map((entry) => (
+                      {pagination.paginatedItems.map((entry) => (
                         <TableRow key={entry.id}>
                           <TableCell className="font-medium whitespace-nowrap">
                             <div className="flex items-center gap-2">
