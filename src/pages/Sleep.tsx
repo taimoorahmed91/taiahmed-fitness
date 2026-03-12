@@ -233,7 +233,7 @@ const Sleep = () => {
               </p>
             ) : (
               <div className="space-y-3">
-                {sortedEntries.map((entry) => {
+                {pagination.paginatedItems.map((entry) => {
                   const quality = getSleepQuality(entry.hours);
                   return (
                     <div
@@ -266,6 +266,14 @@ const Sleep = () => {
                   );
                 })}
               </div>
+              <PaginationControls
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                onPageChange={pagination.goToPage}
+                hasNextPage={pagination.hasNextPage}
+                hasPrevPage={pagination.hasPrevPage}
+              />
             )}
           </CardContent>
         </Card>

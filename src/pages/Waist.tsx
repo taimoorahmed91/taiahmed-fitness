@@ -291,7 +291,7 @@ const Waist = () => {
               </p>
             ) : (
               <div className="space-y-3">
-                {sortedEntries.map((entry) => (
+                {pagination.paginatedItems.map((entry) => (
                   <div
                     key={entry.id}
                     className="flex items-center justify-between p-4 rounded-lg border bg-card"
@@ -316,6 +316,14 @@ const Waist = () => {
                   </div>
                 ))}
               </div>
+              <PaginationControls
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                onPageChange={pagination.goToPage}
+                hasNextPage={pagination.hasNextPage}
+                hasPrevPage={pagination.hasPrevPage}
+              />
             )}
           </CardContent>
         </Card>

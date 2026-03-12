@@ -176,6 +176,14 @@ const WhoopData = () => {
                   </Table>
                 </div>
               </div>
+              <PaginationControls
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                onPageChange={pagination.goToPage}
+                hasNextPage={pagination.hasNextPage}
+                hasPrevPage={pagination.hasPrevPage}
+              />
             )}
           </CardContent>
         </Card>

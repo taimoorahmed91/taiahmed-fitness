@@ -2,11 +2,12 @@ import { useState, useMemo } from 'react';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Clock, Calendar, Pencil, Search, X, Copy } from 'lucide-react';
 import { SortControl } from '@/components/SortControl';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 interface MealListProps {
   meals: Meal[];
@@ -28,7 +29,6 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
     if (sortOrder) {
       sorted.sort((a, b) => sortOrder === 'asc' ? a.calories - b.calories : b.calories - a.calories);
     } else {
-      // Default: sort by date and time
       sorted.sort((a, b) => {
         const dateCompare = b.date.localeCompare(a.date);
         if (dateCompare !== 0) return dateCompare;
@@ -40,29 +40,29 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
   }, [meals, sortOrder]);
 
   const filteredMeals = sortedMeals.filter((meal) => {
-    // Text search
     if (searchTerm && !meal.food.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
-
-    // Date filter
     if (dateFilter && meal.date !== dateFilter) {
       return false;
     }
-
-    // Calorie filter
     if (calorieFilter !== 'all') {
       if (calorieFilter === 'low' && meal.calories > 300) return false;
       if (calorieFilter === 'medium' && (meal.calories <= 300 || meal.calories > 600)) return false;
       if (calorieFilter === 'high' && meal.calories <= 600) return false;
     }
-
     return true;
   });
 
-  const today = new Date().toISOString().split('T')[0];
-  const todayMeals = filteredMeals.filter((m) => m.date === today);
-  const previousMeals = filteredMeals.filter((m) => m.date !== today);
+  const {
+    paginatedItems,
+    currentPage,
+    totalPages,
+    totalItems,
+    goToPage,
+    hasNextPage,
+    hasPrevPage,
+  } = usePagination(filteredMeals, { pageSize: 20 });
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -89,7 +89,6 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
           </div>
         </div>
         
-        {/* Search and Filter Controls */}
         <div className="space-y-3 mt-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -123,36 +122,25 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[350px] pr-4">
-          {filteredMeals.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              {meals.length === 0 ? 'No meals logged yet' : 'No meals match your filters'}
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {todayMeals.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Today</h4>
-                  <div className="space-y-2">
-                    {todayMeals.map((meal) => (
-                      <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} onCopy={onCopy} />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {previousMeals.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Previous</h4>
-                  <div className="space-y-2">
-                    {previousMeals.slice(0, 20).map((meal) => (
-                      <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} onCopy={onCopy} showDate />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </ScrollArea>
+        {filteredMeals.length === 0 ? (
+          <p className="text-muted-foreground text-center py-8">
+            {meals.length === 0 ? 'No meals logged yet' : 'No meals match your filters'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {paginatedItems.map((meal) => (
+              <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} onCopy={onCopy} showDate />
+            ))}
+          </div>
+        )}
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          onPageChange={goToPage}
+          hasNextPage={hasNextPage}
+          hasPrevPage={hasPrevPage}
+        />
       </CardContent>
     </Card>
   );
