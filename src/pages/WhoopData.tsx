@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Trash2, Activity, Heart, Moon, Flame } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 const formatMilliToHours = (milli: number | null) => {
   if (milli === null || milli === undefined) return '-';
