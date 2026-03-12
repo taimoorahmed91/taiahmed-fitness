@@ -12,6 +12,8 @@ import { SortControl, SortOrder } from '@/components/SortControl';
 import { Moon, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useSleep, SleepEntry } from '@/hooks/useSleep';
 import { useDataFilter } from '@/hooks/useDataFilter';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/PaginationControls';
 
 const Sleep = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useSleep();
