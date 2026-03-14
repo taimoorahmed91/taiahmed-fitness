@@ -31,19 +31,6 @@ const Meals = () => {
     setPrefillData(null);
   };
 
-  const {
-    searchQuery,
-    setSearchQuery,
-    timeFilter,
-    setTimeFilter,
-    dateRange,
-    setDateRange,
-    filteredData: filteredMeals,
-  } = useDataFilter({
-    data: meals,
-    searchFields: ['food'] as (keyof Meal)[],
-    dateField: 'date' as keyof Meal,
-  });
 
   const handleEditClick = (meal: Meal) => {
     setEditingMeal(meal);
