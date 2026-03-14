@@ -122,19 +122,7 @@ const Meals = () => {
         </Card>
       </div>
 
-      {/* Filter and List */}
-      <DataFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        timeFilter={timeFilter}
-        onTimeFilterChange={setTimeFilter}
-        searchPlaceholder="Search meals..."
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        showDateRange
-      />
-      
-      <MealList meals={filteredMeals} onDelete={deleteMeal} onEdit={handleEditClick} onCopy={handleCopyMeal} />
+      <MealList meals={meals} onDelete={deleteMeal} onEdit={handleEditClick} onCopy={handleCopyMeal} />
 
       {/* Edit Modal */}
       <Dialog open={!!editingMeal} onOpenChange={(open) => !open && setEditingMeal(null)}>
