@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react';
 import { MealForm } from '@/components/MealForm';
 import { MealList } from '@/components/MealList';
-import { DataFilter } from '@/components/DataFilter';
 import { useMeals } from '@/hooks/useMeals';
-import { useDataFilter } from '@/hooks/useDataFilter';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
