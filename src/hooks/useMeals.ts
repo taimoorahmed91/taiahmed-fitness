@@ -55,8 +55,6 @@ export const useMeals = () => {
 
       const data = allData;
 
-      if (error) throw error;
-
       const formattedMeals: Meal[] = (data || []).map((meal) => ({
         id: meal.id,
         food: meal.food,
