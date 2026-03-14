@@ -27,14 +27,33 @@ export const useMeals = () => {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('fittrack_meals')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .order('time', { ascending: false });
+      // Fetch all meals - paginate to avoid Supabase's 1000-row default limit
+      let allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data: page, error: pageError } = await supabase
+          .from('fittrack_meals')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false })
+          .order('time', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (pageError) throw pageError;
+
+        if (page && page.length > 0) {
+          allData = [...allData, ...page];
+          from += pageSize;
+          hasMore = page.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const data = allData;
 
       const formattedMeals: Meal[] = (data || []).map((meal) => ({
         id: meal.id,

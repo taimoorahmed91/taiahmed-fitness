@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react';
 import { MealForm } from '@/components/MealForm';
 import { MealList } from '@/components/MealList';
-import { DataFilter } from '@/components/DataFilter';
 import { useMeals } from '@/hooks/useMeals';
-import { useDataFilter } from '@/hooks/useDataFilter';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,19 +31,6 @@ const Meals = () => {
     setPrefillData(null);
   };
 
-  const {
-    searchQuery,
-    setSearchQuery,
-    timeFilter,
-    setTimeFilter,
-    dateRange,
-    setDateRange,
-    filteredData: filteredMeals,
-  } = useDataFilter({
-    data: meals,
-    searchFields: ['food'] as (keyof Meal)[],
-    dateField: 'date' as keyof Meal,
-  });
 
   const handleEditClick = (meal: Meal) => {
     setEditingMeal(meal);
@@ -137,19 +122,7 @@ const Meals = () => {
         </Card>
       </div>
 
-      {/* Filter and List */}
-      <DataFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        timeFilter={timeFilter}
-        onTimeFilterChange={setTimeFilter}
-        searchPlaceholder="Search meals..."
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        showDateRange
-      />
-      
-      <MealList meals={filteredMeals} onDelete={deleteMeal} onEdit={handleEditClick} onCopy={handleCopyMeal} />
+      <MealList meals={meals} onDelete={deleteMeal} onEdit={handleEditClick} onCopy={handleCopyMeal} />
 
       {/* Edit Modal */}
       <Dialog open={!!editingMeal} onOpenChange={(open) => !open && setEditingMeal(null)}>
