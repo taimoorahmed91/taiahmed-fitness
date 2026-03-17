@@ -69,14 +69,24 @@ const Dashboard = () => {
       mealsByDate.set(meal.date, (mealsByDate.get(meal.date) || 0) + meal.calories);
     });
 
-    // Match with WHOOP data (burned = kilojoule / 4.184)
+    // Match WHOOP data with the PREVIOUS day's meals (n-1)
+    // e.g. WHOOP 16th Feb burned calories should compare with meals from 15th Feb
     return whoopEntries
-      .filter(entry => entry.kilojoule != null && mealsByDate.has(entry.date))
+      .filter(entry => {
+        if (entry.kilojoule == null) return false;
+        const prevDay = new Date(entry.date + 'T00:00:00');
+        prevDay.setDate(prevDay.getDate() - 1);
+        const prevDateStr = prevDay.toISOString().split('T')[0];
+        return mealsByDate.has(prevDateStr);
+      })
       .map(entry => {
         const burned = Math.round(Number(entry.kilojoule) / 4.184);
-        const consumed = mealsByDate.get(entry.date) || 0;
-        const balance = burned - consumed; // positive = deficit (green), negative = surplus (red)
-        const d = entry.date.split('-');
+        const prevDay = new Date(entry.date + 'T00:00:00');
+        prevDay.setDate(prevDay.getDate() - 1);
+        const prevDateStr = prevDay.toISOString().split('T')[0];
+        const consumed = mealsByDate.get(prevDateStr) || 0;
+        const balance = burned - consumed;
+        const d = prevDateStr.split('-');
         return {
           date: `${d[1]}/${d[2]}`,
           consumed,
@@ -84,7 +94,7 @@ const Dashboard = () => {
           balance,
         };
       })
-      .reverse(); // oldest first
+      .reverse();
   }, [meals, whoopEntries]);
 
   const [searchQuery, setSearchQuery] = useState('');
