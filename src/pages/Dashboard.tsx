@@ -25,6 +25,11 @@ import { useWhoopData } from '@/hooks/useWhoopData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
+const shiftISODateByDays = (isoDate: string, days: number) => {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().split('T')[0];
+};
 
 const Dashboard = () => {
   const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
@@ -63,32 +68,26 @@ const Dashboard = () => {
   }, [getWeeklyData]);
   
   const calorieBalanceData = useMemo(() => {
-    // Build a map of date -> total consumed calories from meals
     const mealsByDate = new Map<string, number>();
-    meals.forEach(meal => {
+    meals.forEach((meal) => {
       mealsByDate.set(meal.date, (mealsByDate.get(meal.date) || 0) + meal.calories);
     });
 
-    // Match WHOOP data with the PREVIOUS day's meals (n-1)
-    // e.g. WHOOP 16th Feb burned calories should compare with meals from 15th Feb
     return whoopEntries
-      .filter(entry => {
+      .filter((entry) => {
         if (entry.kilojoule == null) return false;
-        const prevDay = new Date(entry.date + 'T00:00:00');
-        prevDay.setDate(prevDay.getDate() - 1);
-        const prevDateStr = prevDay.toISOString().split('T')[0];
-        return mealsByDate.has(prevDateStr);
+        const mealDate = shiftISODateByDays(entry.date, -1);
+        return mealsByDate.has(mealDate);
       })
-      .map(entry => {
+      .map((entry) => {
         const burned = Math.round(Number(entry.kilojoule) / 4.184);
-        const prevDay = new Date(entry.date + 'T00:00:00');
-        prevDay.setDate(prevDay.getDate() - 1);
-        const prevDateStr = prevDay.toISOString().split('T')[0];
-        const consumed = mealsByDate.get(prevDateStr) || 0;
+        const mealDate = shiftISODateByDays(entry.date, -1);
+        const consumed = mealsByDate.get(mealDate) || 0;
         const balance = burned - consumed;
-        const d = prevDateStr.split('-');
+        const [year, month, day] = mealDate.split('-');
+
         return {
-          date: `${d[1]}/${d[2]}`,
+          date: `${month}/${day}`,
           consumed,
           burned,
           balance,
