@@ -109,7 +109,7 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
   const showWorkoutReminder = isWorkoutDay && !didWorkoutToday;
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid md:grid-cols-3 gap-6">
       {/* Workout Status Card */}
       <Card className="shadow-md">
         <CardContent className="pt-6">
@@ -151,6 +151,30 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
             </div>
             <div className={`p-2 rounded-lg ${!weightDueToday ? 'bg-muted' : 'bg-primary/10'}`}>
               <Scale className={`h-5 w-5 ${weightDueToday ? 'text-primary' : 'text-muted-foreground'}`} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* WHOOP Sync Status Card */}
+      <Card className="shadow-md">
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">WHOOP</p>
+              <p className={`text-sm font-medium mt-1 ${!whoopSyncedToday ? '' : 'text-muted-foreground'}`}>
+                {loading ? '...' : (whoopSyncedToday ? 'Data synced today' : 'Not synced yet today')}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {whoopSyncedToday ? 'All good!' : 'Sync your WHOOP data'}
+              </p>
+            </div>
+            <div className={`p-2 rounded-lg ${whoopSyncedToday ? 'bg-muted' : 'bg-primary/10'}`}>
+              {whoopSyncedToday ? (
+                <CheckCircle className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <Activity className="h-5 w-5 text-primary" />
+              )}
             </div>
           </div>
         </CardContent>
