@@ -50,6 +50,16 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
 
         setDidWorkoutToday(gymData && gymData.length > 0);
 
+        // Check if WHOOP data exists for today
+        const { data: whoopData } = await supabase
+          .from('fittrack_whoop_data')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .limit(1);
+
+        setWhoopSyncedToday(whoopData && whoopData.length > 0);
+
         // Fetch last weight entry
         const { data: weightData } = await supabase
           .from('fittrack_weight')
