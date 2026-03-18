@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dumbbell, CalendarOff, Scale } from 'lucide-react';
+import { Dumbbell, CalendarOff, Scale, Activity, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-
 interface DailySummary {
   id: string;
   user_id: string;
