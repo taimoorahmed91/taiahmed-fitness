@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dumbbell, CalendarOff, Scale } from 'lucide-react';
+import { Dumbbell, CalendarOff, Scale, Activity, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-
 interface DailySummary {
   id: string;
   user_id: string;
@@ -23,6 +22,7 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
   const [lastWeightDiffDays, setLastWeightDiffDays] = useState<number | null>(null);
+  const [whoopSyncedToday, setWhoopSyncedToday] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   // Get workout status from daily summary (passed via props, always fresh from RPC)
@@ -49,6 +49,16 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
           .limit(1);
 
         setDidWorkoutToday(gymData && gymData.length > 0);
+
+        // Check if WHOOP data exists for today
+        const { data: whoopData } = await supabase
+          .from('fittrack_whoop_data')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .limit(1);
+
+        setWhoopSyncedToday(whoopData && whoopData.length > 0);
 
         // Fetch last weight entry
         const { data: weightData } = await supabase
@@ -99,7 +109,7 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
   const showWorkoutReminder = isWorkoutDay && !didWorkoutToday;
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid md:grid-cols-3 gap-6">
       {/* Workout Status Card */}
       <Card className="shadow-md">
         <CardContent className="pt-6">
@@ -141,6 +151,30 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
             </div>
             <div className={`p-2 rounded-lg ${!weightDueToday ? 'bg-muted' : 'bg-primary/10'}`}>
               <Scale className={`h-5 w-5 ${weightDueToday ? 'text-primary' : 'text-muted-foreground'}`} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* WHOOP Sync Status Card */}
+      <Card className="shadow-md">
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">WHOOP</p>
+              <p className={`text-sm font-medium mt-1 ${!whoopSyncedToday ? '' : 'text-muted-foreground'}`}>
+                {loading ? '...' : (whoopSyncedToday ? 'Data synced today' : 'Not synced yet today')}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {whoopSyncedToday ? 'All good!' : 'Sync your WHOOP data'}
+              </p>
+            </div>
+            <div className={`p-2 rounded-lg ${whoopSyncedToday ? 'bg-muted' : 'bg-primary/10'}`}>
+              {whoopSyncedToday ? (
+                <CheckCircle className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <Activity className="h-5 w-5 text-primary" />
+              )}
             </div>
           </div>
         </CardContent>
