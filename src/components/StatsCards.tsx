@@ -22,6 +22,7 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
   const [lastWeightDiffDays, setLastWeightDiffDays] = useState<number | null>(null);
+  const [whoopSyncedToday, setWhoopSyncedToday] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   // Get workout status from daily summary (passed via props, always fresh from RPC)
