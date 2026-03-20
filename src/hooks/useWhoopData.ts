@@ -35,6 +35,7 @@ export const useWhoopData = () => {
   const [entries, setEntries] = useState<WhoopEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
+  const [rawApiResponse, setRawApiResponse] = useState<any>(null);
   const { user } = useUser();
 
   const fetchEntries = async () => {
@@ -105,7 +106,7 @@ export const useWhoopData = () => {
       if (!response.ok) throw new Error(`API returned ${response.status}`);
       
       const result = await response.json();
-      
+      setRawApiResponse(result);
       // Extract fields from the API response
       const recovery = result.recovery || {};
       const cycle = result.cycle || {};
@@ -211,5 +212,5 @@ export const useWhoopData = () => {
     }
   };
 
-  return { entries, loading, fetching, fetchFromAPI, deleteEntry, refetch: fetchEntries };
+  return { entries, loading, fetching, rawApiResponse, fetchFromAPI, deleteEntry, refetch: fetchEntries };
 };

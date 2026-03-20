@@ -14,7 +14,7 @@ const formatMilliToHours = (milli: number | null) => {
 };
 
 const WhoopData = () => {
-  const { entries, loading, fetching, fetchFromAPI, deleteEntry } = useWhoopData();
+  const { entries, loading, fetching, rawApiResponse, fetchFromAPI, deleteEntry } = useWhoopData();
   const pagination = usePagination(entries, { pageSize: 20 });
 
   const handleFetch = () => {
@@ -188,6 +188,21 @@ const WhoopData = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Raw API Response */}
+        {rawApiResponse && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Raw API Response</CardTitle>
+              <CardDescription>Unmodified data exactly as returned from the WHOOP API</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <pre className="bg-muted p-4 rounded-md overflow-x-auto text-xs font-mono whitespace-pre-wrap break-words max-h-[600px] overflow-y-auto">
+                {JSON.stringify(rawApiResponse, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
