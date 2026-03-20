@@ -212,5 +212,5 @@ export const useWhoopData = () => {
     }
   };
 
-  return { entries, loading, fetching, fetchFromAPI, deleteEntry, refetch: fetchEntries };
+  return { entries, loading, fetching, rawApiResponse, fetchFromAPI, deleteEntry, refetch: fetchEntries };
 };
