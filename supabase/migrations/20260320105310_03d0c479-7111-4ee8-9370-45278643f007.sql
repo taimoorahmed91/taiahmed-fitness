@@ -1,0 +1,1 @@
+ALTER TABLE public.fittrack_whoop_data ADD COLUMN cycle_end_timestamp text;
