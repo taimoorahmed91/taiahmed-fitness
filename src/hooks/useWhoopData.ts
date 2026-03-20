@@ -106,7 +106,7 @@ export const useWhoopData = () => {
       if (!response.ok) throw new Error(`API returned ${response.status}`);
       
       const result = await response.json();
-      
+      setRawApiResponse(result);
       // Extract fields from the API response
       const recovery = result.recovery || {};
       const cycle = result.cycle || {};
