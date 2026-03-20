@@ -35,6 +35,7 @@ export const useWhoopData = () => {
   const [entries, setEntries] = useState<WhoopEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
+  const [rawApiResponse, setRawApiResponse] = useState<any>(null);
   const { user } = useUser();
 
   const fetchEntries = async () => {
