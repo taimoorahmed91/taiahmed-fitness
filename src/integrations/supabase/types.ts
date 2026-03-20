@@ -794,6 +794,7 @@ export type Database = {
         Row: {
           average_heart_rate: number | null
           created_at: string
+          cycle_end_timestamp: string | null
           date: string
           disturbance_count: number | null
           hrv_rmssd_milli: number | null
@@ -820,6 +821,7 @@ export type Database = {
         Insert: {
           average_heart_rate?: number | null
           created_at?: string
+          cycle_end_timestamp?: string | null
           date: string
           disturbance_count?: number | null
           hrv_rmssd_milli?: number | null
@@ -846,6 +848,7 @@ export type Database = {
         Update: {
           average_heart_rate?: number | null
           created_at?: string
+          cycle_end_timestamp?: string | null
           date?: string
           disturbance_count?: number | null
           hrv_rmssd_milli?: number | null
