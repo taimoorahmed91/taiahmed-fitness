@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Trash2, Activity, Heart, Moon, Flame } from 'lucide-react';
+import { RefreshCw, Trash2, Activity, Heart, Moon, Flame, Pencil } from 'lucide-react';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
+import { EditWhoopEntryDialog } from '@/components/EditWhoopEntryDialog';
+import type { WhoopEntry } from '@/hooks/useWhoopData';
 
 const formatMilliToHours = (milli: number | null) => {
   if (milli === null || milli === undefined) return '-';
@@ -14,11 +17,18 @@ const formatMilliToHours = (milli: number | null) => {
 };
 
 const WhoopData = () => {
-  const { entries, loading, fetching, rawApiResponse, fetchFromAPI, deleteEntry } = useWhoopData();
+  const { entries, loading, fetching, rawApiResponse, fetchFromAPI, deleteEntry, updateEntry } = useWhoopData();
   const pagination = usePagination(entries, { pageSize: 20 });
+  const [editEntry, setEditEntry] = useState<WhoopEntry | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleFetch = () => {
     fetchFromAPI();
+  };
+
+  const handleEdit = (entry: WhoopEntry) => {
+    setEditEntry(entry);
+    setEditOpen(true);
   };
 
   const latestEntry = entries[0];
@@ -103,7 +113,7 @@ const WhoopData = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
               </div>
             ) : entries.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No WHOOP data yet. Enter your API key and click Fetch.</p>
+              <p className="text-center text-muted-foreground py-8">No WHOOP data yet. Click Sync Now to fetch.</p>
             ) : (
               <>
                 <div className="overflow-x-auto border rounded-md">
@@ -137,9 +147,12 @@ const WhoopData = () => {
                         {pagination.paginatedItems.map((entry) => (
                           <TableRow key={entry.id}>
                             <TableCell className="font-medium whitespace-nowrap">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
                                 <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => deleteEntry(entry.id)}>
                                   <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleEdit(entry)}>
+                                  <Pencil className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                                 {entry.date}
                               </div>
@@ -204,6 +217,13 @@ const WhoopData = () => {
           </Card>
         )}
       </div>
+
+      <EditWhoopEntryDialog
+        entry={editEntry}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSave={updateEntry}
+      />
     </div>
   );
 };
