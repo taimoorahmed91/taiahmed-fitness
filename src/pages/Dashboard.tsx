@@ -76,15 +76,16 @@ const Dashboard = () => {
     return whoopEntries
       .filter((entry) => {
         if (entry.kilojoule == null) return false;
-        const mealDate = shiftISODateByDays(entry.date, -1);
-        return mealsByDate.has(mealDate);
+        // Use created_at minus 1 day as reference date
+        const refDate = shiftISODateByDays(entry.created_at.split('T')[0], -1);
+        return mealsByDate.has(refDate);
       })
       .map((entry) => {
         const burned = Math.round(Number(entry.kilojoule) / 4.184);
-        const mealDate = shiftISODateByDays(entry.date, -1);
-        const consumed = mealsByDate.get(mealDate) || 0;
+        const refDate = shiftISODateByDays(entry.created_at.split('T')[0], -1);
+        const consumed = mealsByDate.get(refDate) || 0;
         const balance = burned - consumed;
-        const [year, month, day] = mealDate.split('-');
+        const [year, month, day] = refDate.split('-');
 
         return {
           date: `${month}/${day}`,

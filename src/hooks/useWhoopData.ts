@@ -7,6 +7,7 @@ import { logActivity } from '@/hooks/useActivityLog';
 export interface WhoopEntry {
   id: string;
   date: string;
+  created_at: string;
   cycle_end_timestamp: string | null;
   recovery_score: number | null;
   hrv_rmssd_milli: number | null;
@@ -42,6 +43,7 @@ export const useWhoopData = () => {
   const mapEntry = (e: any): WhoopEntry => ({
     id: e.id,
     date: e.date,
+    created_at: e.created_at,
     cycle_end_timestamp: e.cycle_end_timestamp ?? null,
     recovery_score: e.recovery_score ? Number(e.recovery_score) : null,
     hrv_rmssd_milli: e.hrv_rmssd_milli ? Number(e.hrv_rmssd_milli) : null,
