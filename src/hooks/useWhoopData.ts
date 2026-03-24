@@ -7,6 +7,7 @@ import { logActivity } from '@/hooks/useActivityLog';
 export interface WhoopEntry {
   id: string;
   date: string;
+  created_at: string;
   cycle_end_timestamp: string | null;
   recovery_score: number | null;
   hrv_rmssd_milli: number | null;
