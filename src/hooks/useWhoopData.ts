@@ -43,6 +43,7 @@ export const useWhoopData = () => {
   const mapEntry = (e: any): WhoopEntry => ({
     id: e.id,
     date: e.date,
+    created_at: e.created_at,
     cycle_end_timestamp: e.cycle_end_timestamp ?? null,
     recovery_score: e.recovery_score ? Number(e.recovery_score) : null,
     hrv_rmssd_milli: e.hrv_rmssd_milli ? Number(e.hrv_rmssd_milli) : null,
