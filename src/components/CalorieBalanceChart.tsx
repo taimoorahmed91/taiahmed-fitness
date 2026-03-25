@@ -29,6 +29,9 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export const CalorieBalanceChart = ({ data }: CalorieBalanceChartProps) => {
+  const totalBalance = data.reduce((sum, d) => sum + d.balance, 0);
+  const lastBalance = data.length > 0 ? data[data.length - 1].balance : null;
+
   if (data.length === 0) {
     return (
       <Card className="shadow-md">
@@ -48,14 +51,29 @@ export const CalorieBalanceChart = ({ data }: CalorieBalanceChartProps) => {
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Scale className="h-5 w-5 text-primary" />
             Calorie Balance
           </CardTitle>
-          <span className="text-xs text-muted-foreground">
-            Bar: deficit (green) / surplus (red)
-          </span>
+          <div className="flex items-center gap-3 text-sm">
+            {lastBalance !== null && (
+              <span className="text-muted-foreground">
+                Latest:{' '}
+                <span className={`font-semibold ${lastBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {lastBalance >= 0 ? '+' : ''}{lastBalance}
+                </span>{' '}
+                cal
+              </span>
+            )}
+            <span className="text-muted-foreground">
+              Total:{' '}
+              <span className={`font-semibold ${totalBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {totalBalance >= 0 ? '+' : ''}{totalBalance}
+              </span>{' '}
+              cal
+            </span>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
