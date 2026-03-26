@@ -50,12 +50,15 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
 
         setDidWorkoutToday(gymData && gymData.length > 0);
 
-        // Check if WHOOP data exists for today
+        // Check if WHOOP data was fetched/created today (use created_at, not date, since date reflects cycle end which is typically yesterday)
+        const todayStart = new Date(today + 'T00:00:00').toISOString();
+        const tomorrowStart = new Date(new Date(today + 'T00:00:00').getTime() + 86400000).toISOString();
         const { data: whoopData } = await supabase
           .from('fittrack_whoop_data')
           .select('id')
           .eq('user_id', user.id)
-          .eq('date', today)
+          .gte('created_at', todayStart)
+          .lt('created_at', tomorrowStart)
           .limit(1);
 
         setWhoopSyncedToday(whoopData && whoopData.length > 0);
