@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Play, ClipboardList, Pencil } from 'lucide-react';
+import { Trash2, Play, ClipboardList, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface WorkoutTemplateListProps {
   templates: WorkoutTemplate[];
@@ -12,6 +13,16 @@ interface WorkoutTemplateListProps {
 }
 
 export const WorkoutTemplateList = ({ templates, onDelete, onStart, onEdit }: WorkoutTemplateListProps) => {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-4">
@@ -26,61 +37,82 @@ export const WorkoutTemplateList = ({ templates, onDelete, onStart, onEdit }: Wo
             <p className="text-muted-foreground text-center py-8">No templates yet</p>
           ) : (
             <div className="space-y-2">
-              {templates.map((template) => (
-                <div
-                  key={template.id}
-                  className="flex items-start justify-between p-3 rounded-lg bg-card border gap-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium">{template.name}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {template.exercises.length} exercise{template.exercises.length !== 1 ? 's' : ''}
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {template.exercises.slice(0, 3).map((ex, i) => (
-                        <span
-                          key={i}
-                          className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded"
+              {templates.map((template) => {
+                const isExpanded = expandedIds.has(template.id);
+                const visibleExercises = isExpanded ? template.exercises : template.exercises.slice(0, 3);
+                const hasMore = template.exercises.length > 3;
+
+                return (
+                  <div
+                    key={template.id}
+                    className="flex items-start justify-between p-3 rounded-lg bg-card border gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{template.name}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {template.exercises.length} exercise{template.exercises.length !== 1 ? 's' : ''}
+                      </p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {visibleExercises.map((ex, i) => (
+                          <span
+                            key={i}
+                            className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded"
+                          >
+                            {ex}
+                          </span>
+                        ))}
+                      </div>
+                      {hasMore && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpand(template.id)}
+                          className="mt-1 h-7 px-2 text-xs text-muted-foreground"
                         >
-                          {ex}
-                        </span>
-                      ))}
-                      {template.exercises.length > 3 && (
-                        <span className="text-xs text-muted-foreground">
-                          +{template.exercises.length - 3} more
-                        </span>
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="h-3 w-3 mr-1" />
+                              Show less
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-3 w-3 mr-1" />
+                              +{template.exercises.length - 3} more
+                            </>
+                          )}
+                        </Button>
                       )}
                     </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => onStart(template)}
+                        className="h-8"
+                      >
+                        <Play className="h-4 w-4 mr-1" />
+                        Start
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(template)}
+                        className="h-8 w-8"
+                      >
+                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(template.id)}
+                        className="h-8 w-8"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => onStart(template)}
-                      className="h-8"
-                    >
-                      <Play className="h-4 w-4 mr-1" />
-                      Start
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(template)}
-                      className="h-8 w-8"
-                    >
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDelete(template.id)}
-                      className="h-8 w-8"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </ScrollArea>
