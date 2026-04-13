@@ -126,6 +126,8 @@ const clearActiveWorkout = () => {
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession }: ActiveWorkoutModalProps) => {
   const [exerciseSets, setExerciseSets] = useState<Record<number, ExerciseSets>>({});
   const [exerciseTimestamps, setExerciseTimestamps] = useState<Record<number, ExerciseTimestamps>>({});
+  const [exerciseSequence, setExerciseSequence] = useState<ExerciseSequence>({});
+  const [nextSequence, setNextSequence] = useState(1);
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -157,6 +159,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         startTime: startTime.toISOString(),
         exerciseSets,
         exerciseTimestamps,
+        exerciseSequence,
+        nextSequence,
         expandedExercise,
         restTimer: isRestTimerActive && restTimerStartedAt.current ? {
           remaining: restTimerRemaining,
@@ -167,7 +171,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       };
       saveActiveWorkout(state);
     }
-  }, [open, template, startTime, exerciseSets, exerciseTimestamps, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  }, [open, template, startTime, exerciseSets, exerciseTimestamps, exerciseSequence, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
     if (!isCancelled && (isRestored || (open && startTime))) {
