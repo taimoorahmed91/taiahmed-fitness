@@ -483,9 +483,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                       {isExerciseComplete(index) && (
                         <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
                       )}
-                      <span className={`font-medium ${isExerciseComplete(index) ? 'text-primary' : ''}`}>
-                        {exercise}
-                      </span>
+                      <div>
+                        <span className={`font-medium ${isExerciseComplete(index) ? 'text-primary' : ''}`}>
+                          {exercise}
+                        </span>
+                        {exerciseTimestamps[index]?.exerciseStart && (
+                          <span className="text-[10px] text-muted-foreground ml-2">
+                            Started {exerciseTimestamps[index].exerciseStart}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {expandedExercise === index ? (
                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
