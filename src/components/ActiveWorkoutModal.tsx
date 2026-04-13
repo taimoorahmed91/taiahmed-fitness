@@ -308,6 +308,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         },
       }));
 
+      // Assign sequence number on first set entry for this exercise
+      if (setKey === 'set1') {
+        setExerciseSequence((prev) => {
+          if (prev[exerciseIndex] !== undefined) return prev;
+          const seq = nextSequence;
+          setNextSequence((n) => n + 1);
+          return { ...prev, [exerciseIndex]: seq };
+        });
+      }
+
       if (setKey === 'set3') {
         startRestTimer('exercise');
       } else {
@@ -337,20 +347,30 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   };
 
   const formatSetsForNotes = () => {
-    if (!template) return '';
-    const lines: string[] = [];
+    if (!template || !startTime) return '';
+    const endTimeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const startTimeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    
+    // Collect exercises that have data, sorted by sequence
+    const entries: { exercise: string; index: number; seq: number }[] = [];
     template.exercises.forEach((exercise, index) => {
       const sets = exerciseSets[index];
-      const ts = exerciseTimestamps[index];
       if (sets && (sets.set1 || sets.set2 || sets.set3)) {
-        const startLabel = ts?.exerciseStart ? `@${ts.exerciseStart}` : '';
-        const setsText = [
-          sets.set1 ? `S1:${sets.set1}${ts?.set1Time ? `@${ts.set1Time}` : ''}` : null,
-          sets.set2 ? `S2:${sets.set2}${ts?.set2Time ? `@${ts.set2Time}` : ''}` : null,
-          sets.set3 ? `S3:${sets.set3}${ts?.set3Time ? `@${ts.set3Time}` : ''}` : null,
-        ].filter(Boolean).join(' ');
-        lines.push(`${exercise}${startLabel}: ${setsText}`);
+        entries.push({ exercise, index, seq: exerciseSequence[index] ?? 999 });
       }
+    });
+    entries.sort((a, b) => a.seq - b.seq);
+
+    const lines: string[] = [`Start:${startTimeStr} End:${endTimeStr}`];
+    entries.forEach((entry) => {
+      const sets = exerciseSets[entry.index];
+      const ts = exerciseTimestamps[entry.index];
+      const setsText = [
+        sets.set1 ? `S1:${sets.set1}${ts?.set1Time ? `@${ts.set1Time}` : ''}` : null,
+        sets.set2 ? `S2:${sets.set2}${ts?.set2Time ? `@${ts.set2Time}` : ''}` : null,
+        sets.set3 ? `S3:${sets.set3}${ts?.set3Time ? `@${ts.set3Time}` : ''}` : null,
+      ].filter(Boolean).join(' ');
+      lines.push(`${entry.seq}.${entry.exercise}: ${setsText}`);
     });
     return lines.join(' | ');
   };
@@ -471,15 +491,6 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
               open={expandedExercise === index}
               onOpenChange={(isOpen) => {
                 setExpandedExercise(isOpen ? index : null);
-                if (isOpen && !exerciseTimestamps[index]?.exerciseStart) {
-                  setExerciseTimestamps((prev) => ({
-                    ...prev,
-                    [index]: {
-                      ...prev[index],
-                      exerciseStart: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-                    },
-                  }));
-                }
               }}
             >
               <div
@@ -495,13 +506,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                       )}
                       <div>
                         <span className={`font-medium ${isExerciseComplete(index) ? 'text-primary' : ''}`}>
+                          {exerciseSequence[index] !== undefined && (
+                            <span className="text-xs text-muted-foreground mr-1">{exerciseSequence[index]}.</span>
+                          )}
                           {exercise}
                         </span>
-                        {exerciseTimestamps[index]?.exerciseStart && (
-                          <span className="text-[10px] text-muted-foreground ml-2">
-                            Started {exerciseTimestamps[index].exerciseStart}
-                          </span>
-                        )}
                       </div>
                     </div>
                     {expandedExercise === index ? (
