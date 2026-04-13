@@ -20,10 +20,13 @@ interface ExerciseSets {
 }
 
 interface ExerciseTimestamps {
-  exerciseStart?: string;
   set1Time?: string;
   set2Time?: string;
   set3Time?: string;
+}
+
+interface ExerciseSequence {
+  [exerciseIndex: number]: number; // sequence number (1-based)
 }
 
 interface PreviousReps {
