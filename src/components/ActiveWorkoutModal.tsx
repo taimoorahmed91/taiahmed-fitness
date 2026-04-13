@@ -286,13 +286,21 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       return updated;
     });
 
-    // Trigger rest timer only when a value is newly entered (was empty, now has value)
+    // Record timestamp when a value is newly entered
     if (!prevValue && value) {
+      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const tsKey = `${setKey}Time` as keyof ExerciseTimestamps;
+      setExerciseTimestamps((prev) => ({
+        ...prev,
+        [exerciseIndex]: {
+          ...prev[exerciseIndex],
+          [tsKey]: timeStr,
+        },
+      }));
+
       if (setKey === 'set3') {
-        // Last set completed → exercise rest timer
         startRestTimer('exercise');
       } else {
-        // Set 1 or 2 completed → set rest timer
         startRestTimer('set');
       }
     }
