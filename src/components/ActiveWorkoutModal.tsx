@@ -162,7 +162,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       };
       saveActiveWorkout(state);
     }
-  }, [open, template, startTime, exerciseSets, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  }, [open, template, startTime, exerciseSets, exerciseTimestamps, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
     if (!isCancelled && (isRestored || (open && startTime))) {
