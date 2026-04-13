@@ -151,6 +151,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         exercises: template.exercises,
         startTime: startTime.toISOString(),
         exerciseSets,
+        exerciseTimestamps,
         expandedExercise,
         restTimer: isRestTimerActive && restTimerStartedAt.current ? {
           remaining: restTimerRemaining,
