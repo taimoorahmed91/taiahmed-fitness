@@ -187,6 +187,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setStartTime(new Date(savedState.startTime));
         setExerciseSets(savedState.exerciseSets);
         setExerciseTimestamps(savedState.exerciseTimestamps || {});
+        setExerciseSequence(savedState.exerciseSequence || {});
+        setNextSequence(savedState.nextSequence || 1);
         prevExerciseSets.current = JSON.parse(JSON.stringify(savedState.exerciseSets));
         setExpandedExercise(savedState.expandedExercise);
         setIsRestored(true);
@@ -212,6 +214,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setIsCancelled(false);
         setIsRestTimerActive(false);
         setRestTimerRemaining(0);
+        setExerciseSequence({});
+        setNextSequence(1);
         
         const initialSets: Record<number, ExerciseSets> = {};
         const initialTimestamps: Record<number, ExerciseTimestamps> = {};
@@ -222,9 +226,6 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setExerciseSets(initialSets);
         setExerciseTimestamps(initialTimestamps);
         prevExerciseSets.current = JSON.parse(JSON.stringify(initialSets));
-        // Record exercise start for the first expanded exercise
-        initialTimestamps[0] = { exerciseStart: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) };
-        setExerciseTimestamps({ ...initialTimestamps });
         logActivity({ action: 'start_workout', category: 'gym', details: { template_name: template.name, exercises: template.exercises } });
       }
       
