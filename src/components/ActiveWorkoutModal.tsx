@@ -527,6 +527,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                             <p className="text-[10px] text-muted-foreground text-center">
                               Last: {prevReps}
                             </p>
+                            {exerciseTimestamps[index]?.[`${setKey}Time` as keyof ExerciseTimestamps] && (
+                              <p className="text-[10px] text-primary text-center">
+                                ⏱ {exerciseTimestamps[index][`${setKey}Time` as keyof ExerciseTimestamps]}
+                              </p>
+                            )}
                           </div>
                         );
                       })}
