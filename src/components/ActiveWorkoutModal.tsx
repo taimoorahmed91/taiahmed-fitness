@@ -45,6 +45,8 @@ interface ActiveWorkoutState {
   startTime: string;
   exerciseSets: Record<number, ExerciseSets>;
   exerciseTimestamps: Record<number, ExerciseTimestamps>;
+  exerciseSequence: ExerciseSequence;
+  nextSequence: number;
   expandedExercise: number | null;
   restTimer?: {
     remaining: number;
