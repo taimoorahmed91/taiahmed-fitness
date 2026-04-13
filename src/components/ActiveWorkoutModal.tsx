@@ -449,7 +449,18 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             <Collapsible
               key={index}
               open={expandedExercise === index}
-              onOpenChange={(isOpen) => setExpandedExercise(isOpen ? index : null)}
+              onOpenChange={(isOpen) => {
+                setExpandedExercise(isOpen ? index : null);
+                if (isOpen && !exerciseTimestamps[index]?.exerciseStart) {
+                  setExerciseTimestamps((prev) => ({
+                    ...prev,
+                    [index]: {
+                      ...prev[index],
+                      exerciseStart: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+                    },
+                  }));
+                }
+              }}
             >
               <div
                 className={`rounded-lg border transition-colors ${
