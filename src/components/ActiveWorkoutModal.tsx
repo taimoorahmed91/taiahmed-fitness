@@ -205,11 +205,17 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setRestTimerRemaining(0);
         
         const initialSets: Record<number, ExerciseSets> = {};
+        const initialTimestamps: Record<number, ExerciseTimestamps> = {};
         template.exercises.forEach((_, index) => {
           initialSets[index] = { set1: '', set2: '', set3: '' };
+          initialTimestamps[index] = {};
         });
         setExerciseSets(initialSets);
+        setExerciseTimestamps(initialTimestamps);
         prevExerciseSets.current = JSON.parse(JSON.stringify(initialSets));
+        // Record exercise start for the first expanded exercise
+        initialTimestamps[0] = { exerciseStart: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) };
+        setExerciseTimestamps({ ...initialTimestamps });
         logActivity({ action: 'start_workout', category: 'gym', details: { template_name: template.name, exercises: template.exercises } });
       }
       
