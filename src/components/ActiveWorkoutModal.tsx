@@ -177,6 +177,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       if (savedState && savedState.templateId === template.id) {
         setStartTime(new Date(savedState.startTime));
         setExerciseSets(savedState.exerciseSets);
+        setExerciseTimestamps(savedState.exerciseTimestamps || {});
         prevExerciseSets.current = JSON.parse(JSON.stringify(savedState.exerciseSets));
         setExpandedExercise(savedState.expandedExercise);
         setIsRestored(true);
