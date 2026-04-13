@@ -19,6 +19,13 @@ interface ExerciseSets {
   set3: string;
 }
 
+interface ExerciseTimestamps {
+  exerciseStart?: string;
+  set1Time?: string;
+  set2Time?: string;
+  set3Time?: string;
+}
+
 interface PreviousReps {
   [exerciseName: string]: ExerciseSets;
 }
@@ -34,6 +41,7 @@ interface ActiveWorkoutState {
   exercises: string[];
   startTime: string;
   exerciseSets: Record<number, ExerciseSets>;
+  exerciseTimestamps: Record<number, ExerciseTimestamps>;
   expandedExercise: number | null;
   restTimer?: {
     remaining: number;
