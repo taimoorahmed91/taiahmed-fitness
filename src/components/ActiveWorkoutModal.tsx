@@ -19,6 +19,13 @@ interface ExerciseSets {
   set3: string;
 }
 
+interface ExerciseTimestamps {
+  exerciseStart?: string;
+  set1Time?: string;
+  set2Time?: string;
+  set3Time?: string;
+}
+
 interface PreviousReps {
   [exerciseName: string]: ExerciseSets;
 }
@@ -34,6 +41,7 @@ interface ActiveWorkoutState {
   exercises: string[];
   startTime: string;
   exerciseSets: Record<number, ExerciseSets>;
+  exerciseTimestamps: Record<number, ExerciseTimestamps>;
   expandedExercise: number | null;
   restTimer?: {
     remaining: number;
@@ -112,6 +120,7 @@ const clearActiveWorkout = () => {
 
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession }: ActiveWorkoutModalProps) => {
   const [exerciseSets, setExerciseSets] = useState<Record<number, ExerciseSets>>({});
+  const [exerciseTimestamps, setExerciseTimestamps] = useState<Record<number, ExerciseTimestamps>>({});
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -142,6 +151,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         exercises: template.exercises,
         startTime: startTime.toISOString(),
         exerciseSets,
+        exerciseTimestamps,
         expandedExercise,
         restTimer: isRestTimerActive && restTimerStartedAt.current ? {
           remaining: restTimerRemaining,
@@ -152,7 +162,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       };
       saveActiveWorkout(state);
     }
-  }, [open, template, startTime, exerciseSets, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  }, [open, template, startTime, exerciseSets, exerciseTimestamps, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
     if (!isCancelled && (isRestored || (open && startTime))) {
@@ -167,6 +177,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       if (savedState && savedState.templateId === template.id) {
         setStartTime(new Date(savedState.startTime));
         setExerciseSets(savedState.exerciseSets);
+        setExerciseTimestamps(savedState.exerciseTimestamps || {});
         prevExerciseSets.current = JSON.parse(JSON.stringify(savedState.exerciseSets));
         setExpandedExercise(savedState.expandedExercise);
         setIsRestored(true);
@@ -194,11 +205,17 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setRestTimerRemaining(0);
         
         const initialSets: Record<number, ExerciseSets> = {};
+        const initialTimestamps: Record<number, ExerciseTimestamps> = {};
         template.exercises.forEach((_, index) => {
           initialSets[index] = { set1: '', set2: '', set3: '' };
+          initialTimestamps[index] = {};
         });
         setExerciseSets(initialSets);
+        setExerciseTimestamps(initialTimestamps);
         prevExerciseSets.current = JSON.parse(JSON.stringify(initialSets));
+        // Record exercise start for the first expanded exercise
+        initialTimestamps[0] = { exerciseStart: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) };
+        setExerciseTimestamps({ ...initialTimestamps });
         logActivity({ action: 'start_workout', category: 'gym', details: { template_name: template.name, exercises: template.exercises } });
       }
       
@@ -269,13 +286,21 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       return updated;
     });
 
-    // Trigger rest timer only when a value is newly entered (was empty, now has value)
+    // Record timestamp when a value is newly entered
     if (!prevValue && value) {
+      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const tsKey = `${setKey}Time` as keyof ExerciseTimestamps;
+      setExerciseTimestamps((prev) => ({
+        ...prev,
+        [exerciseIndex]: {
+          ...prev[exerciseIndex],
+          [tsKey]: timeStr,
+        },
+      }));
+
       if (setKey === 'set3') {
-        // Last set completed → exercise rest timer
         startRestTimer('exercise');
       } else {
-        // Set 1 or 2 completed → set rest timer
         startRestTimer('set');
       }
     }
@@ -306,13 +331,15 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const lines: string[] = [];
     template.exercises.forEach((exercise, index) => {
       const sets = exerciseSets[index];
+      const ts = exerciseTimestamps[index];
       if (sets && (sets.set1 || sets.set2 || sets.set3)) {
+        const startLabel = ts?.exerciseStart ? `@${ts.exerciseStart}` : '';
         const setsText = [
-          sets.set1 ? `S1:${sets.set1}` : null,
-          sets.set2 ? `S2:${sets.set2}` : null,
-          sets.set3 ? `S3:${sets.set3}` : null,
+          sets.set1 ? `S1:${sets.set1}${ts?.set1Time ? `@${ts.set1Time}` : ''}` : null,
+          sets.set2 ? `S2:${sets.set2}${ts?.set2Time ? `@${ts.set2Time}` : ''}` : null,
+          sets.set3 ? `S3:${sets.set3}${ts?.set3Time ? `@${ts.set3Time}` : ''}` : null,
         ].filter(Boolean).join(' ');
-        lines.push(`${exercise}: ${setsText}`);
+        lines.push(`${exercise}${startLabel}: ${setsText}`);
       }
     });
     return lines.join(' | ');
@@ -432,7 +459,18 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             <Collapsible
               key={index}
               open={expandedExercise === index}
-              onOpenChange={(isOpen) => setExpandedExercise(isOpen ? index : null)}
+              onOpenChange={(isOpen) => {
+                setExpandedExercise(isOpen ? index : null);
+                if (isOpen && !exerciseTimestamps[index]?.exerciseStart) {
+                  setExerciseTimestamps((prev) => ({
+                    ...prev,
+                    [index]: {
+                      ...prev[index],
+                      exerciseStart: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+                    },
+                  }));
+                }
+              }}
             >
               <div
                 className={`rounded-lg border transition-colors ${
@@ -445,9 +483,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                       {isExerciseComplete(index) && (
                         <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
                       )}
-                      <span className={`font-medium ${isExerciseComplete(index) ? 'text-primary' : ''}`}>
-                        {exercise}
-                      </span>
+                      <div>
+                        <span className={`font-medium ${isExerciseComplete(index) ? 'text-primary' : ''}`}>
+                          {exercise}
+                        </span>
+                        {exerciseTimestamps[index]?.exerciseStart && (
+                          <span className="text-[10px] text-muted-foreground ml-2">
+                            Started {exerciseTimestamps[index].exerciseStart}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {expandedExercise === index ? (
                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -482,6 +527,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                             <p className="text-[10px] text-muted-foreground text-center">
                               Last: {prevReps}
                             </p>
+                            {exerciseTimestamps[index]?.[`${setKey}Time` as keyof ExerciseTimestamps] && (
+                              <p className="text-[10px] text-primary text-center">
+                                ⏱ {exerciseTimestamps[index][`${setKey}Time` as keyof ExerciseTimestamps]}
+                              </p>
+                            )}
                           </div>
                         );
                       })}
