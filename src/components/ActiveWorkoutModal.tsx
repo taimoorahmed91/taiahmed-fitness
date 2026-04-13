@@ -331,13 +331,15 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const lines: string[] = [];
     template.exercises.forEach((exercise, index) => {
       const sets = exerciseSets[index];
+      const ts = exerciseTimestamps[index];
       if (sets && (sets.set1 || sets.set2 || sets.set3)) {
+        const startLabel = ts?.exerciseStart ? `@${ts.exerciseStart}` : '';
         const setsText = [
-          sets.set1 ? `S1:${sets.set1}` : null,
-          sets.set2 ? `S2:${sets.set2}` : null,
-          sets.set3 ? `S3:${sets.set3}` : null,
+          sets.set1 ? `S1:${sets.set1}${ts?.set1Time ? `@${ts.set1Time}` : ''}` : null,
+          sets.set2 ? `S2:${sets.set2}${ts?.set2Time ? `@${ts.set2Time}` : ''}` : null,
+          sets.set3 ? `S3:${sets.set3}${ts?.set3Time ? `@${ts.set3Time}` : ''}` : null,
         ].filter(Boolean).join(' ');
-        lines.push(`${exercise}: ${setsText}`);
+        lines.push(`${exercise}${startLabel}: ${setsText}`);
       }
     });
     return lines.join(' | ');
