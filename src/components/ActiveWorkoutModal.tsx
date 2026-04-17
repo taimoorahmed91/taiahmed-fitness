@@ -76,9 +76,10 @@ const extractWeightFromExerciseName = (name: string): string => {
   return match ? match[1] : '';
 };
 
-const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
+const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string> } => {
   const result: PreviousReps = {};
-  if (!notes) return result;
+  const noteMap: Record<string, string> = {};
+  if (!notes) return { reps: result, notes: noteMap };
 
   const exerciseParts = notes.split(' | ');
   for (const part of exerciseParts) {
@@ -88,8 +89,15 @@ const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
     if (colonIndex === -1) continue;
     
     const exerciseName = cleaned.substring(0, colonIndex).trim();
-    const setsText = cleaned.substring(colonIndex + 1).trim();
-    
+    let setsText = cleaned.substring(colonIndex + 1).trim();
+
+    // Extract trailing note: "[note: ...]"
+    const noteMatch = setsText.match(/\s*\[note:\s*([^\]]*)\]\s*$/);
+    if (noteMatch) {
+      noteMap[exerciseName] = noteMatch[1].trim();
+      setsText = setsText.replace(noteMatch[0], '').trim();
+    }
+
     const sets: ExerciseSets = { set1: '', set2: '', set3: '' };
     // Match S<n>:<reps> optionally followed by @<weight>kg
     const setMatches = setsText.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/g);
@@ -105,7 +113,7 @@ const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
     }
     result[exerciseName] = sets;
   }
-  return result;
+  return { reps: result, notes: noteMap };
 };
 
 const loadRestTimerSettings = (): RestTimerSettings => {
