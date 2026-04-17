@@ -271,6 +271,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       }
       
       setPreviousReps({});
+      setPreviousNotes({});
       setShowAddExercise(false);
       setNewExerciseName('');
 
@@ -278,14 +279,15 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         getLastSession(template.name).then((lastSession) => {
           if (lastSession?.notes) {
             const parsed = parseNotesToPreviousReps(lastSession.notes);
-            setPreviousReps(parsed);
+            setPreviousReps(parsed.reps);
+            setPreviousNotes(parsed.notes);
 
             // Pre-fill empty sets from last session (only on a fresh start, not when restoring an in-progress workout)
             if (!savedState || savedState.templateId !== template.id) {
               setExerciseSets((prev) => {
                 const next = { ...prev };
                 template.exercises.forEach((exercise, index) => {
-                  const last = parsed[exercise];
+                  const last = parsed.reps[exercise];
                   if (!last) return;
                   const cur = next[index] || { set1: '', set2: '', set3: '' };
                   next[index] = {
