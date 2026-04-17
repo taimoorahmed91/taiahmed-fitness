@@ -51,6 +51,7 @@ interface ActiveWorkoutState {
   exerciseSets: Record<number, ExerciseSets>;
   exerciseTimestamps: Record<number, ExerciseTimestamps>;
   exerciseSequence: ExerciseSequence;
+  exerciseNotes: Record<number, string>;
   nextSequence: number;
   expandedExercise: number | null;
   restTimer?: {
