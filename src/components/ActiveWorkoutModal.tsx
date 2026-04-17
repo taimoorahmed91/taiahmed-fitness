@@ -196,6 +196,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         exerciseSets,
         exerciseTimestamps,
         exerciseSequence,
+        exerciseNotes,
         nextSequence,
         expandedExercise,
         restTimer: isRestTimerActive && restTimerStartedAt.current ? {
@@ -207,7 +208,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       };
       saveActiveWorkout(state);
     }
-  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, exerciseNotes, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
     if (!isCancelled && (isRestored || (open && startTime))) {
