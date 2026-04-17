@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
-import { Timer, CheckCircle2, ChevronDown, ChevronUp, Clock, Settings2, Plus } from 'lucide-react';
+import { Timer, CheckCircle2, ChevronDown, ChevronUp, Clock, Settings2, Plus, StickyNote } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Textarea } from '@/components/ui/textarea';
 import { GymSession } from '@/types';
 import { Progress } from '@/components/ui/progress';
 import { logActivity } from '@/hooks/useActivityLog';
@@ -50,6 +51,7 @@ interface ActiveWorkoutState {
   exerciseSets: Record<number, ExerciseSets>;
   exerciseTimestamps: Record<number, ExerciseTimestamps>;
   exerciseSequence: ExerciseSequence;
+  exerciseNotes: Record<number, string>;
   nextSequence: number;
   expandedExercise: number | null;
   restTimer?: {
@@ -74,9 +76,10 @@ const extractWeightFromExerciseName = (name: string): string => {
   return match ? match[1] : '';
 };
 
-const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
+const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string> } => {
   const result: PreviousReps = {};
-  if (!notes) return result;
+  const noteMap: Record<string, string> = {};
+  if (!notes) return { reps: result, notes: noteMap };
 
   const exerciseParts = notes.split(' | ');
   for (const part of exerciseParts) {
@@ -86,8 +89,15 @@ const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
     if (colonIndex === -1) continue;
     
     const exerciseName = cleaned.substring(0, colonIndex).trim();
-    const setsText = cleaned.substring(colonIndex + 1).trim();
-    
+    let setsText = cleaned.substring(colonIndex + 1).trim();
+
+    // Extract trailing note: "[note: ...]"
+    const noteMatch = setsText.match(/\s*\[note:\s*([^\]]*)\]\s*$/);
+    if (noteMatch) {
+      noteMap[exerciseName] = noteMatch[1].trim();
+      setsText = setsText.replace(noteMatch[0], '').trim();
+    }
+
     const sets: ExerciseSets = { set1: '', set2: '', set3: '' };
     // Match S<n>:<reps> optionally followed by @<weight>kg
     const setMatches = setsText.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/g);
@@ -103,7 +113,7 @@ const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
     }
     result[exerciseName] = sets;
   }
-  return result;
+  return { reps: result, notes: noteMap };
 };
 
 const loadRestTimerSettings = (): RestTimerSettings => {
@@ -144,7 +154,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [exerciseTimestamps, setExerciseTimestamps] = useState<Record<number, ExerciseTimestamps>>({});
   const [exerciseSequence, setExerciseSequence] = useState<ExerciseSequence>({});
   const [nextSequence, setNextSequence] = useState(1);
+  const [exerciseNotes, setExerciseNotes] = useState<Record<number, string>>({});
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
+  const [previousNotes, setPreviousNotes] = useState<Record<string, string>>({});
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -184,6 +196,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         exerciseSets,
         exerciseTimestamps,
         exerciseSequence,
+        exerciseNotes,
         nextSequence,
         expandedExercise,
         restTimer: isRestTimerActive && restTimerStartedAt.current ? {
@@ -195,7 +208,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       };
       saveActiveWorkout(state);
     }
-  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, exerciseNotes, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
     if (!isCancelled && (isRestored || (open && startTime))) {
@@ -214,6 +227,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setExerciseTimestamps(savedState.exerciseTimestamps || {});
         setExerciseSequence(savedState.exerciseSequence || {});
         setNextSequence(savedState.nextSequence || 1);
+        setExerciseNotes(savedState.exerciseNotes || {});
         prevExerciseSets.current = JSON.parse(JSON.stringify(savedState.exerciseSets));
         setExpandedExercise(savedState.expandedExercise);
         setIsRestored(true);
@@ -242,6 +256,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setExerciseSequence({});
         setNextSequence(1);
         setExtraExercises([]);
+        setExerciseNotes({});
         
         const initialSets: Record<number, ExerciseSets> = {};
         const initialTimestamps: Record<number, ExerciseTimestamps> = {};
@@ -256,6 +271,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       }
       
       setPreviousReps({});
+      setPreviousNotes({});
       setShowAddExercise(false);
       setNewExerciseName('');
 
@@ -263,14 +279,15 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         getLastSession(template.name).then((lastSession) => {
           if (lastSession?.notes) {
             const parsed = parseNotesToPreviousReps(lastSession.notes);
-            setPreviousReps(parsed);
+            setPreviousReps(parsed.reps);
+            setPreviousNotes(parsed.notes);
 
             // Pre-fill empty sets from last session (only on a fresh start, not when restoring an in-progress workout)
             if (!savedState || savedState.templateId !== template.id) {
               setExerciseSets((prev) => {
                 const next = { ...prev };
                 template.exercises.forEach((exercise, index) => {
-                  const last = parsed[exercise];
+                  const last = parsed.reps[exercise];
                   if (!last) return;
                   const cur = next[index] || { set1: '', set2: '', set3: '' };
                   next[index] = {
@@ -447,7 +464,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         return `S${n}:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
       };
       const setsText = [buildSet(1), buildSet(2), buildSet(3)].filter(Boolean).join(' ');
-      lines.push(`${entry.seq}.${entry.exercise}: ${setsText}`);
+      const note = exerciseNotes[entry.index]?.trim();
+      const noteSuffix = note ? ` [note: ${note.replace(/[\[\]|]/g, '')}]` : '';
+      lines.push(`${entry.seq}.${entry.exercise}: ${setsText}${noteSuffix}`);
     });
     return lines.join(' | ');
   };
@@ -671,6 +690,30 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                         ))}
                       </div>
                     )}
+
+                    {/* Per-exercise note */}
+                    <div className="space-y-1 pt-1">
+                      <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
+                        <StickyNote className="h-3 w-3" />
+                        Notes
+                        {previousNotes[exercise] && !exerciseNotes[index] && (
+                          <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                            (last: {previousNotes[exercise]})
+                          </span>
+                        )}
+                      </Label>
+                      <Textarea
+                        id={`note-${index}`}
+                        placeholder={previousNotes[exercise] || 'Form cues, how it felt, adjustments...'}
+                        value={exerciseNotes[index] || ''}
+                        onChange={(e) =>
+                          setExerciseNotes((prev) => ({ ...prev, [index]: e.target.value }))
+                        }
+                        rows={2}
+                        maxLength={300}
+                        className="text-sm min-h-[56px] resize-none"
+                      />
+                    </div>
                   </div>
                 </CollapsibleContent>
               </div>
