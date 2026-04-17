@@ -281,28 +281,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed.reps);
             setPreviousNotes(parsed.notes);
-
-            // Pre-fill empty sets from last session (only on a fresh start, not when restoring an in-progress workout)
-            if (!savedState || savedState.templateId !== template.id) {
-              setExerciseSets((prev) => {
-                const next = { ...prev };
-                template.exercises.forEach((exercise, index) => {
-                  const last = parsed.reps[exercise];
-                  if (!last) return;
-                  const cur = next[index] || { set1: '', set2: '', set3: '' };
-                  next[index] = {
-                    set1: cur.set1 || last.set1 || '',
-                    set2: cur.set2 || last.set2 || '',
-                    set3: cur.set3 || last.set3 || '',
-                    set1Weight: cur.set1Weight || last.set1Weight || '',
-                    set2Weight: cur.set2Weight || last.set2Weight || '',
-                    set3Weight: cur.set3Weight || last.set3Weight || '',
-                  };
-                });
-                prevExerciseSets.current = JSON.parse(JSON.stringify(next));
-                return next;
-              });
-            }
+            // Note: previous reps/weights are shown as placeholders only — never pre-filled
+            // into the actual inputs, so exercises don't appear "complete" and timestamps
+            // still get recorded when the user enters their first rep.
           }
         });
       }
