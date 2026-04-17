@@ -256,6 +256,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setExerciseSequence({});
         setNextSequence(1);
         setExtraExercises([]);
+        setExerciseNotes({});
         
         const initialSets: Record<number, ExerciseSets> = {};
         const initialTimestamps: Record<number, ExerciseTimestamps> = {};
