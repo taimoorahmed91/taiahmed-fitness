@@ -264,6 +264,28 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
           if (lastSession?.notes) {
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed);
+
+            // Pre-fill empty sets from last session (only on a fresh start, not when restoring an in-progress workout)
+            if (!savedState || savedState.templateId !== template.id) {
+              setExerciseSets((prev) => {
+                const next = { ...prev };
+                template.exercises.forEach((exercise, index) => {
+                  const last = parsed[exercise];
+                  if (!last) return;
+                  const cur = next[index] || { set1: '', set2: '', set3: '' };
+                  next[index] = {
+                    set1: cur.set1 || last.set1 || '',
+                    set2: cur.set2 || last.set2 || '',
+                    set3: cur.set3 || last.set3 || '',
+                    set1Weight: cur.set1Weight || last.set1Weight || '',
+                    set2Weight: cur.set2Weight || last.set2Weight || '',
+                    set3Weight: cur.set3Weight || last.set3Weight || '',
+                  };
+                });
+                prevExerciseSets.current = JSON.parse(JSON.stringify(next));
+                return next;
+              });
+            }
           }
         });
       }
