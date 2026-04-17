@@ -503,7 +503,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
@@ -604,53 +604,73 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-3 pb-3 pt-1">
-                    <Label className="text-xs text-muted-foreground mb-2 block">
-                      Enter reps and weight (kg) for each set
-                    </Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['set1', 'set2', 'set3'] as const).map((setKey, setIndex) => {
+                  <div className="px-3 pb-3 pt-1 space-y-3">
+                    {/* Set number headers */}
+                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
+                      <div />
+                      {[1, 2, 3].map((n) => (
+                        <Label key={n} className="text-[11px] text-muted-foreground text-center">
+                          Set {n}
+                        </Label>
+                      ))}
+                    </div>
+
+                    {/* Reps row */}
+                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
+                      <Label className="text-xs font-medium">Reps</Label>
+                      {(['set1', 'set2', 'set3'] as const).map((setKey) => {
                         const prevSet = previousReps[exercise];
-                        const prevReps = prevSet?.[setKey] || '0';
-                        const weightKey = `${setKey}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
-                        const prevWeight = prevSet?.[weightKey] || defaultWeight || '';
+                        const prevReps = prevSet?.[setKey] || '';
                         return (
-                          <div key={setKey} className="space-y-1">
-                            <Label htmlFor={`${setKey}-${index}`} className="text-xs">
-                              Set {setIndex + 1}
-                            </Label>
-                            <Input
-                              id={`${setKey}-${index}`}
-                              type="text"
-                              inputMode="numeric"
-                              placeholder={`${prevReps} reps`}
-                              value={exerciseSets[index]?.[setKey] || ''}
-                              onChange={(e) => updateSet(index, setKey, e.target.value)}
-                              className="h-9"
-                              maxLength={3}
-                            />
-                            <Input
-                              id={`${weightKey}-${index}`}
-                              type="text"
-                              inputMode="decimal"
-                              placeholder={prevWeight ? `${prevWeight} kg` : 'kg'}
-                              value={exerciseSets[index]?.[weightKey] || ''}
-                              onChange={(e) => updateSet(index, weightKey, e.target.value)}
-                              className="h-8 text-xs"
-                              maxLength={5}
-                            />
-                            <p className="text-[10px] text-muted-foreground text-center">
-                              Last: {prevReps}{prevWeight ? ` × ${prevWeight}kg` : ''}
-                            </p>
-                            {exerciseTimestamps[index]?.[`${setKey}Time` as keyof ExerciseTimestamps] && (
-                              <p className="text-[10px] text-primary text-center">
-                                ⏱ {exerciseTimestamps[index][`${setKey}Time` as keyof ExerciseTimestamps]}
-                              </p>
-                            )}
-                          </div>
+                          <Input
+                            key={setKey}
+                            id={`${setKey}-${index}`}
+                            type="text"
+                            inputMode="numeric"
+                            placeholder={prevReps || '0'}
+                            value={exerciseSets[index]?.[setKey] || ''}
+                            onChange={(e) => updateSet(index, setKey, e.target.value)}
+                            className="h-9 text-center"
+                            maxLength={3}
+                          />
                         );
                       })}
                     </div>
+
+                    {/* Weight row */}
+                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
+                      <Label className="text-xs font-medium">Weight (kg)</Label>
+                      {(['set1', 'set2', 'set3'] as const).map((setKey) => {
+                        const prevSet = previousReps[exercise];
+                        const weightKey = `${setKey}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
+                        const prevWeight = prevSet?.[weightKey] || defaultWeight || '';
+                        return (
+                          <Input
+                            key={weightKey}
+                            id={`${weightKey}-${index}`}
+                            type="text"
+                            inputMode="decimal"
+                            placeholder={prevWeight || 'kg'}
+                            value={exerciseSets[index]?.[weightKey] || ''}
+                            onChange={(e) => updateSet(index, weightKey, e.target.value)}
+                            className="h-9 text-center"
+                            maxLength={5}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* Timestamps row */}
+                    {(exerciseTimestamps[index]?.set1Time || exerciseTimestamps[index]?.set2Time || exerciseTimestamps[index]?.set3Time) && (
+                      <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
+                        <span className="text-[10px] text-muted-foreground">Logged at</span>
+                        {(['set1Time', 'set2Time', 'set3Time'] as const).map((tKey) => (
+                          <p key={tKey} className="text-[10px] text-primary text-center">
+                            {exerciseTimestamps[index]?.[tKey] ? `⏱ ${exerciseTimestamps[index][tKey]}` : '—'}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </CollapsibleContent>
               </div>
