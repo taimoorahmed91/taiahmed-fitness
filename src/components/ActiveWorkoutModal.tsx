@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
-import { Timer, CheckCircle2, ChevronDown, ChevronUp, Clock, Settings2 } from 'lucide-react';
+import { Timer, CheckCircle2, ChevronDown, ChevronUp, Clock, Settings2, Plus } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { GymSession } from '@/types';
 import { Progress } from '@/components/ui/progress';
@@ -17,6 +17,9 @@ interface ExerciseSets {
   set1: string;
   set2: string;
   set3: string;
+  set1Weight?: string;
+  set2Weight?: string;
+  set3Weight?: string;
 }
 
 interface ExerciseTimestamps {
@@ -42,6 +45,7 @@ interface ActiveWorkoutState {
   templateId: string;
   templateName: string;
   exercises: string[];
+  extraExercises: string[];
   startTime: string;
   exerciseSets: Record<number, ExerciseSets>;
   exerciseTimestamps: Record<number, ExerciseTimestamps>;
@@ -64,26 +68,37 @@ interface ActiveWorkoutModalProps {
   getLastSession?: (templateName: string) => Promise<GymSession | null>;
 }
 
+// Extract the leading numeric weight value from an exercise name (e.g. "60kg Bench Press" -> "60")
+const extractWeightFromExerciseName = (name: string): string => {
+  const match = name.match(/(\d+(?:\.\d+)?)/);
+  return match ? match[1] : '';
+};
+
 const parseNotesToPreviousReps = (notes: string | undefined): PreviousReps => {
   const result: PreviousReps = {};
   if (!notes) return result;
 
   const exerciseParts = notes.split(' | ');
   for (const part of exerciseParts) {
-    const colonIndex = part.indexOf(':');
+    // Strip leading sequence prefix like "1." if present
+    const cleaned = part.replace(/^\d+\./, '');
+    const colonIndex = cleaned.indexOf(':');
     if (colonIndex === -1) continue;
     
-    const exerciseName = part.substring(0, colonIndex).trim();
-    const setsText = part.substring(colonIndex + 1).trim();
+    const exerciseName = cleaned.substring(0, colonIndex).trim();
+    const setsText = cleaned.substring(colonIndex + 1).trim();
     
     const sets: ExerciseSets = { set1: '', set2: '', set3: '' };
-    const setMatches = setsText.match(/S(\d):(\d+)/g);
+    // Match S<n>:<reps> optionally followed by @<weight>kg
+    const setMatches = setsText.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/g);
     if (setMatches) {
       for (const match of setMatches) {
-        const [, setNum, reps] = match.match(/S(\d):(\d+)/) || [];
-        if (setNum === '1') sets.set1 = reps;
-        else if (setNum === '2') sets.set2 = reps;
-        else if (setNum === '3') sets.set3 = reps;
+        const m = match.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/);
+        if (!m) continue;
+        const [, setNum, reps, weight] = m;
+        if (setNum === '1') { sets.set1 = reps; if (weight) sets.set1Weight = weight; }
+        else if (setNum === '2') { sets.set2 = reps; if (weight) sets.set2Weight = weight; }
+        else if (setNum === '3') { sets.set3 = reps; if (weight) sets.set3Weight = weight; }
       }
     }
     result[exerciseName] = sets;
@@ -124,6 +139,7 @@ const clearActiveWorkout = () => {
 };
 
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession }: ActiveWorkoutModalProps) => {
+  const [extraExercises, setExtraExercises] = useState<string[]>([]);
   const [exerciseSets, setExerciseSets] = useState<Record<number, ExerciseSets>>({});
   const [exerciseTimestamps, setExerciseTimestamps] = useState<Record<number, ExerciseTimestamps>>({});
   const [exerciseSequence, setExerciseSequence] = useState<ExerciseSequence>({});
@@ -134,6 +150,10 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isRestored, setIsRestored] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
+
+  // Add-exercise UI state
+  const [showAddExercise, setShowAddExercise] = useState(false);
+  const [newExerciseName, setNewExerciseName] = useState('');
 
   // Rest timer state
   const [restTimerRemaining, setRestTimerRemaining] = useState<number>(0);
@@ -149,6 +169,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   // Track previous values to detect when a rep is newly entered
   const prevExerciseSets = useRef<Record<number, ExerciseSets>>({});
 
+  // All exercises = template + extras (added during this session only)
+  const allExercises = template ? [...template.exercises, ...extraExercises] : [];
+
   // Save state to localStorage whenever it changes
   const persistState = useCallback(() => {
     if (open && template && startTime) {
@@ -156,6 +179,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         templateId: template.id,
         templateName: template.name,
         exercises: template.exercises,
+        extraExercises,
         startTime: startTime.toISOString(),
         exerciseSets,
         exerciseTimestamps,
@@ -171,7 +195,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       };
       saveActiveWorkout(state);
     }
-  }, [open, template, startTime, exerciseSets, exerciseTimestamps, exerciseSequence, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
     if (!isCancelled && (isRestored || (open && startTime))) {
@@ -185,6 +209,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       
       if (savedState && savedState.templateId === template.id) {
         setStartTime(new Date(savedState.startTime));
+        setExtraExercises(savedState.extraExercises || []);
         setExerciseSets(savedState.exerciseSets);
         setExerciseTimestamps(savedState.exerciseTimestamps || {});
         setExerciseSequence(savedState.exerciseSequence || {});
@@ -216,6 +241,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setRestTimerRemaining(0);
         setExerciseSequence({});
         setNextSequence(1);
+        setExtraExercises([]);
         
         const initialSets: Record<number, ExerciseSets> = {};
         const initialTimestamps: Record<number, ExerciseTimestamps> = {};
@@ -230,6 +256,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       }
       
       setPreviousReps({});
+      setShowAddExercise(false);
+      setNewExerciseName('');
 
       if (getLastSession) {
         getLastSession(template.name).then((lastSession) => {
@@ -280,9 +308,30 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     setRestTimerRemaining(0);
   };
 
+  const handleAddExercise = () => {
+    const trimmed = newExerciseName.trim();
+    if (!trimmed) return;
+    const newIndex = allExercises.length; // index of this newly-added exercise
+    setExtraExercises((prev) => [...prev, trimmed]);
+    setExerciseSets((prev) => ({
+      ...prev,
+      [newIndex]: { set1: '', set2: '', set3: '' },
+    }));
+    setExerciseTimestamps((prev) => ({ ...prev, [newIndex]: {} }));
+    prevExerciseSets.current = {
+      ...prevExerciseSets.current,
+      [newIndex]: { set1: '', set2: '', set3: '' },
+    };
+    setExpandedExercise(newIndex);
+    setNewExerciseName('');
+    setShowAddExercise(false);
+  };
+
   const updateSet = (exerciseIndex: number, setKey: keyof ExerciseSets, value: string) => {
-    if (value && !/^\d*$/.test(value)) return;
+    if (value && !/^\d*\.?\d*$/.test(value)) return;
     
+    const isWeightField = setKey.endsWith('Weight');
+    const repKey = (isWeightField ? setKey.replace('Weight', '') : setKey) as 'set1' | 'set2' | 'set3';
     const prevValue = prevExerciseSets.current[exerciseIndex]?.[setKey] || '';
     
     setExerciseSets((prev) => {
@@ -296,10 +345,10 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       return updated;
     });
 
-    // Record timestamp when a value is newly entered
-    if (!prevValue && value) {
+    // Record timestamp & sequence & rest timer only when a REP value is newly entered
+    if (!isWeightField && !prevValue && value) {
       const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const tsKey = `${setKey}Time` as keyof ExerciseTimestamps;
+      const tsKey = `${repKey}Time` as keyof ExerciseTimestamps;
       setExerciseTimestamps((prev) => ({
         ...prev,
         [exerciseIndex]: {
@@ -309,7 +358,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       }));
 
       // Assign sequence number on first set entry for this exercise
-      if (setKey === 'set1') {
+      if (repKey === 'set1') {
         setExerciseSequence((prev) => {
           if (prev[exerciseIndex] !== undefined) return prev;
           const seq = nextSequence;
@@ -318,7 +367,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
       }
 
-      if (setKey === 'set3') {
+      if (repKey === 'set3') {
         startRestTimer('exercise');
       } else {
         startRestTimer('set');
@@ -353,7 +402,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     
     // Collect exercises that have data, sorted by sequence
     const entries: { exercise: string; index: number; seq: number }[] = [];
-    template.exercises.forEach((exercise, index) => {
+    allExercises.forEach((exercise, index) => {
       const sets = exerciseSets[index];
       if (sets && (sets.set1 || sets.set2 || sets.set3)) {
         entries.push({ exercise, index, seq: exerciseSequence[index] ?? 999 });
@@ -365,11 +414,17 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     entries.forEach((entry) => {
       const sets = exerciseSets[entry.index];
       const ts = exerciseTimestamps[entry.index];
-      const setsText = [
-        sets.set1 ? `S1:${sets.set1}${ts?.set1Time ? `@${ts.set1Time}` : ''}` : null,
-        sets.set2 ? `S2:${sets.set2}${ts?.set2Time ? `@${ts.set2Time}` : ''}` : null,
-        sets.set3 ? `S3:${sets.set3}${ts?.set3Time ? `@${ts.set3Time}` : ''}` : null,
-      ].filter(Boolean).join(' ');
+      const buildSet = (n: 1 | 2 | 3) => {
+        const repKey = `set${n}` as 'set1' | 'set2' | 'set3';
+        const wKey = `set${n}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
+        const tKey = `set${n}Time` as keyof ExerciseTimestamps;
+        const reps = sets[repKey];
+        if (!reps) return null;
+        const weight = sets[wKey];
+        const time = ts?.[tKey];
+        return `S${n}:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
+      };
+      const setsText = [buildSet(1), buildSet(2), buildSet(3)].filter(Boolean).join(' ');
       lines.push(`${entry.seq}.${entry.exercise}: ${setsText}`);
     });
     return lines.join(' | ');
@@ -418,7 +473,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     setShowSettings(false);
   };
 
-  const completedCount = template ? template.exercises.filter((_, i) => isExerciseComplete(i)).length : 0;
+  const completedCount = allExercises.filter((_, i) => isExerciseComplete(i)).length;
 
   if (!template) return null;
 
@@ -481,11 +536,14 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         </div>
 
         <div className="text-sm text-muted-foreground text-center mb-2">
-          {completedCount}/{template.exercises.length} exercises completed
+          {completedCount}/{allExercises.length} exercises completed
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-          {template.exercises.map((exercise, index) => (
+          {allExercises.map((exercise, index) => {
+            const isExtra = index >= template.exercises.length;
+            const defaultWeight = extractWeightFromExerciseName(exercise);
+            return (
             <Collapsible
               key={index}
               open={expandedExercise === index}
@@ -510,6 +568,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                             <span className="text-xs text-muted-foreground mr-1">{exerciseSequence[index]}.</span>
                           )}
                           {exercise}
+                          {isExtra && (
+                            <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">added</span>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -523,11 +584,14 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                 <CollapsibleContent>
                   <div className="px-3 pb-3 pt-1">
                     <Label className="text-xs text-muted-foreground mb-2 block">
-                      Enter reps for each set
+                      Enter reps and weight (kg) for each set
                     </Label>
                     <div className="grid grid-cols-3 gap-2">
                       {(['set1', 'set2', 'set3'] as const).map((setKey, setIndex) => {
-                        const prevReps = previousReps[exercise]?.[setKey] || '0';
+                        const prevSet = previousReps[exercise];
+                        const prevReps = prevSet?.[setKey] || '0';
+                        const weightKey = `${setKey}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
+                        const prevWeight = prevSet?.[weightKey] || defaultWeight || '';
                         return (
                           <div key={setKey} className="space-y-1">
                             <Label htmlFor={`${setKey}-${index}`} className="text-xs">
@@ -537,14 +601,24 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                               id={`${setKey}-${index}`}
                               type="text"
                               inputMode="numeric"
-                              placeholder={prevReps}
+                              placeholder={`${prevReps} reps`}
                               value={exerciseSets[index]?.[setKey] || ''}
                               onChange={(e) => updateSet(index, setKey, e.target.value)}
                               className="h-9"
                               maxLength={3}
                             />
+                            <Input
+                              id={`${weightKey}-${index}`}
+                              type="text"
+                              inputMode="decimal"
+                              placeholder={prevWeight ? `${prevWeight} kg` : 'kg'}
+                              value={exerciseSets[index]?.[weightKey] || ''}
+                              onChange={(e) => updateSet(index, weightKey, e.target.value)}
+                              className="h-8 text-xs"
+                              maxLength={5}
+                            />
                             <p className="text-[10px] text-muted-foreground text-center">
-                              Last: {prevReps}
+                              Last: {prevReps}{prevWeight ? ` × ${prevWeight}kg` : ''}
                             </p>
                             {exerciseTimestamps[index]?.[`${setKey}Time` as keyof ExerciseTimestamps] && (
                               <p className="text-[10px] text-primary text-center">
@@ -559,7 +633,56 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                 </CollapsibleContent>
               </div>
             </Collapsible>
-          ))}
+            );
+          })}
+
+          {/* Add exercise (session-only) */}
+          {showAddExercise ? (
+            <div className="rounded-lg border border-dashed p-3 space-y-2">
+              <Label className="text-xs text-muted-foreground">
+                Add an exercise to this session (won't be saved to template)
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  placeholder="e.g., 20kg Dumbbell Curl"
+                  value={newExerciseName}
+                  onChange={(e) => setNewExerciseName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddExercise();
+                    }
+                  }}
+                  className="h-9"
+                  maxLength={500}
+                />
+                <Button size="sm" onClick={handleAddExercise} disabled={!newExerciseName.trim()}>
+                  Add
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowAddExercise(false);
+                    setNewExerciseName('');
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-dashed"
+              onClick={() => setShowAddExercise(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add exercise (session only)
+            </Button>
+          )}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
