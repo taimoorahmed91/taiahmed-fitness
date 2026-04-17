@@ -464,7 +464,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         return `S${n}:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
       };
       const setsText = [buildSet(1), buildSet(2), buildSet(3)].filter(Boolean).join(' ');
-      lines.push(`${entry.seq}.${entry.exercise}: ${setsText}`);
+      const note = exerciseNotes[entry.index]?.trim();
+      const noteSuffix = note ? ` [note: ${note.replace(/[\[\]|]/g, '')}]` : '';
+      lines.push(`${entry.seq}.${entry.exercise}: ${setsText}${noteSuffix}`);
     });
     return lines.join(' | ');
   };
