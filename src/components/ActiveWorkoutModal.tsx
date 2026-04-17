@@ -690,6 +690,30 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                         ))}
                       </div>
                     )}
+
+                    {/* Per-exercise note */}
+                    <div className="space-y-1 pt-1">
+                      <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
+                        <StickyNote className="h-3 w-3" />
+                        Notes
+                        {previousNotes[exercise] && !exerciseNotes[index] && (
+                          <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                            (last: {previousNotes[exercise]})
+                          </span>
+                        )}
+                      </Label>
+                      <Textarea
+                        id={`note-${index}`}
+                        placeholder={previousNotes[exercise] || 'Form cues, how it felt, adjustments...'}
+                        value={exerciseNotes[index] || ''}
+                        onChange={(e) =>
+                          setExerciseNotes((prev) => ({ ...prev, [index]: e.target.value }))
+                        }
+                        rows={2}
+                        maxLength={300}
+                        className="text-sm min-h-[56px] resize-none"
+                      />
+                    </div>
                   </div>
                 </CollapsibleContent>
               </div>
