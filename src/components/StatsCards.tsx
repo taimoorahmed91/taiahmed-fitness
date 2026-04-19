@@ -15,9 +15,10 @@ interface DailySummary {
 interface StatsCardsProps {
   weightMeasurementInterval: number;
   dailySummary: DailySummary | null;
+  recoveryScore?: number | null;
 }
 
-export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCardsProps) => {
+export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoveryScore = null }: StatsCardsProps) => {
   const [didWorkoutToday, setDidWorkoutToday] = useState<boolean>(false);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
@@ -127,7 +128,15 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCar
                 )}
               </p>
               <p className="text-xs text-muted-foreground">
-                {didWorkoutToday ? 'Rest now!' : (isWorkoutDay ? 'Get moving!' : 'Rest day')}
+                {didWorkoutToday
+                  ? 'Rest now!'
+                  : isWorkoutDay
+                    ? (recoveryScore != null
+                        ? (recoveryScore < 50
+                            ? 'See if you can skip today'
+                            : `Recovery is ${Math.round(recoveryScore)}% so try working out`)
+                        : 'Get moving!')
+                    : 'Rest day'}
               </p>
             </div>
             <div className={`p-2 rounded-lg ${!showWorkoutReminder ? 'bg-muted' : 'bg-primary/10'}`}>
