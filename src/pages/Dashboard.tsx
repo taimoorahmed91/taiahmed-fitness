@@ -187,7 +187,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} dailySummary={summary} />
+      <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} dailySummary={summary} recoveryScore={latestRecoveryScore} />
 
       <div className="grid lg:grid-cols-4 gap-6">
         <CalorieGoalProgress 
