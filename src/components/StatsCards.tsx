@@ -15,9 +15,10 @@ interface DailySummary {
 interface StatsCardsProps {
   weightMeasurementInterval: number;
   dailySummary: DailySummary | null;
+  recoveryScore?: number | null;
 }
 
-export const StatsCards = ({ weightMeasurementInterval, dailySummary }: StatsCardsProps) => {
+export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoveryScore = null }: StatsCardsProps) => {
   const [didWorkoutToday, setDidWorkoutToday] = useState<boolean>(false);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
