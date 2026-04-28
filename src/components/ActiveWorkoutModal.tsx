@@ -592,9 +592,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                       )}
                       <div>
                         <span className={`font-medium ${isExerciseComplete(index) ? 'text-primary' : ''}`}>
-                          {exerciseSequence[index] !== undefined && (
+                          {exerciseSequence[index] !== undefined ? (
                             <span className="text-xs text-muted-foreground mr-1">{exerciseSequence[index]}.</span>
-                          )}
+                          ) : previousSequences[exercise] !== undefined ? (
+                            <span className="text-xs text-muted-foreground/60 mr-1 italic">prev #{previousSequences[exercise]}</span>
+                          ) : null}
                           {exercise}
                           {isExtra && (
                             <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">added</span>
