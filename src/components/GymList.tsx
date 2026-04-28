@@ -1,10 +1,65 @@
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, Timer, Calendar, Pencil, Clock, ClipboardPlus } from 'lucide-react';
+import { Trash2, Timer, Calendar, Pencil, Clock, ClipboardPlus, StickyNote } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
+
+interface ParsedNoteEntry {
+  type: 'meta' | 'exercise' | 'raw';
+  // meta
+  text?: string;
+  // exercise
+  seq?: string;
+  name?: string;
+  sets?: string[];
+  note?: string;
+}
+
+const parseNotes = (notes: string): ParsedNoteEntry[] => {
+  return notes.split(' | ').map((part) => {
+    const trimmed = part.trim();
+    if (!trimmed) return { type: 'raw' as const, text: '' };
+
+    // meta line e.g. "Start:09:30 End:10:15"
+    if (/^(Start:|End:)/i.test(trimmed) && !trimmed.includes(': S')) {
+      return { type: 'meta', text: trimmed };
+    }
+
+    // try to extract trailing [note: ...]
+    let working = trimmed;
+    let noteText: string | undefined;
+    const noteMatch = working.match(/\s*\[note:\s*([^\]]*)\]\s*$/i);
+    if (noteMatch) {
+      noteText = noteMatch[1].trim();
+      working = working.slice(0, noteMatch.index).trim();
+    }
+
+    // expected: "1.Exercise Name: S1:12@40kg@09:32 S2:..."
+    const colonIdx = working.indexOf(':');
+    if (colonIdx === -1) {
+      return { type: 'raw', text: trimmed };
+    }
+    const header = working.slice(0, colonIdx).trim();
+    const rest = working.slice(colonIdx + 1).trim();
+
+    let seq: string | undefined;
+    let name = header;
+    const seqMatch = header.match(/^(\d+)\.(.*)$/);
+    if (seqMatch) {
+      seq = seqMatch[1];
+      name = seqMatch[2].trim();
+    }
+
+    // split sets by " S" boundary while keeping S prefix
+    const sets = rest
+      ? rest.split(/\s+(?=S\d+:)/).map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    return { type: 'exercise', seq, name, sets, note: noteText };
+  });
+};
 
 interface GymListProps {
   sessions: GymSession[];
