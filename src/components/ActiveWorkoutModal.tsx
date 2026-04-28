@@ -160,6 +160,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [exerciseNotes, setExerciseNotes] = useState<Record<number, string>>({});
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [previousNotes, setPreviousNotes] = useState<Record<string, string>>({});
+  const [previousSequences, setPreviousSequences] = useState<Record<string, number>>({});
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
