@@ -117,9 +117,58 @@ export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymLis
                       })}
                     </span>
                   </div>
-                  {session.notes && (
-                    <p className="text-sm text-muted-foreground mt-1 break-words whitespace-pre-wrap">{session.notes}</p>
-                  )}
+                  {session.notes && (() => {
+                    const entries = parseNotes(session.notes);
+                    return (
+                      <div className="mt-2 space-y-1.5 text-sm">
+                        {entries.map((entry, idx) => {
+                          if (entry.type === 'meta') {
+                            return (
+                              <p key={idx} className="text-xs text-muted-foreground italic">
+                                {entry.text}
+                              </p>
+                            );
+                          }
+                          if (entry.type === 'raw') {
+                            return (
+                              <p key={idx} className="text-muted-foreground break-words whitespace-pre-wrap">
+                                {entry.text}
+                              </p>
+                            );
+                          }
+                          return (
+                            <div key={idx} className="flex gap-2">
+                              <span className="text-primary mt-0.5 shrink-0">•</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium break-words">
+                                  {entry.seq ? `${entry.seq}. ` : ''}
+                                  {entry.name}
+                                </p>
+                                {entry.sets && entry.sets.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-1">
+                                    {entry.sets.map((s, i) => (
+                                      <span
+                                        key={i}
+                                        className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono"
+                                      >
+                                        {s}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {entry.note && (
+                                  <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground italic break-words">
+                                    <StickyNote className="h-3 w-3 mt-0.5 shrink-0" />
+                                    <span>{entry.note}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {onCreateTemplate && (
