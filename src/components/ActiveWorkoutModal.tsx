@@ -76,19 +76,22 @@ const extractWeightFromExerciseName = (name: string): string => {
   return match ? match[1] : '';
 };
 
-const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string> } => {
+const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number> } => {
   const result: PreviousReps = {};
   const noteMap: Record<string, string> = {};
-  if (!notes) return { reps: result, notes: noteMap };
+  const seqMap: Record<string, number> = {};
+  if (!notes) return { reps: result, notes: noteMap, sequences: seqMap };
 
   const exerciseParts = notes.split(' | ');
   for (const part of exerciseParts) {
-    // Strip leading sequence prefix like "1." if present
+    // Capture leading sequence prefix like "1." if present
+    const seqPrefix = part.match(/^(\d+)\./);
     const cleaned = part.replace(/^\d+\./, '');
     const colonIndex = cleaned.indexOf(':');
     if (colonIndex === -1) continue;
     
     const exerciseName = cleaned.substring(0, colonIndex).trim();
+    if (seqPrefix) seqMap[exerciseName] = parseInt(seqPrefix[1], 10);
     let setsText = cleaned.substring(colonIndex + 1).trim();
 
     // Extract trailing note: "[note: ...]"
@@ -113,7 +116,7 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
     }
     result[exerciseName] = sets;
   }
-  return { reps: result, notes: noteMap };
+  return { reps: result, notes: noteMap, sequences: seqMap };
 };
 
 const loadRestTimerSettings = (): RestTimerSettings => {
@@ -157,6 +160,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [exerciseNotes, setExerciseNotes] = useState<Record<number, string>>({});
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [previousNotes, setPreviousNotes] = useState<Record<string, string>>({});
+  const [previousSequences, setPreviousSequences] = useState<Record<string, number>>({});
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -272,6 +276,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       
       setPreviousReps({});
       setPreviousNotes({});
+      setPreviousSequences({});
       setShowAddExercise(false);
       setNewExerciseName('');
 
@@ -281,6 +286,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed.reps);
             setPreviousNotes(parsed.notes);
+            setPreviousSequences(parsed.sequences);
             // Note: previous reps/weights are shown as placeholders only — never pre-filled
             // into the actual inputs, so exercises don't appear "complete" and timestamps
             // still get recorded when the user enters their first rep.
@@ -586,9 +592,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                       )}
                       <div>
                         <span className={`font-medium ${isExerciseComplete(index) ? 'text-primary' : ''}`}>
-                          {exerciseSequence[index] !== undefined && (
+                          {exerciseSequence[index] !== undefined ? (
                             <span className="text-xs text-muted-foreground mr-1">{exerciseSequence[index]}.</span>
-                          )}
+                          ) : previousSequences[exercise] !== undefined ? (
+                            <span className="text-xs text-muted-foreground/60 mr-1 italic">prev #{previousSequences[exercise]}</span>
+                          ) : null}
                           {exercise}
                           {isExtra && (
                             <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">added</span>
