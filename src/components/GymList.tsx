@@ -1,10 +1,65 @@
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, Timer, Calendar, Pencil, Clock, ClipboardPlus } from 'lucide-react';
+import { Trash2, Timer, Calendar, Pencil, Clock, ClipboardPlus, StickyNote } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
+
+interface ParsedNoteEntry {
+  type: 'meta' | 'exercise' | 'raw';
+  // meta
+  text?: string;
+  // exercise
+  seq?: string;
+  name?: string;
+  sets?: string[];
+  note?: string;
+}
+
+const parseNotes = (notes: string): ParsedNoteEntry[] => {
+  return notes.split(' | ').map((part) => {
+    const trimmed = part.trim();
+    if (!trimmed) return { type: 'raw' as const, text: '' };
+
+    // meta line e.g. "Start:09:30 End:10:15"
+    if (/^(Start:|End:)/i.test(trimmed) && !trimmed.includes(': S')) {
+      return { type: 'meta', text: trimmed };
+    }
+
+    // try to extract trailing [note: ...]
+    let working = trimmed;
+    let noteText: string | undefined;
+    const noteMatch = working.match(/\s*\[note:\s*([^\]]*)\]\s*$/i);
+    if (noteMatch) {
+      noteText = noteMatch[1].trim();
+      working = working.slice(0, noteMatch.index).trim();
+    }
+
+    // expected: "1.Exercise Name: S1:12@40kg@09:32 S2:..."
+    const colonIdx = working.indexOf(':');
+    if (colonIdx === -1) {
+      return { type: 'raw', text: trimmed };
+    }
+    const header = working.slice(0, colonIdx).trim();
+    const rest = working.slice(colonIdx + 1).trim();
+
+    let seq: string | undefined;
+    let name = header;
+    const seqMatch = header.match(/^(\d+)\.(.*)$/);
+    if (seqMatch) {
+      seq = seqMatch[1];
+      name = seqMatch[2].trim();
+    }
+
+    // split sets by " S" boundary while keeping S prefix
+    const sets = rest
+      ? rest.split(/\s+(?=S\d+:)/).map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    return { type: 'exercise', seq, name, sets, note: noteText };
+  });
+};
 
 interface GymListProps {
   sessions: GymSession[];
@@ -62,9 +117,58 @@ export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymLis
                       })}
                     </span>
                   </div>
-                  {session.notes && (
-                    <p className="text-sm text-muted-foreground mt-1 break-words whitespace-pre-wrap">{session.notes}</p>
-                  )}
+                  {session.notes && (() => {
+                    const entries = parseNotes(session.notes);
+                    return (
+                      <div className="mt-2 space-y-1.5 text-sm">
+                        {entries.map((entry, idx) => {
+                          if (entry.type === 'meta') {
+                            return (
+                              <p key={idx} className="text-xs text-muted-foreground italic">
+                                {entry.text}
+                              </p>
+                            );
+                          }
+                          if (entry.type === 'raw') {
+                            return (
+                              <p key={idx} className="text-muted-foreground break-words whitespace-pre-wrap">
+                                {entry.text}
+                              </p>
+                            );
+                          }
+                          return (
+                            <div key={idx} className="flex gap-2">
+                              <span className="text-primary mt-0.5 shrink-0">•</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium break-words">
+                                  {entry.seq ? `${entry.seq}. ` : ''}
+                                  {entry.name}
+                                </p>
+                                {entry.sets && entry.sets.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-1">
+                                    {entry.sets.map((s, i) => (
+                                      <span
+                                        key={i}
+                                        className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono"
+                                      >
+                                        {s}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {entry.note && (
+                                  <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground italic break-words">
+                                    <StickyNote className="h-3 w-3 mt-0.5 shrink-0" />
+                                    <span>{entry.note}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {onCreateTemplate && (
