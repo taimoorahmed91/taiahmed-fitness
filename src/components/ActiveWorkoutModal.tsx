@@ -276,6 +276,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       
       setPreviousReps({});
       setPreviousNotes({});
+      setPreviousSequences({});
       setShowAddExercise(false);
       setNewExerciseName('');
 
@@ -285,6 +286,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed.reps);
             setPreviousNotes(parsed.notes);
+            setPreviousSequences(parsed.sequences);
             // Note: previous reps/weights are shown as placeholders only — never pre-filled
             // into the actual inputs, so exercises don't appear "complete" and timestamps
             // still get recorded when the user enters their first rep.
