@@ -71,6 +71,16 @@ interface GymListProps {
 
 export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymListProps) => {
   const sortedSessions = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const {
     paginatedItems,
