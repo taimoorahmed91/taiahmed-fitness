@@ -76,19 +76,22 @@ const extractWeightFromExerciseName = (name: string): string => {
   return match ? match[1] : '';
 };
 
-const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string> } => {
+const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number> } => {
   const result: PreviousReps = {};
   const noteMap: Record<string, string> = {};
-  if (!notes) return { reps: result, notes: noteMap };
+  const seqMap: Record<string, number> = {};
+  if (!notes) return { reps: result, notes: noteMap, sequences: seqMap };
 
   const exerciseParts = notes.split(' | ');
   for (const part of exerciseParts) {
-    // Strip leading sequence prefix like "1." if present
+    // Capture leading sequence prefix like "1." if present
+    const seqPrefix = part.match(/^(\d+)\./);
     const cleaned = part.replace(/^\d+\./, '');
     const colonIndex = cleaned.indexOf(':');
     if (colonIndex === -1) continue;
     
     const exerciseName = cleaned.substring(0, colonIndex).trim();
+    if (seqPrefix) seqMap[exerciseName] = parseInt(seqPrefix[1], 10);
     let setsText = cleaned.substring(colonIndex + 1).trim();
 
     // Extract trailing note: "[note: ...]"
