@@ -9,6 +9,7 @@ import { WorkoutTemplateForm } from '@/components/WorkoutTemplateForm';
 import { WorkoutTemplateList } from '@/components/WorkoutTemplateList';
 import { ActiveWorkoutModal } from '@/components/ActiveWorkoutModal';
 import { EditTemplateModal } from '@/components/EditTemplateModal';
+import { EditWorkoutSessionModal } from '@/components/EditWorkoutSessionModal';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
