@@ -225,59 +225,13 @@ const Gym = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Modal */}
-      <Dialog open={!!editingSession} onOpenChange={(open) => !open && setEditingSession(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Workout</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-exercise">Exercise</Label>
-              <Input
-                id="edit-exercise"
-                value={editForm.exercise}
-                onChange={(e) => setEditForm({ ...editForm, exercise: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-duration">Duration (minutes)</Label>
-                <Input
-                  id="edit-duration"
-                  type="number"
-                  value={editForm.duration}
-                  onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-date">Date</Label>
-                <Input
-                  id="edit-date"
-                  type="date"
-                  value={editForm.date}
-                  onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-notes">Notes (optional)</Label>
-              <Textarea
-                id="edit-notes"
-                value={editForm.notes}
-                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                rows={3}
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setEditingSession(null)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveEdit}>Save Changes</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Workout Modal */}
+      <EditWorkoutSessionModal
+        session={editingSession}
+        open={!!editingSession}
+        onClose={() => setEditingSession(null)}
+        onSave={updateSession}
+      />
 
       {/* Active Workout Modal */}
       <ActiveWorkoutModal
