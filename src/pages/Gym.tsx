@@ -30,7 +30,6 @@ const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions, getLastSessionByTemplateName } = useGymSessions();
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useWorkoutTemplates();
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
-  const [editForm, setEditForm] = useState({ exercise: '', duration: '', date: '', notes: '' });
   const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
 
@@ -50,25 +49,6 @@ const Gym = () => {
 
   const handleEditClick = (session: GymSession) => {
     setEditingSession(session);
-    setEditForm({
-      exercise: session.exercise,
-      duration: session.duration.toString(),
-      date: session.date,
-      notes: session.notes || '',
-    });
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingSession) return;
-    
-    await updateSession(editingSession.id, {
-      exercise: editForm.exercise,
-      duration: parseInt(editForm.duration) || 0,
-      date: editForm.date,
-      notes: editForm.notes || undefined,
-    });
-    
-    setEditingSession(null);
   };
 
   const handleStartWorkout = (template: WorkoutTemplate) => {
