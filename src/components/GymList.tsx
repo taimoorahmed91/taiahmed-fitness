@@ -182,6 +182,28 @@ export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymLis
                   })()}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {session.notes && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toggleExpanded(session.id)}
+                          className="h-8 w-8"
+                          aria-label={expandedIds.has(session.id) ? 'Hide details' : 'Show details'}
+                        >
+                          {expandedIds.has(session.id) ? (
+                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {expandedIds.has(session.id) ? 'Hide details' : 'Show details'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   {onCreateTemplate && (
                     <Tooltip>
                       <TooltipTrigger asChild>
