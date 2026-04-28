@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, Timer, Calendar, Pencil, Clock, ClipboardPlus, StickyNote } from 'lucide-react';
+import { Trash2, Timer, Calendar, Pencil, Clock, ClipboardPlus, StickyNote, ChevronDown, ChevronUp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
@@ -70,6 +71,16 @@ interface GymListProps {
 
 export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymListProps) => {
   const sortedSessions = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const {
     paginatedItems,
@@ -117,10 +128,10 @@ export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymLis
                       })}
                     </span>
                   </div>
-                  {session.notes && (() => {
+                  {session.notes && expandedIds.has(session.id) && (() => {
                     const entries = parseNotes(session.notes);
                     return (
-                      <div className="mt-2 space-y-1.5 text-sm">
+                      <div className="mt-2 space-y-1.5 text-sm border-t pt-2">
                         {entries.map((entry, idx) => {
                           if (entry.type === 'meta') {
                             return (
@@ -171,6 +182,28 @@ export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymLis
                   })()}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {session.notes && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toggleExpanded(session.id)}
+                          className="h-8 w-8"
+                          aria-label={expandedIds.has(session.id) ? 'Hide details' : 'Show details'}
+                        >
+                          {expandedIds.has(session.id) ? (
+                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {expandedIds.has(session.id) ? 'Hide details' : 'Show details'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   {onCreateTemplate && (
                     <Tooltip>
                       <TooltipTrigger asChild>
