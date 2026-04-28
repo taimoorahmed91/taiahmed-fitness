@@ -116,7 +116,7 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
     }
     result[exerciseName] = sets;
   }
-  return { reps: result, notes: noteMap };
+  return { reps: result, notes: noteMap, sequences: seqMap };
 };
 
 const loadRestTimerSettings = (): RestTimerSettings => {
