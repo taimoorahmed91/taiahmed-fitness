@@ -128,10 +128,10 @@ export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymLis
                       })}
                     </span>
                   </div>
-                  {session.notes && (() => {
+                  {session.notes && expandedIds.has(session.id) && (() => {
                     const entries = parseNotes(session.notes);
                     return (
-                      <div className="mt-2 space-y-1.5 text-sm">
+                      <div className="mt-2 space-y-1.5 text-sm border-t pt-2">
                         {entries.map((entry, idx) => {
                           if (entry.type === 'meta') {
                             return (
