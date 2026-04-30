@@ -126,13 +126,27 @@ export const ImportExportButton = () => {
           await supabase.from('fittrack_whoop_data').insert({ ...whoop, user_id: user.id });
         }
       }
-      
+
+      // Import personal data (upsert, single record)
+      if (importData.data.personalData) {
+        const pd = importData.data.personalData;
+        await savePersonalData({
+          full_name: pd.full_name ?? null,
+          dob: pd.dob ?? null,
+          age: pd.age ?? null,
+          gender: pd.gender ?? null,
+          height_cm: pd.height_cm ?? null,
+          target_weight_kg: pd.target_weight_kg ?? null,
+        });
+      }
+
       // Refresh all data
-      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop()]);
-      
+      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop(), refetchPersonalData()]);
+
       const waistCount = importData.data.waist?.length || 0;
       const whoopCount = importData.data.whoop?.length || 0;
-      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries`);
+      const personalCount = importData.data.personalData ? 1 : 0;
+      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries, ${personalCount} personal profile`);
       setImportDialogOpen(false);
       setImportData(null);
     } catch (error) {
