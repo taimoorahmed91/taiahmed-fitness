@@ -280,8 +280,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       setShowAddExercise(false);
       setNewExerciseName('');
 
-      if (getLastSession) {
-        getLastSession(template.name).then((lastSession) => {
+      if (getLastSessionRef.current) {
+        getLastSessionRef.current(template.name).then((lastSession) => {
           if (lastSession?.notes) {
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed.reps);
@@ -294,7 +294,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
       }
     }
-  }, [open, template, getLastSession]);
+    // Intentionally exclude getLastSession from deps — it's recreated on every
+    // sessions update (auto-refresh / realtime) and would otherwise wipe the
+    // in-memory previousReps/previousSequences placeholders mid-workout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, template]);
 
   // Main workout timer
   useEffect(() => {
