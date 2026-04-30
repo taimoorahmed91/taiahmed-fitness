@@ -23,6 +23,7 @@ import { useWeight } from '@/hooks/useWeight';
 import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { useWhoopData } from '@/hooks/useWhoopData';
+import { usePersonalData } from '@/hooks/usePersonalData';
 import { exportToCSV, exportAllToCSV } from '@/lib/exportData';
 import { exportToJSON, readJSONFile, ExportedData } from '@/lib/jsonExportImport';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ export const ImportExportButton = () => {
   const { entries: waistEntries, addEntry: addWaist, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, addEntry: addSleep, refetch: refetchSleep } = useSleep();
   const { entries: whoopEntries, refetch: refetchWhoop } = useWhoopData();
+  const { data: personalData, save: savePersonalData, refetch: refetchPersonalData } = usePersonalData();
   const { user } = useUser();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -50,6 +52,7 @@ export const ImportExportButton = () => {
     waist: waistEntries,
     sleep: sleepEntries,
     whoop: whoopEntries,
+    personalData,
   };
 
   const handleExportCSV = (type: 'meals' | 'workouts' | 'weight' | 'sleep' | 'all') => {
