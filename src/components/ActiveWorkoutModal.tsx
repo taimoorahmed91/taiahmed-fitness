@@ -577,6 +577,56 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
           {completedCount}/{allExercises.length} exercises completed
         </div>
 
+        {/* Bulk note actions */}
+        <div className="flex flex-wrap gap-2 justify-center mb-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => {
+              // Carry forward: fill empty notes with previous notes for matching exercises
+              setExerciseNotes((prev) => {
+                const next = { ...prev };
+                allExercises.forEach((ex, i) => {
+                  if (!next[i] && previousNotes[ex]) next[i] = previousNotes[ex];
+                });
+                return next;
+              });
+            }}
+            disabled={Object.keys(previousNotes).length === 0}
+          >
+            <StickyNote className="h-3 w-3" />
+            Carry forward
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => {
+              // Copy previous: overwrite all notes with previous notes for matching exercises
+              setExerciseNotes(() => {
+                const next: Record<number, string> = {};
+                allExercises.forEach((ex, i) => {
+                  if (previousNotes[ex]) next[i] = previousNotes[ex];
+                });
+                return next;
+              });
+            }}
+            disabled={Object.keys(previousNotes).length === 0}
+          >
+            <StickyNote className="h-3 w-3" />
+            Copy previous
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs text-muted-foreground"
+            onClick={() => setExerciseNotes({})}
+          >
+            Clear
+          </Button>
+        </div>
+
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
           {allExercises.map((exercise, index) => {
             const isExtra = index >= template.exercises.length;
@@ -695,11 +745,6 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                       <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
                         <StickyNote className="h-3 w-3" />
                         Notes
-                        {previousNotes[exercise] && !exerciseNotes[index] && (
-                          <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                            (last: {previousNotes[exercise]})
-                          </span>
-                        )}
                       </Label>
                       <Textarea
                         id={`note-${index}`}
