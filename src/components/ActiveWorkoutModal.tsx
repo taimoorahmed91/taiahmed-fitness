@@ -185,6 +185,12 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   // Track previous values to detect when a rep is newly entered
   const prevExerciseSets = useRef<Record<number, ExerciseSets>>({});
 
+  // Keep a stable ref to getLastSession so the open/template effect doesn't
+  // re-run every time the parent's sessions list updates (which would wipe
+  // in-memory previousReps/previousSequences placeholders mid-workout).
+  const getLastSessionRef = useRef(getLastSession);
+  useEffect(() => { getLastSessionRef.current = getLastSession; }, [getLastSession]);
+
   // All exercises = template + extras (added during this session only)
   const allExercises = template ? [...template.exercises, ...extraExercises] : [];
 
