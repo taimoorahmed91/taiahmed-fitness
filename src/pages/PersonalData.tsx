@@ -23,6 +23,8 @@ const calcAge = (dob: string | null): number | null => {
 
 const PersonalDataPage = () => {
   const { data, loading, save } = usePersonalData();
+  const { entries: weightEntries } = useWeight();
+  const currentWeight = weightEntries[0]?.weight ?? null;
 
   const [fullName, setFullName] = useState('');
   const [dob, setDob] = useState('');
