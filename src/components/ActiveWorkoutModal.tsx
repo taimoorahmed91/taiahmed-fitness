@@ -695,11 +695,6 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                       <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
                         <StickyNote className="h-3 w-3" />
                         Notes
-                        {previousNotes[exercise] && !exerciseNotes[index] && (
-                          <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                            (last: {previousNotes[exercise]})
-                          </span>
-                        )}
                       </Label>
                       <Textarea
                         id={`note-${index}`}
