@@ -673,7 +673,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                             value={exerciseSets[index]?.[weightKey] || ''}
                             onChange={(e) => updateSet(index, weightKey, e.target.value)}
                             className="h-9 text-center"
-                            maxLength={5}
+                            maxLength={6}
                           />
                         );
                       })}
