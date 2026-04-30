@@ -691,10 +691,60 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
                     {/* Per-exercise note */}
                     <div className="space-y-1 pt-1">
-                      <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
-                        <StickyNote className="h-3 w-3" />
-                        Notes
-                      </Label>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
+                          <StickyNote className="h-3 w-3" />
+                          Notes
+                        </Label>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[10px] px-2"
+                            disabled={!previousNotes[exercise]}
+                            onClick={() => {
+                              const prev = previousNotes[exercise];
+                              if (!prev) return;
+                              setExerciseNotes((p) => {
+                                if (p[index]) return p;
+                                return { ...p, [index]: prev };
+                              });
+                            }}
+                          >
+                            Carry forward
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[10px] px-2"
+                            disabled={!previousNotes[exercise]}
+                            onClick={() => {
+                              const prev = previousNotes[exercise];
+                              if (!prev) return;
+                              setExerciseNotes((p) => ({ ...p, [index]: prev }));
+                            }}
+                          >
+                            Copy previous
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 text-[10px] px-2 text-muted-foreground"
+                            onClick={() =>
+                              setExerciseNotes((p) => {
+                                const next = { ...p };
+                                delete next[index];
+                                return next;
+                              })
+                            }
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
                       <Textarea
                         id={`note-${index}`}
                         placeholder={previousNotes[exercise] || 'Form cues, how it felt, adjustments...'}
