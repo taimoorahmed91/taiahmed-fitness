@@ -164,6 +164,10 @@ const PersonalDataPage = () => {
             )}
           </CardContent>
         </Card>
+
+        <div className="mt-6">
+          <BmiCard heightCm={height ? parseFloat(height) : null} weightKg={currentWeight} />
+        </div>
       </main>
     </div>
   );
