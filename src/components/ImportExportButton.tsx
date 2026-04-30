@@ -223,6 +223,7 @@ export const ImportExportButton = () => {
                 <li>{importData.data.waist?.length || 0} waist entries</li>
                 <li>{importData.data.sleep.length} sleep entries</li>
                 <li>{importData.data.whoop?.length || 0} whoop entries</li>
+                <li>{importData.data.personalData ? '1 personal profile' : 'No personal profile'}</li>
               </ul>
             </div>
           )}
