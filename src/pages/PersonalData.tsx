@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useWeight } from '@/hooks/useWeight';
 import { toast } from 'sonner';
-import { User } from 'lucide-react';
+import { User, Activity } from 'lucide-react';
 
 const calcAge = (dob: string | null): number | null => {
   if (!dob) return null;
@@ -22,6 +23,8 @@ const calcAge = (dob: string | null): number | null => {
 
 const PersonalDataPage = () => {
   const { data, loading, save } = usePersonalData();
+  const { entries: weightEntries } = useWeight();
+  const currentWeight = weightEntries[0]?.weight ?? null;
 
   const [fullName, setFullName] = useState('');
   const [dob, setDob] = useState('');
@@ -161,8 +164,93 @@ const PersonalDataPage = () => {
             )}
           </CardContent>
         </Card>
+
+        <div className="mt-6">
+          <BmiCard heightCm={height ? parseFloat(height) : null} weightKg={currentWeight} />
+        </div>
       </main>
     </div>
+  );
+};
+
+interface BmiCardProps {
+  heightCm: number | null;
+  weightKg: number | null;
+}
+
+const BmiCard = ({ heightCm, weightKg }: BmiCardProps) => {
+  const bmi =
+    heightCm && heightCm > 0 && weightKg && weightKg > 0
+      ? weightKg / Math.pow(heightCm / 100, 2)
+      : null;
+
+  const categories = [
+    { label: 'Underweight', range: '< 18.5', min: 0, max: 18.5, color: 'bg-yellow-500' },
+    { label: 'Normal', range: '18.5 – 24.9', min: 18.5, max: 25, color: 'bg-green-500' },
+    { label: 'Overweight', range: '25 – 29.9', min: 25, max: 30, color: 'bg-orange-500' },
+    { label: 'Obese', range: '30+', min: 30, max: Infinity, color: 'bg-red-500' },
+  ];
+
+  const activeIdx = bmi !== null ? categories.findIndex((c) => bmi >= c.min && bmi < c.max) : -1;
+  const activeCat = activeIdx >= 0 ? categories[activeIdx] : null;
+
+  // Marker position on a 0-100 scale where 15 -> 0% and 35 -> 100%
+  const markerPct =
+    bmi !== null ? Math.max(0, Math.min(100, ((bmi - 15) / (35 - 15)) * 100)) : 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Activity className="h-5 w-5 text-primary" />
+          BMI
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {bmi === null ? (
+          <p className="text-sm text-muted-foreground">
+            Enter your height and log a weight entry to see your BMI.
+          </p>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl font-bold">{bmi.toFixed(1)}</span>
+              {activeCat && (
+                <span
+                  className={`text-xs font-semibold px-2 py-1 rounded-full text-white ${activeCat.color}`}
+                >
+                  {activeCat.label}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Based on {weightKg} kg / {heightCm} cm
+            </p>
+
+            {/* Color scale */}
+            <div className="space-y-2">
+              <div className="relative h-3 rounded-full overflow-hidden flex">
+                {categories.map((c) => (
+                  <div key={c.label} className={`flex-1 ${c.color}`} />
+                ))}
+                <div
+                  className="absolute top-[-4px] w-1 h-5 bg-foreground rounded"
+                  style={{ left: `calc(${markerPct}% - 2px)` }}
+                />
+              </div>
+              <div className="grid grid-cols-4 gap-1 text-[10px] text-muted-foreground text-center">
+                {categories.map((c) => (
+                  <div key={c.label}>
+                    <div className="font-medium text-foreground">{c.label}</div>
+                    <div>{c.range}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
