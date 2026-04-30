@@ -23,6 +23,7 @@ import { useWeight } from '@/hooks/useWeight';
 import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { useWhoopData } from '@/hooks/useWhoopData';
+import { usePersonalData } from '@/hooks/usePersonalData';
 import { exportToCSV, exportAllToCSV } from '@/lib/exportData';
 import { exportToJSON, readJSONFile, ExportedData } from '@/lib/jsonExportImport';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ export const ImportExportButton = () => {
   const { entries: waistEntries, addEntry: addWaist, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, addEntry: addSleep, refetch: refetchSleep } = useSleep();
   const { entries: whoopEntries, refetch: refetchWhoop } = useWhoopData();
+  const { data: personalData, save: savePersonalData, refetch: refetchPersonalData } = usePersonalData();
   const { user } = useUser();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -50,6 +52,7 @@ export const ImportExportButton = () => {
     waist: waistEntries,
     sleep: sleepEntries,
     whoop: whoopEntries,
+    personalData,
   };
 
   const handleExportCSV = (type: 'meals' | 'workouts' | 'weight' | 'sleep' | 'all') => {
@@ -123,13 +126,27 @@ export const ImportExportButton = () => {
           await supabase.from('fittrack_whoop_data').insert({ ...whoop, user_id: user.id });
         }
       }
-      
+
+      // Import personal data (upsert, single record)
+      if (importData.data.personalData) {
+        const pd = importData.data.personalData;
+        await savePersonalData({
+          full_name: pd.full_name ?? null,
+          dob: pd.dob ?? null,
+          age: pd.age ?? null,
+          gender: pd.gender ?? null,
+          height_cm: pd.height_cm ?? null,
+          target_weight_kg: pd.target_weight_kg ?? null,
+        });
+      }
+
       // Refresh all data
-      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop()]);
-      
+      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop(), refetchPersonalData()]);
+
       const waistCount = importData.data.waist?.length || 0;
       const whoopCount = importData.data.whoop?.length || 0;
-      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries`);
+      const personalCount = importData.data.personalData ? 1 : 0;
+      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries, ${personalCount} personal profile`);
       setImportDialogOpen(false);
       setImportData(null);
     } catch (error) {
@@ -206,6 +223,7 @@ export const ImportExportButton = () => {
                 <li>{importData.data.waist?.length || 0} waist entries</li>
                 <li>{importData.data.sleep.length} sleep entries</li>
                 <li>{importData.data.whoop?.length || 0} whoop entries</li>
+                <li>{importData.data.personalData ? '1 personal profile' : 'No personal profile'}</li>
               </ul>
             </div>
           )}

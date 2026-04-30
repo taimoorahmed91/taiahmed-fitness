@@ -658,6 +658,45 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_personal_data: {
+        Row: {
+          age: number | null
+          created_at: string
+          dob: string | null
+          full_name: string | null
+          gender: string | null
+          height_cm: number | null
+          id: string
+          target_weight_kg: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          dob?: string | null
+          full_name?: string | null
+          gender?: string | null
+          height_cm?: number | null
+          id?: string
+          target_weight_kg?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          dob?: string | null
+          full_name?: string | null
+          gender?: string | null
+          height_cm?: number | null
+          id?: string
+          target_weight_kg?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fittrack_sleep: {
         Row: {
           created_at: string

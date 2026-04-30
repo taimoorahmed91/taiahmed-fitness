@@ -24,6 +24,7 @@ import NotFound from "./pages/NotFound";
 import Achievements from "./pages/Achievements";
 import WhoopData from "./pages/WhoopData";
 import ActivityLogs from "./pages/ActivityLogs";
+import PersonalData from "./pages/PersonalData";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
 
@@ -209,6 +210,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <WhoopData />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/personal-data"
+        element={
+          <ProtectedRoute>
+            <PersonalData />
           </ProtectedRoute>
         }
       />
