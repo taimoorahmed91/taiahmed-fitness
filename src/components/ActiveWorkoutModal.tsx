@@ -364,9 +364,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   };
 
   const updateSet = (exerciseIndex: number, setKey: keyof ExerciseSets, value: string) => {
-    if (value && !/^\d*\.?\d*$/.test(value)) return;
-    
     const isWeightField = setKey.endsWith('Weight');
+    // For weight fields, allow comma as decimal separator and convert to dot
+    if (isWeightField) value = value.replace(',', '.');
+    if (value && !/^\d*\.?\d*$/.test(value)) return;
+
     const repKey = (isWeightField ? setKey.replace('Weight', '') : setKey) as 'set1' | 'set2' | 'set3';
     const prevValue = prevExerciseSets.current[exerciseIndex]?.[setKey] || '';
     
