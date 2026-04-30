@@ -185,6 +185,12 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   // Track previous values to detect when a rep is newly entered
   const prevExerciseSets = useRef<Record<number, ExerciseSets>>({});
 
+  // Keep a stable ref to getLastSession so the open/template effect doesn't
+  // re-run every time the parent's sessions list updates (which would wipe
+  // in-memory previousReps/previousSequences placeholders mid-workout).
+  const getLastSessionRef = useRef(getLastSession);
+  useEffect(() => { getLastSessionRef.current = getLastSession; }, [getLastSession]);
+
   // All exercises = template + extras (added during this session only)
   const allExercises = template ? [...template.exercises, ...extraExercises] : [];
 
@@ -280,8 +286,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       setShowAddExercise(false);
       setNewExerciseName('');
 
-      if (getLastSession) {
-        getLastSession(template.name).then((lastSession) => {
+      if (getLastSessionRef.current) {
+        getLastSessionRef.current(template.name).then((lastSession) => {
           if (lastSession?.notes) {
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed.reps);
@@ -294,7 +300,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
       }
     }
-  }, [open, template, getLastSession]);
+    // Intentionally exclude getLastSession from deps — it's recreated on every
+    // sessions update (auto-refresh / realtime) and would otherwise wipe the
+    // in-memory previousReps/previousSequences placeholders mid-workout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, template]);
 
   // Main workout timer
   useEffect(() => {
