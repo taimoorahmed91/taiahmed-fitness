@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useWeight } from '@/hooks/useWeight';
 import { toast } from 'sonner';
-import { User } from 'lucide-react';
+import { User, Activity } from 'lucide-react';
 
 const calcAge = (dob: string | null): number | null => {
   if (!dob) return null;
