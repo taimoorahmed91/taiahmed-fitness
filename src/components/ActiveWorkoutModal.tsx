@@ -576,57 +576,6 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         <div className="text-sm text-muted-foreground text-center mb-2">
           {completedCount}/{allExercises.length} exercises completed
         </div>
-
-        {/* Bulk note actions */}
-        <div className="flex flex-wrap gap-2 justify-center mb-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs"
-            onClick={() => {
-              // Carry forward: fill empty notes with previous notes for matching exercises
-              setExerciseNotes((prev) => {
-                const next = { ...prev };
-                allExercises.forEach((ex, i) => {
-                  if (!next[i] && previousNotes[ex]) next[i] = previousNotes[ex];
-                });
-                return next;
-              });
-            }}
-            disabled={Object.keys(previousNotes).length === 0}
-          >
-            <StickyNote className="h-3 w-3" />
-            Carry forward
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs"
-            onClick={() => {
-              // Copy previous: overwrite all notes with previous notes for matching exercises
-              setExerciseNotes(() => {
-                const next: Record<number, string> = {};
-                allExercises.forEach((ex, i) => {
-                  if (previousNotes[ex]) next[i] = previousNotes[ex];
-                });
-                return next;
-              });
-            }}
-            disabled={Object.keys(previousNotes).length === 0}
-          >
-            <StickyNote className="h-3 w-3" />
-            Copy previous
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs text-muted-foreground"
-            onClick={() => setExerciseNotes({})}
-          >
-            Clear
-          </Button>
-        </div>
-
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
           {allExercises.map((exercise, index) => {
             const isExtra = index >= template.exercises.length;
@@ -742,10 +691,60 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
                     {/* Per-exercise note */}
                     <div className="space-y-1 pt-1">
-                      <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
-                        <StickyNote className="h-3 w-3" />
-                        Notes
-                      </Label>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
+                          <StickyNote className="h-3 w-3" />
+                          Notes
+                        </Label>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[10px] px-2"
+                            disabled={!previousNotes[exercise]}
+                            onClick={() => {
+                              const prev = previousNotes[exercise];
+                              if (!prev) return;
+                              setExerciseNotes((p) => {
+                                if (p[index]) return p;
+                                return { ...p, [index]: prev };
+                              });
+                            }}
+                          >
+                            Carry forward
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[10px] px-2"
+                            disabled={!previousNotes[exercise]}
+                            onClick={() => {
+                              const prev = previousNotes[exercise];
+                              if (!prev) return;
+                              setExerciseNotes((p) => ({ ...p, [index]: prev }));
+                            }}
+                          >
+                            Copy previous
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 text-[10px] px-2 text-muted-foreground"
+                            onClick={() =>
+                              setExerciseNotes((p) => {
+                                const next = { ...p };
+                                delete next[index];
+                                return next;
+                              })
+                            }
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
                       <Textarea
                         id={`note-${index}`}
                         placeholder={previousNotes[exercise] || 'Form cues, how it felt, adjustments...'}
