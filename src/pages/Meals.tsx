@@ -3,6 +3,8 @@ import { MealForm } from '@/components/MealForm';
 import { MealList } from '@/components/MealList';
 import { useMeals } from '@/hooks/useMeals';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useGymSessions } from '@/hooks/useGymSessions';
+import { usePersonalData } from '@/hooks/usePersonalData';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
