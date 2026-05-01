@@ -735,31 +735,13 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                             size="sm"
                             variant="ghost"
                             className="h-6 text-[10px] px-2 text-muted-foreground"
-                            onClick={() => {
+                            onClick={() =>
                               setExerciseNotes((p) => {
                                 const next = { ...p };
                                 delete next[index];
                                 return next;
-                              });
-                              setPreviousReps((p) => {
-                                if (!(exercise in p)) return p;
-                                const next = { ...p };
-                                delete next[exercise];
-                                return next;
-                              });
-                              setPreviousNotes((p) => {
-                                if (!(exercise in p)) return p;
-                                const next = { ...p };
-                                delete next[exercise];
-                                return next;
-                              });
-                              setPreviousSequences((p) => {
-                                if (!(exercise in p)) return p;
-                                const next = { ...p };
-                                delete next[exercise];
-                                return next;
-                              });
-                            }}
+                              })
+                            }
                           >
                             Clear
                           </Button>
