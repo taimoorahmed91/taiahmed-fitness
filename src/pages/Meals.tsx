@@ -59,9 +59,22 @@ const Meals = () => {
     setEditingMeal(null);
   };
 
-  // Calculate stats
+  // Calculate stats with dynamic gym/rest day target
   const todayCalories = getTodayCalories();
-  const calorieGoal = settings.daily_calorie_goal;
+  const calorieGoal = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const workedOut = gymSessions.some((s) => s.date === today);
+    const gymTarget = personalData.gym_day_calorie_target;
+    const restTarget = personalData.rest_day_calorie_target;
+    const auto = gymTarget != null || restTarget != null;
+    if (auto) {
+      if (workedOut && gymTarget != null) return gymTarget;
+      if (!workedOut && restTarget != null) return restTarget;
+      if (gymTarget != null) return gymTarget;
+      if (restTarget != null) return restTarget;
+    }
+    return settings.daily_calorie_goal;
+  }, [gymSessions, personalData, settings.daily_calorie_goal]);
   const caloriesRemaining = Math.max(0, calorieGoal - todayCalories);
   
   const todayMeals = useMemo(() => {
