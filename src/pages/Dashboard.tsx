@@ -96,10 +96,20 @@ const Dashboard = () => {
     [waistEntries]
   );
 
-  const sleepChartData = useMemo(() => 
-    sleepEntries.map(e => ({ date: e.date, hours: e.hours })), 
-    [sleepEntries]
-  );
+  const sleepChartData = useMemo(() => {
+    const map = new Map<string, { date: string; hours: number; whoopHours: number }>();
+    sleepEntries.forEach(e => {
+      map.set(e.date, { date: e.date, hours: e.hours, whoopHours: 0 });
+    });
+    whoopEntries.forEach(e => {
+      const inBed = e.total_in_bed_hours ?? 0;
+      if (!inBed) return;
+      const existing = map.get(e.date);
+      if (existing) existing.whoopHours = inBed;
+      else map.set(e.date, { date: e.date, hours: 0, whoopHours: inBed });
+    });
+    return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+  }, [sleepEntries, whoopEntries]);
 
   const calorieChartData = useMemo(() => {
     const data = getWeeklyData();
