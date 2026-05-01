@@ -163,6 +163,30 @@ const PersonalDataPage = () => {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="gymTarget">Gym Day Calorie Target</Label>
+                  <Input
+                    id="gymTarget"
+                    inputMode="numeric"
+                    value={gymTarget}
+                    onChange={(e) => handleNumeric(e.target.value, setGymTarget)}
+                    placeholder="e.g. 2400"
+                  />
+                  <p className="text-xs text-muted-foreground">Used as your daily goal on days you log a workout.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="restTarget">Rest Day Calorie Target</Label>
+                  <Input
+                    id="restTarget"
+                    inputMode="numeric"
+                    value={restTarget}
+                    onChange={(e) => handleNumeric(e.target.value, setRestTarget)}
+                    placeholder="e.g. 1900"
+                  />
+                  <p className="text-xs text-muted-foreground">Used as your daily goal on days with no workout.</p>
+                </div>
+
                 <Button onClick={handleSave} disabled={saving} className="w-full">
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
