@@ -9,9 +9,11 @@ interface CalorieGoalProgressProps {
   current: number;
   goal: number;
   onGoalChange: (goal: number) => void;
+  autoMode?: boolean;
+  dayType?: 'gym' | 'rest';
 }
 
-export const CalorieGoalProgress = ({ current, goal, onGoalChange }: CalorieGoalProgressProps) => {
+export const CalorieGoalProgress = ({ current, goal, onGoalChange, autoMode = false, dayType }: CalorieGoalProgressProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(goal.toString());
 
@@ -38,8 +40,17 @@ export const CalorieGoalProgress = ({ current, goal, onGoalChange }: CalorieGoal
           <span className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
             Daily Calorie Goal
+            {autoMode && dayType && (
+              <span
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full text-white ${
+                  dayType === 'gym' ? 'bg-chart-2' : 'bg-muted-foreground'
+                }`}
+              >
+                {dayType === 'gym' ? 'Gym day' : 'Rest day'}
+              </span>
+            )}
           </span>
-          {!isEditing && (
+          {!isEditing && !autoMode && (
             <Button
               variant="ghost"
               size="icon"
