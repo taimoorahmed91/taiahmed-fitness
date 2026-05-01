@@ -137,6 +137,8 @@ export const ImportExportButton = () => {
           gender: pd.gender ?? null,
           height_cm: pd.height_cm ?? null,
           target_weight_kg: pd.target_weight_kg ?? null,
+          gym_day_calorie_target: (pd as any).gym_day_calorie_target ?? null,
+          rest_day_calorie_target: (pd as any).rest_day_calorie_target ?? null,
         });
       }
 

@@ -32,6 +32,8 @@ const PersonalDataPage = () => {
   const [gender, setGender] = useState('');
   const [height, setHeight] = useState('');
   const [targetWeight, setTargetWeight] = useState('');
+  const [gymTarget, setGymTarget] = useState('');
+  const [restTarget, setRestTarget] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -41,6 +43,8 @@ const PersonalDataPage = () => {
     setGender(data.gender || '');
     setHeight(data.height_cm?.toString() || '');
     setTargetWeight(data.target_weight_kg?.toString() || '');
+    setGymTarget(data.gym_day_calorie_target?.toString() || '');
+    setRestTarget(data.rest_day_calorie_target?.toString() || '');
   }, [data]);
 
   const handleDobChange = (val: string) => {
@@ -63,6 +67,8 @@ const PersonalDataPage = () => {
       gender: gender || null,
       height_cm: height ? parseFloat(height) : null,
       target_weight_kg: targetWeight ? parseFloat(targetWeight) : null,
+      gym_day_calorie_target: gymTarget ? parseInt(gymTarget, 10) : null,
+      rest_day_calorie_target: restTarget ? parseInt(restTarget, 10) : null,
     });
     setSaving(false);
     if (error) toast.error('Failed to save personal data');
@@ -155,6 +161,30 @@ const PersonalDataPage = () => {
                     onChange={(e) => handleNumeric(e.target.value, setTargetWeight)}
                     placeholder="e.g. 75.5"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gymTarget">Gym Day Calorie Target</Label>
+                  <Input
+                    id="gymTarget"
+                    inputMode="numeric"
+                    value={gymTarget}
+                    onChange={(e) => handleNumeric(e.target.value, setGymTarget)}
+                    placeholder="e.g. 2400"
+                  />
+                  <p className="text-xs text-muted-foreground">Used as your daily goal on days you log a workout.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="restTarget">Rest Day Calorie Target</Label>
+                  <Input
+                    id="restTarget"
+                    inputMode="numeric"
+                    value={restTarget}
+                    onChange={(e) => handleNumeric(e.target.value, setRestTarget)}
+                    placeholder="e.g. 1900"
+                  />
+                  <p className="text-xs text-muted-foreground">Used as your daily goal on days with no workout.</p>
                 </div>
 
                 <Button onClick={handleSave} disabled={saving} className="w-full">
