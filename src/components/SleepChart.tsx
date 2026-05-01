@@ -17,9 +17,11 @@ const CustomTooltip = ({ active, payload, label, notesMap }: any) => {
   return (
     <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
       <p className="font-medium text-foreground mb-1">{label}</p>
-      <p className="text-sm text-muted-foreground">
-        Sleep: <span className="font-semibold text-foreground">{payload[0].value} hrs</span>
-      </p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} className="text-sm text-muted-foreground">
+          {p.name}: <span className="font-semibold" style={{ color: p.color }}>{p.value} hrs</span>
+        </p>
+      ))}
       {note && (
         <div className="mt-2 pt-2 border-t border-border">
           <div className="flex items-center gap-1 text-destructive text-xs font-medium mb-1">
