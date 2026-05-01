@@ -21,6 +21,8 @@ import { Utensils } from 'lucide-react';
 const Meals = () => {
   const { meals, addMeal, deleteMeal, updateMeal, getTodayCalories } = useMeals();
   const { settings } = useUserSettings();
+  const { sessions: gymSessions } = useGymSessions();
+  const { data: personalData } = usePersonalData();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [editForm, setEditForm] = useState({ food: '', calories: '', time: '', date: '' });
   const [prefillData, setPrefillData] = useState<{ food: string; calories: number } | null>(null);
