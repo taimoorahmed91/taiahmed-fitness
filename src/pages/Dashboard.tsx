@@ -44,22 +44,37 @@ const Dashboard = () => {
   const { entries: whoopEntries } = useWhoopData();
   const { data: personalData } = usePersonalData();
 
-  // Determine today's effective calorie goal: gym day vs rest day
-  const { effectiveGoal, isGymDay, autoMode } = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const workedOutToday = gymSessions.some((s) => s.date === today);
+  // Resolve effective calorie goal for a given date based on workout activity that day
+  const resolveGoalForDate = (dateStr: string) => {
+    const workedOut = gymSessions.some((s) => s.date === dateStr);
     const gymTarget = personalData.gym_day_calorie_target;
     const restTarget = personalData.rest_day_calorie_target;
     const auto = gymTarget != null || restTarget != null;
     let goal = settings.daily_calorie_goal;
     if (auto) {
-      if (workedOutToday && gymTarget != null) goal = gymTarget;
-      else if (!workedOutToday && restTarget != null) goal = restTarget;
+      if (workedOut && gymTarget != null) goal = gymTarget;
+      else if (!workedOut && restTarget != null) goal = restTarget;
       else if (gymTarget != null) goal = gymTarget;
       else if (restTarget != null) goal = restTarget;
     }
-    return { effectiveGoal: goal, isGymDay: workedOutToday, autoMode: auto };
-  }, [gymSessions, personalData, settings.daily_calorie_goal]);
+    return { goal, workedOut, auto };
+  };
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const yesterdayStr = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  })();
+
+  const { goal: effectiveGoal, workedOut: isGymDay, auto: autoMode } = useMemo(
+    () => resolveGoalForDate(todayStr),
+    [gymSessions, personalData, settings.daily_calorie_goal, todayStr]
+  );
+  const { goal: yesterdayGoal } = useMemo(
+    () => resolveGoalForDate(yesterdayStr),
+    [gymSessions, personalData, settings.daily_calorie_goal, yesterdayStr]
+  );
 
   // Latest WHOOP recovery score (most recent entry by date)
   const latestRecoveryScore = useMemo(() => {
@@ -218,7 +233,7 @@ const Dashboard = () => {
         />
         <YesterdayStatus 
           yesterdayCalories={yesterdayCalories} 
-          goal={effectiveGoal} 
+          goal={yesterdayGoal} 
         />
         <WeightIntervalSetting
           interval={settings.weight_measurement_interval}
