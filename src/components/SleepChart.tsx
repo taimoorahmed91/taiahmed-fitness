@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, ReferenceDot } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, ReferenceDot, Legend } from 'recharts';
 import { Moon, AlertCircle } from 'lucide-react';
 import { DailyNote } from '@/hooks/useDailyNotes';
 import { Badge } from '@/components/ui/badge';
 
 interface SleepChartProps {
-  data: { date: string; hours: number }[];
+  data: { date: string; hours: number; whoopHours?: number }[];
   notesMap?: Map<string, DailyNote>;
 }
 
@@ -17,9 +17,11 @@ const CustomTooltip = ({ active, payload, label, notesMap }: any) => {
   return (
     <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
       <p className="font-medium text-foreground mb-1">{label}</p>
-      <p className="text-sm text-muted-foreground">
-        Sleep: <span className="font-semibold text-foreground">{payload[0].value} hrs</span>
-      </p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} className="text-sm text-muted-foreground">
+          {p.name}: <span className="font-semibold" style={{ color: p.color }}>{p.value} hrs</span>
+        </p>
+      ))}
       {note && (
         <div className="mt-2 pt-2 border-t border-border">
           <div className="flex items-center gap-1 text-destructive text-xs font-medium mb-1">
@@ -43,11 +45,12 @@ const CustomTooltip = ({ active, payload, label, notesMap }: any) => {
 };
 
 export const SleepChart = ({ data, notesMap }: SleepChartProps) => {
-  const validData = data.filter(d => d.hours > 0);
-  const avgHours = validData.length > 0
-    ? (validData.reduce((sum, d) => sum + d.hours, 0) / validData.length).toFixed(1)
+  const validData = data.filter(d => d.hours > 0 || (d.whoopHours ?? 0) > 0);
+  const manualForAvg = validData.filter(d => d.hours > 0);
+  const avgHours = manualForAvg.length > 0
+    ? (manualForAvg.reduce((sum, d) => sum + d.hours, 0) / manualForAvg.length).toFixed(1)
     : 0;
-  
+
   // Reverse for chronological order and take last 7
   const chartData = [...validData].reverse().slice(-7);
 
@@ -94,18 +97,27 @@ export const SleepChart = ({ data, notesMap }: SleepChartProps) => {
                   domain={[0, 12]}
                 />
                 <Tooltip content={<CustomTooltip notesMap={notesMap} />} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar
                   dataKey="hours"
+                  name="Manual Sleep"
                   fill="hsl(var(--primary))"
                   radius={[4, 4, 0, 0]}
-                  maxBarSize={50}
+                  maxBarSize={40}
+                />
+                <Bar
+                  dataKey="whoopHours"
+                  name="WHOOP In Bed"
+                  fill="hsl(var(--chart-2))"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
                 />
                 {/* Note indicators */}
                 {datesWithNotes.map((item) => (
                   <ReferenceDot
                     key={item.date}
                     x={item.date}
-                    y={item.hours}
+                    y={Math.max(item.hours, item.whoopHours ?? 0)}
                     r={6}
                     fill="hsl(var(--destructive))"
                     stroke="hsl(var(--background))"
