@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, ReferenceDot } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, ReferenceDot, Legend } from 'recharts';
 import { Moon, AlertCircle } from 'lucide-react';
 import { DailyNote } from '@/hooks/useDailyNotes';
 import { Badge } from '@/components/ui/badge';
 
 interface SleepChartProps {
-  data: { date: string; hours: number }[];
+  data: { date: string; hours: number; whoopHours?: number }[];
   notesMap?: Map<string, DailyNote>;
 }
 
