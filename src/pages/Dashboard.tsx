@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { StatsCards } from '@/components/StatsCards';
 import { CalorieChart } from '@/components/CalorieChart';
 import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
@@ -30,6 +30,32 @@ const shiftISODateByDays = (isoDate: string, days: number) => {
   const date = new Date(`${isoDate}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().split('T')[0];
+};
+
+const ResetCountdown = () => {
+  const compute = () => {
+    const now = new Date();
+    const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+    const ms = Math.max(0, next - now.getTime());
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    const s = Math.floor((ms % 60_000) / 1000);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+  const [label, setLabel] = useState(compute);
+  useEffect(() => {
+    const id = setInterval(() => setLabel(compute()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div
+      className="flex items-center gap-2 text-sm text-muted-foreground shrink-0"
+      title="Daily data resets at 00:00 UTC"
+    >
+      <Clock className="h-4 w-4" />
+      <span>Resets in <span className="font-mono font-semibold text-foreground">{label}</span></span>
+    </div>
+  );
 };
 
 const Dashboard = () => {
@@ -185,9 +211,12 @@ const Dashboard = () => {
 
   return (
     <div className="container py-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Track your nutrition and fitness progress</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Track your nutrition and fitness progress</p>
+        </div>
+        <ResetCountdown />
       </div>
 
       <SearchFilter
