@@ -47,8 +47,12 @@ const CustomTooltip = ({ active, payload, label, notesMap }: any) => {
 export const SleepChart = ({ data, notesMap }: SleepChartProps) => {
   const validData = data.filter(d => d.hours > 0 || (d.whoopHours ?? 0) > 0);
   const manualForAvg = validData.filter(d => d.hours > 0);
+  const whoopForAvg = validData.filter(d => (d.whoopHours ?? 0) > 0);
   const avgHours = manualForAvg.length > 0
     ? (manualForAvg.reduce((sum, d) => sum + d.hours, 0) / manualForAvg.length).toFixed(1)
+    : 0;
+  const avgWhoopHours = whoopForAvg.length > 0
+    ? (whoopForAvg.reduce((sum, d) => sum + (d.whoopHours ?? 0), 0) / whoopForAvg.length).toFixed(1)
     : 0;
 
   // Reverse for chronological order and take last 7
@@ -67,11 +71,18 @@ export const SleepChart = ({ data, notesMap }: SleepChartProps) => {
             <Moon className="h-5 w-5 text-primary" />
             Sleep (Last 7 Days)
           </CardTitle>
-          {Number(avgHours) > 0 && (
-            <span className="text-sm text-muted-foreground">
-              Avg: <span className="font-semibold text-foreground">{avgHours}</span> hrs
-            </span>
-          )}
+          <div className="flex items-center gap-3 text-xs">
+            {Number(avgHours) > 0 && (
+              <span className="text-muted-foreground">
+                Avg Manual: <span className="font-semibold" style={{ color: 'hsl(var(--primary))' }}>{avgHours}</span> hrs
+              </span>
+            )}
+            {Number(avgWhoopHours) > 0 && (
+              <span className="text-muted-foreground">
+                Avg WHOOP: <span className="font-semibold" style={{ color: 'hsl(var(--chart-2))' }}>{avgWhoopHours}</span> hrs
+              </span>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
