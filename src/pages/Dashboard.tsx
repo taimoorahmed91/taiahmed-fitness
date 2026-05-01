@@ -22,6 +22,7 @@ import { useDailySummary } from '@/hooks/useDailySummary';
 import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useWhoopData } from '@/hooks/useWhoopData';
+import { usePersonalData } from '@/hooks/usePersonalData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
@@ -33,7 +34,7 @@ const shiftISODateByDays = (isoDate: string, days: number) => {
 
 const Dashboard = () => {
   const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
-  const { getThisWeekSessions, getWeeklyWorkoutData, refetch: refetchGym } = useGymSessions();
+  const { getThisWeekSessions, getWeeklyWorkoutData, sessions: gymSessions, refetch: refetchGym } = useGymSessions();
   const { settings, updateCalorieGoal, updateWeightInterval, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
   const { entries: waistEntries, refetch: refetchWaist } = useWaist();
@@ -41,6 +42,24 @@ const Dashboard = () => {
   const { summary, refetch: refetchSummary } = useDailySummary();
   const { getNotesMap, refetch: refetchNotes } = useDailyNotes();
   const { entries: whoopEntries } = useWhoopData();
+  const { data: personalData } = usePersonalData();
+
+  // Determine today's effective calorie goal: gym day vs rest day
+  const { effectiveGoal, isGymDay, autoMode } = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const workedOutToday = gymSessions.some((s) => s.date === today);
+    const gymTarget = personalData.gym_day_calorie_target;
+    const restTarget = personalData.rest_day_calorie_target;
+    const auto = gymTarget != null || restTarget != null;
+    let goal = settings.daily_calorie_goal;
+    if (auto) {
+      if (workedOutToday && gymTarget != null) goal = gymTarget;
+      else if (!workedOutToday && restTarget != null) goal = restTarget;
+      else if (gymTarget != null) goal = gymTarget;
+      else if (restTarget != null) goal = restTarget;
+    }
+    return { effectiveGoal: goal, isGymDay: workedOutToday, autoMode: auto };
+  }, [gymSessions, personalData, settings.daily_calorie_goal]);
 
   // Latest WHOOP recovery score (most recent entry by date)
   const latestRecoveryScore = useMemo(() => {
