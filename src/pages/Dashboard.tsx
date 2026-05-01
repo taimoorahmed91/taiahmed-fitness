@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { StatsCards } from '@/components/StatsCards';
 import { CalorieChart } from '@/components/CalorieChart';
 import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
