@@ -211,12 +211,14 @@ const Dashboard = () => {
       <div className="grid lg:grid-cols-4 gap-6">
         <CalorieGoalProgress 
           current={getTodayCalories()} 
-          goal={settings.daily_calorie_goal} 
+          goal={effectiveGoal} 
           onGoalChange={updateCalorieGoal}
+          autoMode={autoMode}
+          dayType={autoMode ? (isGymDay ? 'gym' : 'rest') : undefined}
         />
         <YesterdayStatus 
           yesterdayCalories={yesterdayCalories} 
-          goal={settings.daily_calorie_goal} 
+          goal={effectiveGoal} 
         />
         <WeightIntervalSetting
           interval={settings.weight_measurement_interval}
