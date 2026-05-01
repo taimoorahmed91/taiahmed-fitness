@@ -665,8 +665,10 @@ export type Database = {
           dob: string | null
           full_name: string | null
           gender: string | null
+          gym_day_calorie_target: number | null
           height_cm: number | null
           id: string
+          rest_day_calorie_target: number | null
           target_weight_kg: number | null
           updated_at: string
           user_id: string
@@ -677,8 +679,10 @@ export type Database = {
           dob?: string | null
           full_name?: string | null
           gender?: string | null
+          gym_day_calorie_target?: number | null
           height_cm?: number | null
           id?: string
+          rest_day_calorie_target?: number | null
           target_weight_kg?: number | null
           updated_at?: string
           user_id: string
@@ -689,8 +693,10 @@ export type Database = {
           dob?: string | null
           full_name?: string | null
           gender?: string | null
+          gym_day_calorie_target?: number | null
           height_cm?: number | null
           id?: string
+          rest_day_calorie_target?: number | null
           target_weight_kg?: number | null
           updated_at?: string
           user_id?: string
