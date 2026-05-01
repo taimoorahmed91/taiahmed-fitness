@@ -32,6 +32,8 @@ const PersonalDataPage = () => {
   const [gender, setGender] = useState('');
   const [height, setHeight] = useState('');
   const [targetWeight, setTargetWeight] = useState('');
+  const [gymTarget, setGymTarget] = useState('');
+  const [restTarget, setRestTarget] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -41,6 +43,8 @@ const PersonalDataPage = () => {
     setGender(data.gender || '');
     setHeight(data.height_cm?.toString() || '');
     setTargetWeight(data.target_weight_kg?.toString() || '');
+    setGymTarget(data.gym_day_calorie_target?.toString() || '');
+    setRestTarget(data.rest_day_calorie_target?.toString() || '');
   }, [data]);
 
   const handleDobChange = (val: string) => {
@@ -63,6 +67,8 @@ const PersonalDataPage = () => {
       gender: gender || null,
       height_cm: height ? parseFloat(height) : null,
       target_weight_kg: targetWeight ? parseFloat(targetWeight) : null,
+      gym_day_calorie_target: gymTarget ? parseInt(gymTarget, 10) : null,
+      rest_day_calorie_target: restTarget ? parseInt(restTarget, 10) : null,
     });
     setSaving(false);
     if (error) toast.error('Failed to save personal data');
