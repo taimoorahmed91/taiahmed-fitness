@@ -42,8 +42,8 @@ export const CalorieGoalProgress = ({ current, goal, onGoalChange, autoMode = fa
             Daily Calorie Goal
             {autoMode && dayType && (
               <span
-                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full text-white ${
-                  dayType === 'gym' ? 'bg-chart-2' : 'bg-muted-foreground'
+                className={`text-xs font-semibold ${
+                  dayType === 'gym' ? 'text-chart-2' : 'text-orange-500'
                 }`}
               >
                 {dayType === 'gym' ? 'Gym day' : 'Rest day'}
