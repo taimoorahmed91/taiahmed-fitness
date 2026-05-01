@@ -3,6 +3,8 @@ import { MealForm } from '@/components/MealForm';
 import { MealList } from '@/components/MealList';
 import { useMeals } from '@/hooks/useMeals';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useGymSessions } from '@/hooks/useGymSessions';
+import { usePersonalData } from '@/hooks/usePersonalData';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -19,6 +21,8 @@ import { Utensils } from 'lucide-react';
 const Meals = () => {
   const { meals, addMeal, deleteMeal, updateMeal, getTodayCalories } = useMeals();
   const { settings } = useUserSettings();
+  const { sessions: gymSessions } = useGymSessions();
+  const { data: personalData } = usePersonalData();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [editForm, setEditForm] = useState({ food: '', calories: '', time: '', date: '' });
   const [prefillData, setPrefillData] = useState<{ food: string; calories: number } | null>(null);
@@ -55,9 +59,22 @@ const Meals = () => {
     setEditingMeal(null);
   };
 
-  // Calculate stats
+  // Calculate stats with dynamic gym/rest day target
   const todayCalories = getTodayCalories();
-  const calorieGoal = settings.daily_calorie_goal;
+  const calorieGoal = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const workedOut = gymSessions.some((s) => s.date === today);
+    const gymTarget = personalData.gym_day_calorie_target;
+    const restTarget = personalData.rest_day_calorie_target;
+    const auto = gymTarget != null || restTarget != null;
+    if (auto) {
+      if (workedOut && gymTarget != null) return gymTarget;
+      if (!workedOut && restTarget != null) return restTarget;
+      if (gymTarget != null) return gymTarget;
+      if (restTarget != null) return restTarget;
+    }
+    return settings.daily_calorie_goal;
+  }, [gymSessions, personalData, settings.daily_calorie_goal]);
   const caloriesRemaining = Math.max(0, calorieGoal - todayCalories);
   
   const todayMeals = useMemo(() => {
