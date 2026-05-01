@@ -32,6 +32,32 @@ const shiftISODateByDays = (isoDate: string, days: number) => {
   return date.toISOString().split('T')[0];
 };
 
+const ResetCountdown = () => {
+  const compute = () => {
+    const now = new Date();
+    const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+    const ms = Math.max(0, next - now.getTime());
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    const s = Math.floor((ms % 60_000) / 1000);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+  const [label, setLabel] = useState(compute);
+  useEffect(() => {
+    const id = setInterval(() => setLabel(compute()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div
+      className="flex items-center gap-2 text-sm text-muted-foreground shrink-0"
+      title="Daily data resets at 00:00 UTC"
+    >
+      <Clock className="h-4 w-4" />
+      <span>Resets in <span className="font-mono font-semibold text-foreground">{label}</span></span>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
   const { getThisWeekSessions, getWeeklyWorkoutData, sessions: gymSessions, refetch: refetchGym } = useGymSessions();
