@@ -65,9 +65,10 @@ export const ImportExportButton = () => {
     }
   };
 
-  const handleExportJSON = () => {
-    exportToJSON(data);
-    toast.success('Backup exported as JSON!');
+  const handleExportJSON = (rangeDays?: number) => {
+    exportToJSON(data, rangeDays);
+    const label = rangeDays ? `last ${rangeDays} days` : 'full';
+    toast.success(`Backup exported (${label})!`);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,9 +196,17 @@ export const ImportExportButton = () => {
           
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Backup & Restore</DropdownMenuLabel>
-          <DropdownMenuItem onClick={handleExportJSON}>
+          <DropdownMenuItem onClick={() => handleExportJSON()}>
             <FileJson className="h-4 w-4 mr-2" />
-            Export Backup (JSON)
+            Export Backup (All)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExportJSON(7)}>
+            <FileJson className="h-4 w-4 mr-2" />
+            Export Backup (Last 7 days)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExportJSON(30)}>
+            <FileJson className="h-4 w-4 mr-2" />
+            Export Backup (Last 30 days)
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
