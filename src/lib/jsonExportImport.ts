@@ -29,18 +29,33 @@ interface FullExportData {
   personalData?: PersonalData | null;
 }
 
-export const exportToJSON = (data: FullExportData): void => {
+export const exportToJSON = (data: FullExportData, rangeDays?: number): void => {
   const { id: _pdId, ...personalRest } = (data.personalData || {}) as PersonalData;
+
+  let cutoffISO: string | null = null;
+  if (rangeDays && rangeDays > 0) {
+    const c = new Date();
+    c.setDate(c.getDate() - rangeDays);
+    c.setHours(0, 0, 0, 0);
+    cutoffISO = c.toISOString().split('T')[0];
+  }
+
+  const inRange = <T extends { date?: string; created_at?: string }>(item: T): boolean => {
+    if (!cutoffISO) return true;
+    const d = (item.date || item.created_at || '').slice(0, 10);
+    return d >= cutoffISO;
+  };
+
   const exportData: ExportedData = {
     version: '1.3',
     exportDate: new Date().toISOString(),
     data: {
-      meals: data.meals.map(({ id, ...rest }) => rest),
-      workouts: data.workouts.map(({ id, ...rest }) => rest),
-      weight: data.weight.map(({ id, ...rest }) => rest),
-      waist: data.waist.map(({ id, ...rest }) => rest),
-      sleep: data.sleep.map(({ id, ...rest }) => rest),
-      whoop: data.whoop?.map(({ id, ...rest }) => rest) || [],
+      meals: data.meals.filter(inRange).map(({ id, ...rest }) => rest),
+      workouts: data.workouts.filter(inRange).map(({ id, ...rest }) => rest),
+      weight: data.weight.filter(inRange).map(({ id, ...rest }) => rest),
+      waist: data.waist.filter(inRange).map(({ id, ...rest }) => rest),
+      sleep: data.sleep.filter(inRange).map(({ id, ...rest }) => rest),
+      whoop: data.whoop?.filter(inRange).map(({ id, ...rest }) => rest) || [],
       personalData: data.personalData ? personalRest : null,
     },
   };
@@ -48,8 +63,9 @@ export const exportToJSON = (data: FullExportData): void => {
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
   const link = document.createElement('a');
   const date = new Date().toISOString().split('T')[0];
+  const suffix = rangeDays ? `_${rangeDays}d` : '_full';
   link.href = URL.createObjectURL(blob);
-  link.download = `fittrack_backup_${date}.json`;
+  link.download = `fittrack_backup${suffix}_${date}.json`;
   link.click();
   URL.revokeObjectURL(link.href);
 };
