@@ -65,9 +65,10 @@ export const ImportExportButton = () => {
     }
   };
 
-  const handleExportJSON = () => {
-    exportToJSON(data);
-    toast.success('Backup exported as JSON!');
+  const handleExportJSON = (rangeDays?: number) => {
+    exportToJSON(data, rangeDays);
+    const label = rangeDays ? `last ${rangeDays} days` : 'full';
+    toast.success(`Backup exported (${label})!`);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
