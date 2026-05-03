@@ -196,9 +196,17 @@ export const ImportExportButton = () => {
           
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Backup & Restore</DropdownMenuLabel>
-          <DropdownMenuItem onClick={handleExportJSON}>
+          <DropdownMenuItem onClick={() => handleExportJSON()}>
             <FileJson className="h-4 w-4 mr-2" />
-            Export Backup (JSON)
+            Export Backup (All)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExportJSON(7)}>
+            <FileJson className="h-4 w-4 mr-2" />
+            Export Backup (Last 7 days)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExportJSON(30)}>
+            <FileJson className="h-4 w-4 mr-2" />
+            Export Backup (Last 30 days)
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
