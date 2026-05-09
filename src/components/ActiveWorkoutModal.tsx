@@ -242,16 +242,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setExpandedExercise(savedState.expandedExercise);
         setIsRestored(true);
 
-        // Restore rest timer if active
+        // Restore rest timer if active — recompute from original startedAt
         if (savedState.restTimer) {
-          const elapsed = Math.floor((Date.now() - new Date(savedState.restTimer.startedAt).getTime()) / 1000);
-          const totalElapsed = savedState.restTimer.total - savedState.restTimer.remaining + elapsed;
-          const remaining = Math.max(0, savedState.restTimer.total - totalElapsed);
+          const startedAt = new Date(savedState.restTimer.startedAt);
+          const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 1000);
+          const remaining = Math.max(0, savedState.restTimer.total - elapsed);
           if (remaining > 0) {
-            setRestTimerRemaining(remaining);
+            restTimerStartedAt.current = startedAt;
             setRestTimerTotal(savedState.restTimer.total);
+            setRestTimerRemaining(remaining);
             setRestTimerType(savedState.restTimer.type);
-            restTimerStartedAt.current = new Date();
             setIsRestTimerActive(true);
           }
         }
