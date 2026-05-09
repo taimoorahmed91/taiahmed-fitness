@@ -242,16 +242,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setExpandedExercise(savedState.expandedExercise);
         setIsRestored(true);
 
-        // Restore rest timer if active
+        // Restore rest timer if active — recompute from original startedAt
         if (savedState.restTimer) {
-          const elapsed = Math.floor((Date.now() - new Date(savedState.restTimer.startedAt).getTime()) / 1000);
-          const totalElapsed = savedState.restTimer.total - savedState.restTimer.remaining + elapsed;
-          const remaining = Math.max(0, savedState.restTimer.total - totalElapsed);
+          const startedAt = new Date(savedState.restTimer.startedAt);
+          const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 1000);
+          const remaining = Math.max(0, savedState.restTimer.total - elapsed);
           if (remaining > 0) {
-            setRestTimerRemaining(remaining);
+            restTimerStartedAt.current = startedAt;
             setRestTimerTotal(savedState.restTimer.total);
+            setRestTimerRemaining(remaining);
             setRestTimerType(savedState.restTimer.type);
-            restTimerStartedAt.current = new Date();
             setIsRestTimerActive(true);
           }
         }
@@ -315,27 +315,39 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     return () => clearInterval(interval);
   }, [open, startTime]);
 
-  // Rest timer countdown
+  // Rest timer countdown — driven by wall-clock timestamps so background tab
+  // throttling (browsers throttle setInterval to ~1/min when hidden) doesn't
+  // cause the timer to drift. We always compute remaining from startedAt+total.
   useEffect(() => {
-    if (!isRestTimerActive || restTimerRemaining <= 0) return;
-    const interval = setInterval(() => {
-      setRestTimerRemaining((prev) => {
-        if (prev <= 1) {
-          setIsRestTimerActive(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isRestTimerActive, restTimerRemaining]);
+    if (!isRestTimerActive) return;
+
+    const tick = () => {
+      const startedAt = restTimerStartedAt.current;
+      if (!startedAt) return;
+      const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 1000);
+      const remaining = Math.max(0, restTimerTotal - elapsed);
+      setRestTimerRemaining(remaining);
+      if (remaining <= 0) setIsRestTimerActive(false);
+    };
+
+    tick(); // immediate sync (e.g. when tab becomes visible again)
+    const interval = setInterval(tick, 1000);
+    const onVisibility = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', tick);
+    };
+  }, [isRestTimerActive, restTimerTotal]);
 
   const startRestTimer = (type: 'set' | 'exercise') => {
     const duration = type === 'set' ? timerSettings.setRestSeconds : timerSettings.exerciseRestSeconds;
+    restTimerStartedAt.current = new Date();
     setRestTimerTotal(duration);
     setRestTimerRemaining(duration);
     setRestTimerType(type);
-    restTimerStartedAt.current = new Date();
     setIsRestTimerActive(true);
   };
 
