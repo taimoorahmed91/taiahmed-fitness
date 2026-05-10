@@ -107,7 +107,7 @@ export const useWhoopData = () => {
         .select('whoop_api_url')
         .eq('user_id', user.id)
         .maybeSingle();
-      const url = (settingsRow as any)?.whoop_api_url?.trim() || WHOOP_API_URL;
+      const url = ((settingsRow as any)?.whoop_api_url ?? '').trim();
       if (!url) {
         toast.error('Please set your WHOOP API URL on the WHOOP page');
         setFetching(false);
