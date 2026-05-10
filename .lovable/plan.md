@@ -1,49 +1,37 @@
-## Goal
+## Problem
 
-Add a small live countdown next to the "Dashboard" H1 showing how much time remains until the app's "today" rolls over (i.e., until **00:00 UTC**, since all the app's date logic uses UTC). Do not touch any of the existing date/reset logic.
+Sync Now still works even when nothing is saved in `fittrack_user_settings.whoop_api_url`, because two places silently fall back to a hardcoded URL:
 
-## Where
+1. `src/hooks/useWhoopData.ts` — constant `WHOOP_API_URL` used as a fallback when the user has no saved URL.
+2. `supabase/functions/sync-whoop-data/index.ts` — daily auto-sync ignores the user setting entirely and always calls the hardcoded URL.
 
-`src/pages/Dashboard.tsx` — only the header block:
+Result: the WHOOP page input has nothing to pre-fill (DB column is empty), but data still arrives, so the user can't see/edit the URL that's actually being used.
 
-```tsx
-<div>
-  <h1 className="text-3xl font-bold">Dashboard</h1>
-  <p className="text-muted-foreground mt-1">Track your nutrition and fitness progress</p>
-</div>
-```
+## Plan
 
-## Change
+### 1. One-time backfill
 
-Wrap that block in a flex row that pushes the countdown to the right, on the same line as the H1.
+Backfill `fittrack_user_settings.whoop_api_url` with the previously hardcoded URL for every existing row where it is currently `NULL`. This way every user already syncing WHOOP keeps working, and their saved URL becomes visible in the WHOOP page input.
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ Dashboard                              ⏱ Resets in 04:32:18 │
-│ Track your nutrition and fitness progress                    │
-└──────────────────────────────────────────────────────────────┘
-```
+URL to backfill: `https://apjmwqdiqskgvzkvpjpx.supabase.co/functions/v1/get-latest-collective`
 
-## Implementation details
+### 2. Remove the client fallback
 
-1. Add a small inline component (or inline `useState` + `useEffect`) inside `Dashboard.tsx` — no new files, no new hooks elsewhere.
-2. State holds remaining ms until next UTC midnight, computed as:
-   ```ts
-   const now = new Date();
-   const nextUtcMidnight = Date.UTC(
-     now.getUTCFullYear(),
-     now.getUTCMonth(),
-     now.getUTCDate() + 1
-   );
-   const remainingMs = nextUtcMidnight - now.getTime();
-   ```
-3. `setInterval` of 1000 ms; clear on unmount.
-4. Format as `HH:MM:SS` (zero-padded).
-5. Layout: change the wrapper to `flex items-start justify-between gap-4`, put the existing `<h1>` + `<p>` in the left child, put the countdown on the right aligned with the H1 baseline (e.g., `text-sm text-muted-foreground` with a `Clock` icon from `lucide-react`).
-6. Tooltip/title attribute: `"Daily data resets at 00:00 UTC"` so it's clear why the timer exists.
+In `src/hooks/useWhoopData.ts`:
+- Delete the `WHOOP_API_URL` constant.
+- In `fetchFromAPI`, if the user has no `whoop_api_url` saved, show a toast error ("Please set your WHOOP API URL on the WHOOP page") and stop — no silent fallback.
 
-## Out of scope
+### 3. Make the edge function per-user
 
-- No changes to any "today"/UTC logic anywhere else.
-- No changes to the daily summary function, meals, gym, goals, or WHOOP code.
-- No changes to other pages.
+In `supabase/functions/sync-whoop-data/index.ts`:
+- Delete the `WHOOP_API_URL` constant.
+- Read each user's `whoop_api_url` from `fittrack_user_settings` inside the per-user loop.
+- For each user: if their URL is missing, skip them (count as skipped); otherwise fetch from their URL and insert their row. This means each user can have a different URL, and users without one are simply skipped instead of getting data from someone else's endpoint.
+- Keep `WHOOP_API_KEY` hardcoded as today (out of scope for this change).
+
+### 4. Verify
+
+After the change:
+- Open the WHOOP page → the input is pre-filled with the saved URL.
+- Edit + Save → reload → input shows the new URL.
+- Sync Now still works for users with a saved URL; users without one get a clear error.
