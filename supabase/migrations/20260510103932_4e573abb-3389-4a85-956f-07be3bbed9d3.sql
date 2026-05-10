@@ -1,0 +1,1 @@
+ALTER TABLE public.fittrack_user_settings ADD COLUMN IF NOT EXISTS whoop_api_url text;
