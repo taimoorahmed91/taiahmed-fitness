@@ -96,6 +96,8 @@ const PersonalDataPage = () => {
               <p className="text-muted-foreground text-sm">Loading...</p>
             ) : (
               <>
+                <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
+                  <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Name</Label>
                   <Input
