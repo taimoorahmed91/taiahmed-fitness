@@ -64,7 +64,7 @@ const WhoopData = () => {
       return;
     }
     setSavedUrl(value);
-    setUrlInput('');
+    setUrlInput(value);
     toast.success(value ? 'WHOOP URL saved' : 'WHOOP URL cleared');
   };
 
