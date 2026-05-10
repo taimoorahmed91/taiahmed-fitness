@@ -1343,6 +1343,17 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_expense_admin: { Args: never; Returns: boolean }
+      list_static_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          username: string
+        }[]
+      }
       toggle_admin_status: {
         Args: { new_admin_status: boolean; target_user_id: string }
         Returns: boolean

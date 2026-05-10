@@ -113,6 +113,18 @@ export const useWhoopData = () => {
         setFetching(false);
         return;
       }
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:') {
+          toast.error('WHOOP API URL must use https://');
+          setFetching(false);
+          return;
+        }
+      } catch {
+        toast.error('Invalid WHOOP API URL');
+        setFetching(false);
+        return;
+      }
 
       const response = await fetch(url, {
         headers: {
