@@ -47,6 +47,7 @@ const PersonalDataPage = () => {
     setTargetWeight(data.target_weight_kg?.toString() || '');
     setGymTarget(data.gym_day_calorie_target?.toString() || '');
     setRestTarget(data.rest_day_calorie_target?.toString() || '');
+    setWorkoutDays(data.workout_days || []);
   }, [data]);
 
   const handleDobChange = (val: string) => {
