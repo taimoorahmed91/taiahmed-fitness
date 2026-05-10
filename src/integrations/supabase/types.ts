@@ -749,6 +749,7 @@ export type Database = {
           updated_at: string
           user_id: string
           weight_measurement_interval: number
+          whoop_api_url: string | null
         }
         Insert: {
           created_at?: string
@@ -762,6 +763,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           weight_measurement_interval?: number
+          whoop_api_url?: string | null
         }
         Update: {
           created_at?: string
@@ -775,6 +777,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weight_measurement_interval?: number
+          whoop_api_url?: string | null
         }
         Relationships: []
       }

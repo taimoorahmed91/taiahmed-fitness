@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Trash2, Activity, Heart, Moon, Flame, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RefreshCw, Trash2, Activity, Heart, Moon, Flame, Pencil, Link as LinkIcon } from 'lucide-react';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
 import { EditWhoopEntryDialog } from '@/components/EditWhoopEntryDialog';
 import type { WhoopEntry } from '@/hooks/useWhoopData';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/contexts/UserContext';
+import { toast } from 'sonner';
 
 const formatMilliToHours = (milli: number | null) => {
   if (milli === null || milli === undefined) return '-';
@@ -21,6 +26,43 @@ const WhoopData = () => {
   const pagination = usePagination(entries, { pageSize: 20 });
   const [editEntry, setEditEntry] = useState<WhoopEntry | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const { user } = useUser();
+  const [savedUrl, setSavedUrl] = useState<string>('');
+  const [urlInput, setUrlInput] = useState<string>('');
+  const [savingUrl, setSavingUrl] = useState(false);
+
+  useEffect(() => {
+    const loadUrl = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('fittrack_user_settings')
+        .select('whoop_api_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const url = (data as any)?.whoop_api_url ?? '';
+      setSavedUrl(url);
+      setUrlInput('');
+    };
+    loadUrl();
+  }, [user]);
+
+  const handleSaveUrl = async () => {
+    if (!user) return;
+    setSavingUrl(true);
+    const value = urlInput.trim();
+    const { error } = await supabase
+      .from('fittrack_user_settings')
+      .update({ whoop_api_url: value || null })
+      .eq('user_id', user.id);
+    setSavingUrl(false);
+    if (error) {
+      toast.error('Failed to save WHOOP URL');
+      return;
+    }
+    setSavedUrl(value);
+    setUrlInput('');
+    toast.success(value ? 'WHOOP URL saved' : 'WHOOP URL cleared');
+  };
 
   const handleFetch = () => {
     fetchFromAPI();
@@ -50,6 +92,40 @@ const WhoopData = () => {
             <p className="text-xs text-muted-foreground">Auto-syncs daily at 14:00 CET</p>
           </div>
         </div>
+
+        {/* WHOOP API URL config */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <LinkIcon className="h-4 w-4" /> WHOOP API URL
+            </CardTitle>
+            <CardDescription>
+              Paste the WHOOP data endpoint URL used by Sync Now.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="whoop-url" className="sr-only">WHOOP URL</Label>
+                <Input
+                  id="whoop-url"
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder={savedUrl || 'https://...'}
+                />
+                {savedUrl && (
+                  <p className="text-xs text-muted-foreground break-all">
+                    Current: {savedUrl}
+                  </p>
+                )}
+              </div>
+              <Button onClick={handleSaveUrl} disabled={savingUrl}>
+                {savingUrl ? 'Saving...' : 'Save URL'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Summary Cards */}
         {latestEntry && (

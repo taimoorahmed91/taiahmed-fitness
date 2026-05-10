@@ -102,7 +102,20 @@ export const useWhoopData = () => {
 
     setFetching(true);
     try {
-      const response = await fetch(WHOOP_API_URL, {
+      // Load user-configured WHOOP URL from settings
+      const { data: settingsRow } = await supabase
+        .from('fittrack_user_settings')
+        .select('whoop_api_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const url = (settingsRow as any)?.whoop_api_url?.trim() || WHOOP_API_URL;
+      if (!url) {
+        toast.error('Please set your WHOOP API URL on the WHOOP page');
+        setFetching(false);
+        return;
+      }
+
+      const response = await fetch(url, {
         headers: {
           'apikey': WHOOP_API_KEY,
           'Authorization': `Bearer ${WHOOP_API_KEY}`,
