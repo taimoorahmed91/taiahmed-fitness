@@ -51,6 +51,7 @@ export const usePersonalData = () => {
         target_weight_kg: row.target_weight_kg ? Number(row.target_weight_kg) : null,
         gym_day_calorie_target: (row as any).gym_day_calorie_target ?? null,
         rest_day_calorie_target: (row as any).rest_day_calorie_target ?? null,
+        workout_days: ((row as any).workout_days ?? []) as number[],
       });
     } else {
       setData({ ...empty, full_name: user.user_metadata?.full_name ?? null });
