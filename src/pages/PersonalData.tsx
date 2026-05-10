@@ -35,6 +35,7 @@ const PersonalDataPage = () => {
   const [targetWeight, setTargetWeight] = useState('');
   const [gymTarget, setGymTarget] = useState('');
   const [restTarget, setRestTarget] = useState('');
+  const [workoutDays, setWorkoutDays] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
