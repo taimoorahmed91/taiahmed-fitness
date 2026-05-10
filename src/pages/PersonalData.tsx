@@ -222,17 +222,17 @@ const PersonalDataPage = () => {
                   <p className="text-xs text-muted-foreground">Used by the dashboard to determine workout vs rest days.</p>
                 </div>
 
-                <Button onClick={handleSave} disabled={saving} className="w-full">
+                  <BmiCard heightCm={height ? parseFloat(height) : null} weightKg={currentWeight} />
+                  </div>
+                </div>
+
+                <Button onClick={handleSave} disabled={saving} className="w-full mt-6">
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
               </>
             )}
           </CardContent>
         </Card>
-
-        <div className="mt-6">
-          <BmiCard heightCm={height ? parseFloat(height) : null} weightKg={currentWeight} />
-        </div>
       </main>
     </div>
   );
