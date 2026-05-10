@@ -72,6 +72,7 @@ const PersonalDataPage = () => {
       target_weight_kg: targetWeight ? parseFloat(targetWeight) : null,
       gym_day_calorie_target: gymTarget ? parseInt(gymTarget, 10) : null,
       rest_day_calorie_target: restTarget ? parseInt(restTarget, 10) : null,
+      workout_days: workoutDays,
     });
     setSaving(false);
     if (error) toast.error('Failed to save personal data');
