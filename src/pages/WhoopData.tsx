@@ -34,14 +34,18 @@ const WhoopData = () => {
   useEffect(() => {
     const loadUrl = async () => {
       if (!user) return;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('fittrack_user_settings')
-        .select('whoop_api_url')
+        .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
-      const url = (data as any)?.whoop_api_url ?? '';
+      if (error) {
+        console.error('Failed to load WHOOP URL:', error);
+        return;
+      }
+      const url = ((data as any)?.whoop_api_url ?? '') as string;
       setSavedUrl(url);
-      setUrlInput('');
+      setUrlInput(url);
     };
     loadUrl();
   }, [user]);
