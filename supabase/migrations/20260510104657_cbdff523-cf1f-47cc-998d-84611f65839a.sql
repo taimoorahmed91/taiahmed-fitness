@@ -1,0 +1,1 @@
+UPDATE public.fittrack_user_settings SET whoop_api_url = 'https://apjmwqdiqskgvzkvpjpx.supabase.co/functions/v1/get-latest-collective' WHERE whoop_api_url IS NULL;
