@@ -12,6 +12,7 @@ export interface PersonalData {
   target_weight_kg: number | null;
   gym_day_calorie_target: number | null;
   rest_day_calorie_target: number | null;
+  workout_days: number[];
 }
 
 const empty: PersonalData = {
@@ -23,6 +24,7 @@ const empty: PersonalData = {
   target_weight_kg: null,
   gym_day_calorie_target: null,
   rest_day_calorie_target: null,
+  workout_days: [],
 };
 
 export const usePersonalData = () => {
