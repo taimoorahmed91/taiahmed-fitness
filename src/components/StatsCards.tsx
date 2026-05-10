@@ -58,6 +58,16 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
 
         setDidWorkoutToday(gymData && gymData.length > 0);
 
+        // Yesterday's gym session
+        const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const { data: yGym } = await supabase
+          .from('fittrack_gym_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('date', yesterdayStr)
+          .limit(1);
+        setDidWorkoutYesterday(yGym && yGym.length > 0);
+
         // Check if WHOOP data was fetched/created today (use created_at, not date, since date reflects cycle end which is typically yesterday)
         const todayStart = new Date(today + 'T00:00:00').toISOString();
         const tomorrowStart = new Date(new Date(today + 'T00:00:00').getTime() + 86400000).toISOString();
