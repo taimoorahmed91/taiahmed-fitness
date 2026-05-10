@@ -126,8 +126,28 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
     }
   }, [weightMeasurementInterval, lastWeightDiffDays]);
 
-  const isWorkoutDay = workoutStatus === 'yes';
-  const showWorkoutReminder = isWorkoutDay && !didWorkoutToday;
+  const showWorkoutReminder = (isWorkoutDay && !didWorkoutToday) || missedYesterdayWorkout;
+
+  // Determine title and subtitle for workout card
+  let workoutTitle: string;
+  let workoutSubtitle: string;
+  if (didWorkoutToday) {
+    workoutTitle = 'You did workout today';
+    workoutSubtitle = 'Rest now!';
+  } else if (isWorkoutDay) {
+    workoutTitle = 'Today is a workout day';
+    workoutSubtitle = recoveryScore != null
+      ? (recoveryScore < 50
+          ? 'See if you can skip today'
+          : `Recovery is ${Math.round(recoveryScore)}% so try working out`)
+      : 'Get moving!';
+  } else if (missedYesterdayWorkout) {
+    workoutTitle = 'You missed a workout day';
+    workoutSubtitle = 'Try to recompensate today';
+  } else {
+    workoutTitle = 'Rest day';
+    workoutSubtitle = 'Recover and recharge';
+  }
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -138,26 +158,14 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
             <div>
               <p className="text-sm text-muted-foreground">Workout</p>
               <p className={`text-sm font-medium mt-1 ${!showWorkoutReminder ? 'text-muted-foreground' : ''}`}>
-                {loading ? '...' : (
-                  didWorkoutToday 
-                    ? 'You did workout today' 
-                    : (isWorkoutDay ? 'Today is a workout day' : 'Today is not a workout day')
-                )}
+                {loading ? '...' : workoutTitle}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {didWorkoutToday
-                  ? 'Rest now!'
-                  : isWorkoutDay
-                    ? (recoveryScore != null
-                        ? (recoveryScore < 50
-                            ? 'See if you can skip today'
-                            : `Recovery is ${Math.round(recoveryScore)}% so try working out`)
-                        : 'Get moving!')
-                    : 'Rest day'}
-              </p>
+              <p className="text-xs text-muted-foreground">{workoutSubtitle}</p>
             </div>
             <div className={`p-2 rounded-lg ${!showWorkoutReminder ? 'bg-muted' : 'bg-primary/10'}`}>
-              {showWorkoutReminder ? (
+              {missedYesterdayWorkout && !isWorkoutDay && !didWorkoutToday ? (
+                <AlertTriangle className="h-5 w-5 text-primary" />
+              ) : showWorkoutReminder ? (
                 <Dumbbell className="h-5 w-5 text-primary" />
               ) : (
                 <CalendarOff className="h-5 w-5 text-muted-foreground" />
