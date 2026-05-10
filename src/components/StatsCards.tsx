@@ -20,15 +20,21 @@ interface StatsCardsProps {
 }
 
 export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoveryScore = null }: StatsCardsProps) => {
+  const { data: personalData } = usePersonalData();
   const [didWorkoutToday, setDidWorkoutToday] = useState<boolean>(false);
+  const [didWorkoutYesterday, setDidWorkoutYesterday] = useState<boolean>(false);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
   const [lastWeightDiffDays, setLastWeightDiffDays] = useState<number | null>(null);
   const [whoopSyncedToday, setWhoopSyncedToday] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
-  // Get workout status from daily summary (passed via props, always fresh from RPC)
-  const workoutStatus = dailySummary?.workout_status || 'yes';
+  const workoutDays = personalData.workout_days || [];
+  const todayDow = new Date().getDay();
+  const yesterdayDow = (todayDow + 6) % 7;
+  const isWorkoutDay = workoutDays.includes(todayDow);
+  const yesterdayWasWorkoutDay = workoutDays.includes(yesterdayDow);
+  const missedYesterdayWorkout = yesterdayWasWorkoutDay && !didWorkoutYesterday && !isWorkoutDay;
 
   // Fetch gym session for today and last weight date on mount
   useEffect(() => {
