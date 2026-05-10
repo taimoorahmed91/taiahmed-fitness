@@ -156,6 +156,9 @@ const PersonalDataPage = () => {
                   />
                 </div>
 
+                  </div>
+
+                  <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="target">Target Weight (kg)</Label>
                   <Input
