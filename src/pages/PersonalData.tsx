@@ -82,7 +82,7 @@ const PersonalDataPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="container py-6 max-w-2xl">
+      <main className="container py-6 max-w-4xl">
         <div className="flex items-center gap-2 mb-6">
           <User className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Personal Data</h1>
@@ -91,7 +91,7 @@ const PersonalDataPage = () => {
           <CardHeader>
             <CardTitle>Your profile</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             {loading ? (
               <p className="text-muted-foreground text-sm">Loading...</p>
             ) : (
