@@ -7,6 +7,29 @@ const corsHeaders = {
 
 const WHOOP_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwam13cWRpcXNrZ3Z6a3ZwanB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMzk2MDcsImV4cCI6MjA4ODcxNTYwN30.Yjhgz3lhN8b77E7HWI-IZLloxtuwSZqdOsOcAV-4II4';
 
+// SSRF protection: only allow https URLs to public hosts; block private/loopback/link-local ranges
+function isUrlSafe(rawUrl: string): boolean {
+  let u: URL;
+  try { u = new URL(rawUrl); } catch { return false; }
+  if (u.protocol !== 'https:') return false;
+  const host = u.hostname.toLowerCase();
+  // Block obvious internal hostnames
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return false;
+  // Block raw IPs in private/loopback/link-local ranges
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    if (a === 10) return false;
+    if (a === 127) return false;
+    if (a === 169 && b === 254) return false; // cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 0) return false;
+  }
+  if (host.includes(':')) return false; // block raw IPv6 (covers ::1, fc00::/7, fe80::/10)
+  return true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,7 +37,33 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Require an authenticated caller. Allow scheduled invocation via shared secret header.
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const cronSecret = req.headers.get('x-cron-secret') ?? '';
+    const expectedCronSecret = Deno.env.get('SYNC_WHOOP_CRON_SECRET') ?? '';
+
+    let authorized = false;
+    if (expectedCronSecret && cronSecret && cronSecret === expectedCronSecret) {
+      authorized = true;
+    } else {
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+      if (token) {
+        const authClient = createClient(supabaseUrl, supabaseAnonKey);
+        const { data: { user }, error } = await authClient.auth.getUser(token);
+        if (!error && user) authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get all distinct user_ids that have whoop data
@@ -38,7 +87,6 @@ Deno.serve(async (req) => {
     const errors: Array<{ user_id: string; error: string }> = [];
 
     for (const userId of uniqueUserIds) {
-      // Load this user's WHOOP API URL
       const { data: settings } = await supabase
         .from('fittrack_user_settings')
         .select('whoop_api_url')
@@ -46,12 +94,12 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       const url = ((settings as any)?.whoop_api_url ?? '').trim();
-      if (!url) {
-        skippedCount++;
+      if (!url) { skippedCount++; continue; }
+      if (!isUrlSafe(url)) {
+        errors.push({ user_id: userId, error: 'WHOOP URL rejected (must be https public host)' });
         continue;
       }
 
-      // Fetch latest WHOOP data for this user
       let result: any;
       try {
         const response = await fetch(url, {
@@ -59,6 +107,7 @@ Deno.serve(async (req) => {
             'apikey': WHOOP_API_KEY,
             'Authorization': `Bearer ${WHOOP_API_KEY}`,
           },
+          redirect: 'manual',
         });
         if (!response.ok) throw new Error(`WHOOP API returned ${response.status}`);
         result = await response.json();
@@ -70,7 +119,6 @@ Deno.serve(async (req) => {
       const recovery = result.recovery || {};
       const cycle = result.cycle || {};
 
-      // Handle sleep: combine all sleep records for summed fields, use nap:false for percentage fields
       let sleep: Record<string, unknown> = {};
       const rawSleep = result.sleep;
       if (Array.isArray(rawSleep) && rawSleep.length > 0) {
@@ -88,27 +136,19 @@ Deno.serve(async (req) => {
         sleep = rawSleep as Record<string, unknown>;
       }
 
-      // Use cycle.end for the date (represents the day the cycle covers)
       let cycleDate: string;
       if (cycle.end) {
         const d = new Date(cycle.end);
-        const year = d.getUTCFullYear();
-        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(d.getUTCDate()).padStart(2, '0');
-        cycleDate = `${year}-${month}-${day}`;
+        cycleDate = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
       } else {
         const d = new Date();
-        const year = d.getUTCFullYear();
-        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(d.getUTCDate()).padStart(2, '0');
-        cycleDate = `${year}-${month}-${day}`;
+        cycleDate = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
       }
 
       const totalInBedHours = (sleep as any).total_in_bed_time_milli
         ? Number(((sleep as any).total_in_bed_time_milli / 3600000).toFixed(2))
         : null;
 
-      // Skip if entry already exists for this date
       const { data: existing } = await supabase
         .from('fittrack_whoop_data')
         .select('id')
@@ -151,9 +191,7 @@ Deno.serve(async (req) => {
       saved: savedCount,
       skipped: skippedCount,
       errors,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
