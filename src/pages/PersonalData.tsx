@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useWeight } from '@/hooks/useWeight';
@@ -34,6 +35,7 @@ const PersonalDataPage = () => {
   const [targetWeight, setTargetWeight] = useState('');
   const [gymTarget, setGymTarget] = useState('');
   const [restTarget, setRestTarget] = useState('');
+  const [workoutDays, setWorkoutDays] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -45,6 +47,7 @@ const PersonalDataPage = () => {
     setTargetWeight(data.target_weight_kg?.toString() || '');
     setGymTarget(data.gym_day_calorie_target?.toString() || '');
     setRestTarget(data.rest_day_calorie_target?.toString() || '');
+    setWorkoutDays(data.workout_days || []);
   }, [data]);
 
   const handleDobChange = (val: string) => {
@@ -69,6 +72,7 @@ const PersonalDataPage = () => {
       target_weight_kg: targetWeight ? parseFloat(targetWeight) : null,
       gym_day_calorie_target: gymTarget ? parseInt(gymTarget, 10) : null,
       rest_day_calorie_target: restTarget ? parseInt(restTarget, 10) : null,
+      workout_days: workoutDays,
     });
     setSaving(false);
     if (error) toast.error('Failed to save personal data');
@@ -185,6 +189,37 @@ const PersonalDataPage = () => {
                     placeholder="e.g. 1900"
                   />
                   <p className="text-xs text-muted-foreground">Used as your daily goal on days with no workout.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Workout Days</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { v: 1, l: 'Monday' },
+                      { v: 2, l: 'Tuesday' },
+                      { v: 3, l: 'Wednesday' },
+                      { v: 4, l: 'Thursday' },
+                      { v: 5, l: 'Friday' },
+                      { v: 6, l: 'Saturday' },
+                      { v: 0, l: 'Sunday' },
+                    ].map((d) => (
+                      <div key={d.v} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`wd-${d.v}`}
+                          checked={workoutDays.includes(d.v)}
+                          onCheckedChange={(checked) => {
+                            setWorkoutDays((prev) =>
+                              checked
+                                ? [...prev, d.v].sort((a, b) => a - b)
+                                : prev.filter((x) => x !== d.v)
+                            );
+                          }}
+                        />
+                        <Label htmlFor={`wd-${d.v}`} className="cursor-pointer">{d.l}</Label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Used by the dashboard to determine workout vs rest days.</p>
                 </div>
 
                 <Button onClick={handleSave} disabled={saving} className="w-full">

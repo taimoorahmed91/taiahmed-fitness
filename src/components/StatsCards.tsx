@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dumbbell, CalendarOff, Scale, Activity, CheckCircle } from 'lucide-react';
+import { Dumbbell, CalendarOff, Scale, Activity, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { usePersonalData } from '@/hooks/usePersonalData';
 interface DailySummary {
   id: string;
   user_id: string;
@@ -19,15 +20,21 @@ interface StatsCardsProps {
 }
 
 export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoveryScore = null }: StatsCardsProps) => {
+  const { data: personalData } = usePersonalData();
   const [didWorkoutToday, setDidWorkoutToday] = useState<boolean>(false);
+  const [didWorkoutYesterday, setDidWorkoutYesterday] = useState<boolean>(false);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
   const [lastWeightDiffDays, setLastWeightDiffDays] = useState<number | null>(null);
   const [whoopSyncedToday, setWhoopSyncedToday] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
-  // Get workout status from daily summary (passed via props, always fresh from RPC)
-  const workoutStatus = dailySummary?.workout_status || 'yes';
+  const workoutDays = personalData.workout_days || [];
+  const todayDow = new Date().getDay();
+  const yesterdayDow = (todayDow + 6) % 7;
+  const isWorkoutDay = workoutDays.includes(todayDow);
+  const yesterdayWasWorkoutDay = workoutDays.includes(yesterdayDow);
+  const missedYesterdayWorkout = yesterdayWasWorkoutDay && !didWorkoutYesterday && !isWorkoutDay;
 
   // Fetch gym session for today and last weight date on mount
   useEffect(() => {
@@ -50,6 +57,16 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
           .limit(1);
 
         setDidWorkoutToday(gymData && gymData.length > 0);
+
+        // Yesterday's gym session
+        const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const { data: yGym } = await supabase
+          .from('fittrack_gym_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('date', yesterdayStr)
+          .limit(1);
+        setDidWorkoutYesterday(yGym && yGym.length > 0);
 
         // Check if WHOOP data was fetched/created today (use created_at, not date, since date reflects cycle end which is typically yesterday)
         const todayStart = new Date(today + 'T00:00:00').toISOString();
@@ -109,8 +126,28 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
     }
   }, [weightMeasurementInterval, lastWeightDiffDays]);
 
-  const isWorkoutDay = workoutStatus === 'yes';
-  const showWorkoutReminder = isWorkoutDay && !didWorkoutToday;
+  const showWorkoutReminder = (isWorkoutDay && !didWorkoutToday) || missedYesterdayWorkout;
+
+  // Determine title and subtitle for workout card
+  let workoutTitle: string;
+  let workoutSubtitle: string;
+  if (didWorkoutToday) {
+    workoutTitle = 'You did workout today';
+    workoutSubtitle = 'Rest now!';
+  } else if (isWorkoutDay) {
+    workoutTitle = 'Today is a workout day';
+    workoutSubtitle = recoveryScore != null
+      ? (recoveryScore < 50
+          ? 'See if you can skip today'
+          : `Recovery is ${Math.round(recoveryScore)}% so try working out`)
+      : 'Get moving!';
+  } else if (missedYesterdayWorkout) {
+    workoutTitle = 'You missed a workout day';
+    workoutSubtitle = 'Try to recompensate today';
+  } else {
+    workoutTitle = 'Rest day';
+    workoutSubtitle = 'Recover and recharge';
+  }
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -121,26 +158,14 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
             <div>
               <p className="text-sm text-muted-foreground">Workout</p>
               <p className={`text-sm font-medium mt-1 ${!showWorkoutReminder ? 'text-muted-foreground' : ''}`}>
-                {loading ? '...' : (
-                  didWorkoutToday 
-                    ? 'You did workout today' 
-                    : (isWorkoutDay ? 'Today is a workout day' : 'Today is not a workout day')
-                )}
+                {loading ? '...' : workoutTitle}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {didWorkoutToday
-                  ? 'Rest now!'
-                  : isWorkoutDay
-                    ? (recoveryScore != null
-                        ? (recoveryScore < 50
-                            ? 'See if you can skip today'
-                            : `Recovery is ${Math.round(recoveryScore)}% so try working out`)
-                        : 'Get moving!')
-                    : 'Rest day'}
-              </p>
+              <p className="text-xs text-muted-foreground">{workoutSubtitle}</p>
             </div>
             <div className={`p-2 rounded-lg ${!showWorkoutReminder ? 'bg-muted' : 'bg-primary/10'}`}>
-              {showWorkoutReminder ? (
+              {missedYesterdayWorkout && !isWorkoutDay && !didWorkoutToday ? (
+                <AlertTriangle className="h-5 w-5 text-primary" />
+              ) : showWorkoutReminder ? (
                 <Dumbbell className="h-5 w-5 text-primary" />
               ) : (
                 <CalendarOff className="h-5 w-5 text-muted-foreground" />

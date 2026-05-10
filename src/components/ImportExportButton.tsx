@@ -140,6 +140,7 @@ export const ImportExportButton = () => {
           target_weight_kg: pd.target_weight_kg ?? null,
           gym_day_calorie_target: (pd as any).gym_day_calorie_target ?? null,
           rest_day_calorie_target: (pd as any).rest_day_calorie_target ?? null,
+          workout_days: Array.isArray((pd as any).workout_days) ? (pd as any).workout_days : [],
         });
       }
 

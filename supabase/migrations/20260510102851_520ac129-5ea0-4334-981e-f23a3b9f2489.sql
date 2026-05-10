@@ -1,0 +1,1 @@
+ALTER TABLE public.fittrack_personal_data ADD COLUMN IF NOT EXISTS workout_days integer[] NOT NULL DEFAULT '{}';
