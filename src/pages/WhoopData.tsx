@@ -26,6 +26,43 @@ const WhoopData = () => {
   const pagination = usePagination(entries, { pageSize: 20 });
   const [editEntry, setEditEntry] = useState<WhoopEntry | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const { user } = useUser();
+  const [savedUrl, setSavedUrl] = useState<string>('');
+  const [urlInput, setUrlInput] = useState<string>('');
+  const [savingUrl, setSavingUrl] = useState(false);
+
+  useEffect(() => {
+    const loadUrl = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('fittrack_user_settings')
+        .select('whoop_api_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const url = (data as any)?.whoop_api_url ?? '';
+      setSavedUrl(url);
+      setUrlInput('');
+    };
+    loadUrl();
+  }, [user]);
+
+  const handleSaveUrl = async () => {
+    if (!user) return;
+    setSavingUrl(true);
+    const value = urlInput.trim();
+    const { error } = await supabase
+      .from('fittrack_user_settings')
+      .update({ whoop_api_url: value || null })
+      .eq('user_id', user.id);
+    setSavingUrl(false);
+    if (error) {
+      toast.error('Failed to save WHOOP URL');
+      return;
+    }
+    setSavedUrl(value);
+    setUrlInput('');
+    toast.success(value ? 'WHOOP URL saved' : 'WHOOP URL cleared');
+  };
 
   const handleFetch = () => {
     fetchFromAPI();
