@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Trash2, Activity, Heart, Moon, Flame, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RefreshCw, Trash2, Activity, Heart, Moon, Flame, Pencil, Link as LinkIcon } from 'lucide-react';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
 import { EditWhoopEntryDialog } from '@/components/EditWhoopEntryDialog';
 import type { WhoopEntry } from '@/hooks/useWhoopData';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/contexts/UserContext';
+import { toast } from 'sonner';
 
 const formatMilliToHours = (milli: number | null) => {
   if (milli === null || milli === undefined) return '-';
