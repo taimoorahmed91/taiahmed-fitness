@@ -93,6 +93,40 @@ const WhoopData = () => {
           </div>
         </div>
 
+        {/* WHOOP API URL config */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <LinkIcon className="h-4 w-4" /> WHOOP API URL
+            </CardTitle>
+            <CardDescription>
+              Paste the WHOOP data endpoint URL used by Sync Now.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="whoop-url" className="sr-only">WHOOP URL</Label>
+                <Input
+                  id="whoop-url"
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder={savedUrl || 'https://...'}
+                />
+                {savedUrl && (
+                  <p className="text-xs text-muted-foreground break-all">
+                    Current: {savedUrl}
+                  </p>
+                )}
+              </div>
+              <Button onClick={handleSaveUrl} disabled={savingUrl}>
+                {savingUrl ? 'Saving...' : 'Save URL'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Summary Cards */}
         {latestEntry && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
