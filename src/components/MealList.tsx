@@ -52,6 +52,7 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
       if (calorieFilter === 'low' && meal.calories > 300) return false;
       if (calorieFilter === 'medium' && (meal.calories <= 300 || meal.calories > 600)) return false;
       if (calorieFilter === 'high' && meal.calories <= 600) return false;
+    }
     const min = calorieMin === '' ? null : parseInt(calorieMin);
     const max = calorieMax === '' ? null : parseInt(calorieMax);
     if (min !== null && !isNaN(min) && meal.calories < min) return false;
