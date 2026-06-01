@@ -14,9 +14,10 @@ interface MealListProps {
   onDelete: (id: string) => void;
   onEdit: (meal: Meal) => void;
   onCopy?: (meal: Meal) => void;
+  caloriesRemainingToday?: number;
 }
 
-export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => {
+export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingToday }: MealListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'date' | 'time' | 'calories'>('all');
   const [dateFilter, setDateFilter] = useState('');
@@ -149,6 +150,21 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
               className="flex-1"
             />
           </div>
+          {caloriesRemainingToday !== undefined && (
+            <div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCalorieMin('0');
+                  setCalorieMax(String(Math.max(0, Math.floor(caloriesRemainingToday))));
+                }}
+                className="h-8 text-xs"
+              >
+                Calorie limit today (0 - {Math.max(0, Math.floor(caloriesRemainingToday))} cal)
+              </Button>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>

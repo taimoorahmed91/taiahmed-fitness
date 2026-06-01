@@ -139,7 +139,7 @@ const Meals = () => {
         </Card>
       </div>
 
-      <MealList meals={meals} onDelete={deleteMeal} onEdit={handleEditClick} onCopy={handleCopyMeal} />
+      <MealList meals={meals} onDelete={deleteMeal} onEdit={handleEditClick} onCopy={handleCopyMeal} caloriesRemainingToday={caloriesRemaining} />
 
       {/* Edit Modal */}
       <Dialog open={!!editingMeal} onOpenChange={(open) => !open && setEditingMeal(null)}>
