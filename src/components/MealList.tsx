@@ -127,6 +127,28 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Calorie range:</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="Min"
+              value={calorieMin}
+              onChange={(e) => setCalorieMin(e.target.value)}
+              className="flex-1"
+            />
+            <span className="text-muted-foreground">to</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="Max"
+              value={calorieMax}
+              onChange={(e) => setCalorieMax(e.target.value)}
+              className="flex-1"
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
