@@ -150,6 +150,21 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
               className="flex-1"
             />
           </div>
+          {caloriesRemainingToday !== undefined && (
+            <div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCalorieMin('0');
+                  setCalorieMax(String(Math.max(0, Math.floor(caloriesRemainingToday))));
+                }}
+                className="h-8 text-xs"
+              >
+                Calorie limit today (0 - {Math.max(0, Math.floor(caloriesRemainingToday))} cal)
+              </Button>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
