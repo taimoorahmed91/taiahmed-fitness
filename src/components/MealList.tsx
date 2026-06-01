@@ -74,10 +74,12 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
     setSearchTerm('');
     setDateFilter('');
     setCalorieFilter('all');
+    setCalorieMin('');
+    setCalorieMax('');
     setFilterType('all');
   };
 
-  const hasActiveFilters = searchTerm || dateFilter || calorieFilter !== 'all';
+  const hasActiveFilters = searchTerm || dateFilter || calorieFilter !== 'all' || calorieMin !== '' || calorieMax !== '';
 
   return (
     <Card className="shadow-md">
