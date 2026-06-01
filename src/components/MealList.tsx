@@ -14,6 +14,7 @@ interface MealListProps {
   onDelete: (id: string) => void;
   onEdit: (meal: Meal) => void;
   onCopy?: (meal: Meal) => void;
+  caloriesRemainingToday?: number;
 }
 
 export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => {
