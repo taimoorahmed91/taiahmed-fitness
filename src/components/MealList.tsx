@@ -24,6 +24,7 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
   const [calorieFilter, setCalorieFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [calorieMin, setCalorieMin] = useState('');
   const [calorieMax, setCalorieMax] = useState('');
+  const [excludeBeforeNoon, setExcludeBeforeNoon] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
 
   const sortedMeals = useMemo(() => {
@@ -58,6 +59,7 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
     const max = calorieMax === '' ? null : parseInt(calorieMax);
     if (min !== null && !isNaN(min) && meal.calories < min) return false;
     if (max !== null && !isNaN(max) && meal.calories > max) return false;
+    if (excludeBeforeNoon && meal.time < '12:00') return false;
     return true;
   });
 
@@ -77,10 +79,11 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
     setCalorieFilter('all');
     setCalorieMin('');
     setCalorieMax('');
+    setExcludeBeforeNoon(false);
     setFilterType('all');
   };
 
-  const hasActiveFilters = searchTerm || dateFilter || calorieFilter !== 'all' || calorieMin !== '' || calorieMax !== '';
+  const hasActiveFilters = searchTerm || dateFilter || calorieFilter !== 'all' || calorieMin !== '' || calorieMax !== '' || excludeBeforeNoon;
 
   return (
     <Card className="shadow-md">
@@ -150,8 +153,8 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
               className="flex-1"
             />
           </div>
-          {caloriesRemainingToday !== undefined && (
-            <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {caloriesRemainingToday !== undefined && (
               <Button
                 variant="outline"
                 size="sm"
@@ -163,8 +166,16 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
               >
                 Calorie limit today (0 - {Math.max(0, Math.floor(caloriesRemainingToday))} cal)
               </Button>
-            </div>
-          )}
+            )}
+            <Button
+              variant={excludeBeforeNoon ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setExcludeBeforeNoon((v) => !v)}
+              className="h-8 text-xs"
+            >
+              Exclude meals before noon
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
