@@ -17,7 +17,7 @@ interface MealListProps {
   caloriesRemainingToday?: number;
 }
 
-export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => {
+export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingToday }: MealListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'date' | 'time' | 'calories'>('all');
   const [dateFilter, setDateFilter] = useState('');
