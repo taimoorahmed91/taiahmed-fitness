@@ -21,6 +21,8 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
   const [filterType, setFilterType] = useState<'all' | 'date' | 'time' | 'calories'>('all');
   const [dateFilter, setDateFilter] = useState('');
   const [calorieFilter, setCalorieFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [calorieMin, setCalorieMin] = useState('');
+  const [calorieMax, setCalorieMax] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
 
   const sortedMeals = useMemo(() => {
@@ -51,6 +53,10 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
       if (calorieFilter === 'medium' && (meal.calories <= 300 || meal.calories > 600)) return false;
       if (calorieFilter === 'high' && meal.calories <= 600) return false;
     }
+    const min = calorieMin === '' ? null : parseInt(calorieMin);
+    const max = calorieMax === '' ? null : parseInt(calorieMax);
+    if (min !== null && !isNaN(min) && meal.calories < min) return false;
+    if (max !== null && !isNaN(max) && meal.calories > max) return false;
     return true;
   });
 
@@ -68,10 +74,12 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
     setSearchTerm('');
     setDateFilter('');
     setCalorieFilter('all');
+    setCalorieMin('');
+    setCalorieMax('');
     setFilterType('all');
   };
 
-  const hasActiveFilters = searchTerm || dateFilter || calorieFilter !== 'all';
+  const hasActiveFilters = searchTerm || dateFilter || calorieFilter !== 'all' || calorieMin !== '' || calorieMax !== '';
 
   return (
     <Card className="shadow-md">
@@ -118,6 +126,28 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
                 <SelectItem value="high">High (&gt;600)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Calorie range:</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="Min"
+              value={calorieMin}
+              onChange={(e) => setCalorieMin(e.target.value)}
+              className="flex-1"
+            />
+            <span className="text-muted-foreground">to</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="Max"
+              value={calorieMax}
+              onChange={(e) => setCalorieMax(e.target.value)}
+              className="flex-1"
+            />
           </div>
         </div>
       </CardHeader>
