@@ -21,6 +21,8 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy }: MealListProps) => 
   const [filterType, setFilterType] = useState<'all' | 'date' | 'time' | 'calories'>('all');
   const [dateFilter, setDateFilter] = useState('');
   const [calorieFilter, setCalorieFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [calorieMin, setCalorieMin] = useState('');
+  const [calorieMax, setCalorieMax] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
 
   const sortedMeals = useMemo(() => {
