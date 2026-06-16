@@ -93,11 +93,12 @@ const extractWeightFromExerciseName = (name: string): string => {
   return match ? match[1] : '';
 };
 
-const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number> } => {
+const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number>; setCounts: Record<string, number> } => {
   const result: PreviousReps = {};
   const noteMap: Record<string, string> = {};
   const seqMap: Record<string, number> = {};
-  if (!notes) return { reps: result, notes: noteMap, sequences: seqMap };
+  const setCounts: Record<string, number> = {};
+  if (!notes) return { reps: result, notes: noteMap, sequences: seqMap, setCounts };
 
   const exerciseParts = notes.split(' | ');
   for (const part of exerciseParts) {
@@ -106,7 +107,7 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
     const cleaned = part.replace(/^\d+\./, '');
     const colonIndex = cleaned.indexOf(':');
     if (colonIndex === -1) continue;
-    
+
     const exerciseName = cleaned.substring(0, colonIndex).trim();
     if (seqPrefix) seqMap[exerciseName] = parseInt(seqPrefix[1], 10);
     let setsText = cleaned.substring(colonIndex + 1).trim();
@@ -119,21 +120,33 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
     }
 
     const sets: ExerciseSets = { set1: '', set2: '', set3: '' };
-    // Match S<n>:<reps> optionally followed by @<weight>kg
+
+    // Match warmup: W:<reps> optionally followed by @<weight>kg
+    const warmupMatch = setsText.match(/(?:^|\s)W:(\d+)(?:@(\d+(?:\.\d+)?)kg)?/);
+    if (warmupMatch) {
+      sets.warmup = warmupMatch[1];
+      if (warmupMatch[2]) sets.warmupWeight = warmupMatch[2];
+    }
+
+    // Match S<n>:<reps> (n = 1..6) optionally followed by @<weight>kg
+    let maxSetNum = 0;
     const setMatches = setsText.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/g);
     if (setMatches) {
       for (const match of setMatches) {
         const m = match.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/);
         if (!m) continue;
         const [, setNum, reps, weight] = m;
-        if (setNum === '1') { sets.set1 = reps; if (weight) sets.set1Weight = weight; }
-        else if (setNum === '2') { sets.set2 = reps; if (weight) sets.set2Weight = weight; }
-        else if (setNum === '3') { sets.set3 = reps; if (weight) sets.set3Weight = weight; }
+        const n = parseInt(setNum, 10);
+        if (n < 1 || n > 6) continue;
+        maxSetNum = Math.max(maxSetNum, n);
+        (sets as Record<string, string | undefined>)[`set${n}`] = reps;
+        if (weight) (sets as Record<string, string | undefined>)[`set${n}Weight`] = weight;
       }
     }
+    if (maxSetNum > 0) setCounts[exerciseName] = Math.min(6, Math.max(3, maxSetNum));
     result[exerciseName] = sets;
   }
-  return { reps: result, notes: noteMap, sequences: seqMap };
+  return { reps: result, notes: noteMap, sequences: seqMap, setCounts };
 };
 
 const loadRestTimerSettings = (): RestTimerSettings => {
