@@ -790,6 +790,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                             {setNums.map((n) => {
                               const weightKey = `set${n}Weight` as WeightKey;
                               const prevWeight = prevSetObj?.[weightKey] || defaultWeight || '';
+                              const hasValue = !!setsObj?.[weightKey];
                               return (
                                 <Input
                                   key={weightKey}
@@ -799,7 +800,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                                   placeholder={prevWeight || 'kg'}
                                   value={setsObj?.[weightKey] || ''}
                                   onChange={(e) => updateSet(index, weightKey, e.target.value)}
-                                  className="h-9 text-center"
+                                  className={`h-9 text-center ${hasValue ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
                                   maxLength={6}
                                 />
                               );
