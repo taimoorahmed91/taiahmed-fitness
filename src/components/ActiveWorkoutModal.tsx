@@ -444,7 +444,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     if (value && !/^\d*\.?\d*$/.test(value)) return;
 
     const repKey = (isWeightField ? setKey.replace('Weight', '') : setKey) as SetKey;
-    const prevValue = (prevExerciseSets.current[exerciseIndex] as Record<string, string | undefined> | undefined)?.[setKey] || '';
+    const prevValue = (prevExerciseSets.current[exerciseIndex] as unknown as Record<string, string | undefined> | undefined)?.[setKey] || '';
 
     setExerciseSets((prev) => {
       const updated = {
