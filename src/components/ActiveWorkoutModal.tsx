@@ -139,8 +139,8 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
         const n = parseInt(setNum, 10);
         if (n < 1 || n > 6) continue;
         maxSetNum = Math.max(maxSetNum, n);
-        (sets as Record<string, string | undefined>)[`set${n}`] = reps;
-        if (weight) (sets as Record<string, string | undefined>)[`set${n}Weight`] = weight;
+        (sets as unknown as Record<string, string | undefined>)[`set${n}`] = reps;
+        if (weight) (sets as unknown as Record<string, string | undefined>)[`set${n}Weight`] = weight;
       }
     }
     if (maxSetNum > 0) setCounts[exerciseName] = Math.min(6, Math.max(3, maxSetNum));
