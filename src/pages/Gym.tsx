@@ -211,6 +211,25 @@ const Gym = () => {
         </div>
       </div>
 
+      {pausedWorkout && !activeTemplate && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
+            <div className="flex items-center gap-3">
+              <PlayCircle className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-medium">Paused workout in progress</p>
+                <p className="text-sm text-muted-foreground">
+                  {pausedWorkout.templateName || 'Untitled workout'}
+                </p>
+              </div>
+            </div>
+            <Button onClick={handleResumePaused}>Resume workout</Button>
+          </CardContent>
+        </Card>
+      )}
+
+
+
       <Tabs defaultValue="log" className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="log" className="flex items-center gap-2">
