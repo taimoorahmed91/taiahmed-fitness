@@ -15,19 +15,35 @@ const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
 
 interface ExerciseSets {
+  warmup?: string;
+  warmupWeight?: string;
   set1: string;
   set2: string;
   set3: string;
+  set4?: string;
+  set5?: string;
+  set6?: string;
   set1Weight?: string;
   set2Weight?: string;
   set3Weight?: string;
+  set4Weight?: string;
+  set5Weight?: string;
+  set6Weight?: string;
 }
 
 interface ExerciseTimestamps {
+  warmupTime?: string;
   set1Time?: string;
   set2Time?: string;
   set3Time?: string;
+  set4Time?: string;
+  set5Time?: string;
+  set6Time?: string;
 }
+
+type SetKey = 'warmup' | 'set1' | 'set2' | 'set3' | 'set4' | 'set5' | 'set6';
+type WeightKey = 'warmupWeight' | 'set1Weight' | 'set2Weight' | 'set3Weight' | 'set4Weight' | 'set5Weight' | 'set6Weight';
+type AnyExerciseKey = SetKey | WeightKey;
 
 interface ExerciseSequence {
   [exerciseIndex: number]: number; // sequence number (1-based)
