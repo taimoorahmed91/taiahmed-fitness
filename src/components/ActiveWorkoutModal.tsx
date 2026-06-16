@@ -419,6 +419,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       [newIndex]: { set1: '', set2: '', set3: '' },
     }));
     setExerciseTimestamps((prev) => ({ ...prev, [newIndex]: {} }));
+    setExerciseSetCount((prev) => ({ ...prev, [newIndex]: 3 }));
     prevExerciseSets.current = {
       ...prevExerciseSets.current,
       [newIndex]: { set1: '', set2: '', set3: '' },
@@ -428,15 +429,23 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     setShowAddExercise(false);
   };
 
-  const updateSet = (exerciseIndex: number, setKey: keyof ExerciseSets, value: string) => {
+  const addExtraSet = (exerciseIndex: number) => {
+    setExerciseSetCount((prev) => {
+      const current = prev[exerciseIndex] || 3;
+      if (current >= 6) return prev;
+      return { ...prev, [exerciseIndex]: current + 1 };
+    });
+  };
+
+  const updateSet = (exerciseIndex: number, setKey: AnyExerciseKey, value: string) => {
     const isWeightField = setKey.endsWith('Weight');
     // For weight fields, allow comma as decimal separator and convert to dot
     if (isWeightField) value = value.replace(',', '.');
     if (value && !/^\d*\.?\d*$/.test(value)) return;
 
-    const repKey = (isWeightField ? setKey.replace('Weight', '') : setKey) as 'set1' | 'set2' | 'set3';
-    const prevValue = prevExerciseSets.current[exerciseIndex]?.[setKey] || '';
-    
+    const repKey = (isWeightField ? setKey.replace('Weight', '') : setKey) as SetKey;
+    const prevValue = (prevExerciseSets.current[exerciseIndex] as Record<string, string | undefined> | undefined)?.[setKey] || '';
+
     setExerciseSets((prev) => {
       const updated = {
         ...prev,
@@ -460,8 +469,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         },
       }));
 
-      // Assign sequence number on first set entry for this exercise
-      if (repKey === 'set1') {
+      // Assign sequence number on first set entry for this exercise (warmup or set1)
+      if (repKey === 'warmup' || repKey === 'set1') {
         setExerciseSequence((prev) => {
           if (prev[exerciseIndex] !== undefined) return prev;
           const seq = nextSequence;
@@ -470,10 +479,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
       }
 
-      if (repKey === 'set3') {
-        startRestTimer('exercise');
-      } else {
-        startRestTimer('set');
+      // Warmup does not trigger a rest timer. Last working set triggers
+      // exercise rest; intermediate working sets trigger set rest.
+      if (repKey !== 'warmup') {
+        const setNum = parseInt(repKey.replace('set', ''), 10);
+        const lastSet = exerciseSetCount[exerciseIndex] || 3;
+        if (setNum >= lastSet) {
+          startRestTimer('exercise');
+        } else {
+          startRestTimer('set');
+        }
       }
     }
 
@@ -489,7 +504,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   const isExerciseComplete = (index: number) => {
     const sets = exerciseSets[index];
-    return sets && (sets.set1 || sets.set2 || sets.set3);
+    if (!sets) return false;
+    return !!(sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6);
   };
 
   const formatTime = (seconds: number) => {
