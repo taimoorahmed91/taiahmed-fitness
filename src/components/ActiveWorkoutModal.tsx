@@ -15,19 +15,35 @@ const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
 
 interface ExerciseSets {
+  warmup?: string;
+  warmupWeight?: string;
   set1: string;
   set2: string;
   set3: string;
+  set4?: string;
+  set5?: string;
+  set6?: string;
   set1Weight?: string;
   set2Weight?: string;
   set3Weight?: string;
+  set4Weight?: string;
+  set5Weight?: string;
+  set6Weight?: string;
 }
 
 interface ExerciseTimestamps {
+  warmupTime?: string;
   set1Time?: string;
   set2Time?: string;
   set3Time?: string;
+  set4Time?: string;
+  set5Time?: string;
+  set6Time?: string;
 }
+
+type SetKey = 'warmup' | 'set1' | 'set2' | 'set3' | 'set4' | 'set5' | 'set6';
+type WeightKey = 'warmupWeight' | 'set1Weight' | 'set2Weight' | 'set3Weight' | 'set4Weight' | 'set5Weight' | 'set6Weight';
+type AnyExerciseKey = SetKey | WeightKey;
 
 interface ExerciseSequence {
   [exerciseIndex: number]: number; // sequence number (1-based)
@@ -52,6 +68,7 @@ interface ActiveWorkoutState {
   exerciseTimestamps: Record<number, ExerciseTimestamps>;
   exerciseSequence: ExerciseSequence;
   exerciseNotes: Record<number, string>;
+  exerciseSetCount?: Record<number, number>;
   nextSequence: number;
   expandedExercise: number | null;
   restTimer?: {
@@ -76,11 +93,12 @@ const extractWeightFromExerciseName = (name: string): string => {
   return match ? match[1] : '';
 };
 
-const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number> } => {
+const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number>; setCounts: Record<string, number> } => {
   const result: PreviousReps = {};
   const noteMap: Record<string, string> = {};
   const seqMap: Record<string, number> = {};
-  if (!notes) return { reps: result, notes: noteMap, sequences: seqMap };
+  const setCounts: Record<string, number> = {};
+  if (!notes) return { reps: result, notes: noteMap, sequences: seqMap, setCounts };
 
   const exerciseParts = notes.split(' | ');
   for (const part of exerciseParts) {
@@ -89,7 +107,7 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
     const cleaned = part.replace(/^\d+\./, '');
     const colonIndex = cleaned.indexOf(':');
     if (colonIndex === -1) continue;
-    
+
     const exerciseName = cleaned.substring(0, colonIndex).trim();
     if (seqPrefix) seqMap[exerciseName] = parseInt(seqPrefix[1], 10);
     let setsText = cleaned.substring(colonIndex + 1).trim();
@@ -102,21 +120,33 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
     }
 
     const sets: ExerciseSets = { set1: '', set2: '', set3: '' };
-    // Match S<n>:<reps> optionally followed by @<weight>kg
+
+    // Match warmup: W:<reps> optionally followed by @<weight>kg
+    const warmupMatch = setsText.match(/(?:^|\s)W:(\d+)(?:@(\d+(?:\.\d+)?)kg)?/);
+    if (warmupMatch) {
+      sets.warmup = warmupMatch[1];
+      if (warmupMatch[2]) sets.warmupWeight = warmupMatch[2];
+    }
+
+    // Match S<n>:<reps> (n = 1..6) optionally followed by @<weight>kg
+    let maxSetNum = 0;
     const setMatches = setsText.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/g);
     if (setMatches) {
       for (const match of setMatches) {
         const m = match.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/);
         if (!m) continue;
         const [, setNum, reps, weight] = m;
-        if (setNum === '1') { sets.set1 = reps; if (weight) sets.set1Weight = weight; }
-        else if (setNum === '2') { sets.set2 = reps; if (weight) sets.set2Weight = weight; }
-        else if (setNum === '3') { sets.set3 = reps; if (weight) sets.set3Weight = weight; }
+        const n = parseInt(setNum, 10);
+        if (n < 1 || n > 6) continue;
+        maxSetNum = Math.max(maxSetNum, n);
+        (sets as unknown as Record<string, string | undefined>)[`set${n}`] = reps;
+        if (weight) (sets as unknown as Record<string, string | undefined>)[`set${n}Weight`] = weight;
       }
     }
+    if (maxSetNum > 0) setCounts[exerciseName] = Math.min(6, Math.max(3, maxSetNum));
     result[exerciseName] = sets;
   }
-  return { reps: result, notes: noteMap, sequences: seqMap };
+  return { reps: result, notes: noteMap, sequences: seqMap, setCounts };
 };
 
 const loadRestTimerSettings = (): RestTimerSettings => {
@@ -158,6 +188,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [exerciseSequence, setExerciseSequence] = useState<ExerciseSequence>({});
   const [nextSequence, setNextSequence] = useState(1);
   const [exerciseNotes, setExerciseNotes] = useState<Record<number, string>>({});
+  // Visible non-warmup set count per exercise index (3..6). Defaults to 3, bumped
+  // up when previous session history shows more sets were used for that exercise.
+  const [exerciseSetCount, setExerciseSetCount] = useState<Record<number, number>>({});
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [previousNotes, setPreviousNotes] = useState<Record<string, string>>({});
   const [previousSequences, setPreviousSequences] = useState<Record<string, number>>({});
@@ -207,6 +240,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         exerciseTimestamps,
         exerciseSequence,
         exerciseNotes,
+        exerciseSetCount,
         nextSequence,
         expandedExercise,
         restTimer: isRestTimerActive && restTimerStartedAt.current ? {
@@ -218,7 +252,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       };
       saveActiveWorkout(state);
     }
-  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, exerciseNotes, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, exerciseNotes, exerciseSetCount, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
     if (!isCancelled && (isRestored || (open && startTime))) {
@@ -238,6 +272,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setExerciseSequence(savedState.exerciseSequence || {});
         setNextSequence(savedState.nextSequence || 1);
         setExerciseNotes(savedState.exerciseNotes || {});
+        setExerciseSetCount(savedState.exerciseSetCount || {});
         prevExerciseSets.current = JSON.parse(JSON.stringify(savedState.exerciseSets));
         setExpandedExercise(savedState.expandedExercise);
         setIsRestored(true);
@@ -267,15 +302,18 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setNextSequence(1);
         setExtraExercises([]);
         setExerciseNotes({});
-        
+
         const initialSets: Record<number, ExerciseSets> = {};
         const initialTimestamps: Record<number, ExerciseTimestamps> = {};
+        const initialSetCount: Record<number, number> = {};
         template.exercises.forEach((_, index) => {
           initialSets[index] = { set1: '', set2: '', set3: '' };
           initialTimestamps[index] = {};
+          initialSetCount[index] = 3;
         });
         setExerciseSets(initialSets);
         setExerciseTimestamps(initialTimestamps);
+        setExerciseSetCount(initialSetCount);
         prevExerciseSets.current = JSON.parse(JSON.stringify(initialSets));
         logActivity({ action: 'start_workout', category: 'gym', details: { template_name: template.name, exercises: template.exercises } });
       }
@@ -287,12 +325,27 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       setNewExerciseName('');
 
       if (getLastSessionRef.current) {
-        getLastSessionRef.current(template.name).then((lastSession) => {
+        const tpl = template;
+        const allEx = [...tpl.exercises];
+        getLastSessionRef.current(tpl.name).then((lastSession) => {
           if (lastSession?.notes) {
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed.reps);
             setPreviousNotes(parsed.notes);
             setPreviousSequences(parsed.sequences);
+            // Bump the default visible set count for any exercise whose previous
+            // session logged more than 3 sets (capped at 6). Only raises counts —
+            // never lowers a user's in-progress count.
+            setExerciseSetCount((prev) => {
+              const next = { ...prev };
+              allEx.forEach((exName, idx) => {
+                const prevCount = parsed.setCounts[exName];
+                if (prevCount && prevCount > (next[idx] || 3)) {
+                  next[idx] = Math.min(6, prevCount);
+                }
+              });
+              return next;
+            });
             // Note: previous reps/weights are shown as placeholders only — never pre-filled
             // into the actual inputs, so exercises don't appear "complete" and timestamps
             // still get recorded when the user enters their first rep.
@@ -366,6 +419,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       [newIndex]: { set1: '', set2: '', set3: '' },
     }));
     setExerciseTimestamps((prev) => ({ ...prev, [newIndex]: {} }));
+    setExerciseSetCount((prev) => ({ ...prev, [newIndex]: 3 }));
     prevExerciseSets.current = {
       ...prevExerciseSets.current,
       [newIndex]: { set1: '', set2: '', set3: '' },
@@ -375,15 +429,23 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     setShowAddExercise(false);
   };
 
-  const updateSet = (exerciseIndex: number, setKey: keyof ExerciseSets, value: string) => {
+  const addExtraSet = (exerciseIndex: number) => {
+    setExerciseSetCount((prev) => {
+      const current = prev[exerciseIndex] || 3;
+      if (current >= 6) return prev;
+      return { ...prev, [exerciseIndex]: current + 1 };
+    });
+  };
+
+  const updateSet = (exerciseIndex: number, setKey: AnyExerciseKey, value: string) => {
     const isWeightField = setKey.endsWith('Weight');
     // For weight fields, allow comma as decimal separator and convert to dot
     if (isWeightField) value = value.replace(',', '.');
     if (value && !/^\d*\.?\d*$/.test(value)) return;
 
-    const repKey = (isWeightField ? setKey.replace('Weight', '') : setKey) as 'set1' | 'set2' | 'set3';
-    const prevValue = prevExerciseSets.current[exerciseIndex]?.[setKey] || '';
-    
+    const repKey = (isWeightField ? setKey.replace('Weight', '') : setKey) as SetKey;
+    const prevValue = (prevExerciseSets.current[exerciseIndex] as unknown as Record<string, string | undefined> | undefined)?.[setKey] || '';
+
     setExerciseSets((prev) => {
       const updated = {
         ...prev,
@@ -407,8 +469,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         },
       }));
 
-      // Assign sequence number on first set entry for this exercise
-      if (repKey === 'set1') {
+      // Assign sequence number on first set entry for this exercise (warmup or set1)
+      if (repKey === 'warmup' || repKey === 'set1') {
         setExerciseSequence((prev) => {
           if (prev[exerciseIndex] !== undefined) return prev;
           const seq = nextSequence;
@@ -417,10 +479,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
       }
 
-      if (repKey === 'set3') {
-        startRestTimer('exercise');
-      } else {
-        startRestTimer('set');
+      // Warmup does not trigger a rest timer. Last working set triggers
+      // exercise rest; intermediate working sets trigger set rest.
+      if (repKey !== 'warmup') {
+        const setNum = parseInt(repKey.replace('set', ''), 10);
+        const lastSet = exerciseSetCount[exerciseIndex] || 3;
+        if (setNum >= lastSet) {
+          startRestTimer('exercise');
+        } else {
+          startRestTimer('set');
+        }
       }
     }
 
@@ -436,7 +504,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   const isExerciseComplete = (index: number) => {
     const sets = exerciseSets[index];
-    return sets && (sets.set1 || sets.set2 || sets.set3);
+    if (!sets) return false;
+    return !!(sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6);
   };
 
   const formatTime = (seconds: number) => {
@@ -454,7 +523,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const entries: { exercise: string; index: number; seq: number }[] = [];
     allExercises.forEach((exercise, index) => {
       const sets = exerciseSets[index];
-      if (sets && (sets.set1 || sets.set2 || sets.set3)) {
+      if (sets && (sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6)) {
         entries.push({ exercise, index, seq: exerciseSequence[index] ?? 999 });
       }
     });
@@ -464,17 +533,27 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     entries.forEach((entry) => {
       const sets = exerciseSets[entry.index];
       const ts = exerciseTimestamps[entry.index];
-      const buildSet = (n: 1 | 2 | 3) => {
-        const repKey = `set${n}` as 'set1' | 'set2' | 'set3';
-        const wKey = `set${n}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
-        const tKey = `set${n}Time` as keyof ExerciseTimestamps;
-        const reps = sets[repKey];
+      const setCount = exerciseSetCount[entry.index] || 3;
+      const buildWarmup = () => {
+        const reps = sets.warmup;
         if (!reps) return null;
-        const weight = sets[wKey];
+        const weight = sets.warmupWeight;
+        const time = ts?.warmupTime;
+        return `W:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
+      };
+      const buildSet = (n: number) => {
+        const repKey = `set${n}` as SetKey;
+        const wKey = `set${n}Weight` as WeightKey;
+        const tKey = `set${n}Time` as keyof ExerciseTimestamps;
+        const reps = (sets as unknown as Record<string, string | undefined>)[repKey];
+        if (!reps) return null;
+        const weight = (sets as unknown as Record<string, string | undefined>)[wKey];
         const time = ts?.[tKey];
         return `S${n}:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
       };
-      const setsText = [buildSet(1), buildSet(2), buildSet(3)].filter(Boolean).join(' ');
+      const parts: (string | null)[] = [buildWarmup()];
+      for (let n = 1; n <= setCount; n++) parts.push(buildSet(n));
+      const setsText = parts.filter(Boolean).join(' ');
       const note = exerciseNotes[entry.index]?.trim();
       const noteSuffix = note ? ` [note: ${note.replace(/[\[\]|]/g, '')}]` : '';
       lines.push(`${entry.seq}.${entry.exercise}: ${setsText}${noteSuffix}`);
@@ -636,72 +715,128 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="px-3 pb-3 pt-1 space-y-3">
-                    {/* Set number headers */}
-                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-                      <div />
-                      {[1, 2, 3].map((n) => (
-                        <Label key={n} className="text-[11px] text-muted-foreground text-center">
-                          Set {n}
-                        </Label>
-                      ))}
-                    </div>
+                    {(() => {
+                      const setCount = exerciseSetCount[index] || 3;
+                      const setNums = Array.from({ length: setCount }, (_, i) => i + 1);
+                      const gridStyle = { gridTemplateColumns: `80px repeat(${setCount}, minmax(0, 1fr))` };
+                      const prevSet = previousReps[exercise];
+                      const setsObj = exerciseSets[index] as unknown as Record<string, string | undefined> | undefined;
+                      const tsObj = exerciseTimestamps[index] as unknown as Record<string, string | undefined> | undefined;
+                      const prevSetObj = prevSet as unknown as Record<string, string | undefined> | undefined;
+                      const hasAnyTimestamp = setNums.some((n) => tsObj?.[`set${n}Time`]);
+                      return (
+                        <>
+                          {/* Warmup row (single input, optional) */}
+                          <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '80px minmax(0, 1fr) minmax(0, 1fr)' }}>
+                            <Label className="text-xs font-medium text-muted-foreground">Warmup</Label>
+                            <Input
+                              id={`warmup-reps-${index}`}
+                              type="text"
+                              inputMode="numeric"
+                              placeholder={prevSet?.warmup || 'reps'}
+                              value={setsObj?.warmup || ''}
+                              onChange={(e) => updateSet(index, 'warmup', e.target.value)}
+                              className="h-9 text-center"
+                              maxLength={3}
+                            />
+                            <Input
+                              id={`warmup-weight-${index}`}
+                              type="text"
+                              inputMode="decimal"
+                              placeholder={prevSet?.warmupWeight || defaultWeight || 'kg'}
+                              value={setsObj?.warmupWeight || ''}
+                              onChange={(e) => updateSet(index, 'warmupWeight', e.target.value)}
+                              className="h-9 text-center"
+                              maxLength={6}
+                            />
+                          </div>
 
-                    {/* Reps row */}
-                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-                      <Label className="text-xs font-medium">Reps</Label>
-                      {(['set1', 'set2', 'set3'] as const).map((setKey) => {
-                        const prevSet = previousReps[exercise];
-                        const prevReps = prevSet?.[setKey] || '';
-                        return (
-                          <Input
-                            key={setKey}
-                            id={`${setKey}-${index}`}
-                            type="text"
-                            inputMode="numeric"
-                            placeholder={prevReps || '0'}
-                            value={exerciseSets[index]?.[setKey] || ''}
-                            onChange={(e) => updateSet(index, setKey, e.target.value)}
-                            className="h-9 text-center"
-                            maxLength={3}
-                          />
-                        );
-                      })}
-                    </div>
+                          {/* Set number headers */}
+                          <div className="grid gap-2 items-center" style={gridStyle}>
+                            <div />
+                            {setNums.map((n) => (
+                              <Label key={n} className="text-[11px] text-muted-foreground text-center">
+                                Set {n}
+                              </Label>
+                            ))}
+                          </div>
 
-                    {/* Weight row */}
-                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-                      <Label className="text-xs font-medium">Weight (kg)</Label>
-                      {(['set1', 'set2', 'set3'] as const).map((setKey) => {
-                        const prevSet = previousReps[exercise];
-                        const weightKey = `${setKey}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
-                        const prevWeight = prevSet?.[weightKey] || defaultWeight || '';
-                        return (
-                          <Input
-                            key={weightKey}
-                            id={`${weightKey}-${index}`}
-                            type="text"
-                            inputMode="decimal"
-                            placeholder={prevWeight || 'kg'}
-                            value={exerciseSets[index]?.[weightKey] || ''}
-                            onChange={(e) => updateSet(index, weightKey, e.target.value)}
-                            className="h-9 text-center"
-                            maxLength={6}
-                          />
-                        );
-                      })}
-                    </div>
+                          {/* Reps row */}
+                          <div className="grid gap-2 items-center" style={gridStyle}>
+                            <Label className="text-xs font-medium">Reps</Label>
+                            {setNums.map((n) => {
+                              const setKey = `set${n}` as SetKey;
+                              const prevReps = prevSetObj?.[setKey] || '';
+                              return (
+                                <Input
+                                  key={setKey}
+                                  id={`${setKey}-${index}`}
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder={prevReps || '0'}
+                                  value={setsObj?.[setKey] || ''}
+                                  onChange={(e) => updateSet(index, setKey, e.target.value)}
+                                  className="h-9 text-center"
+                                  maxLength={3}
+                                />
+                              );
+                            })}
+                          </div>
 
-                    {/* Timestamps row */}
-                    {(exerciseTimestamps[index]?.set1Time || exerciseTimestamps[index]?.set2Time || exerciseTimestamps[index]?.set3Time) && (
-                      <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-                        <span className="text-[10px] text-muted-foreground">Logged at</span>
-                        {(['set1Time', 'set2Time', 'set3Time'] as const).map((tKey) => (
-                          <p key={tKey} className="text-[10px] text-primary text-center">
-                            {exerciseTimestamps[index]?.[tKey] ? `⏱ ${exerciseTimestamps[index][tKey]}` : '—'}
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                          {/* Weight row */}
+                          <div className="grid gap-2 items-center" style={gridStyle}>
+                            <Label className="text-xs font-medium">Weight (kg)</Label>
+                            {setNums.map((n) => {
+                              const weightKey = `set${n}Weight` as WeightKey;
+                              const prevWeight = prevSetObj?.[weightKey] || defaultWeight || '';
+                              return (
+                                <Input
+                                  key={weightKey}
+                                  id={`${weightKey}-${index}`}
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder={prevWeight || 'kg'}
+                                  value={setsObj?.[weightKey] || ''}
+                                  onChange={(e) => updateSet(index, weightKey, e.target.value)}
+                                  className="h-9 text-center"
+                                  maxLength={6}
+                                />
+                              );
+                            })}
+                          </div>
+
+                          {/* Timestamps row */}
+                          {hasAnyTimestamp && (
+                            <div className="grid gap-2 items-center" style={gridStyle}>
+                              <span className="text-[10px] text-muted-foreground">Logged at</span>
+                              {setNums.map((n) => {
+                                const tKey = `set${n}Time`;
+                                const v = tsObj?.[tKey];
+                                return (
+                                  <p key={tKey} className="text-[10px] text-primary text-center">
+                                    {v ? `⏱ ${v}` : '—'}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Add set button (up to 6 sets) */}
+                          {setCount < 6 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full border-dashed h-8 text-xs"
+                              onClick={() => addExtraSet(index)}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              Add set ({setCount + 1} of 6)
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {/* Per-exercise note */}
                     <div className="space-y-1 pt-1">
