@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { GymForm } from '@/components/GymForm';
 import { GymList } from '@/components/GymList';
 import { DataFilter } from '@/components/DataFilter';
@@ -17,14 +17,32 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dumbbell, ClipboardList } from 'lucide-react';
+import { Dumbbell, ClipboardList, PlayCircle } from 'lucide-react';
 import { toast } from 'sonner';
+
+const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
+
+type PausedWorkoutInfo = { templateId: string; templateName: string };
+
+const readPausedWorkout = (): PausedWorkoutInfo | null => {
+  try {
+    const raw = localStorage.getItem(ACTIVE_WORKOUT_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s?.templateId) return null;
+    return { templateId: s.templateId, templateName: s.templateName ?? '' };
+  } catch {
+    return null;
+  }
+};
 
 const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions, getLastSessionByTemplateName } = useGymSessions();
