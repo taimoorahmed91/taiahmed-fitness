@@ -736,7 +736,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                               placeholder={prevSet?.warmup || 'reps'}
                               value={setsObj?.warmup || ''}
                               onChange={(e) => updateSet(index, 'warmup', e.target.value)}
-                              className="h-9 text-center"
+                              className={`h-9 text-center ${setsObj?.warmup ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
                               maxLength={3}
                             />
                             <Input
@@ -746,7 +746,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                               placeholder={prevSet?.warmupWeight || defaultWeight || 'kg'}
                               value={setsObj?.warmupWeight || ''}
                               onChange={(e) => updateSet(index, 'warmupWeight', e.target.value)}
-                              className="h-9 text-center"
+                              className={`h-9 text-center ${setsObj?.warmupWeight ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
                               maxLength={6}
                             />
                           </div>
