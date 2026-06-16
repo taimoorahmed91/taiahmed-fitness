@@ -50,6 +50,20 @@ const Gym = () => {
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
+  const [pausedWorkout, setPausedWorkout] = useState<PausedWorkoutInfo | null>(() => readPausedWorkout());
+  const [blockedStart, setBlockedStart] = useState<{ requested: WorkoutTemplate; existing: PausedWorkoutInfo } | null>(null);
+
+  // Re-check paused workout when modal closes or window regains focus
+  useEffect(() => {
+    const refresh = () => setPausedWorkout(readPausedWorkout());
+    refresh();
+    window.addEventListener('focus', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [activeTemplate]);
 
   const {
     searchQuery,
