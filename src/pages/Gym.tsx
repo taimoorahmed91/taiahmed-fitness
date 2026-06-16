@@ -52,6 +52,21 @@ const Gym = () => {
   };
 
   const handleStartWorkout = (template: WorkoutTemplate) => {
+    // Block starting a new workout if one is already in progress
+    if (activeTemplate) {
+      toast.error(`Close existing workout "${activeTemplate.name}" before starting a new one`);
+      return;
+    }
+    try {
+      const existing = localStorage.getItem('fittrack-active-workout');
+      if (existing) {
+        const state = JSON.parse(existing);
+        toast.error(`Close existing workout "${state.templateName ?? ''}" before starting a new one`);
+        return;
+      }
+    } catch {
+      // ignore parse errors and allow start
+    }
     setActiveTemplate(template);
   };
 
