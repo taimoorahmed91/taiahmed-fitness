@@ -272,6 +272,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         setExerciseSequence(savedState.exerciseSequence || {});
         setNextSequence(savedState.nextSequence || 1);
         setExerciseNotes(savedState.exerciseNotes || {});
+        setExerciseSetCount(savedState.exerciseSetCount || {});
         prevExerciseSets.current = JSON.parse(JSON.stringify(savedState.exerciseSets));
         setExpandedExercise(savedState.expandedExercise);
         setIsRestored(true);
