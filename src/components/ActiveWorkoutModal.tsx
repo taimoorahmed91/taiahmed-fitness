@@ -750,6 +750,13 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                               maxLength={6}
                             />
                           </div>
+                          {tsObj?.warmupTime && (
+                            <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '80px minmax(0, 1fr) minmax(0, 1fr)' }}>
+                              <span className="text-[10px] text-muted-foreground">Logged at</span>
+                              <p className="text-[10px] text-primary text-center">⏱ {tsObj.warmupTime}</p>
+                              <span />
+                            </div>
+                          )}
 
                           {/* Set number headers */}
                           <div className="grid gap-2 items-center" style={gridStyle}>
