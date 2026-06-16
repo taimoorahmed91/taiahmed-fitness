@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { GymForm } from '@/components/GymForm';
 import { GymList } from '@/components/GymList';
 import { DataFilter } from '@/components/DataFilter';
@@ -17,14 +17,32 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dumbbell, ClipboardList } from 'lucide-react';
+import { Dumbbell, ClipboardList, PlayCircle } from 'lucide-react';
 import { toast } from 'sonner';
+
+const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
+
+type PausedWorkoutInfo = { templateId: string; templateName: string };
+
+const readPausedWorkout = (): PausedWorkoutInfo | null => {
+  try {
+    const raw = localStorage.getItem(ACTIVE_WORKOUT_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s?.templateId) return null;
+    return { templateId: s.templateId, templateName: s.templateName ?? '' };
+  } catch {
+    return null;
+  }
+};
 
 const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions, getLastSessionByTemplateName } = useGymSessions();
@@ -32,6 +50,20 @@ const Gym = () => {
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
+  const [pausedWorkout, setPausedWorkout] = useState<PausedWorkoutInfo | null>(() => readPausedWorkout());
+  const [blockedStart, setBlockedStart] = useState<{ requested: WorkoutTemplate; existing: PausedWorkoutInfo } | null>(null);
+
+  // Re-check paused workout when modal closes or window regains focus
+  useEffect(() => {
+    const refresh = () => setPausedWorkout(readPausedWorkout());
+    refresh();
+    window.addEventListener('focus', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [activeTemplate]);
 
   const {
     searchQuery,
@@ -52,22 +84,42 @@ const Gym = () => {
   };
 
   const handleStartWorkout = (template: WorkoutTemplate) => {
-    // Block starting a new workout if one is already in progress
     if (activeTemplate) {
-      toast.error(`Close existing workout "${activeTemplate.name}" before starting a new one`);
+      // Modal already open
+      if (activeTemplate.id === template.id) return;
+      setBlockedStart({
+        requested: template,
+        existing: { templateId: activeTemplate.id, templateName: activeTemplate.name },
+      });
       return;
     }
-    try {
-      const existing = localStorage.getItem('fittrack-active-workout');
-      if (existing) {
-        const state = JSON.parse(existing);
-        toast.error(`Close existing workout "${state.templateName ?? ''}" before starting a new one`);
+    const existing = readPausedWorkout();
+    if (existing) {
+      // Same template paused — resume directly
+      if (existing.templateId === template.id) {
+        setActiveTemplate(template);
         return;
       }
-    } catch {
-      // ignore parse errors and allow start
+      // Different template paused — show centered prompt with resume option
+      setBlockedStart({ requested: template, existing });
+      return;
     }
     setActiveTemplate(template);
+  };
+
+  const handleResumePaused = () => {
+    const info = pausedWorkout ?? blockedStart?.existing;
+    if (!info) return;
+    const tpl = templates.find((t) => t.id === info.templateId);
+    if (!tpl) {
+      toast.error('Paused workout template not found. Clearing saved state.');
+      try { localStorage.removeItem(ACTIVE_WORKOUT_KEY); } catch { /* noop */ }
+      setPausedWorkout(null);
+      setBlockedStart(null);
+      return;
+    }
+    setBlockedStart(null);
+    setActiveTemplate(tpl);
   };
 
   const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string; notes?: string }): Promise<boolean> => {
@@ -158,6 +210,25 @@ const Gym = () => {
           <p className="text-muted-foreground mt-1">Log your workouts and track your progress</p>
         </div>
       </div>
+
+      {pausedWorkout && !activeTemplate && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
+            <div className="flex items-center gap-3">
+              <PlayCircle className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-medium">Paused workout in progress</p>
+                <p className="text-sm text-muted-foreground">
+                  {pausedWorkout.templateName || 'Untitled workout'}
+                </p>
+              </div>
+            </div>
+            <Button onClick={handleResumePaused}>Resume workout</Button>
+          </CardContent>
+        </Card>
+      )}
+
+
 
       <Tabs defaultValue="log" className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
@@ -264,6 +335,27 @@ const Gym = () => {
         onClose={() => setEditingTemplate(null)}
         onSave={handleSaveTemplate}
       />
+
+      {/* Centered blocking prompt when another workout is already in progress */}
+      <Dialog open={!!blockedStart} onOpenChange={(o) => !o && setBlockedStart(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Workout already in progress</DialogTitle>
+            <DialogDescription>
+              You have a paused workout
+              {blockedStart?.existing.templateName ? ` "${blockedStart.existing.templateName}"` : ''}.
+              Resume it or close it before starting
+              {blockedStart?.requested.name ? ` "${blockedStart.requested.name}"` : ' a new one'}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setBlockedStart(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleResumePaused}>Resume existing</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
