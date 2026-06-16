@@ -523,7 +523,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const entries: { exercise: string; index: number; seq: number }[] = [];
     allExercises.forEach((exercise, index) => {
       const sets = exerciseSets[index];
-      if (sets && (sets.set1 || sets.set2 || sets.set3)) {
+      if (sets && (sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6)) {
         entries.push({ exercise, index, seq: exerciseSequence[index] ?? 999 });
       }
     });
@@ -533,17 +533,27 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     entries.forEach((entry) => {
       const sets = exerciseSets[entry.index];
       const ts = exerciseTimestamps[entry.index];
-      const buildSet = (n: 1 | 2 | 3) => {
-        const repKey = `set${n}` as 'set1' | 'set2' | 'set3';
-        const wKey = `set${n}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
-        const tKey = `set${n}Time` as keyof ExerciseTimestamps;
-        const reps = sets[repKey];
+      const setCount = exerciseSetCount[entry.index] || 3;
+      const buildWarmup = () => {
+        const reps = sets.warmup;
         if (!reps) return null;
-        const weight = sets[wKey];
+        const weight = sets.warmupWeight;
+        const time = ts?.warmupTime;
+        return `W:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
+      };
+      const buildSet = (n: number) => {
+        const repKey = `set${n}` as SetKey;
+        const wKey = `set${n}Weight` as WeightKey;
+        const tKey = `set${n}Time` as keyof ExerciseTimestamps;
+        const reps = (sets as unknown as Record<string, string | undefined>)[repKey];
+        if (!reps) return null;
+        const weight = (sets as unknown as Record<string, string | undefined>)[wKey];
         const time = ts?.[tKey];
         return `S${n}:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
       };
-      const setsText = [buildSet(1), buildSet(2), buildSet(3)].filter(Boolean).join(' ');
+      const parts: (string | null)[] = [buildWarmup()];
+      for (let n = 1; n <= setCount; n++) parts.push(buildSet(n));
+      const setsText = parts.filter(Boolean).join(' ');
       const note = exerciseNotes[entry.index]?.trim();
       const noteSuffix = note ? ` [note: ${note.replace(/[\[\]|]/g, '')}]` : '';
       lines.push(`${entry.seq}.${entry.exercise}: ${setsText}${noteSuffix}`);
