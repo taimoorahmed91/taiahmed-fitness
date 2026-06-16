@@ -715,72 +715,128 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="px-3 pb-3 pt-1 space-y-3">
-                    {/* Set number headers */}
-                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-                      <div />
-                      {[1, 2, 3].map((n) => (
-                        <Label key={n} className="text-[11px] text-muted-foreground text-center">
-                          Set {n}
-                        </Label>
-                      ))}
-                    </div>
+                    {(() => {
+                      const setCount = exerciseSetCount[index] || 3;
+                      const setNums = Array.from({ length: setCount }, (_, i) => i + 1);
+                      const gridStyle = { gridTemplateColumns: `80px repeat(${setCount}, minmax(0, 1fr))` };
+                      const prevSet = previousReps[exercise];
+                      const setsObj = exerciseSets[index] as unknown as Record<string, string | undefined> | undefined;
+                      const tsObj = exerciseTimestamps[index] as unknown as Record<string, string | undefined> | undefined;
+                      const prevSetObj = prevSet as unknown as Record<string, string | undefined> | undefined;
+                      const hasAnyTimestamp = setNums.some((n) => tsObj?.[`set${n}Time`]);
+                      return (
+                        <>
+                          {/* Warmup row (single input, optional) */}
+                          <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '80px minmax(0, 1fr) minmax(0, 1fr)' }}>
+                            <Label className="text-xs font-medium text-muted-foreground">Warmup</Label>
+                            <Input
+                              id={`warmup-reps-${index}`}
+                              type="text"
+                              inputMode="numeric"
+                              placeholder={prevSet?.warmup || 'reps'}
+                              value={setsObj?.warmup || ''}
+                              onChange={(e) => updateSet(index, 'warmup', e.target.value)}
+                              className="h-9 text-center"
+                              maxLength={3}
+                            />
+                            <Input
+                              id={`warmup-weight-${index}`}
+                              type="text"
+                              inputMode="decimal"
+                              placeholder={prevSet?.warmupWeight || defaultWeight || 'kg'}
+                              value={setsObj?.warmupWeight || ''}
+                              onChange={(e) => updateSet(index, 'warmupWeight', e.target.value)}
+                              className="h-9 text-center"
+                              maxLength={6}
+                            />
+                          </div>
 
-                    {/* Reps row */}
-                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-                      <Label className="text-xs font-medium">Reps</Label>
-                      {(['set1', 'set2', 'set3'] as const).map((setKey) => {
-                        const prevSet = previousReps[exercise];
-                        const prevReps = prevSet?.[setKey] || '';
-                        return (
-                          <Input
-                            key={setKey}
-                            id={`${setKey}-${index}`}
-                            type="text"
-                            inputMode="numeric"
-                            placeholder={prevReps || '0'}
-                            value={exerciseSets[index]?.[setKey] || ''}
-                            onChange={(e) => updateSet(index, setKey, e.target.value)}
-                            className="h-9 text-center"
-                            maxLength={3}
-                          />
-                        );
-                      })}
-                    </div>
+                          {/* Set number headers */}
+                          <div className="grid gap-2 items-center" style={gridStyle}>
+                            <div />
+                            {setNums.map((n) => (
+                              <Label key={n} className="text-[11px] text-muted-foreground text-center">
+                                Set {n}
+                              </Label>
+                            ))}
+                          </div>
 
-                    {/* Weight row */}
-                    <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-                      <Label className="text-xs font-medium">Weight (kg)</Label>
-                      {(['set1', 'set2', 'set3'] as const).map((setKey) => {
-                        const prevSet = previousReps[exercise];
-                        const weightKey = `${setKey}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
-                        const prevWeight = prevSet?.[weightKey] || defaultWeight || '';
-                        return (
-                          <Input
-                            key={weightKey}
-                            id={`${weightKey}-${index}`}
-                            type="text"
-                            inputMode="decimal"
-                            placeholder={prevWeight || 'kg'}
-                            value={exerciseSets[index]?.[weightKey] || ''}
-                            onChange={(e) => updateSet(index, weightKey, e.target.value)}
-                            className="h-9 text-center"
-                            maxLength={6}
-                          />
-                        );
-                      })}
-                    </div>
+                          {/* Reps row */}
+                          <div className="grid gap-2 items-center" style={gridStyle}>
+                            <Label className="text-xs font-medium">Reps</Label>
+                            {setNums.map((n) => {
+                              const setKey = `set${n}` as SetKey;
+                              const prevReps = prevSetObj?.[setKey] || '';
+                              return (
+                                <Input
+                                  key={setKey}
+                                  id={`${setKey}-${index}`}
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder={prevReps || '0'}
+                                  value={setsObj?.[setKey] || ''}
+                                  onChange={(e) => updateSet(index, setKey, e.target.value)}
+                                  className="h-9 text-center"
+                                  maxLength={3}
+                                />
+                              );
+                            })}
+                          </div>
 
-                    {/* Timestamps row */}
-                    {(exerciseTimestamps[index]?.set1Time || exerciseTimestamps[index]?.set2Time || exerciseTimestamps[index]?.set3Time) && (
-                      <div className="grid grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-                        <span className="text-[10px] text-muted-foreground">Logged at</span>
-                        {(['set1Time', 'set2Time', 'set3Time'] as const).map((tKey) => (
-                          <p key={tKey} className="text-[10px] text-primary text-center">
-                            {exerciseTimestamps[index]?.[tKey] ? `⏱ ${exerciseTimestamps[index][tKey]}` : '—'}
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                          {/* Weight row */}
+                          <div className="grid gap-2 items-center" style={gridStyle}>
+                            <Label className="text-xs font-medium">Weight (kg)</Label>
+                            {setNums.map((n) => {
+                              const weightKey = `set${n}Weight` as WeightKey;
+                              const prevWeight = prevSetObj?.[weightKey] || defaultWeight || '';
+                              return (
+                                <Input
+                                  key={weightKey}
+                                  id={`${weightKey}-${index}`}
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder={prevWeight || 'kg'}
+                                  value={setsObj?.[weightKey] || ''}
+                                  onChange={(e) => updateSet(index, weightKey, e.target.value)}
+                                  className="h-9 text-center"
+                                  maxLength={6}
+                                />
+                              );
+                            })}
+                          </div>
+
+                          {/* Timestamps row */}
+                          {hasAnyTimestamp && (
+                            <div className="grid gap-2 items-center" style={gridStyle}>
+                              <span className="text-[10px] text-muted-foreground">Logged at</span>
+                              {setNums.map((n) => {
+                                const tKey = `set${n}Time`;
+                                const v = tsObj?.[tKey];
+                                return (
+                                  <p key={tKey} className="text-[10px] text-primary text-center">
+                                    {v ? `⏱ ${v}` : '—'}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Add set button (up to 6 sets) */}
+                          {setCount < 6 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full border-dashed h-8 text-xs"
+                              onClick={() => addExtraSet(index)}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              Add set ({setCount + 1} of 6)
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {/* Per-exercise note */}
                     <div className="space-y-1 pt-1">
