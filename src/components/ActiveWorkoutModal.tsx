@@ -325,12 +325,27 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       setNewExerciseName('');
 
       if (getLastSessionRef.current) {
-        getLastSessionRef.current(template.name).then((lastSession) => {
+        const tpl = template;
+        const allEx = [...tpl.exercises];
+        getLastSessionRef.current(tpl.name).then((lastSession) => {
           if (lastSession?.notes) {
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed.reps);
             setPreviousNotes(parsed.notes);
             setPreviousSequences(parsed.sequences);
+            // Bump the default visible set count for any exercise whose previous
+            // session logged more than 3 sets (capped at 6). Only raises counts —
+            // never lowers a user's in-progress count.
+            setExerciseSetCount((prev) => {
+              const next = { ...prev };
+              allEx.forEach((exName, idx) => {
+                const prevCount = parsed.setCounts[exName];
+                if (prevCount && prevCount > (next[idx] || 3)) {
+                  next[idx] = Math.min(6, prevCount);
+                }
+              });
+              return next;
+            });
             // Note: previous reps/weights are shown as placeholders only — never pre-filled
             // into the actual inputs, so exercises don't appear "complete" and timestamps
             // still get recorded when the user enters their first rep.
