@@ -335,6 +335,27 @@ const Gym = () => {
         onClose={() => setEditingTemplate(null)}
         onSave={handleSaveTemplate}
       />
+
+      {/* Centered blocking prompt when another workout is already in progress */}
+      <Dialog open={!!blockedStart} onOpenChange={(o) => !o && setBlockedStart(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Workout already in progress</DialogTitle>
+            <DialogDescription>
+              You have a paused workout
+              {blockedStart?.existing.templateName ? ` "${blockedStart.existing.templateName}"` : ''}.
+              Resume it or close it before starting
+              {blockedStart?.requested.name ? ` "${blockedStart.requested.name}"` : ' a new one'}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setBlockedStart(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleResumePaused}>Resume existing</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
