@@ -84,22 +84,42 @@ const Gym = () => {
   };
 
   const handleStartWorkout = (template: WorkoutTemplate) => {
-    // Block starting a new workout if one is already in progress
     if (activeTemplate) {
-      toast.error(`Close existing workout "${activeTemplate.name}" before starting a new one`);
+      // Modal already open
+      if (activeTemplate.id === template.id) return;
+      setBlockedStart({
+        requested: template,
+        existing: { templateId: activeTemplate.id, templateName: activeTemplate.name },
+      });
       return;
     }
-    try {
-      const existing = localStorage.getItem('fittrack-active-workout');
-      if (existing) {
-        const state = JSON.parse(existing);
-        toast.error(`Close existing workout "${state.templateName ?? ''}" before starting a new one`);
+    const existing = readPausedWorkout();
+    if (existing) {
+      // Same template paused — resume directly
+      if (existing.templateId === template.id) {
+        setActiveTemplate(template);
         return;
       }
-    } catch {
-      // ignore parse errors and allow start
+      // Different template paused — show centered prompt with resume option
+      setBlockedStart({ requested: template, existing });
+      return;
     }
     setActiveTemplate(template);
+  };
+
+  const handleResumePaused = () => {
+    const info = pausedWorkout ?? blockedStart?.existing;
+    if (!info) return;
+    const tpl = templates.find((t) => t.id === info.templateId);
+    if (!tpl) {
+      toast.error('Paused workout template not found. Clearing saved state.');
+      try { localStorage.removeItem(ACTIVE_WORKOUT_KEY); } catch { /* noop */ }
+      setPausedWorkout(null);
+      setBlockedStart(null);
+      return;
+    }
+    setBlockedStart(null);
+    setActiveTemplate(tpl);
   };
 
   const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string; notes?: string }): Promise<boolean> => {
