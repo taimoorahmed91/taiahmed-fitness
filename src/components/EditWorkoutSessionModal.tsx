@@ -8,20 +8,29 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, ChevronUp, Plus, StickyNote, Trash2 } from 'lucide-react';
 import { GymSession } from '@/types';
 
-interface ExerciseSets {
-  set1: string;
-  set2: string;
-  set3: string;
-  set1Weight?: string;
-  set2Weight?: string;
-  set3Weight?: string;
-}
+type SetN = 1 | 2 | 3 | 4 | 5 | 6;
+const SET_NUMS: SetN[] = [1, 2, 3, 4, 5, 6];
 
-interface ExerciseTimestamps {
-  set1Time?: string;
-  set2Time?: string;
-  set3Time?: string;
-}
+type SetField = 'warmup' | 'set1' | 'set2' | 'set3' | 'set4' | 'set5' | 'set6';
+type WeightField =
+  | 'warmupWeight'
+  | 'set1Weight'
+  | 'set2Weight'
+  | 'set3Weight'
+  | 'set4Weight'
+  | 'set5Weight'
+  | 'set6Weight';
+type TimeField =
+  | 'warmupTime'
+  | 'set1Time'
+  | 'set2Time'
+  | 'set3Time'
+  | 'set4Time'
+  | 'set5Time'
+  | 'set6Time';
+
+type ExerciseSets = Partial<Record<SetField | WeightField, string>>;
+type ExerciseTimestamps = Partial<Record<TimeField, string>>;
 
 interface ParsedExercise {
   seq?: number;
@@ -29,11 +38,12 @@ interface ParsedExercise {
   sets: ExerciseSets;
   timestamps: ExerciseTimestamps;
   note: string;
+  visibleSets: number; // 3..6
 }
 
 interface ParsedSession {
-  startTime: string; // HH:mm
-  endTime: string;   // HH:mm
+  startTime: string;
+  endTime: string;
   exercises: ParsedExercise[];
 }
 
@@ -44,8 +54,7 @@ const parseSessionNotes = (notes: string | undefined): ParsedSession => {
   const parts = notes.split(' | ').map((p) => p.trim()).filter(Boolean);
 
   for (const part of parts) {
-    // meta: Start:HH:mm End:HH:mm
-    if (/^Start:/i.test(part) && !part.includes(': S')) {
+    if (/^Start:/i.test(part) && !part.includes(': S') && !part.includes(': W')) {
       const sm = part.match(/Start:\s*(\d{1,2}:\d{2})/i);
       const em = part.match(/End:\s*(\d{1,2}:\d{2})/i);
       if (sm) result.startTime = sm[1];
@@ -74,26 +83,43 @@ const parseSessionNotes = (notes: string | undefined): ParsedSession => {
       header = seqMatch[2].trim();
     }
 
-    const sets: ExerciseSets = { set1: '', set2: '', set3: '' };
+    const sets: ExerciseSets = {};
     const timestamps: ExerciseTimestamps = {};
+    let maxSet = 3;
 
-    // S<n>:<reps>[@<weight>kg][@<HH:mm>]
-    const setRegex = /S(\d):(\d+(?:\.\d+)?)(?:@(\d+(?:\.\d+)?)kg)?(?:@(\d{1,2}:\d{2}))?/g;
+    // Warmup: W:<reps>[@<weight>kg][@HH:mm]
+    const wMatch = setsText.match(
+      /(?:^|\s)W:(\d+(?:\.\d+)?)(?:@(\d+(?:\.\d+)?)kg)?(?:@(\d{1,2}:\d{2}))?/
+    );
+    if (wMatch) {
+      sets.warmup = wMatch[1];
+      if (wMatch[2]) sets.warmupWeight = wMatch[2];
+      if (wMatch[3]) timestamps.warmupTime = wMatch[3];
+    }
+
+    // S<n>:<reps>[@<weight>kg][@HH:mm]
+    const setRegex =
+      /S([1-6]):(\d+(?:\.\d+)?)(?:@(\d+(?:\.\d+)?)kg)?(?:@(\d{1,2}:\d{2}))?/g;
     let m: RegExpExecArray | null;
     while ((m = setRegex.exec(setsText)) !== null) {
       const [, n, reps, weight, time] = m;
-      const repKey = `set${n}` as 'set1' | 'set2' | 'set3';
-      const wKey = `set${n}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
-      const tKey = `set${n}Time` as 'set1Time' | 'set2Time' | 'set3Time';
-      sets[repKey] = reps;
-      if (weight) sets[wKey] = weight;
-      if (time) timestamps[tKey] = time;
+      const num = parseInt(n, 10);
+      sets[`set${num}` as SetField] = reps;
+      if (weight) sets[`set${num}Weight` as WeightField] = weight;
+      if (time) timestamps[`set${num}Time` as TimeField] = time;
+      if (num > maxSet) maxSet = num;
     }
 
-    result.exercises.push({ seq, name: header, sets, timestamps, note: noteText });
+    result.exercises.push({
+      seq,
+      name: header,
+      sets,
+      timestamps,
+      note: noteText,
+      visibleSets: maxSet,
+    });
   }
 
-  // sort by seq if present
   result.exercises.sort((a, b) => (a.seq ?? 999) - (b.seq ?? 999));
   return result;
 };
@@ -105,14 +131,24 @@ const formatSessionNotes = (data: ParsedSession): string => {
   }
   data.exercises.forEach((ex, i) => {
     const seq = ex.seq ?? i + 1;
-    const buildSet = (n: 1 | 2 | 3) => {
-      const reps = ex.sets[`set${n}` as 'set1'].toString().trim();
-      if (!reps) return null;
-      const weight = (ex.sets[`set${n}Weight` as 'set1Weight'] || '').toString().trim();
-      const time = (ex.timestamps[`set${n}Time` as 'set1Time'] || '').trim();
-      return `S${n}:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
-    };
-    const setsText = [buildSet(1), buildSet(2), buildSet(3)].filter(Boolean).join(' ');
+    const tokens: string[] = [];
+
+    const warmupReps = (ex.sets.warmup || '').trim();
+    if (warmupReps) {
+      const w = (ex.sets.warmupWeight || '').trim();
+      const t = (ex.timestamps.warmupTime || '').trim();
+      tokens.push(`W:${warmupReps}${w ? `@${w}kg` : ''}${t ? `@${t}` : ''}`);
+    }
+
+    for (let n = 1; n <= ex.visibleSets; n++) {
+      const reps = (ex.sets[`set${n}` as SetField] || '').trim();
+      if (!reps) continue;
+      const w = (ex.sets[`set${n}Weight` as WeightField] || '').trim();
+      const t = (ex.timestamps[`set${n}Time` as TimeField] || '').trim();
+      tokens.push(`S${n}:${reps}${w ? `@${w}kg` : ''}${t ? `@${t}` : ''}`);
+    }
+
+    const setsText = tokens.join(' ');
     if (!setsText && !ex.note.trim()) return;
     const cleanNote = ex.note.trim().replace(/[\[\]|]/g, '');
     const noteSuffix = cleanNote ? ` [note: ${cleanNote}]` : '';
@@ -131,6 +167,17 @@ const sanitizeDecimal = (raw: string): string => {
   return v;
 };
 
+const nowHHMM = () => {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}:${now
+    .getMinutes()
+    .toString()
+    .padStart(2, '0')}`;
+};
+
+const greenIf = (hasValue: boolean) =>
+  hasValue ? 'border-green-500 focus-visible:ring-green-500' : '';
+
 interface EditWorkoutSessionModalProps {
   session: GymSession | null;
   open: boolean;
@@ -138,15 +185,26 @@ interface EditWorkoutSessionModalProps {
   onSave: (id: string, updates: Partial<Omit<GymSession, 'id'>>) => Promise<void> | void;
 }
 
-export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: EditWorkoutSessionModalProps) => {
+export const EditWorkoutSessionModal = ({
+  session,
+  open,
+  onClose,
+  onSave,
+}: EditWorkoutSessionModalProps) => {
   const [exerciseName, setExerciseName] = useState('');
   const [duration, setDuration] = useState('');
   const [date, setDate] = useState('');
   const [startTimeField, setStartTimeField] = useState('');
-  const [parsed, setParsed] = useState<ParsedSession>({ startTime: '', endTime: '', exercises: [] });
+  const [parsed, setParsed] = useState<ParsedSession>({
+    startTime: '',
+    endTime: '',
+    exercises: [],
+  });
   const [expanded, setExpanded] = useState<number | null>(0);
   const [newExerciseName, setNewExerciseName] = useState('');
   const [showAddExercise, setShowAddExercise] = useState(false);
+  // Track which fields the user edited in this session — those get the green border
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (session && open) {
@@ -155,14 +213,17 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
       setDate(session.date);
       setStartTimeField(session.start_time || '');
       const p = parseSessionNotes(session.notes);
-      // Default start meta to session.start_time if not already in notes
       if (!p.startTime && session.start_time) p.startTime = session.start_time;
       setParsed(p);
       setExpanded(p.exercises.length > 0 ? 0 : null);
       setShowAddExercise(false);
       setNewExerciseName('');
+      setTouched({});
     }
   }, [session, open]);
+
+  const markTouched = (key: string) =>
+    setTouched((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
 
   const updateExercise = (index: number, updater: (ex: ParsedExercise) => ParsedExercise) => {
     setParsed((prev) => ({
@@ -171,19 +232,26 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
     }));
   };
 
-  const updateSet = (index: number, n: 1 | 2 | 3, field: 'reps' | 'weight', value: string) => {
+  const updateSet = (
+    index: number,
+    n: SetN | 'warmup',
+    field: 'reps' | 'weight',
+    value: string
+  ) => {
+    const repKey = (n === 'warmup' ? 'warmup' : `set${n}`) as SetField;
+    const wKey = (n === 'warmup' ? 'warmupWeight' : `set${n}Weight`) as WeightField;
+    const tKey = (n === 'warmup' ? 'warmupTime' : `set${n}Time`) as TimeField;
+    const touchKey = `${index}-${field === 'reps' ? repKey : wKey}`;
+    markTouched(touchKey);
+
     updateExercise(index, (ex) => {
       const newSets = { ...ex.sets };
       const newTs = { ...ex.timestamps };
-      const repKey = `set${n}` as 'set1' | 'set2' | 'set3';
-      const wKey = `set${n}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
-      const tKey = `set${n}Time` as 'set1Time' | 'set2Time' | 'set3Time';
       if (field === 'reps') {
         const sanitized = sanitizeDecimal(value);
         newSets[repKey] = sanitized;
         if (sanitized && !newTs[tKey]) {
-          const now = new Date();
-          newTs[tKey] = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+          newTs[tKey] = nowHHMM();
         }
         if (!sanitized) {
           delete newTs[tKey];
@@ -193,6 +261,13 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
       }
       return { ...ex, sets: newSets, timestamps: newTs };
     });
+  };
+
+  const addSetRow = (index: number) => {
+    updateExercise(index, (ex) => ({
+      ...ex,
+      visibleSets: Math.min(6, ex.visibleSets + 1),
+    }));
   };
 
   const updateNote = (index: number, value: string) => {
@@ -218,9 +293,10 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
         {
           seq: prev.exercises.length + 1,
           name,
-          sets: { set1: '', set2: '', set3: '' } as ExerciseSets,
+          sets: {} as ExerciseSets,
           timestamps: {} as ExerciseTimestamps,
           note: '',
+          visibleSets: 3,
         },
       ];
       return { ...prev, exercises: next };
@@ -231,7 +307,15 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
   };
 
   const isComplete = (ex: ParsedExercise) =>
-    Boolean(ex.sets.set1 || ex.sets.set2 || ex.sets.set3);
+    Boolean(
+      ex.sets.warmup ||
+        ex.sets.set1 ||
+        ex.sets.set2 ||
+        ex.sets.set3 ||
+        ex.sets.set4 ||
+        ex.sets.set5 ||
+        ex.sets.set6
+    );
 
   const handleSave = async () => {
     if (!session) return;
@@ -338,12 +422,13 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
             )}
 
             {parsed.exercises.map((ex, index) => {
-              const open = expanded === index;
+              const openEx = expanded === index;
               const complete = isComplete(ex);
+              const visibleNums = SET_NUMS.slice(0, ex.visibleSets);
               return (
                 <Collapsible
                   key={index}
-                  open={open}
+                  open={openEx}
                   onOpenChange={(o) => setExpanded(o ? index : null)}
                 >
                   <div className="border rounded-lg">
@@ -362,7 +447,7 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
                             {(ex.seq ?? index + 1)}. {ex.name}
                           </span>
                         </div>
-                        {open ? (
+                        {openEx ? (
                           <ChevronUp className="h-4 w-4 shrink-0" />
                         ) : (
                           <ChevronDown className="h-4 w-4 shrink-0" />
@@ -380,22 +465,59 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
                         />
                       </div>
 
+                      {/* Warmup row */}
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Warmup</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-0.5">
+                            <Input
+                              inputMode="numeric"
+                              placeholder="reps"
+                              value={ex.sets.warmup || ''}
+                              onChange={(e) =>
+                                updateSet(index, 'warmup', 'reps', e.target.value)
+                              }
+                              className={greenIf(!!touched[`${index}-warmup`] && !!ex.sets.warmup)}
+                            />
+                            {ex.timestamps.warmupTime && (
+                              <p className="text-[10px] text-muted-foreground text-center">
+                                @ {ex.timestamps.warmupTime}
+                              </p>
+                            )}
+                          </div>
+                          <Input
+                            inputMode="decimal"
+                            placeholder="kg"
+                            value={ex.sets.warmupWeight || ''}
+                            onChange={(e) =>
+                              updateSet(index, 'warmup', 'weight', e.target.value)
+                            }
+                            className={greenIf(
+                              !!touched[`${index}-warmupWeight`] && !!ex.sets.warmupWeight
+                            )}
+                          />
+                        </div>
+                      </div>
+
                       {/* Reps row */}
                       <div className="space-y-1">
                         <Label className="text-xs">Reps</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[1, 2, 3].map((n) => {
-                            const repKey = `set${n}` as 'set1' | 'set2' | 'set3';
-                            const tKey = `set${n}Time` as 'set1Time' | 'set2Time' | 'set3Time';
+                        <div
+                          className="grid gap-2"
+                          style={{ gridTemplateColumns: `repeat(${visibleNums.length}, minmax(0, 1fr))` }}
+                        >
+                          {visibleNums.map((n) => {
+                            const repKey = `set${n}` as SetField;
+                            const tKey = `set${n}Time` as TimeField;
+                            const tk = `${index}-${repKey}`;
                             return (
                               <div key={`reps-${n}`} className="space-y-0.5">
                                 <Input
                                   inputMode="decimal"
                                   placeholder={`Set ${n}`}
                                   value={ex.sets[repKey] || ''}
-                                  onChange={(e) =>
-                                    updateSet(index, n as 1 | 2 | 3, 'reps', e.target.value)
-                                  }
+                                  onChange={(e) => updateSet(index, n, 'reps', e.target.value)}
+                                  className={greenIf(!!touched[tk] && !!ex.sets[repKey])}
                                 />
                                 {ex.timestamps[tKey] && (
                                   <p className="text-[10px] text-muted-foreground text-center">
@@ -411,23 +533,39 @@ export const EditWorkoutSessionModal = ({ session, open, onClose, onSave }: Edit
                       {/* Weight row */}
                       <div className="space-y-1">
                         <Label className="text-xs">Weight (kg)</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[1, 2, 3].map((n) => {
-                            const wKey = `set${n}Weight` as 'set1Weight' | 'set2Weight' | 'set3Weight';
+                        <div
+                          className="grid gap-2"
+                          style={{ gridTemplateColumns: `repeat(${visibleNums.length}, minmax(0, 1fr))` }}
+                        >
+                          {visibleNums.map((n) => {
+                            const wKey = `set${n}Weight` as WeightField;
+                            const tk = `${index}-${wKey}`;
                             return (
                               <Input
                                 key={`w-${n}`}
                                 inputMode="decimal"
                                 placeholder={`Set ${n}`}
                                 value={ex.sets[wKey] || ''}
-                                onChange={(e) =>
-                                  updateSet(index, n as 1 | 2 | 3, 'weight', e.target.value)
-                                }
+                                onChange={(e) => updateSet(index, n, 'weight', e.target.value)}
+                                className={greenIf(!!touched[tk] && !!ex.sets[wKey])}
                               />
                             );
                           })}
                         </div>
                       </div>
+
+                      {ex.visibleSets < 6 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-dashed h-8 text-xs"
+                          onClick={() => addSetRow(index)}
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Add set ({ex.visibleSets + 1} of 6)
+                        </Button>
+                      )}
 
                       {/* Note */}
                       <div className="space-y-1">
