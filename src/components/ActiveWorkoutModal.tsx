@@ -188,6 +188,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [exerciseSequence, setExerciseSequence] = useState<ExerciseSequence>({});
   const [nextSequence, setNextSequence] = useState(1);
   const [exerciseNotes, setExerciseNotes] = useState<Record<number, string>>({});
+  // Visible non-warmup set count per exercise index (3..6). Defaults to 3, bumped
+  // up when previous session history shows more sets were used for that exercise.
+  const [exerciseSetCount, setExerciseSetCount] = useState<Record<number, number>>({});
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [previousNotes, setPreviousNotes] = useState<Record<string, string>>({});
   const [previousSequences, setPreviousSequences] = useState<Record<string, number>>({});
