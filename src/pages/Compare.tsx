@@ -91,7 +91,7 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4 pb-2 border-b">
+      <div className="grid grid-cols-4 gap-4 pb-2 border-b">
         <div className="font-medium text-muted-foreground">Field</div>
         <div className="font-medium text-center text-sm">
           {format(new Date(a.date), 'MMM dd')}
@@ -99,15 +99,16 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
         <div className="font-medium text-center text-sm">
           {format(new Date(b.date), 'MMM dd')}
         </div>
+        <div className="font-medium text-center text-sm text-muted-foreground">Difference</div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 py-2 border-b border-border/50 text-sm">
+      <div className="grid grid-cols-4 gap-4 py-2 border-b border-border/50 text-sm">
         <div className="font-medium">Duration</div>
         <div className="text-center">{a.duration} min</div>
+        <div className="text-center">{b.duration} min</div>
         <div className="text-center">
-          {b.duration} min
           {a.duration !== b.duration && (
-            <span className={`ml-2 text-xs ${b.duration - a.duration > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-xs ${b.duration - a.duration > 0 ? 'text-green-600' : 'text-red-600'}`}>
               ({b.duration - a.duration > 0 ? '+' : ''}{b.duration - a.duration})
             </span>
           )}
@@ -115,10 +116,11 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
       </div>
 
       {(pa.startTime || pb.startTime || pa.endTime || pb.endTime) && (
-        <div className="grid grid-cols-3 gap-4 py-2 border-b border-border/50 text-sm">
+        <div className="grid grid-cols-4 gap-4 py-2 border-b border-border/50 text-sm">
           <div className="font-medium">Start / End</div>
           <div className="text-center">{pa.startTime || '–'} / {pa.endTime || '–'}</div>
           <div className="text-center">{pb.startTime || '–'} / {pb.endTime || '–'}</div>
+          <div />
         </div>
       )}
 
@@ -162,7 +164,7 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
                   ? parseFloat(sb.weight) - parseFloat(sa.weight)
                   : null;
               return (
-                <div key={lbl} className="grid grid-cols-3 gap-4 text-sm py-1 border-t border-border/30">
+                <div key={lbl} className="grid grid-cols-4 gap-4 text-sm py-1 border-t border-border/30">
                   <div className="font-medium text-muted-foreground flex items-center gap-1">
                     {lbl}
                     {sameReps && sameWeight ? (
@@ -172,10 +174,10 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
                     )}
                   </div>
                   <div className="text-center">{fmtSet(sa)}</div>
+                  <div className="text-center">{fmtSet(sb)}</div>
                   <div className="text-center">
-                    {fmtSet(sb)}
                     {(repsDiff !== null && repsDiff !== 0) || (wDiff !== null && wDiff !== 0) ? (
-                      <div className="text-xs mt-0.5 space-x-2">
+                      <div className="text-xs space-x-2">
                         {repsDiff !== null && repsDiff !== 0 && (
                           <span className={repsDiff > 0 ? 'text-green-600' : 'text-red-600'}>
                             {repsDiff > 0 ? '+' : ''}{repsDiff} reps
@@ -193,10 +195,11 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
               );
             })}
             {(ea?.note || eb?.note) && (
-              <div className="grid grid-cols-3 gap-4 text-xs pt-2 border-t border-border/30">
+              <div className="grid grid-cols-4 gap-4 text-xs pt-2 border-t border-border/30">
                 <div className="font-medium text-muted-foreground">Note</div>
                 <div className="text-center text-muted-foreground">{ea?.note || '—'}</div>
                 <div className="text-center text-muted-foreground">{eb?.note || '—'}</div>
+                <div />
               </div>
             )}
           </div>
