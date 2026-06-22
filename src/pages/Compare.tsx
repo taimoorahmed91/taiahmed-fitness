@@ -19,6 +19,193 @@ interface CompareField {
   format?: (value: any) => string;
 }
 
+interface ParsedSet {
+  label: string;
+  reps?: string;
+  weight?: string;
+  time?: string;
+}
+interface ParsedExercise {
+  name: string;
+  seq?: number;
+  sets: ParsedSet[];
+  note?: string;
+}
+
+const parseGymNotes = (notes: string | undefined): { startTime?: string; endTime?: string; exercises: ParsedExercise[] } => {
+  const result: { startTime?: string; endTime?: string; exercises: ParsedExercise[] } = { exercises: [] };
+  if (!notes) return result;
+  const parts = notes.split(' | ').map((p) => p.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (/^Start:/i.test(part) && !part.includes(': S') && !part.includes(': W')) {
+      const sm = part.match(/Start:\s*(\d{1,2}:\d{2})/i);
+      const em = part.match(/End:\s*(\d{1,2}:\d{2})/i);
+      if (sm) result.startTime = sm[1];
+      if (em) result.endTime = em[1];
+      continue;
+    }
+    let working = part;
+    let noteText = '';
+    const noteMatch = working.match(/\s*\[note:\s*([^\]]*)\]\s*$/i);
+    if (noteMatch) {
+      noteText = noteMatch[1].trim();
+      working = working.slice(0, noteMatch.index).trim();
+    }
+    const colonIdx = working.indexOf(':');
+    if (colonIdx === -1) continue;
+    let header = working.slice(0, colonIdx).trim();
+    const setsText = working.slice(colonIdx + 1).trim();
+    let seq: number | undefined;
+    const seqMatch = header.match(/^(\d+)\.(.*)$/);
+    if (seqMatch) {
+      seq = parseInt(seqMatch[1], 10);
+      header = seqMatch[2].trim();
+    }
+    const sets: ParsedSet[] = [];
+    const wMatch = setsText.match(/(?:^|\s)W:(\d+(?:\.\d+)?)(?:@(\d+(?:\.\d+)?)kg)?(?:@(\d{1,2}:\d{2}))?/);
+    if (wMatch) sets.push({ label: 'Warmup', reps: wMatch[1], weight: wMatch[2], time: wMatch[3] });
+    const setRegex = /S([1-6]):(\d+(?:\.\d+)?)(?:@(\d+(?:\.\d+)?)kg)?(?:@(\d{1,2}:\d{2}))?/g;
+    let m: RegExpExecArray | null;
+    while ((m = setRegex.exec(setsText)) !== null) {
+      sets.push({ label: `Set ${m[1]}`, reps: m[2], weight: m[3], time: m[4] });
+    }
+    result.exercises.push({ name: header, seq, sets, note: noteText || undefined });
+  }
+  result.exercises.sort((a, b) => (a.seq ?? 999) - (b.seq ?? 999));
+  return result;
+};
+
+const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
+  const pa = parseGymNotes(a?.notes);
+  const pb = parseGymNotes(b?.notes);
+  const names = Array.from(new Set([...pa.exercises.map((e) => e.name), ...pb.exercises.map((e) => e.name)]));
+
+  const fmtSet = (s?: ParsedSet) => {
+    if (!s) return '—';
+    const parts: string[] = [];
+    parts.push(`${s.reps ?? '–'} reps`);
+    if (s.weight) parts.push(`@ ${s.weight}kg`);
+    if (s.time) parts.push(`(${s.time})`);
+    return parts.join(' ');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4 pb-2 border-b">
+        <div className="font-medium text-muted-foreground">Field</div>
+        <div className="font-medium text-center text-sm">
+          {format(new Date(a.date), 'MMM dd')}
+        </div>
+        <div className="font-medium text-center text-sm">
+          {format(new Date(b.date), 'MMM dd')}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 py-2 border-b border-border/50 text-sm">
+        <div className="font-medium">Duration</div>
+        <div className="text-center">{a.duration} min</div>
+        <div className="text-center">
+          {b.duration} min
+          {a.duration !== b.duration && (
+            <span className={`ml-2 text-xs ${b.duration - a.duration > 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ({b.duration - a.duration > 0 ? '+' : ''}{b.duration - a.duration})
+            </span>
+          )}
+        </div>
+      </div>
+
+      {(pa.startTime || pb.startTime || pa.endTime || pb.endTime) && (
+        <div className="grid grid-cols-3 gap-4 py-2 border-b border-border/50 text-sm">
+          <div className="font-medium">Start / End</div>
+          <div className="text-center">{pa.startTime || '–'} / {pa.endTime || '–'}</div>
+          <div className="text-center">{pb.startTime || '–'} / {pb.endTime || '–'}</div>
+        </div>
+      )}
+
+      {names.length === 0 && (
+        <p className="text-muted-foreground text-sm text-center py-4">
+          No structured exercise data in notes to compare.
+        </p>
+      )}
+
+      {names.map((name) => {
+        const ea = pa.exercises.find((e) => e.name === name);
+        const eb = pb.exercises.find((e) => e.name === name);
+        const setLabels = Array.from(
+          new Set([...(ea?.sets || []).map((s) => s.label), ...(eb?.sets || []).map((s) => s.label)])
+        );
+        const order = ['Warmup', 'Set 1', 'Set 2', 'Set 3', 'Set 4', 'Set 5', 'Set 6'];
+        setLabels.sort((x, y) => order.indexOf(x) - order.indexOf(y));
+
+        return (
+          <div key={name} className="rounded-lg border p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Dumbbell className="h-4 w-4 text-primary" />
+              <h4 className="font-semibold text-foreground">{name}</h4>
+              {ea && eb && (
+                ea.sets.length === eb.sets.length ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <X className="h-4 w-4 text-orange-500" />
+                )
+              )}
+            </div>
+            {setLabels.map((lbl) => {
+              const sa = ea?.sets.find((s) => s.label === lbl);
+              const sb = eb?.sets.find((s) => s.label === lbl);
+              const sameReps = sa?.reps === sb?.reps;
+              const sameWeight = (sa?.weight || '') === (sb?.weight || '');
+              const repsDiff =
+                sa?.reps && sb?.reps ? parseFloat(sb.reps) - parseFloat(sa.reps) : null;
+              const wDiff =
+                sa?.weight && sb?.weight
+                  ? parseFloat(sb.weight) - parseFloat(sa.weight)
+                  : null;
+              return (
+                <div key={lbl} className="grid grid-cols-3 gap-4 text-sm py-1 border-t border-border/30">
+                  <div className="font-medium text-muted-foreground flex items-center gap-1">
+                    {lbl}
+                    {sameReps && sameWeight ? (
+                      <Check className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <X className="h-3 w-3 text-orange-500" />
+                    )}
+                  </div>
+                  <div className="text-center">{fmtSet(sa)}</div>
+                  <div className="text-center">
+                    {fmtSet(sb)}
+                    {(repsDiff !== null && repsDiff !== 0) || (wDiff !== null && wDiff !== 0) ? (
+                      <div className="text-xs mt-0.5 space-x-2">
+                        {repsDiff !== null && repsDiff !== 0 && (
+                          <span className={repsDiff > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {repsDiff > 0 ? '+' : ''}{repsDiff} reps
+                          </span>
+                        )}
+                        {wDiff !== null && wDiff !== 0 && (
+                          <span className={wDiff > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {wDiff > 0 ? '+' : ''}{wDiff}kg
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+            {(ea?.note || eb?.note) && (
+              <div className="grid grid-cols-3 gap-4 text-xs pt-2 border-t border-border/30">
+                <div className="font-medium text-muted-foreground">Note</div>
+                <div className="text-center text-muted-foreground">{ea?.note || '—'}</div>
+                <div className="text-center text-muted-foreground">{eb?.note || '—'}</div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const Compare = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
