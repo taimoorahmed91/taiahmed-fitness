@@ -408,6 +408,8 @@ const Compare = () => {
                       Select 2 entries from the list to compare them side by side.
                     </p>
                   </div>
+                ) : selectedCategory === 'gym' ? (
+                  <GymGranularCompare a={selectedEntries[0]?.data} b={selectedEntries[1]?.data} />
                 ) : (
                   <div className="space-y-4">
                     {/* Header */}
