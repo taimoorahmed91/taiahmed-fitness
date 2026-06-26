@@ -261,14 +261,22 @@ const ApiTokenCard = () => {
   const [exists, setExists] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [plainToken, setPlainToken] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [, setTick] = useState(0);
 
-  const call = async (action: 'status' | 'generate' | 'expose' | 'revoke') => {
+  const call = async (action: 'status' | 'generate' | 'revoke') => {
     const { data, error } = await supabase.functions.invoke('api-token', { body: { action } });
-    if (error) throw error;
-    return data as { token?: string | null; expires_at?: string | null; exists?: boolean; expired?: boolean };
+    if (error) {
+      // Try to surface server-provided error (e.g. 429 rate limit)
+      const ctx = (error as { context?: { error?: string; retry_in_seconds?: number } }).context;
+      if (ctx?.error) throw new Error(ctx.error);
+      throw error;
+    }
+    return data as {
+      token?: string | null;
+      expires_at?: string | null;
+      exists?: boolean;
+    };
   };
 
   const refreshStatus = async () => {
@@ -276,10 +284,7 @@ const ApiTokenCard = () => {
       const data = await call('status');
       setExists(!!data.exists);
       setExpiresAt(data.expires_at ?? null);
-      if (!data.exists) {
-        setPlainToken(null);
-        setRevealed(false);
-      }
+      if (!data.exists) setPlainToken(null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -300,7 +305,6 @@ const ApiTokenCard = () => {
         setExists(false);
         setExpiresAt(null);
         setPlainToken(null);
-        setRevealed(false);
       }
     }, 30_000);
     return () => clearInterval(id);
@@ -313,35 +317,10 @@ const ApiTokenCard = () => {
       setExists(true);
       setExpiresAt(data.expires_at ?? null);
       setPlainToken(data.token ?? null);
-      setRevealed(false);
-      toast.success('New token generated. Valid for 3 hours.');
-    } catch {
-      toast.error('Failed to generate token');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleExpose = async () => {
-    if (revealed) {
-      setRevealed(false);
-      return;
-    }
-    setBusy(true);
-    try {
-      const data = await call('expose');
-      if (data.expired || !data.token) {
-        setExists(false);
-        setExpiresAt(null);
-        setPlainToken(null);
-        toast.error('Token expired. Generate a new one.');
-        return;
-      }
-      setPlainToken(data.token);
-      setExpiresAt(data.expires_at ?? null);
-      setRevealed(true);
-    } catch {
-      toast.error('Failed to expose token');
+      toast.success('New token generated. Copy it now — it will not be shown again.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to generate token';
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -354,7 +333,6 @@ const ApiTokenCard = () => {
       setExists(false);
       setExpiresAt(null);
       setPlainToken(null);
-      setRevealed(false);
       toast.success('Token revoked');
     } catch {
       toast.error('Failed to revoke token');
@@ -376,62 +354,80 @@ const ApiTokenCard = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="h-5 w-5 text-primary" />
-          CMP Token
+          MCP Token
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Your personal CMP token for external integrations. The token is encrypted at rest.
-          It is valid for a maximum of <strong>3 hours</strong>; after that it is automatically deleted and must be regenerated.
+          Your personal MCP token for external integrations. Only a SHA-256 hash is stored —
+          the plaintext is shown <strong>once at generation</strong> and cannot be revealed again.
+          Valid for a maximum of <strong>3 hours</strong>, then auto-deleted.
         </p>
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : !exists ? (
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={handleGenerate} disabled={busy} className="gap-2">
-              <KeyRound className="h-4 w-4" /> Generate token
-            </Button>
-          </div>
         ) : (
           <>
-            <div className="flex items-stretch gap-2">
-              <code className="flex-1 px-3 py-2 rounded-md bg-muted font-mono text-xs break-all flex items-center min-h-10">
-                {revealed && plainToken ? plainToken : masked}
-              </code>
-              <Button variant="outline" size="icon" onClick={handleExpose} disabled={busy} title={revealed ? 'Hide' : 'Expose'}>
-                {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-              {revealed && plainToken && (
-                <Button variant="outline" size="icon" onClick={handleCopy} title="Copy">
-                  <Copy className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+            {plainToken && (
+              <div className="space-y-2 p-3 border border-primary/40 rounded-md bg-primary/5">
+                <div className="flex items-center gap-2 text-xs font-medium text-primary">
+                  <AlertTriangle className="h-4 w-4" />
+                  Copy now — this token will not be shown again
+                </div>
+                <div className="flex items-stretch gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-md bg-background font-mono text-xs break-all flex items-center min-h-10">
+                    {plainToken}
+                  </code>
+                  <Button variant="outline" size="icon" onClick={handleCopy} title="Copy">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs text-muted-foreground">
-                Valid for 3 hours — {formatRemaining(expiresAt)}
-              </span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleGenerate} disabled={busy} className="gap-2">
-                  <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> Refresh
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleRevoke} disabled={busy} className="gap-2 text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4" /> Revoke
+            {!exists ? (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={handleGenerate} disabled={busy} className="gap-2">
+                  <KeyRound className="h-4 w-4" /> Generate token
                 </Button>
               </div>
-            </div>
+            ) : (
+              <>
+                {!plainToken && (
+                  <div className="flex items-stretch gap-2">
+                    <code className="flex-1 px-3 py-2 rounded-md bg-muted font-mono text-xs break-all flex items-center min-h-10 text-muted-foreground">
+                      {masked}
+                    </code>
+                  </div>
+                )}
 
-            <p className="text-xs text-muted-foreground">
-              Refreshing generates a new token and invalidates the previous one. After 3 hours the token is deleted from the database.
-            </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    Valid for 3 hours — {formatRemaining(expiresAt)}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleGenerate} disabled={busy} className="gap-2">
+                      <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> Refresh
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleRevoke} disabled={busy} className="gap-2 text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" /> Revoke
+                    </Button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Refreshing generates a new token (shown once) and invalidates the previous one.
+                  Generation is rate-limited to once every 30 seconds.
+                </p>
+              </>
+            )}
           </>
         )}
       </CardContent>
     </Card>
   );
 };
+
 
 
 
