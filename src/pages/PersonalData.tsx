@@ -8,8 +8,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useWeight } from '@/hooks/useWeight';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Activity } from 'lucide-react';
+import { User, Activity, KeyRound, Eye, EyeOff, RefreshCw, Copy, Trash2 } from 'lucide-react';
+
 
 const calcAge = (dob: string | null): number | null => {
   if (!dob) return null;
