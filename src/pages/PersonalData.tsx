@@ -8,8 +8,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useWeight } from '@/hooks/useWeight';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Activity } from 'lucide-react';
+import { User, Activity, KeyRound, Eye, EyeOff, RefreshCw, Copy, Trash2 } from 'lucide-react';
+
 
 const calcAge = (dob: string | null): number | null => {
   if (!dob) return null;
@@ -238,10 +240,200 @@ const PersonalDataPage = () => {
             )}
           </CardContent>
         </Card>
+
+        <ApiTokenCard />
       </main>
     </div>
   );
 };
+
+const formatRemaining = (expiresAt: string | null) => {
+  if (!expiresAt) return '';
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return 'expired';
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return `${h}h ${m}m remaining`;
+};
+
+const ApiTokenCard = () => {
+  const [loading, setLoading] = useState(true);
+  const [exists, setExists] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [plainToken, setPlainToken] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [, setTick] = useState(0);
+
+  const call = async (action: 'status' | 'generate' | 'expose' | 'revoke') => {
+    const { data, error } = await supabase.functions.invoke('api-token', { body: { action } });
+    if (error) throw error;
+    return data as { token?: string | null; expires_at?: string | null; exists?: boolean; expired?: boolean };
+  };
+
+  const refreshStatus = async () => {
+    try {
+      const data = await call('status');
+      setExists(!!data.exists);
+      setExpiresAt(data.expires_at ?? null);
+      if (!data.exists) {
+        setPlainToken(null);
+        setRevealed(false);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshStatus();
+  }, []);
+
+  // ticking countdown
+  useEffect(() => {
+    if (!expiresAt) return;
+    const id = setInterval(() => {
+      setTick((t) => t + 1);
+      if (new Date(expiresAt).getTime() <= Date.now()) {
+        setExists(false);
+        setExpiresAt(null);
+        setPlainToken(null);
+        setRevealed(false);
+      }
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  const handleGenerate = async () => {
+    setBusy(true);
+    try {
+      const data = await call('generate');
+      setExists(true);
+      setExpiresAt(data.expires_at ?? null);
+      setPlainToken(data.token ?? null);
+      setRevealed(true);
+      toast.success('New token generated. Valid for 3 hours.');
+    } catch {
+      toast.error('Failed to generate token');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleExpose = async () => {
+    if (revealed) {
+      setRevealed(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      const data = await call('expose');
+      if (data.expired || !data.token) {
+        setExists(false);
+        setExpiresAt(null);
+        setPlainToken(null);
+        toast.error('Token expired. Generate a new one.');
+        return;
+      }
+      setPlainToken(data.token);
+      setExpiresAt(data.expires_at ?? null);
+      setRevealed(true);
+    } catch {
+      toast.error('Failed to expose token');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    setBusy(true);
+    try {
+      await call('revoke');
+      setExists(false);
+      setExpiresAt(null);
+      setPlainToken(null);
+      setRevealed(false);
+      toast.success('Token revoked');
+    } catch {
+      toast.error('Failed to revoke token');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!plainToken) return;
+    await navigator.clipboard.writeText(plainToken);
+    toast.success('Token copied to clipboard');
+  };
+
+  const masked = '•'.repeat(40);
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <KeyRound className="h-5 w-5 text-primary" />
+          API Token
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          A personal API token for external integrations. The token is encrypted at rest.
+          It is valid for a maximum of <strong>3 hours</strong>; after that it is automatically deleted and must be regenerated.
+        </p>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : !exists ? (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={handleGenerate} disabled={busy} className="gap-2">
+              <KeyRound className="h-4 w-4" /> Generate token
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-stretch gap-2">
+              <code className="flex-1 px-3 py-2 rounded-md bg-muted font-mono text-xs break-all flex items-center min-h-10">
+                {revealed && plainToken ? plainToken : masked}
+              </code>
+              <Button variant="outline" size="icon" onClick={handleExpose} disabled={busy} title={revealed ? 'Hide' : 'Expose'}>
+                {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+              {revealed && plainToken && (
+                <Button variant="outline" size="icon" onClick={handleCopy} title="Copy">
+                  <Copy className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">
+                Valid for 3 hours — {formatRemaining(expiresAt)}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleGenerate} disabled={busy} className="gap-2">
+                  <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> Refresh
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleRevoke} disabled={busy} className="gap-2 text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4" /> Revoke
+                </Button>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Refreshing generates a new token and invalidates the previous one. After 3 hours the token is deleted from the database.
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+
 
 interface BmiCardProps {
   heightCm: number | null;

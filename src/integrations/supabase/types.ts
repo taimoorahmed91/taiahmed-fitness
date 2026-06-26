@@ -484,6 +484,30 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_api_tokens: {
+        Row: {
+          ciphertext: string
+          created_at: string
+          expires_at: string
+          iv: string
+          user_id: string
+        }
+        Insert: {
+          ciphertext: string
+          created_at?: string
+          expires_at: string
+          iv: string
+          user_id: string
+        }
+        Update: {
+          ciphertext?: string
+          created_at?: string
+          expires_at?: string
+          iv?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fittrack_daily_notes: {
         Row: {
           created_at: string
