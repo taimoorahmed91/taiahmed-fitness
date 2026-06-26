@@ -313,7 +313,7 @@ const ApiTokenCard = () => {
       setExists(true);
       setExpiresAt(data.expires_at ?? null);
       setPlainToken(data.token ?? null);
-      setRevealed(true);
+      setRevealed(false);
       toast.success('New token generated. Valid for 3 hours.');
     } catch {
       toast.error('Failed to generate token');
