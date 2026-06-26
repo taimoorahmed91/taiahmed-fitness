@@ -376,7 +376,7 @@ const ApiTokenCard = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="h-5 w-5 text-primary" />
-          API Token
+          CMP Token
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
