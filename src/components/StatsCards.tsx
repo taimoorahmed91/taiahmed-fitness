@@ -32,7 +32,7 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
   const workoutDays = personalData.workout_days || [];
   const todayDow = new Date().getDay();
   const yesterdayDow = (todayDow + 6) % 7;
-  const isWorkoutDay = workoutDays.includes(todayDow);
+  const isWorkoutDay = workoutDays.includes(todayDow) && !didWorkoutToday;
   const yesterdayWasWorkoutDay = workoutDays.includes(yesterdayDow);
   const missedYesterdayWorkout = yesterdayWasWorkoutDay && !didWorkoutYesterday && !isWorkoutDay;
 
