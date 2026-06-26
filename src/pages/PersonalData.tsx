@@ -376,12 +376,12 @@ const ApiTokenCard = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="h-5 w-5 text-primary" />
-          API Token
+          CMP Token
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          A personal API token for external integrations. The token is encrypted at rest.
+          Your personal CMP token for external integrations. The token is encrypted at rest.
           It is valid for a maximum of <strong>3 hours</strong>; after that it is automatically deleted and must be regenerated.
         </p>
 
