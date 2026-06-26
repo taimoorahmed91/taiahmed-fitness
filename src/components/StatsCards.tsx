@@ -32,9 +32,9 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
   const workoutDays = personalData.workout_days || [];
   const todayDow = new Date().getDay();
   const yesterdayDow = (todayDow + 6) % 7;
-  const isWorkoutDay = workoutDays.includes(todayDow) && !didWorkoutToday;
+  const isWorkoutDay = workoutDays.includes(todayDow);
   const yesterdayWasWorkoutDay = workoutDays.includes(yesterdayDow);
-  const missedYesterdayWorkout = yesterdayWasWorkoutDay && !didWorkoutYesterday && !isWorkoutDay;
+  const missedYesterdayWorkout = yesterdayWasWorkoutDay && !didWorkoutYesterday && !isWorkoutDay && !didWorkoutToday;
 
   // Fetch gym session for today and last weight date on mount
   useEffect(() => {
