@@ -484,26 +484,38 @@ export type Database = {
         }
         Relationships: []
       }
-      fittrack_api_tokens: {
+      fittrack_api_token_rate: {
         Row: {
-          ciphertext: string
-          created_at: string
-          expires_at: string
-          iv: string
+          last_generated_at: string
           user_id: string
         }
         Insert: {
-          ciphertext: string
-          created_at?: string
-          expires_at: string
-          iv: string
+          last_generated_at?: string
           user_id: string
         }
         Update: {
-          ciphertext?: string
+          last_generated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fittrack_api_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          token_hash: string
+          user_id: string
+        }
+        Update: {
           created_at?: string
           expires_at?: string
-          iv?: string
+          token_hash?: string
           user_id?: string
         }
         Relationships: []
