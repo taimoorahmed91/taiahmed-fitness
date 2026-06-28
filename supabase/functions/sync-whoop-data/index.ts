@@ -182,9 +182,19 @@ Deno.serve(async (req) => {
         max_heart_rate: cycle.max_heart_rate ?? null,
       });
 
-      if (!error) savedCount++;
+      if (!error) {
+        savedCount++;
+        if (totalInBedHours) {
+          await supabase.from('fittrack_sleep').upsert({
+            user_id: userId,
+            date: cycleDate,
+            hours: totalInBedHours,
+            notes: 'Imported from WHOOP',
+            source: 'whoop',
+          }, { onConflict: 'user_id,date,source' });
+        }
+      }
       else errors.push({ user_id: userId, error: error.message });
-    }
 
     return new Response(JSON.stringify({
       message: `Synced WHOOP data for ${savedCount} user(s); skipped ${skippedCount} without URL`,
