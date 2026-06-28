@@ -195,6 +195,9 @@ Deno.serve(async (req) => {
         }
       }
       else errors.push({ user_id: userId, error: error.message });
+    }
+
+
 
     return new Response(JSON.stringify({
       message: `Synced WHOOP data for ${savedCount} user(s); skipped ${skippedCount} without URL`,
