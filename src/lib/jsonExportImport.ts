@@ -50,7 +50,7 @@ export const exportToJSON = (data: FullExportData, rangeDays?: number): void => 
   };
 
   const exportData: ExportedData = {
-    version: '1.3',
+    version: '1.4',
     exportDate: new Date().toISOString(),
     data: {
       meals: data.meals.filter(inRange).map(({ id, ...rest }) => rest),
@@ -60,6 +60,7 @@ export const exportToJSON = (data: FullExportData, rangeDays?: number): void => 
       sleep: data.sleep.filter(inRange).map(({ id, ...rest }) => rest),
       whoop: data.whoop?.filter(inRange).map(({ id, ...rest }) => rest) || [],
       personalData: data.personalData ? personalRest : null,
+      dailyNotes: data.dailyNotes?.filter(inRange).map(({ id, ...rest }) => rest) || [],
     },
   };
 
