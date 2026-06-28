@@ -24,6 +24,7 @@ import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { exportToCSV, exportAllToCSV } from '@/lib/exportData';
 import { exportToJSON, readJSONFile, ExportedData } from '@/lib/jsonExportImport';
 import { toast } from 'sonner';
