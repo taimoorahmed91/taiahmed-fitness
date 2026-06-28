@@ -218,6 +218,17 @@ export const useWhoopData = () => {
 
       if (error) throw error;
 
+      // Also mirror in-bed hours into fittrack_sleep (source='whoop') so the sleep table has both sources
+      if (totalInBedHours) {
+        await supabase.from('fittrack_sleep' as any).upsert({
+          user_id: user.id,
+          date: cycleDate,
+          hours: totalInBedHours,
+          notes: 'Imported from WHOOP',
+          source: 'whoop',
+        }, { onConflict: 'user_id,date,source' });
+      }
+
       toast.success('WHOOP data fetched and saved!');
       logActivity({ action: 'create', category: 'whoop', details: { date: cycleDate, recovery_score: entry.recovery_score, strain: entry.strain } });
       fetchEntries();

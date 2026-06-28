@@ -749,6 +749,7 @@ export type Database = {
           hours: number
           id: string
           notes: string | null
+          source: string
           updated_at: string
           user_id: string
         }
@@ -758,6 +759,7 @@ export type Database = {
           hours: number
           id?: string
           notes?: string | null
+          source?: string
           updated_at?: string
           user_id: string
         }
@@ -767,6 +769,7 @@ export type Database = {
           hours?: number
           id?: string
           notes?: string | null
+          source?: string
           updated_at?: string
           user_id?: string
         }
