@@ -129,8 +129,8 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
               placeholder="Any additional details..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              maxLength={500}
-              rows={3}
+              maxLength={10000}
+              rows={5}
             />
           </div>
 
