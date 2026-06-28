@@ -4,6 +4,7 @@ import { WaistEntry } from '@/hooks/useWaist';
 import { SleepEntry } from '@/hooks/useSleep';
 import { WhoopEntry } from '@/hooks/useWhoopData';
 import { PersonalData } from '@/hooks/usePersonalData';
+import { DailyNote } from '@/hooks/useDailyNotes';
 
 export interface ExportedData {
   version: string;
@@ -16,6 +17,7 @@ export interface ExportedData {
     sleep: Omit<SleepEntry, 'id'>[];
     whoop?: Omit<WhoopEntry, 'id'>[];
     personalData?: Omit<PersonalData, 'id'> | null;
+    dailyNotes?: Omit<DailyNote, 'id'>[];
   };
 }
 
@@ -27,6 +29,7 @@ interface FullExportData {
   sleep: SleepEntry[];
   whoop?: WhoopEntry[];
   personalData?: PersonalData | null;
+  dailyNotes?: DailyNote[];
 }
 
 export const exportToJSON = (data: FullExportData, rangeDays?: number): void => {
