@@ -147,13 +147,24 @@ export const ImportExportButton = () => {
         });
       }
 
+      // Import daily notes
+      for (const note of importData.data.dailyNotes || []) {
+        await addDailyNote({
+          date: note.date,
+          tags: note.tags || [],
+          severity: note.severity ?? null,
+          notes: note.notes ?? undefined,
+        });
+      }
+
       // Refresh all data
-      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop(), refetchPersonalData()]);
+      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop(), refetchPersonalData(), refetchDailyNotes()]);
 
       const waistCount = importData.data.waist?.length || 0;
       const whoopCount = importData.data.whoop?.length || 0;
       const personalCount = importData.data.personalData ? 1 : 0;
-      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries, ${personalCount} personal profile`);
+      const notesCount = importData.data.dailyNotes?.length || 0;
+      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries, ${personalCount} personal profile, ${notesCount} daily notes`);
       setImportDialogOpen(false);
       setImportData(null);
     } catch (error) {
