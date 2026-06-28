@@ -65,7 +65,7 @@ export const DailyNotesList = ({ notes, onDelete }: DailyNotesListProps) => {
                         ))}
                       </div>
                       {note.notes && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">{note.notes}</p>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{note.notes}</p>
                       )}
                     </div>
                     <Button

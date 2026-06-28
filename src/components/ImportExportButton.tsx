@@ -24,6 +24,7 @@ import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { exportToCSV, exportAllToCSV } from '@/lib/exportData';
 import { exportToJSON, readJSONFile, ExportedData } from '@/lib/jsonExportImport';
 import { toast } from 'sonner';
@@ -38,6 +39,7 @@ export const ImportExportButton = () => {
   const { entries: sleepEntries, addEntry: addSleep, refetch: refetchSleep } = useSleep();
   const { entries: whoopEntries, refetch: refetchWhoop } = useWhoopData();
   const { data: personalData, save: savePersonalData, refetch: refetchPersonalData } = usePersonalData();
+  const { notes: dailyNotes, addNote: addDailyNote, refetch: refetchDailyNotes } = useDailyNotes();
   const { user } = useUser();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -53,6 +55,7 @@ export const ImportExportButton = () => {
     sleep: sleepEntries,
     whoop: whoopEntries,
     personalData,
+    dailyNotes,
   };
 
   const handleExportCSV = (type: 'meals' | 'workouts' | 'weight' | 'sleep' | 'all') => {
@@ -144,13 +147,24 @@ export const ImportExportButton = () => {
         });
       }
 
+      // Import daily notes
+      for (const note of importData.data.dailyNotes || []) {
+        await addDailyNote({
+          date: note.date,
+          tags: note.tags || [],
+          severity: note.severity ?? null,
+          notes: note.notes ?? undefined,
+        });
+      }
+
       // Refresh all data
-      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop(), refetchPersonalData()]);
+      await Promise.all([refetchMeals(), refetchGym(), refetchWeight(), refetchWaist(), refetchSleep(), refetchWhoop(), refetchPersonalData(), refetchDailyNotes()]);
 
       const waistCount = importData.data.waist?.length || 0;
       const whoopCount = importData.data.whoop?.length || 0;
       const personalCount = importData.data.personalData ? 1 : 0;
-      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries, ${personalCount} personal profile`);
+      const notesCount = importData.data.dailyNotes?.length || 0;
+      toast.success(`Imported ${importData.data.meals.length} meals, ${importData.data.workouts.length} workouts, ${importData.data.weight.length} weight, ${waistCount} waist, ${importData.data.sleep.length} sleep, ${whoopCount} whoop entries, ${personalCount} personal profile, ${notesCount} daily notes`);
       setImportDialogOpen(false);
       setImportData(null);
     } catch (error) {
@@ -236,6 +250,7 @@ export const ImportExportButton = () => {
                 <li>{importData.data.sleep.length} sleep entries</li>
                 <li>{importData.data.whoop?.length || 0} whoop entries</li>
                 <li>{importData.data.personalData ? '1 personal profile' : 'No personal profile'}</li>
+                <li>{importData.data.dailyNotes?.length || 0} daily notes</li>
               </ul>
             </div>
           )}
