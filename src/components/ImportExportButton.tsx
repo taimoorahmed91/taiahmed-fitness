@@ -39,6 +39,7 @@ export const ImportExportButton = () => {
   const { entries: sleepEntries, addEntry: addSleep, refetch: refetchSleep } = useSleep();
   const { entries: whoopEntries, refetch: refetchWhoop } = useWhoopData();
   const { data: personalData, save: savePersonalData, refetch: refetchPersonalData } = usePersonalData();
+  const { notes: dailyNotes, addNote: addDailyNote, refetch: refetchDailyNotes } = useDailyNotes();
   const { user } = useUser();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -54,6 +55,7 @@ export const ImportExportButton = () => {
     sleep: sleepEntries,
     whoop: whoopEntries,
     personalData,
+    dailyNotes,
   };
 
   const handleExportCSV = (type: 'meals' | 'workouts' | 'weight' | 'sleep' | 'all') => {
