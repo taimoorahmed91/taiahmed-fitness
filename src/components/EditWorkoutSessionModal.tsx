@@ -195,6 +195,9 @@ export const EditWorkoutSessionModal = ({
   const [duration, setDuration] = useState('');
   const [date, setDate] = useState('');
   const [startTimeField, setStartTimeField] = useState('');
+  const [originalStartTime, setOriginalStartTime] = useState('');
+  const [originalDate, setOriginalDate] = useState('');
+  const [endAnchorIso, setEndAnchorIso] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedSession>({
     startTime: '',
     endTime: '',
@@ -212,6 +215,22 @@ export const EditWorkoutSessionModal = ({
       setDuration(session.duration.toString());
       setDate(session.date);
       setStartTimeField(session.start_time || '');
+      setOriginalStartTime(session.start_time || '');
+      setOriginalDate(session.date);
+
+      // Determine end-time anchor: prefer stored end_time, else derive from
+      // original start_time + duration so that editing start recalculates duration.
+      let anchor: string | null = null;
+      if (session.end_time) {
+        anchor = session.end_time;
+      } else if (session.start_time && session.duration && /^\d{1,2}:\d{2}$/.test(session.start_time)) {
+        const startMs = new Date(`${session.date}T${session.start_time}:00`).getTime();
+        if (!Number.isNaN(startMs)) {
+          anchor = new Date(startMs + session.duration * 60_000).toISOString();
+        }
+      }
+      setEndAnchorIso(anchor);
+
       const p = parseSessionNotes(session.notes);
       if (!p.startTime && session.start_time) p.startTime = session.start_time;
       setParsed(p);
@@ -221,6 +240,20 @@ export const EditWorkoutSessionModal = ({
       setTouched({});
     }
   }, [session, open]);
+
+  // Live preview: if user changes start time/date and we have an end anchor,
+  // recompute the displayed duration so they see the effect before saving.
+  useEffect(() => {
+    if (!endAnchorIso) return;
+    if (!/^\d{1,2}:\d{2}$/.test(startTimeField)) return;
+    const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
+    const endMs = new Date(endAnchorIso).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) return;
+    const startChanged = startTimeField !== originalStartTime || date !== originalDate;
+    if (!startChanged) return;
+    const mins = Math.max(1, Math.round((endMs - startMs) / 60_000));
+    setDuration(mins.toString());
+  }, [startTimeField, date, endAnchorIso, originalStartTime, originalDate]);
 
   const markTouched = (key: string) =>
     setTouched((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
