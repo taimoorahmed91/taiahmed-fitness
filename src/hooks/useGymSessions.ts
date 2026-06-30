@@ -69,6 +69,7 @@ export const useGymSessions = () => {
         date: session.date,
         notes: session.notes || null,
         start_time: session.start_time || null,
+        end_time: session.end_time || null,
       })
       .select()
       .single();
