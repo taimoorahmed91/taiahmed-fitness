@@ -477,13 +477,31 @@ export const EditWorkoutSessionModal = ({
             <Input value={exerciseName} onChange={(e) => setExerciseName(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2 md:col-span-1">
               <Label>Duration (min)</Label>
               <Input
                 inputMode="numeric"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value.replace(/[^0-9]/g, ''))}
               />
+              {computedSpanMin != null && (
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    Sets span: {startTimeField} → {lastSetHHMM} ({computedSpanMin} min)
+                  </span>
+                  {parseInt(duration) !== computedSpanMin && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={handleRecalculate}
+                    >
+                      Recalculate
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Date</Label>
