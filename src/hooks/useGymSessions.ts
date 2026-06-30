@@ -87,6 +87,7 @@ export const useGymSessions = () => {
       date: data.date,
       notes: data.notes || undefined,
       start_time: data.start_time || undefined,
+      end_time: data.end_time || undefined,
     };
 
     setSessions((prev) => [newSession, ...prev]);
