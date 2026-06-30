@@ -260,12 +260,23 @@ export const EditWorkoutSessionModal = ({
       setOriginalStartTime(session.start_time || '');
       setOriginalDate(session.date);
 
-      // Determine end-time anchor: prefer stored end_time, else derive from
-      // original start_time + duration so that editing start recalculates duration.
+      const p = parseSessionNotes(session.notes);
+      if (!p.startTime && session.start_time) p.startTime = session.start_time;
+      setParsed(p);
+
+      // Determine end-time anchor priority:
+      //   1) Latest set timestamp parsed from notes (wall-clock truth)
+      //   2) Stored end_time column
+      //   3) start_time + duration fallback (legacy)
       let anchor: string | null = null;
-      if (session.end_time) {
+      const lastSet = getLastSetHHMM(p);
+      if (lastSet) {
+        anchor = buildAnchorIso(session.date, lastSet, session.start_time || undefined);
+      }
+      if (!anchor && session.end_time) {
         anchor = session.end_time;
-      } else if (session.start_time && session.duration && /^\d{1,2}:\d{2}$/.test(session.start_time)) {
+      }
+      if (!anchor && session.start_time && session.duration && /^\d{1,2}:\d{2}$/.test(session.start_time)) {
         const startMs = new Date(`${session.date}T${session.start_time}:00`).getTime();
         if (!Number.isNaN(startMs)) {
           anchor = new Date(startMs + session.duration * 60_000).toISOString();
@@ -273,9 +284,6 @@ export const EditWorkoutSessionModal = ({
       }
       setEndAnchorIso(anchor);
 
-      const p = parseSessionNotes(session.notes);
-      if (!p.startTime && session.start_time) p.startTime = session.start_time;
-      setParsed(p);
       setExpanded(p.exercises.length > 0 ? 0 : null);
       setShowAddExercise(false);
       setNewExerciseName('');
@@ -283,19 +291,26 @@ export const EditWorkoutSessionModal = ({
     }
   }, [session, open]);
 
-  // Live preview: if user changes start time/date and we have an end anchor,
-  // recompute the displayed duration so they see the effect before saving.
+  // Keep the anchor in sync with edits to set timestamps inside the modal.
+  useEffect(() => {
+    const lastSet = getLastSetHHMM(parsed);
+    if (!lastSet) return;
+    const anchor = buildAnchorIso(date, lastSet, startTimeField || undefined);
+    if (anchor) setEndAnchorIso(anchor);
+  }, [parsed, date, startTimeField]);
+
+  // Live preview: whenever we have an end anchor and a valid start time, show
+  // the computed duration so the user sees what will be saved.
   useEffect(() => {
     if (!endAnchorIso) return;
     if (!/^\d{1,2}:\d{2}$/.test(startTimeField)) return;
     const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
     const endMs = new Date(endAnchorIso).getTime();
-    if (Number.isNaN(startMs) || Number.isNaN(endMs)) return;
-    const startChanged = startTimeField !== originalStartTime || date !== originalDate;
-    if (!startChanged) return;
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) return;
     const mins = Math.max(1, Math.round((endMs - startMs) / 60_000));
     setDuration(mins.toString());
-  }, [startTimeField, date, endAnchorIso, originalStartTime, originalDate]);
+  }, [startTimeField, date, endAnchorIso]);
+
 
   const markTouched = (key: string) =>
     setTouched((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
