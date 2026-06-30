@@ -144,7 +144,7 @@ const Gym = () => {
     setActiveTemplate(tpl);
   };
 
-  const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string; notes?: string }): Promise<boolean> => {
+  const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string; end_time?: string }): Promise<boolean> => {
     try {
       await addSession(data);
       toast.success('Workout logged!');
