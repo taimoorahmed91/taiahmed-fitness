@@ -1,37 +1,46 @@
-## Problem
+## Goal
 
-Sync Now still works even when nothing is saved in `fittrack_user_settings.whoop_api_url`, because two places silently fall back to a hardcoded URL:
+Make the manual log path behave identically to a template start: just a **Start** button that opens the `ActiveWorkoutModal`. The only difference from a template start is that no exercises are pre-listed and no reps/weight placeholders are pulled from history.
 
-1. `src/hooks/useWhoopData.ts` — constant `WHOOP_API_URL` used as a fallback when the user has no saved URL.
-2. `supabase/functions/sync-whoop-data/index.ts` — daily auto-sync ignores the user setting entirely and always calls the hardcoded URL.
+## Changes
 
-Result: the WHOOP page input has nothing to pre-fill (DB column is empty), but data still arrives, so the user can't see/edit the URL that's actually being used.
+### 1. `src/components/GymForm.tsx` — replace with a minimal Start card
 
-## Plan
+Strip the form down to:
+- Optional workout name input (defaults to `"Workout"` if blank) — this becomes the `exercise` field saved to DB, matching how template workouts save `template.name`.
+- A single **Start Workout** button.
+- Remove duration, date, start time, and notes inputs — those are captured automatically by the active modal (wall-clock duration, today's date, real start time, per-exercise notes aggregated on finish), exactly as with template starts.
 
-### 1. One-time backfill
+New prop: `onStart: (name: string) => void` (replaces `onSubmit`).
 
-Backfill `fittrack_user_settings.whoop_api_url` with the previously hardcoded URL for every existing row where it is currently `NULL`. This way every user already syncing WHOOP keeps working, and their saved URL becomes visible in the WHOOP page input.
+### 2. `src/pages/Gym.tsx` — wire Start to the active modal
 
-URL to backfill: `https://apjmwqdiqskgvzkvpjpx.supabase.co/functions/v1/get-latest-collective`
+- Replace `<GymForm onSubmit={addSession} />` with `<GymForm onStart={handleStartManualWorkout} />`.
+- Add `handleStartManualWorkout(name)` that:
+  - Runs the same "already-in-progress" guard used by `handleStartWorkout` (checks `activeTemplate` and `readPausedWorkout()`; opens the blocking dialog with a Resume option when another workout is paused).
+  - If clear, constructs a synthetic template object and sets it as `activeTemplate`:
+    ```ts
+    { id: `manual-${Date.now()}`, name: name || 'Workout', exercises: [] }
+    ```
+  - The unique `manual-…` id ensures the modal's `localStorage` persistence (which keys by `templateId`) doesn't collide with real templates or paused sessions.
 
-### 2. Remove the client fallback
+### 3. `src/components/ActiveWorkoutModal.tsx` — confirm empty-template behavior works
 
-In `src/hooks/useWhoopData.ts`:
-- Delete the `WHOOP_API_URL` constant.
-- In `fetchFromAPI`, if the user has no `whoop_api_url` saved, show a toast error ("Please set your WHOOP API URL on the WHOOP page") and stop — no silent fallback.
+The modal already supports `extraExercises` via the existing "Add exercise (session only)" UI at the bottom. With `template.exercises = []`, the user will:
+- Open the modal with zero exercise rows.
+- Use the existing **Add exercise** input to add as many ad-hoc exercises as they want.
+- Each added exercise gets the same sequence numbering, rest timers, set rows (+ warmup, +set buttons up to 6), notes, and completion flow as a templated workout.
 
-### 3. Make the edge function per-user
+History-based placeholder pre-fills (`getLastSession`/`parseNotesToPreviousReps`) are keyed by `template.name`; for a synthetic name like `"Workout"` they will simply find nothing for a brand-new manual start, satisfying the "no pre-filled numbers" requirement. No code change needed here — verify only.
 
-In `supabase/functions/sync-whoop-data/index.ts`:
-- Delete the `WHOOP_API_URL` constant.
-- Read each user's `whoop_api_url` from `fittrack_user_settings` inside the per-user loop.
-- For each user: if their URL is missing, skip them (count as skipped); otherwise fetch from their URL and insert their row. This means each user can have a different URL, and users without one are simply skipped instead of getting data from someone else's endpoint.
-- Keep `WHOOP_API_KEY` hardcoded as today (out of scope for this change).
+On finish, the modal already saves `{ exercise: template.name, duration, date, notes, start_time }` via `onFinish` → `addSession`, which is the same DB shape the old `GymForm` produced, so `GymList`, stats, and exports remain unchanged.
 
-### 4. Verify
+### 4. Out of scope (unchanged)
 
-After the change:
-- Open the WHOOP page → the input is pre-filled with the saved URL.
-- Edit + Save → reload → input shows the new URL.
-- Sync Now still works for users with a saved URL; users without one get a clear error.
+- Templates tab, template list/start flow.
+- `EditWorkoutSessionModal` (manual edits to past sessions still work).
+- DB schema, hooks (`useGymSessions`), exports.
+
+## Result
+
+The "Log Workout" tab shows just a name field + Start button. Pressing Start launches the same in-progress workout experience as a template start — empty exercise list, no history pre-fills, full set/rep/weight/notes/timer tracking, and the same active-workout guard preventing two workouts at once.
