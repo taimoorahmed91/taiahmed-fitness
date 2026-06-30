@@ -107,6 +107,28 @@ const Gym = () => {
     setActiveTemplate(template);
   };
 
+  const handleStartManualWorkout = (name: string) => {
+    const manualTemplate: WorkoutTemplate = {
+      id: `manual-${Date.now()}`,
+      name: name || 'Workout',
+      exercises: [],
+    } as WorkoutTemplate;
+
+    if (activeTemplate) {
+      setBlockedStart({
+        requested: manualTemplate,
+        existing: { templateId: activeTemplate.id, templateName: activeTemplate.name },
+      });
+      return;
+    }
+    const existing = readPausedWorkout();
+    if (existing) {
+      setBlockedStart({ requested: manualTemplate, existing });
+      return;
+    }
+    setActiveTemplate(manualTemplate);
+  };
+
   const handleResumePaused = () => {
     const info = pausedWorkout ?? blockedStart?.existing;
     if (!info) return;
@@ -244,7 +266,7 @@ const Gym = () => {
 
         <TabsContent value="log" className="space-y-6 mt-6">
           <div className="grid lg:grid-cols-2 gap-6">
-            <GymForm onSubmit={addSession} />
+            <GymForm onStart={handleStartManualWorkout} />
             
             {/* Stats Card */}
             <Card>
