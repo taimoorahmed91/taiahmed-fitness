@@ -83,7 +83,7 @@ interface ActiveWorkoutModalProps {
   template: WorkoutTemplate | null;
   open: boolean;
   onClose: () => void;
-  onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string }) => Promise<boolean>;
+  onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string; end_time?: string }) => Promise<boolean>;
   getLastSession?: (templateName: string) => Promise<GymSession | null>;
 }
 
@@ -574,6 +574,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       date: new Date().toISOString().split('T')[0],
       notes: notes || undefined,
       start_time: formattedStartTime,
+      end_time: endTime.toISOString(),
     });
     
     if (success) {

@@ -30,6 +30,7 @@ export const useGymSessions = () => {
         date: session.date,
         notes: session.notes || undefined,
         start_time: session.start_time || undefined,
+        end_time: (session as any).end_time || undefined,
       }));
 
       setSessions(formattedSessions);
@@ -68,6 +69,7 @@ export const useGymSessions = () => {
         date: session.date,
         notes: session.notes || null,
         start_time: session.start_time || null,
+        end_time: session.end_time || null,
       })
       .select()
       .single();
@@ -85,6 +87,7 @@ export const useGymSessions = () => {
       date: data.date,
       notes: data.notes || undefined,
       start_time: data.start_time || undefined,
+      end_time: data.end_time || undefined,
     };
 
     setSessions((prev) => [newSession, ...prev]);
@@ -162,6 +165,7 @@ export const useGymSessions = () => {
         date: data.date,
         notes: data.notes || undefined,
         start_time: data.start_time || undefined,
+        end_time: data.end_time || undefined,
       };
     } catch (error) {
       console.error('Error fetching last session:', error);

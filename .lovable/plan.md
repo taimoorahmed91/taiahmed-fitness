@@ -1,46 +1,36 @@
 ## Goal
+When a user edits a workout session's **start time** in the edit modal, the **duration** should be recalculated automatically on save instead of staying frozen at its original value.
 
-Make the manual log path behave identically to a template start: just a **Start** button that opens the `ActiveWorkoutModal`. The only difference from a template start is that no exercises are pre-listed and no reps/weight placeholders are pulled from history.
+## Approach
+Duration today is written once (manual entry or template completion) and never recomputed. To make edits drive duration, we need a stable "end time" anchor.
+
+Add an `end_time` column to `fittrack_gym_sessions` so duration always equals `end_time − start_time`. End time becomes the source of truth that doesn't shift when the user adjusts start time.
 
 ## Changes
 
-### 1. `src/components/GymForm.tsx` — replace with a minimal Start card
+### Database (migration)
+- Add `end_time timestamptz` to `fittrack_gym_sessions` (nullable).
+- Backfill existing rows: `end_time = start_time + (duration * interval '1 minute')` where both are present.
 
-Strip the form down to:
-- Optional workout name input (defaults to `"Workout"` if blank) — this becomes the `exercise` field saved to DB, matching how template workouts save `template.name`.
-- A single **Start Workout** button.
-- Remove duration, date, start time, and notes inputs — those are captured automatically by the active modal (wall-clock duration, today's date, real start time, per-exercise notes aggregated on finish), exactly as with template starts.
+### Write paths
+- **`ActiveWorkoutModal.tsx`** (template + manual-via-start flow): on Complete, save both `start_time` (already saved) and `end_time = now()`. Duration stays as the rounded minute diff (unchanged behavior for new sessions).
+- **`useGymSessions.ts`**: include `end_time` in insert/update payloads and in the `GymSession` shape.
+- **`types/index.ts`**: add `end_time?: string` to `GymSession`.
 
-New prop: `onStart: (name: string) => void` (replaces `onSubmit`).
+### Edit path
+- **`EditWorkoutSessionModal.tsx`**:
+  - When the modal opens, if `end_time` is missing but `start_time` + `duration` exist, derive `end_time = start_time + duration min` in memory so we have an anchor.
+  - On save, if the user changed `start_time`:
+    - New `duration = round((end_time − new start_time) / 60_000)`, clamped to a minimum of 1 minute.
+    - If the result is non-positive (user picked a start after end), show an inline error and block save.
+  - Persist `start_time`, recalculated `duration`, and (if newly derived) `end_time`.
+  - Show the recalculated duration in the UI before save so the user sees the effect.
 
-### 2. `src/pages/Gym.tsx` — wire Start to the active modal
+## Out of scope
+- Editing end time directly (only start time triggers recalc, as requested).
+- Recalculating durations for very old rows beyond the one-time backfill.
 
-- Replace `<GymForm onSubmit={addSession} />` with `<GymForm onStart={handleStartManualWorkout} />`.
-- Add `handleStartManualWorkout(name)` that:
-  - Runs the same "already-in-progress" guard used by `handleStartWorkout` (checks `activeTemplate` and `readPausedWorkout()`; opens the blocking dialog with a Resume option when another workout is paused).
-  - If clear, constructs a synthetic template object and sets it as `activeTemplate`:
-    ```ts
-    { id: `manual-${Date.now()}`, name: name || 'Workout', exercises: [] }
-    ```
-  - The unique `manual-…` id ensures the modal's `localStorage` persistence (which keys by `templateId`) doesn't collide with real templates or paused sessions.
-
-### 3. `src/components/ActiveWorkoutModal.tsx` — confirm empty-template behavior works
-
-The modal already supports `extraExercises` via the existing "Add exercise (session only)" UI at the bottom. With `template.exercises = []`, the user will:
-- Open the modal with zero exercise rows.
-- Use the existing **Add exercise** input to add as many ad-hoc exercises as they want.
-- Each added exercise gets the same sequence numbering, rest timers, set rows (+ warmup, +set buttons up to 6), notes, and completion flow as a templated workout.
-
-History-based placeholder pre-fills (`getLastSession`/`parseNotesToPreviousReps`) are keyed by `template.name`; for a synthetic name like `"Workout"` they will simply find nothing for a brand-new manual start, satisfying the "no pre-filled numbers" requirement. No code change needed here — verify only.
-
-On finish, the modal already saves `{ exercise: template.name, duration, date, notes, start_time }` via `onFinish` → `addSession`, which is the same DB shape the old `GymForm` produced, so `GymList`, stats, and exports remain unchanged.
-
-### 4. Out of scope (unchanged)
-
-- Templates tab, template list/start flow.
-- `EditWorkoutSessionModal` (manual edits to past sessions still work).
-- DB schema, hooks (`useGymSessions`), exports.
-
-## Result
-
-The "Log Workout" tab shows just a name field + Start button. Pressing Start launches the same in-progress workout experience as a template start — empty exercise list, no history pre-fills, full set/rep/weight/notes/timer tracking, and the same active-workout guard preventing two workouts at once.
+## Technical notes
+- `end_time` stored as `timestamptz` for consistency with `start_time`.
+- No RLS changes — column inherits existing row-level policies.
+- No grants needed — adding a column doesn't require new GRANTs.

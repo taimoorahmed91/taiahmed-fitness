@@ -13,4 +13,5 @@ export interface GymSession {
   date: string;
   notes?: string;
   start_time?: string;
+  end_time?: string;
 }
