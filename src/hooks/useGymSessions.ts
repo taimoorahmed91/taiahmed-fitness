@@ -30,6 +30,7 @@ export const useGymSessions = () => {
         date: session.date,
         notes: session.notes || undefined,
         start_time: session.start_time || undefined,
+        end_time: (session as any).end_time || undefined,
       }));
 
       setSessions(formattedSessions);
