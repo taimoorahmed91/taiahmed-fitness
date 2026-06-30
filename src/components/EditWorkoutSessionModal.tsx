@@ -178,6 +178,48 @@ const nowHHMM = () => {
 const greenIf = (hasValue: boolean) =>
   hasValue ? 'border-green-500 focus-visible:ring-green-500' : '';
 
+// Find the latest HH:MM timestamp across all parsed set entries.
+const getLastSetHHMM = (p: ParsedSession): string | null => {
+  let bestMin = -1;
+  let best: string | null = null;
+  for (const ex of p.exercises) {
+    const stamps: (string | undefined)[] = [
+      ex.timestamps.warmupTime,
+      ex.timestamps.set1Time,
+      ex.timestamps.set2Time,
+      ex.timestamps.set3Time,
+      ex.timestamps.set4Time,
+      ex.timestamps.set5Time,
+      ex.timestamps.set6Time,
+    ];
+    for (const t of stamps) {
+      if (!t || !/^\d{1,2}:\d{2}$/.test(t)) continue;
+      const [h, m] = t.split(':').map((x) => parseInt(x, 10));
+      const mins = h * 60 + m;
+      if (mins > bestMin) {
+        bestMin = mins;
+        best = t;
+      }
+    }
+  }
+  return best;
+};
+
+// Build an ISO timestamp anchor from a date (YYYY-MM-DD) and HH:MM.
+// Handles end-time-before-start (workout crossed midnight) by adding 24h.
+const buildAnchorIso = (date: string, hhmm: string, startHHMM?: string): string | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
+  let ms = new Date(`${date}T${hhmm}:00`).getTime();
+  if (Number.isNaN(ms)) return null;
+  if (startHHMM && /^\d{1,2}:\d{2}$/.test(startHHMM)) {
+    const startMs = new Date(`${date}T${startHHMM}:00`).getTime();
+    if (!Number.isNaN(startMs) && ms < startMs) {
+      ms += 24 * 60 * 60 * 1000;
+    }
+  }
+  return new Date(ms).toISOString();
+};
+
 interface EditWorkoutSessionModalProps {
   session: GymSession | null;
   open: boolean;
