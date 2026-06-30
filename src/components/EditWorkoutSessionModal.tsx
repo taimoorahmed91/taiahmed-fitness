@@ -356,11 +356,33 @@ export const EditWorkoutSessionModal = ({
       ...parsed,
       startTime: parsed.startTime || startTimeField || '',
     });
+
+    // Recalculate duration from end anchor when start time/date changed.
+    let finalDuration = parseInt(duration) || 0;
+    let finalEndIso: string | undefined = endAnchorIso || undefined;
+    const startChanged = startTimeField !== originalStartTime || date !== originalDate;
+    if (endAnchorIso && /^\d{1,2}:\d{2}$/.test(startTimeField)) {
+      const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
+      const endMs = new Date(endAnchorIso).getTime();
+      if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs > startMs) {
+        if (startChanged) {
+          finalDuration = Math.max(1, Math.round((endMs - startMs) / 60_000));
+        }
+      }
+    } else if (startChanged && /^\d{1,2}:\d{2}$/.test(startTimeField) && finalDuration > 0) {
+      // No prior anchor — establish one from the new start + manual duration.
+      const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
+      if (!Number.isNaN(startMs)) {
+        finalEndIso = new Date(startMs + finalDuration * 60_000).toISOString();
+      }
+    }
+
     await onSave(session.id, {
       exercise: exerciseName,
-      duration: parseInt(duration) || 0,
+      duration: finalDuration,
       date,
       start_time: startTimeField || undefined,
+      end_time: finalEndIso,
       notes: updatedNotes || undefined,
     });
     onClose();
