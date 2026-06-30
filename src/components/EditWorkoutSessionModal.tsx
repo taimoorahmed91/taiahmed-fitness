@@ -178,6 +178,48 @@ const nowHHMM = () => {
 const greenIf = (hasValue: boolean) =>
   hasValue ? 'border-green-500 focus-visible:ring-green-500' : '';
 
+// Find the latest HH:MM timestamp across all parsed set entries.
+const getLastSetHHMM = (p: ParsedSession): string | null => {
+  let bestMin = -1;
+  let best: string | null = null;
+  for (const ex of p.exercises) {
+    const stamps: (string | undefined)[] = [
+      ex.timestamps.warmupTime,
+      ex.timestamps.set1Time,
+      ex.timestamps.set2Time,
+      ex.timestamps.set3Time,
+      ex.timestamps.set4Time,
+      ex.timestamps.set5Time,
+      ex.timestamps.set6Time,
+    ];
+    for (const t of stamps) {
+      if (!t || !/^\d{1,2}:\d{2}$/.test(t)) continue;
+      const [h, m] = t.split(':').map((x) => parseInt(x, 10));
+      const mins = h * 60 + m;
+      if (mins > bestMin) {
+        bestMin = mins;
+        best = t;
+      }
+    }
+  }
+  return best;
+};
+
+// Build an ISO timestamp anchor from a date (YYYY-MM-DD) and HH:MM.
+// Handles end-time-before-start (workout crossed midnight) by adding 24h.
+const buildAnchorIso = (date: string, hhmm: string, startHHMM?: string): string | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
+  let ms = new Date(`${date}T${hhmm}:00`).getTime();
+  if (Number.isNaN(ms)) return null;
+  if (startHHMM && /^\d{1,2}:\d{2}$/.test(startHHMM)) {
+    const startMs = new Date(`${date}T${startHHMM}:00`).getTime();
+    if (!Number.isNaN(startMs) && ms < startMs) {
+      ms += 24 * 60 * 60 * 1000;
+    }
+  }
+  return new Date(ms).toISOString();
+};
+
 interface EditWorkoutSessionModalProps {
   session: GymSession | null;
   open: boolean;
@@ -218,12 +260,23 @@ export const EditWorkoutSessionModal = ({
       setOriginalStartTime(session.start_time || '');
       setOriginalDate(session.date);
 
-      // Determine end-time anchor: prefer stored end_time, else derive from
-      // original start_time + duration so that editing start recalculates duration.
+      const p = parseSessionNotes(session.notes);
+      if (!p.startTime && session.start_time) p.startTime = session.start_time;
+      setParsed(p);
+
+      // Determine end-time anchor priority:
+      //   1) Latest set timestamp parsed from notes (wall-clock truth)
+      //   2) Stored end_time column
+      //   3) start_time + duration fallback (legacy)
       let anchor: string | null = null;
-      if (session.end_time) {
+      const lastSet = getLastSetHHMM(p);
+      if (lastSet) {
+        anchor = buildAnchorIso(session.date, lastSet, session.start_time || undefined);
+      }
+      if (!anchor && session.end_time) {
         anchor = session.end_time;
-      } else if (session.start_time && session.duration && /^\d{1,2}:\d{2}$/.test(session.start_time)) {
+      }
+      if (!anchor && session.start_time && session.duration && /^\d{1,2}:\d{2}$/.test(session.start_time)) {
         const startMs = new Date(`${session.date}T${session.start_time}:00`).getTime();
         if (!Number.isNaN(startMs)) {
           anchor = new Date(startMs + session.duration * 60_000).toISOString();
@@ -231,9 +284,6 @@ export const EditWorkoutSessionModal = ({
       }
       setEndAnchorIso(anchor);
 
-      const p = parseSessionNotes(session.notes);
-      if (!p.startTime && session.start_time) p.startTime = session.start_time;
-      setParsed(p);
       setExpanded(p.exercises.length > 0 ? 0 : null);
       setShowAddExercise(false);
       setNewExerciseName('');
@@ -241,19 +291,26 @@ export const EditWorkoutSessionModal = ({
     }
   }, [session, open]);
 
-  // Live preview: if user changes start time/date and we have an end anchor,
-  // recompute the displayed duration so they see the effect before saving.
+  // Keep the anchor in sync with edits to set timestamps inside the modal.
+  useEffect(() => {
+    const lastSet = getLastSetHHMM(parsed);
+    if (!lastSet) return;
+    const anchor = buildAnchorIso(date, lastSet, startTimeField || undefined);
+    if (anchor) setEndAnchorIso(anchor);
+  }, [parsed, date, startTimeField]);
+
+  // Live preview: whenever we have an end anchor and a valid start time, show
+  // the computed duration so the user sees what will be saved.
   useEffect(() => {
     if (!endAnchorIso) return;
     if (!/^\d{1,2}:\d{2}$/.test(startTimeField)) return;
     const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
     const endMs = new Date(endAnchorIso).getTime();
-    if (Number.isNaN(startMs) || Number.isNaN(endMs)) return;
-    const startChanged = startTimeField !== originalStartTime || date !== originalDate;
-    if (!startChanged) return;
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) return;
     const mins = Math.max(1, Math.round((endMs - startMs) / 60_000));
     setDuration(mins.toString());
-  }, [startTimeField, date, endAnchorIso, originalStartTime, originalDate]);
+  }, [startTimeField, date, endAnchorIso]);
+
 
   const markTouched = (key: string) =>
     setTouched((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
@@ -350,6 +407,22 @@ export const EditWorkoutSessionModal = ({
         ex.sets.set6
     );
 
+  // Computed span derived from notes (for the caption + Recalculate button).
+  const lastSetHHMM = getLastSetHHMM(parsed);
+  const computedSpanMin = (() => {
+    if (!lastSetHHMM || !/^\d{1,2}:\d{2}$/.test(startTimeField)) return null;
+    const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
+    const anchor = buildAnchorIso(date, lastSetHHMM, startTimeField);
+    if (!anchor || Number.isNaN(startMs)) return null;
+    const endMs = new Date(anchor).getTime();
+    if (endMs <= startMs) return null;
+    return Math.max(1, Math.round((endMs - startMs) / 60_000));
+  })();
+
+  const handleRecalculate = () => {
+    if (computedSpanMin != null) setDuration(String(computedSpanMin));
+  };
+
   const handleSave = async () => {
     if (!session) return;
     const updatedNotes = formatSessionNotes({
@@ -357,20 +430,19 @@ export const EditWorkoutSessionModal = ({
       startTime: parsed.startTime || startTimeField || '',
     });
 
-    // Recalculate duration from end anchor when start time/date changed.
+    // Always recalc duration from the end-time anchor when both anchor and
+    // start time are valid — this silently corrects stale `duration` values
+    // on the next save without requiring the user to touch the start field.
     let finalDuration = parseInt(duration) || 0;
     let finalEndIso: string | undefined = endAnchorIso || undefined;
-    const startChanged = startTimeField !== originalStartTime || date !== originalDate;
     if (endAnchorIso && /^\d{1,2}:\d{2}$/.test(startTimeField)) {
       const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
       const endMs = new Date(endAnchorIso).getTime();
       if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs > startMs) {
-        if (startChanged) {
-          finalDuration = Math.max(1, Math.round((endMs - startMs) / 60_000));
-        }
+        finalDuration = Math.max(1, Math.round((endMs - startMs) / 60_000));
       }
-    } else if (startChanged && /^\d{1,2}:\d{2}$/.test(startTimeField) && finalDuration > 0) {
-      // No prior anchor — establish one from the new start + manual duration.
+    } else if (/^\d{1,2}:\d{2}$/.test(startTimeField) && finalDuration > 0) {
+      // No anchor — synthesize one from the manual duration so future edits work.
       const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
       if (!Number.isNaN(startMs)) {
         finalEndIso = new Date(startMs + finalDuration * 60_000).toISOString();
@@ -388,6 +460,7 @@ export const EditWorkoutSessionModal = ({
     onClose();
   };
 
+
   if (!session) return null;
 
   return (
@@ -404,13 +477,31 @@ export const EditWorkoutSessionModal = ({
             <Input value={exerciseName} onChange={(e) => setExerciseName(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2 md:col-span-1">
               <Label>Duration (min)</Label>
               <Input
                 inputMode="numeric"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value.replace(/[^0-9]/g, ''))}
               />
+              {computedSpanMin != null && (
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    Sets span: {startTimeField} → {lastSetHHMM} ({computedSpanMin} min)
+                  </span>
+                  {parseInt(duration) !== computedSpanMin && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={handleRecalculate}
+                    >
+                      Recalculate
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Date</Label>

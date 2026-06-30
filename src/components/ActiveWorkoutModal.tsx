@@ -563,19 +563,42 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   const handleComplete = async () => {
     if (!template || !startTime) return;
-    const endTime = new Date();
-    const durationMinutes = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
+    const completedAt = new Date();
     const notes = formatSetsForNotes();
     const formattedStartTime = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`;
-    
+
+    // Prefer the latest per-set timestamp as the end anchor — that's the real
+    // moment the workout finished, independent of when "Complete" was tapped.
+    let endAnchor = completedAt;
+    let bestMin = -1;
+    Object.values(exerciseTimestamps).forEach((ts) => {
+      if (!ts) return;
+      Object.values(ts).forEach((t) => {
+        if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return;
+        const [h, m] = t.split(':').map((x) => parseInt(x, 10));
+        const mins = h * 60 + m;
+        if (mins > bestMin) bestMin = mins;
+      });
+    });
+    if (bestMin >= 0) {
+      const candidate = new Date(startTime);
+      candidate.setHours(Math.floor(bestMin / 60), bestMin % 60, 0, 0);
+      if (candidate.getTime() < startTime.getTime()) {
+        candidate.setDate(candidate.getDate() + 1); // crossed midnight
+      }
+      endAnchor = candidate;
+    }
+    const durationMinutes = Math.max(1, Math.round((endAnchor.getTime() - startTime.getTime()) / 60000));
+
     const success = await onFinish({
       exercise: template.name,
       duration: durationMinutes,
       date: new Date().toISOString().split('T')[0],
       notes: notes || undefined,
       start_time: formattedStartTime,
-      end_time: endTime.toISOString(),
+      end_time: endAnchor.toISOString(),
     });
+
     
     if (success) {
       logActivity({ action: 'finish_workout', category: 'gym', details: { template_name: template.name, duration: durationMinutes, notes } });
