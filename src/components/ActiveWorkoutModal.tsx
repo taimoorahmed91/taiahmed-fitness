@@ -574,6 +574,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       date: new Date().toISOString().split('T')[0],
       notes: notes || undefined,
       start_time: formattedStartTime,
+      end_time: endTime.toISOString(),
     });
     
     if (success) {
