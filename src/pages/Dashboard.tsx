@@ -23,6 +23,7 @@ import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
