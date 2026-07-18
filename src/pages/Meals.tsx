@@ -69,14 +69,18 @@ const Meals = () => {
     const gymTarget = personalData.gym_day_calorie_target;
     const restTarget = personalData.rest_day_calorie_target;
     const auto = gymTarget != null || restTarget != null;
+    let base = settings.daily_calorie_goal;
     if (auto) {
-      if (workedOut && gymTarget != null) return gymTarget;
-      if (!workedOut && restTarget != null) return restTarget;
-      if (gymTarget != null) return gymTarget;
-      if (restTarget != null) return restTarget;
+      if (workedOut && gymTarget != null) base = gymTarget;
+      else if (!workedOut && restTarget != null) base = restTarget;
+      else if (gymTarget != null) base = gymTarget;
+      else if (restTarget != null) base = restTarget;
     }
-    return settings.daily_calorie_goal;
-  }, [gymSessions, personalData, settings.daily_calorie_goal]);
+    const extras = extraActivities
+      .filter((a) => a.date === today)
+      .reduce((sum, a) => sum + (a.calories || 0), 0);
+    return base + extras;
+  }, [gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
   const caloriesRemaining = Math.max(0, calorieGoal - todayCalories);
   
   const todayMeals = useMemo(() => {
