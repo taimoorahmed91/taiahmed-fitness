@@ -70,6 +70,13 @@ const Dashboard = () => {
   const { getNotesMap, refetch: refetchNotes } = useDailyNotes();
   const { entries: whoopEntries } = useWhoopData();
   const { data: personalData } = usePersonalData();
+  const { activities: extraActivities, refetch: refetchExtras } = useExtraActivities();
+
+  // Sum extra-activity calories for a date (added to the day's target)
+  const extraCaloriesForDate = (dateStr: string) =>
+    extraActivities
+      .filter((a) => a.date === dateStr)
+      .reduce((sum, a) => sum + (a.calories || 0), 0);
 
   // Resolve effective calorie goal for a given date based on workout activity that day
   const resolveGoalForDate = (dateStr: string) => {
@@ -84,6 +91,7 @@ const Dashboard = () => {
       else if (gymTarget != null) goal = gymTarget;
       else if (restTarget != null) goal = restTarget;
     }
+    goal += extraCaloriesForDate(dateStr);
     return { goal, workedOut, auto };
   };
 
