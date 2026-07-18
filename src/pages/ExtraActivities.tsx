@@ -167,8 +167,13 @@ const ExtraActivities = () => {
                           {a.duration_minutes != null && (
                             <Badge variant="outline">{a.duration_minutes} min</Badge>
                           )}
+                          {a.calories > 0 && (
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">+{a.calories} cal</Badge>
+                          )}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">{a.date}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {a.date}{a.time ? ` · ${a.time}` : ''}
+                        </div>
                         {a.notes && <p className="text-sm mt-2 whitespace-pre-wrap">{a.notes}</p>}
                       </div>
                       <Button size="icon" variant="ghost" onClick={() => deleteActivity(a.id)} title="Delete">
