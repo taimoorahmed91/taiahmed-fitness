@@ -63,8 +63,10 @@ export const useExtraActivities = () => {
       const { error } = await supabase.from('fittrack_extra_activities').insert({
         user_id: user.id,
         date: entry.date,
+        time: entry.time ?? null,
         activity: entry.activity,
         intensity: entry.intensity,
+        calories: entry.calories ?? 0,
         duration_minutes: entry.duration_minutes ?? null,
         notes: entry.notes ?? null,
       });
