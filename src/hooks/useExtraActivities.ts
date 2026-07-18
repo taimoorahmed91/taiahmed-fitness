@@ -8,8 +8,10 @@ export interface ExtraActivity {
   id: string;
   user_id: string;
   date: string;
+  time: string | null;
   activity: string;
   intensity: number;
+  calories: number;
   duration_minutes: number | null;
   notes: string | null;
   created_at: string;
@@ -18,8 +20,10 @@ export interface ExtraActivity {
 
 export type NewExtraActivity = {
   date: string;
+  time?: string | null;
   activity: string;
   intensity: number;
+  calories?: number;
   duration_minutes?: number | null;
   notes?: string | null;
 };
