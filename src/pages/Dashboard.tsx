@@ -104,11 +104,11 @@ const Dashboard = () => {
 
   const { goal: effectiveGoal, workedOut: isGymDay, auto: autoMode } = useMemo(
     () => resolveGoalForDate(todayStr),
-    [gymSessions, personalData, settings.daily_calorie_goal, todayStr]
+    [gymSessions, personalData, settings.daily_calorie_goal, todayStr, extraActivities]
   );
   const { goal: yesterdayGoal } = useMemo(
     () => resolveGoalForDate(yesterdayStr),
-    [gymSessions, personalData, settings.daily_calorie_goal, yesterdayStr]
+    [gymSessions, personalData, settings.daily_calorie_goal, yesterdayStr, extraActivities]
   );
 
   // Latest WHOOP recovery score (most recent entry by date)
