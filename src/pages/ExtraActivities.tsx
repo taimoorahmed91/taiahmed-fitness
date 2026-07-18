@@ -99,8 +99,18 @@ const ExtraActivities = () => {
                     <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="time">Time</Label>
+                    <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
                     <Label htmlFor="duration">Duration (min)</Label>
                     <Input id="duration" type="number" min="0" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Optional" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="calories">Calories burned</Label>
+                    <Input id="calories" type="number" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} placeholder="Added to daily goal" />
                   </div>
                 </div>
 
