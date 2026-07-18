@@ -139,7 +139,7 @@ const ActivityLogs = () => {
         <div className="flex items-center gap-3">
           <FileText className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">Activity Logs</h1>
+            <h1 className="text-3xl font-bold">Audit Log</h1>
             <p className="text-muted-foreground mt-1">Complete audit trail of all your actions</p>
           </div>
         </div>
@@ -224,13 +224,13 @@ const ActivityLogs = () => {
         {/* Logs List */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Log Entries</CardTitle>
+            <CardTitle className="text-lg">Audit Entries</CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px]">
               {filteredLogs.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  {loading ? 'Loading logs...' : 'No activity logs found'}
+                  {loading ? 'Loading audit log...' : 'No audit entries found'}
                 </div>
               ) : (
                 <div className="space-y-2">
