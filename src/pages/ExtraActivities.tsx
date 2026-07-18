@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigation } from '@/components/Navigation';
-import { Activity, Trash2 } from 'lucide-react';
+import { Activity, Trash2, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,13 +36,14 @@ const intensityColor = (n: number) => {
 };
 
 const ExtraActivities = () => {
-  const { activities, addActivity, deleteActivity, loading } = useExtraActivities();
+  const { activities, addActivity, updateActivity, deleteActivity, loading } = useExtraActivities();
   const today = new Date().toISOString().split('T')[0];
   const currentTime = () => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [date, setDate] = useState(today);
   const [time, setTime] = useState(currentTime());
   const [activity, setActivity] = useState('');
@@ -51,18 +52,8 @@ const ExtraActivities = () => {
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activity.trim()) return;
-    await addActivity({
-      date,
-      time: time || null,
-      activity: activity.trim(),
-      intensity: parseInt(intensity, 10),
-      calories: calories ? parseInt(calories, 10) : 0,
-      duration_minutes: duration ? parseInt(duration, 10) : null,
-      notes: notes.trim() || null,
-    });
+  const resetForm = () => {
+    setEditingId(null);
     setActivity('');
     setDuration('');
     setCalories('');
@@ -70,6 +61,38 @@ const ExtraActivities = () => {
     setIntensity('3');
     setDate(today);
     setTime(currentTime());
+  };
+
+  const handleEdit = (a: typeof activities[number]) => {
+    setEditingId(a.id);
+    setDate(a.date);
+    setTime(a.time || '');
+    setActivity(a.activity);
+    setIntensity(String(a.intensity));
+    setCalories(a.calories ? String(a.calories) : '');
+    setDuration(a.duration_minutes != null ? String(a.duration_minutes) : '');
+    setNotes(a.notes || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activity.trim()) return;
+    const payload = {
+      date,
+      time: time || null,
+      activity: activity.trim(),
+      intensity: parseInt(intensity, 10),
+      calories: calories ? parseInt(calories, 10) : 0,
+      duration_minutes: duration ? parseInt(duration, 10) : null,
+      notes: notes.trim() || null,
+    };
+    if (editingId) {
+      await updateActivity(editingId, payload);
+    } else {
+      await addActivity(payload);
+    }
+    resetForm();
   };
 
   return (
@@ -89,7 +112,14 @@ const ExtraActivities = () => {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Log Activity</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>{editingId ? 'Edit Activity' : 'Log Activity'}</span>
+                {editingId && (
+                  <Button type="button" size="sm" variant="ghost" onClick={resetForm}>
+                    <X className="h-4 w-4 mr-1" /> Cancel
+                  </Button>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -140,7 +170,7 @@ const ExtraActivities = () => {
                   <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional details..." rows={3} />
                 </div>
 
-                <Button type="submit" className="w-full">Add Activity</Button>
+                <Button type="submit" className="w-full">{editingId ? 'Save Changes' : 'Add Activity'}</Button>
               </form>
             </CardContent>
           </Card>
@@ -157,7 +187,7 @@ const ExtraActivities = () => {
               ) : (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {activities.map((a) => (
-                    <div key={a.id} className="border rounded-lg p-3 flex items-start justify-between gap-3">
+                    <div key={a.id} className={`border rounded-lg p-3 flex items-start justify-between gap-3 ${editingId === a.id ? 'border-primary' : ''}`}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">{a.activity}</span>
@@ -176,9 +206,14 @@ const ExtraActivities = () => {
                         </div>
                         {a.notes && <p className="text-sm mt-2 whitespace-pre-wrap">{a.notes}</p>}
                       </div>
-                      <Button size="icon" variant="ghost" onClick={() => deleteActivity(a.id)} title="Delete">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex flex-col gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => handleEdit(a)} title="Edit">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => deleteActivity(a.id)} title="Delete">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
