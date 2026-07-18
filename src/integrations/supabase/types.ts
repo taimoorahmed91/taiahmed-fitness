@@ -589,6 +589,42 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_extra_activities: {
+        Row: {
+          activity: string
+          created_at: string
+          date: string
+          duration_minutes: number | null
+          id: string
+          intensity: number
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity: string
+          created_at?: string
+          date?: string
+          duration_minutes?: number | null
+          id?: string
+          intensity: number
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity?: string
+          created_at?: string
+          date?: string
+          duration_minutes?: number | null
+          id?: string
+          intensity?: number
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fittrack_goals: {
         Row: {
           category: string

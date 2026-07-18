@@ -5,6 +5,7 @@ import { SleepEntry } from '@/hooks/useSleep';
 import { WhoopEntry } from '@/hooks/useWhoopData';
 import { PersonalData } from '@/hooks/usePersonalData';
 import { DailyNote } from '@/hooks/useDailyNotes';
+import { ExtraActivity } from '@/hooks/useExtraActivities';
 
 export interface ExportedData {
   version: string;
@@ -18,6 +19,7 @@ export interface ExportedData {
     whoop?: Omit<WhoopEntry, 'id'>[];
     personalData?: Omit<PersonalData, 'id'> | null;
     dailyNotes?: Omit<DailyNote, 'id'>[];
+    extraActivities?: Omit<ExtraActivity, 'id' | 'user_id'>[];
   };
 }
 
@@ -30,6 +32,7 @@ interface FullExportData {
   whoop?: WhoopEntry[];
   personalData?: PersonalData | null;
   dailyNotes?: DailyNote[];
+  extraActivities?: ExtraActivity[];
 }
 
 export const exportToJSON = (data: FullExportData, rangeDays?: number): void => {
@@ -50,7 +53,7 @@ export const exportToJSON = (data: FullExportData, rangeDays?: number): void => 
   };
 
   const exportData: ExportedData = {
-    version: '1.4',
+    version: '1.5',
     exportDate: new Date().toISOString(),
     data: {
       meals: data.meals.filter(inRange).map(({ id, ...rest }) => rest),
@@ -61,6 +64,7 @@ export const exportToJSON = (data: FullExportData, rangeDays?: number): void => 
       whoop: data.whoop?.filter(inRange).map(({ id, ...rest }) => rest) || [],
       personalData: data.personalData ? personalRest : null,
       dailyNotes: data.dailyNotes?.filter(inRange).map(({ id, ...rest }) => rest) || [],
+      extraActivities: data.extraActivities?.filter(inRange).map(({ id, user_id, ...rest }) => rest) || [],
     },
   };
 

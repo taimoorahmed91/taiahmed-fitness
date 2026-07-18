@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon, BarChart3, Menu, Calendar, ArrowLeftRight, UserCheck, Ruler, MessageCircle, RefreshCw, FileText, Trophy, Activity, IdCard } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Utensils, LogOut, User, Scale, Moon, BarChart3, Menu, Calendar, ArrowLeftRight, UserCheck, Ruler, MessageCircle, RefreshCw, FileText, Trophy, Activity, IdCard, Footprints } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { ImportExportButton } from './ImportExportButton';
@@ -29,6 +29,7 @@ export const Navigation = () => {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/meals', label: 'Meals', icon: Utensils },
     { to: '/gym', label: 'Gym', icon: Dumbbell },
+    { to: '/extra-activity', label: 'Extra Activity', icon: Footprints },
     { to: '/weight', label: 'Weight', icon: Scale },
     { to: '/waist', label: 'Waist', icon: Ruler },
     { to: '/sleep', label: 'Sleep', icon: Moon },

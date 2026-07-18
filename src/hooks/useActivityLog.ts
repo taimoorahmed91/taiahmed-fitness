@@ -12,7 +12,8 @@ export type LogCategory =
   | 'workout_templates'
   | 'settings'
   | 'auth'
-  | 'whoop';
+  | 'whoop'
+  | 'extra_activities';
 
 export type LogAction = 
   | 'create' 
