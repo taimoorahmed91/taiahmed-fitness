@@ -25,6 +25,7 @@ import Achievements from "./pages/Achievements";
 import WhoopData from "./pages/WhoopData";
 import ActivityLogs from "./pages/ActivityLogs";
 import PersonalData from "./pages/PersonalData";
+import ExtraActivities from "./pages/ExtraActivities";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
 
@@ -218,6 +219,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PersonalData />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/extra-activity"
+        element={
+          <ProtectedRoute>
+            <ExtraActivities />
           </ProtectedRoute>
         }
       />
