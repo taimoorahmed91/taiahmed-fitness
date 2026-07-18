@@ -117,7 +117,7 @@ const Dashboard = () => {
     return withScore?.recovery_score ?? null;
   }, [whoopEntries]);
   // Auto-refresh every 30 seconds (only on Dashboard) - includes daily summary to keep it updated
-  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes]);
+  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
 
   const notesMap = useMemo(() => getNotesMap(), [getNotesMap]);
 
