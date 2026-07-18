@@ -8,8 +8,10 @@ export interface ExtraActivity {
   id: string;
   user_id: string;
   date: string;
+  time: string | null;
   activity: string;
   intensity: number;
+  calories: number;
   duration_minutes: number | null;
   notes: string | null;
   created_at: string;
@@ -18,8 +20,10 @@ export interface ExtraActivity {
 
 export type NewExtraActivity = {
   date: string;
+  time?: string | null;
   activity: string;
   intensity: number;
+  calories?: number;
   duration_minutes?: number | null;
   notes?: string | null;
 };
@@ -59,8 +63,10 @@ export const useExtraActivities = () => {
       const { error } = await supabase.from('fittrack_extra_activities').insert({
         user_id: user.id,
         date: entry.date,
+        time: entry.time ?? null,
         activity: entry.activity,
         intensity: entry.intensity,
+        calories: entry.calories ?? 0,
         duration_minutes: entry.duration_minutes ?? null,
         notes: entry.notes ?? null,
       });

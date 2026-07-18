@@ -38,10 +38,16 @@ const intensityColor = (n: number) => {
 const ExtraActivities = () => {
   const { activities, addActivity, deleteActivity, loading } = useExtraActivities();
   const today = new Date().toISOString().split('T')[0];
+  const currentTime = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
 
   const [date, setDate] = useState(today);
+  const [time, setTime] = useState(currentTime());
   const [activity, setActivity] = useState('');
   const [intensity, setIntensity] = useState<string>('3');
+  const [calories, setCalories] = useState('');
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -50,16 +56,20 @@ const ExtraActivities = () => {
     if (!activity.trim()) return;
     await addActivity({
       date,
+      time: time || null,
       activity: activity.trim(),
       intensity: parseInt(intensity, 10),
+      calories: calories ? parseInt(calories, 10) : 0,
       duration_minutes: duration ? parseInt(duration, 10) : null,
       notes: notes.trim() || null,
     });
     setActivity('');
     setDuration('');
+    setCalories('');
     setNotes('');
     setIntensity('3');
     setDate(today);
+    setTime(currentTime());
   };
 
   return (
@@ -89,8 +99,18 @@ const ExtraActivities = () => {
                     <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="time">Time</Label>
+                    <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
                     <Label htmlFor="duration">Duration (min)</Label>
                     <Input id="duration" type="number" min="0" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Optional" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="calories">Calories burned</Label>
+                    <Input id="calories" type="number" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} placeholder="Added to daily goal" />
                   </div>
                 </div>
 
@@ -147,8 +167,13 @@ const ExtraActivities = () => {
                           {a.duration_minutes != null && (
                             <Badge variant="outline">{a.duration_minutes} min</Badge>
                           )}
+                          {a.calories > 0 && (
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">+{a.calories} cal</Badge>
+                          )}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">{a.date}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {a.date}{a.time ? ` · ${a.time}` : ''}
+                        </div>
                         {a.notes && <p className="text-sm mt-2 whitespace-pre-wrap">{a.notes}</p>}
                       </div>
                       <Button size="icon" variant="ghost" onClick={() => deleteActivity(a.id)} title="Delete">

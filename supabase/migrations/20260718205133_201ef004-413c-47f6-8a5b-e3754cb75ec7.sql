@@ -1,0 +1,3 @@
+ALTER TABLE public.fittrack_extra_activities
+  ADD COLUMN IF NOT EXISTS time TEXT,
+  ADD COLUMN IF NOT EXISTS calories INTEGER NOT NULL DEFAULT 0;

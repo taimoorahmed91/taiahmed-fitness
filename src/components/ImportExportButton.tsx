@@ -164,8 +164,10 @@ export const ImportExportButton = () => {
       for (const act of importData.data.extraActivities || []) {
         await addExtraActivity({
           date: act.date,
+          time: (act as any).time ?? null,
           activity: act.activity,
           intensity: act.intensity,
+          calories: (act as any).calories ?? 0,
           duration_minutes: act.duration_minutes ?? null,
           notes: act.notes ?? null,
         });

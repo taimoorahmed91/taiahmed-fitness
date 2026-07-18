@@ -23,6 +23,7 @@ import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
@@ -69,6 +70,13 @@ const Dashboard = () => {
   const { getNotesMap, refetch: refetchNotes } = useDailyNotes();
   const { entries: whoopEntries } = useWhoopData();
   const { data: personalData } = usePersonalData();
+  const { activities: extraActivities, refetch: refetchExtras } = useExtraActivities();
+
+  // Sum extra-activity calories for a date (added to the day's target)
+  const extraCaloriesForDate = (dateStr: string) =>
+    extraActivities
+      .filter((a) => a.date === dateStr)
+      .reduce((sum, a) => sum + (a.calories || 0), 0);
 
   // Resolve effective calorie goal for a given date based on workout activity that day
   const resolveGoalForDate = (dateStr: string) => {
@@ -83,6 +91,7 @@ const Dashboard = () => {
       else if (gymTarget != null) goal = gymTarget;
       else if (restTarget != null) goal = restTarget;
     }
+    goal += extraCaloriesForDate(dateStr);
     return { goal, workedOut, auto };
   };
 
@@ -95,11 +104,11 @@ const Dashboard = () => {
 
   const { goal: effectiveGoal, workedOut: isGymDay, auto: autoMode } = useMemo(
     () => resolveGoalForDate(todayStr),
-    [gymSessions, personalData, settings.daily_calorie_goal, todayStr]
+    [gymSessions, personalData, settings.daily_calorie_goal, todayStr, extraActivities]
   );
   const { goal: yesterdayGoal } = useMemo(
     () => resolveGoalForDate(yesterdayStr),
-    [gymSessions, personalData, settings.daily_calorie_goal, yesterdayStr]
+    [gymSessions, personalData, settings.daily_calorie_goal, yesterdayStr, extraActivities]
   );
 
   // Latest WHOOP recovery score (most recent entry by date)
@@ -108,7 +117,7 @@ const Dashboard = () => {
     return withScore?.recovery_score ?? null;
   }, [whoopEntries]);
   // Auto-refresh every 30 seconds (only on Dashboard) - includes daily summary to keep it updated
-  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes]);
+  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
 
   const notesMap = useMemo(() => getNotesMap(), [getNotesMap]);
 

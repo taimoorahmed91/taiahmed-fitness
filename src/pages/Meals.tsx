@@ -5,6 +5,7 @@ import { useMeals } from '@/hooks/useMeals';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -23,6 +24,7 @@ const Meals = () => {
   const { settings } = useUserSettings();
   const { sessions: gymSessions } = useGymSessions();
   const { data: personalData } = usePersonalData();
+  const { activities: extraActivities } = useExtraActivities();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [editForm, setEditForm] = useState({ food: '', calories: '', time: '', date: '' });
   const [prefillData, setPrefillData] = useState<{ food: string; calories: number } | null>(null);
@@ -67,14 +69,18 @@ const Meals = () => {
     const gymTarget = personalData.gym_day_calorie_target;
     const restTarget = personalData.rest_day_calorie_target;
     const auto = gymTarget != null || restTarget != null;
+    let base = settings.daily_calorie_goal;
     if (auto) {
-      if (workedOut && gymTarget != null) return gymTarget;
-      if (!workedOut && restTarget != null) return restTarget;
-      if (gymTarget != null) return gymTarget;
-      if (restTarget != null) return restTarget;
+      if (workedOut && gymTarget != null) base = gymTarget;
+      else if (!workedOut && restTarget != null) base = restTarget;
+      else if (gymTarget != null) base = gymTarget;
+      else if (restTarget != null) base = restTarget;
     }
-    return settings.daily_calorie_goal;
-  }, [gymSessions, personalData, settings.daily_calorie_goal]);
+    const extras = extraActivities
+      .filter((a) => a.date === today)
+      .reduce((sum, a) => sum + (a.calories || 0), 0);
+    return base + extras;
+  }, [gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
   const caloriesRemaining = Math.max(0, calorieGoal - todayCalories);
   
   const todayMeals = useMemo(() => {
