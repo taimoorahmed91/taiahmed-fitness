@@ -592,34 +592,40 @@ export type Database = {
       fittrack_extra_activities: {
         Row: {
           activity: string
+          calories: number
           created_at: string
           date: string
           duration_minutes: number | null
           id: string
           intensity: number
           notes: string | null
+          time: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           activity: string
+          calories?: number
           created_at?: string
           date?: string
           duration_minutes?: number | null
           id?: string
           intensity: number
           notes?: string | null
+          time?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           activity?: string
+          calories?: number
           created_at?: string
           date?: string
           duration_minutes?: number | null
           id?: string
           intensity?: number
           notes?: string | null
+          time?: string | null
           updated_at?: string
           user_id?: string
         }
