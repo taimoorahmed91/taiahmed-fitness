@@ -38,10 +38,16 @@ const intensityColor = (n: number) => {
 const ExtraActivities = () => {
   const { activities, addActivity, deleteActivity, loading } = useExtraActivities();
   const today = new Date().toISOString().split('T')[0];
+  const currentTime = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
 
   const [date, setDate] = useState(today);
+  const [time, setTime] = useState(currentTime());
   const [activity, setActivity] = useState('');
   const [intensity, setIntensity] = useState<string>('3');
+  const [calories, setCalories] = useState('');
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -50,16 +56,20 @@ const ExtraActivities = () => {
     if (!activity.trim()) return;
     await addActivity({
       date,
+      time: time || null,
       activity: activity.trim(),
       intensity: parseInt(intensity, 10),
+      calories: calories ? parseInt(calories, 10) : 0,
       duration_minutes: duration ? parseInt(duration, 10) : null,
       notes: notes.trim() || null,
     });
     setActivity('');
     setDuration('');
+    setCalories('');
     setNotes('');
     setIntensity('3');
     setDate(today);
+    setTime(currentTime());
   };
 
   return (
