@@ -80,6 +80,30 @@ export const useExtraActivities = () => {
     }
   };
 
+  const updateActivity = async (id: string, entry: NewExtraActivity) => {
+    try {
+      const { error } = await supabase
+        .from('fittrack_extra_activities')
+        .update({
+          date: entry.date,
+          time: entry.time ?? null,
+          activity: entry.activity,
+          intensity: entry.intensity,
+          calories: entry.calories ?? 0,
+          duration_minutes: entry.duration_minutes ?? null,
+          notes: entry.notes ?? null,
+        })
+        .eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Activity updated' });
+      logActivity({ action: 'update', category: 'extra_activities', details: { id, ...entry } });
+      fetchActivities();
+    } catch (error: any) {
+      console.error('Error updating extra activity:', error);
+      toast({ title: 'Error', description: 'Failed to update activity', variant: 'destructive' });
+    }
+  };
+
   const deleteActivity = async (id: string) => {
     try {
       const { error } = await supabase.from('fittrack_extra_activities').delete().eq('id', id);
@@ -93,5 +117,5 @@ export const useExtraActivities = () => {
     }
   };
 
-  return { activities, loading, addActivity, deleteActivity, refetch: fetchActivities };
+  return { activities, loading, addActivity, updateActivity, deleteActivity, refetch: fetchActivities };
 };
