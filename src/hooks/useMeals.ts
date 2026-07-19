@@ -163,7 +163,7 @@ export const useMeals = () => {
 
   const getWeeklyData = () => {
     const days: { date: string; fullDate: string; calories: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = 7; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
