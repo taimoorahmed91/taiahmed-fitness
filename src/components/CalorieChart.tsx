@@ -45,9 +45,13 @@ const CustomTooltip = ({ active, payload, notesMap }: any) => {
 };
 
 export const CalorieChart = ({ data, notesMap }: CalorieChartProps) => {
-  const avgCalories = Math.round(
-    data.reduce((sum, d) => sum + d.calories, 0) / data.filter((d) => d.calories > 0).length || 0
-  );
+  const todayStr = new Date().toISOString().split('T')[0];
+  // Exclude today (in-progress day) from the average — last 7 days only
+  const pastDays = data.filter((d) => d.fullDate !== todayStr);
+  const daysWithData = pastDays.filter((d) => d.calories > 0);
+  const avgCalories = daysWithData.length
+    ? Math.round(pastDays.reduce((sum, d) => sum + d.calories, 0) / daysWithData.length)
+    : 0;
 
   // Find dates with notes to render indicators (use fullDate for matching)
   const datesWithNotes = notesMap
