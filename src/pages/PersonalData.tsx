@@ -177,6 +177,12 @@ const PersonalDataPage = () => {
                     onChange={(e) => handleNumeric(e.target.value, setTargetWeight)}
                     placeholder="e.g. 75.5"
                   />
+                  <FieldHistory
+                    field="target_weight_kg"
+                    unit="kg"
+                    latest={latestFor('target_weight_kg')}
+                    history={historyFor('target_weight_kg')}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -189,6 +195,12 @@ const PersonalDataPage = () => {
                     placeholder="e.g. 2400"
                   />
                   <p className="text-xs text-muted-foreground">Used as your daily goal on days you log a workout.</p>
+                  <FieldHistory
+                    field="gym_day_calorie_target"
+                    unit="kcal"
+                    latest={latestFor('gym_day_calorie_target')}
+                    history={historyFor('gym_day_calorie_target')}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -201,6 +213,12 @@ const PersonalDataPage = () => {
                     placeholder="e.g. 1900"
                   />
                   <p className="text-xs text-muted-foreground">Used as your daily goal on days with no workout.</p>
+                  <FieldHistory
+                    field="rest_day_calorie_target"
+                    unit="kcal"
+                    latest={latestFor('rest_day_calorie_target')}
+                    history={historyFor('rest_day_calorie_target')}
+                  />
                 </div>
 
                 <div className="space-y-2">
