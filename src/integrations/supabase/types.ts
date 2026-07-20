@@ -787,6 +787,30 @@ export type Database = {
         }
         Relationships: []
       }
+      fittrack_personal_data_history: {
+        Row: {
+          changed_at: string
+          field: string
+          id: string
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          changed_at?: string
+          field: string
+          id?: string
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          changed_at?: string
+          field?: string
+          id?: string
+          user_id?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
       fittrack_sleep: {
         Row: {
           created_at: string

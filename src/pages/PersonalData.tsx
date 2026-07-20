@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { usePersonalDataHistory, PersonalHistoryField } from '@/hooks/usePersonalDataHistory';
 import { useWeight } from '@/hooks/useWeight';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Activity, KeyRound, RefreshCw, Copy, Trash2, AlertTriangle } from 'lucide-react';
+import { User, Activity, KeyRound, RefreshCw, Copy, Trash2, AlertTriangle, History, ChevronDown, ChevronUp } from 'lucide-react';
 
 
 const calcAge = (dob: string | null): number | null => {
@@ -26,6 +27,7 @@ const calcAge = (dob: string | null): number | null => {
 
 const PersonalDataPage = () => {
   const { data, loading, save } = usePersonalData();
+  const { latestFor, historyFor, refetch: refetchHistory } = usePersonalDataHistory();
   const { entries: weightEntries } = useWeight();
   const currentWeight = weightEntries[0]?.weight ?? null;
 
@@ -78,7 +80,10 @@ const PersonalDataPage = () => {
     });
     setSaving(false);
     if (error) toast.error('Failed to save personal data');
-    else toast.success('Personal data saved');
+    else {
+      toast.success('Personal data saved');
+      refetchHistory();
+    }
   };
 
   return (
@@ -172,6 +177,12 @@ const PersonalDataPage = () => {
                     onChange={(e) => handleNumeric(e.target.value, setTargetWeight)}
                     placeholder="e.g. 75.5"
                   />
+                  <FieldHistory
+                    field="target_weight_kg"
+                    unit="kg"
+                    latest={latestFor('target_weight_kg')}
+                    history={historyFor('target_weight_kg')}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -184,6 +195,12 @@ const PersonalDataPage = () => {
                     placeholder="e.g. 2400"
                   />
                   <p className="text-xs text-muted-foreground">Used as your daily goal on days you log a workout.</p>
+                  <FieldHistory
+                    field="gym_day_calorie_target"
+                    unit="kcal"
+                    latest={latestFor('gym_day_calorie_target')}
+                    history={historyFor('gym_day_calorie_target')}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -196,6 +213,12 @@ const PersonalDataPage = () => {
                     placeholder="e.g. 1900"
                   />
                   <p className="text-xs text-muted-foreground">Used as your daily goal on days with no workout.</p>
+                  <FieldHistory
+                    field="rest_day_calorie_target"
+                    unit="kcal"
+                    latest={latestFor('rest_day_calorie_target')}
+                    history={historyFor('rest_day_calorie_target')}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -429,6 +452,59 @@ const ApiTokenCard = () => {
 };
 
 
+interface FieldHistoryProps {
+  field: PersonalHistoryField;
+  unit: string;
+  latest: { value: number; changed_at: string } | null;
+  history: { id: string; value: number; changed_at: string }[];
+}
+
+const FieldHistory = ({ unit, latest, history }: FieldHistoryProps) => {
+  const [open, setOpen] = useState(false);
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+  if (!latest) {
+    return (
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+        <History className="h-3 w-3" /> No history yet — save to record a value.
+      </p>
+    );
+  }
+
+  const rest = history.slice(1);
+
+  return (
+    <div className="text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1">
+          <History className="h-3 w-3" />
+          Current: <strong className="text-foreground">{latest.value}{unit ? ` ${unit}` : ''}</strong> · set {formatDate(latest.changed_at)}
+        </span>
+        {rest.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+          >
+            {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {open ? 'Hide' : `Show ${rest.length} previous`}
+          </button>
+        )}
+      </div>
+      {open && rest.length > 0 && (
+        <ul className="mt-2 space-y-1 border-l-2 border-muted pl-3">
+          {rest.map((h) => (
+            <li key={h.id} className="flex justify-between gap-2">
+              <span>{h.value}{unit ? ` ${unit}` : ''}</span>
+              <span>{formatDate(h.changed_at)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 
 interface BmiCardProps {

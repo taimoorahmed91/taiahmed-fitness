@@ -24,6 +24,7 @@ import { useWaist } from '@/hooks/useWaist';
 import { useSleep } from '@/hooks/useSleep';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { usePersonalDataHistory } from '@/hooks/usePersonalDataHistory';
 import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { exportToCSV, exportAllToCSV } from '@/lib/exportData';
@@ -40,6 +41,7 @@ export const ImportExportButton = () => {
   const { entries: sleepEntries, addEntry: addSleep, refetch: refetchSleep } = useSleep();
   const { entries: whoopEntries, refetch: refetchWhoop } = useWhoopData();
   const { data: personalData, save: savePersonalData, refetch: refetchPersonalData } = usePersonalData();
+  const { entries: personalDataHistory } = usePersonalDataHistory();
   const { notes: dailyNotes, addNote: addDailyNote, refetch: refetchDailyNotes } = useDailyNotes();
   const { activities: extraActivities, addActivity: addExtraActivity, refetch: refetchExtraActivities } = useExtraActivities();
   const { user } = useUser();
@@ -57,6 +59,7 @@ export const ImportExportButton = () => {
     sleep: sleepEntries,
     whoop: whoopEntries,
     personalData,
+    personalDataHistory,
     dailyNotes,
     extraActivities,
   };

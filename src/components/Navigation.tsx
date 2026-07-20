@@ -57,8 +57,8 @@ export const Navigation = () => {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64">
-              <SheetHeader>
+            <SheetContent side="left" className="w-64 flex flex-col p-0">
+              <SheetHeader className="p-6 pb-2 shrink-0">
                 <SheetTitle className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                     <Dumbbell className="h-5 w-5 text-primary-foreground" />
@@ -66,7 +66,7 @@ export const Navigation = () => {
                   <span>FitTrack</span>
                 </SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col gap-1 mt-6">
+              <nav className="flex flex-col gap-1 mt-2 px-4 pb-6 overflow-y-auto flex-1">
                 {links.map((link) => (
                   <Link
                     key={link.to}

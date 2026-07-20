@@ -4,6 +4,7 @@ import { WaistEntry } from '@/hooks/useWaist';
 import { SleepEntry } from '@/hooks/useSleep';
 import { WhoopEntry } from '@/hooks/useWhoopData';
 import { PersonalData } from '@/hooks/usePersonalData';
+import { PersonalHistoryEntry } from '@/hooks/usePersonalDataHistory';
 import { DailyNote } from '@/hooks/useDailyNotes';
 import { ExtraActivity } from '@/hooks/useExtraActivities';
 
@@ -18,6 +19,7 @@ export interface ExportedData {
     sleep: Omit<SleepEntry, 'id'>[];
     whoop?: Omit<WhoopEntry, 'id'>[];
     personalData?: Omit<PersonalData, 'id'> | null;
+    personalDataHistory?: Omit<PersonalHistoryEntry, 'id'>[];
     dailyNotes?: Omit<DailyNote, 'id'>[];
     extraActivities?: Omit<ExtraActivity, 'id' | 'user_id'>[];
   };
@@ -31,6 +33,7 @@ interface FullExportData {
   sleep: SleepEntry[];
   whoop?: WhoopEntry[];
   personalData?: PersonalData | null;
+  personalDataHistory?: PersonalHistoryEntry[];
   dailyNotes?: DailyNote[];
   extraActivities?: ExtraActivity[];
 }
@@ -52,8 +55,13 @@ export const exportToJSON = (data: FullExportData, rangeDays?: number): void => 
     return d >= cutoffISO;
   };
 
+  const historyInRange = (h: PersonalHistoryEntry): boolean => {
+    if (!cutoffISO) return true;
+    return h.changed_at.slice(0, 10) >= cutoffISO;
+  };
+
   const exportData: ExportedData = {
-    version: '1.5',
+    version: '1.6',
     exportDate: new Date().toISOString(),
     data: {
       meals: data.meals.filter(inRange).map(({ id, ...rest }) => rest),
@@ -63,6 +71,7 @@ export const exportToJSON = (data: FullExportData, rangeDays?: number): void => 
       sleep: data.sleep.filter(inRange).map(({ id, ...rest }) => rest),
       whoop: data.whoop?.filter(inRange).map(({ id, ...rest }) => rest) || [],
       personalData: data.personalData ? personalRest : null,
+      personalDataHistory: data.personalDataHistory?.filter(historyInRange).map(({ id, ...rest }) => rest) || [],
       dailyNotes: data.dailyNotes?.filter(inRange).map(({ id, ...rest }) => rest) || [],
       extraActivities: data.extraActivities?.filter(inRange).map(({ id, user_id, ...rest }) => rest) || [],
     },
