@@ -452,6 +452,59 @@ const ApiTokenCard = () => {
 };
 
 
+interface FieldHistoryProps {
+  field: PersonalHistoryField;
+  unit: string;
+  latest: { value: number; changed_at: string } | null;
+  history: { id: string; value: number; changed_at: string }[];
+}
+
+const FieldHistory = ({ unit, latest, history }: FieldHistoryProps) => {
+  const [open, setOpen] = useState(false);
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+  if (!latest) {
+    return (
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+        <History className="h-3 w-3" /> No history yet — save to record a value.
+      </p>
+    );
+  }
+
+  const rest = history.slice(1);
+
+  return (
+    <div className="text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1">
+          <History className="h-3 w-3" />
+          Current: <strong className="text-foreground">{latest.value}{unit ? ` ${unit}` : ''}</strong> · set {formatDate(latest.changed_at)}
+        </span>
+        {rest.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+          >
+            {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {open ? 'Hide' : `Show ${rest.length} previous`}
+          </button>
+        )}
+      </div>
+      {open && rest.length > 0 && (
+        <ul className="mt-2 space-y-1 border-l-2 border-muted pl-3">
+          {rest.map((h) => (
+            <li key={h.id} className="flex justify-between gap-2">
+              <span>{h.value}{unit ? ` ${unit}` : ''}</span>
+              <span>{formatDate(h.changed_at)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 
 interface BmiCardProps {
