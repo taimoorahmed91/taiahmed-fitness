@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Scale } from 'lucide-react';
+import { Scale, Ruler } from 'lucide-react';
 
 interface WeightIntervalSettingProps {
   interval: number;
   onIntervalChange: (interval: number) => void;
+  waistInterval: number;
+  onWaistIntervalChange: (interval: number) => void;
 }
 
 const intervalOptions = [
@@ -15,36 +17,57 @@ const intervalOptions = [
   { value: 7, label: 'Every 7 days (weekly)' },
 ];
 
-export const WeightIntervalSetting = ({ interval, onIntervalChange }: WeightIntervalSettingProps) => {
+export const WeightIntervalSetting = ({
+  interval,
+  onIntervalChange,
+  waistInterval,
+  onWaistIntervalChange,
+}: WeightIntervalSettingProps) => {
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Scale className="h-5 w-5 text-primary" />
-          Weight Measurement
+          Measurement Reminders
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          How often would you like to be reminded to weigh yourself?
-        </p>
-        <Select
-          value={interval.toString()}
-          onValueChange={(value) => onIntervalChange(parseInt(value))}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select interval" />
-          </SelectTrigger>
-          <SelectContent>
-            {intervalOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value.toString()}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Scale className="h-4 w-4 text-muted-foreground" />
+            Weight
+          </div>
+          <Select value={interval.toString()} onValueChange={(v) => onIntervalChange(parseInt(v))}>
+            <SelectTrigger className="w-full h-9">
+              <SelectValue placeholder="Select interval" />
+            </SelectTrigger>
+            <SelectContent>
+              {intervalOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value.toString()}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Ruler className="h-4 w-4 text-muted-foreground" />
+            Waist
+          </div>
+          <Select value={waistInterval.toString()} onValueChange={(v) => onWaistIntervalChange(parseInt(v))}>
+            <SelectTrigger className="w-full h-9">
+              <SelectValue placeholder="Select interval" />
+            </SelectTrigger>
+            <SelectContent>
+              {intervalOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value.toString()}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <p className="text-xs text-muted-foreground">
-          Current setting: Measure weight every <span className="font-medium">{interval}</span> day{interval !== 1 ? 's' : ''}
+          Weight every <span className="font-medium">{interval}</span> day{interval !== 1 ? 's' : ''} · Waist every <span className="font-medium">{waistInterval}</span> day{waistInterval !== 1 ? 's' : ''}
         </p>
       </CardContent>
     </Card>
