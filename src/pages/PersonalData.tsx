@@ -27,6 +27,7 @@ const calcAge = (dob: string | null): number | null => {
 
 const PersonalDataPage = () => {
   const { data, loading, save } = usePersonalData();
+  const { latestFor, historyFor, refetch: refetchHistory } = usePersonalDataHistory();
   const { entries: weightEntries } = useWeight();
   const currentWeight = weightEntries[0]?.weight ?? null;
 
