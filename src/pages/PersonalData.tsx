@@ -80,7 +80,10 @@ const PersonalDataPage = () => {
     });
     setSaving(false);
     if (error) toast.error('Failed to save personal data');
-    else toast.success('Personal data saved');
+    else {
+      toast.success('Personal data saved');
+      refetchHistory();
+    }
   };
 
   return (
