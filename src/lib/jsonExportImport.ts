@@ -4,6 +4,7 @@ import { WaistEntry } from '@/hooks/useWaist';
 import { SleepEntry } from '@/hooks/useSleep';
 import { WhoopEntry } from '@/hooks/useWhoopData';
 import { PersonalData } from '@/hooks/usePersonalData';
+import { PersonalHistoryEntry } from '@/hooks/usePersonalDataHistory';
 import { DailyNote } from '@/hooks/useDailyNotes';
 import { ExtraActivity } from '@/hooks/useExtraActivities';
 
@@ -18,6 +19,7 @@ export interface ExportedData {
     sleep: Omit<SleepEntry, 'id'>[];
     whoop?: Omit<WhoopEntry, 'id'>[];
     personalData?: Omit<PersonalData, 'id'> | null;
+    personalDataHistory?: Omit<PersonalHistoryEntry, 'id'>[];
     dailyNotes?: Omit<DailyNote, 'id'>[];
     extraActivities?: Omit<ExtraActivity, 'id' | 'user_id'>[];
   };
@@ -31,6 +33,7 @@ interface FullExportData {
   sleep: SleepEntry[];
   whoop?: WhoopEntry[];
   personalData?: PersonalData | null;
+  personalDataHistory?: PersonalHistoryEntry[];
   dailyNotes?: DailyNote[];
   extraActivities?: ExtraActivity[];
 }
