@@ -286,6 +286,8 @@ const Dashboard = () => {
         <WeightIntervalSetting
           interval={settings.weight_measurement_interval}
           onIntervalChange={updateWeightInterval}
+          waistInterval={settings.waist_measurement_interval}
+          onWaistIntervalChange={updateWaistInterval}
         />
         <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>
