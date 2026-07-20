@@ -1,0 +1,1 @@
+ALTER TABLE public.fittrack_user_settings ADD COLUMN IF NOT EXISTS waist_measurement_interval integer NOT NULL DEFAULT 7;

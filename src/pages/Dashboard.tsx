@@ -62,7 +62,7 @@ const ResetCountdown = () => {
 const Dashboard = () => {
   const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
   const { getThisWeekSessions, getWeeklyWorkoutData, sessions: gymSessions, refetch: refetchGym } = useGymSessions();
-  const { settings, updateCalorieGoal, updateWeightInterval, refetch: refetchSettings } = useUserSettings();
+  const { settings, updateCalorieGoal, updateWeightInterval, updateWaistInterval, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
   const { entries: waistEntries, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
@@ -286,6 +286,8 @@ const Dashboard = () => {
         <WeightIntervalSetting
           interval={settings.weight_measurement_interval}
           onIntervalChange={updateWeightInterval}
+          waistInterval={settings.waist_measurement_interval}
+          onWaistIntervalChange={updateWaistInterval}
         />
         <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>

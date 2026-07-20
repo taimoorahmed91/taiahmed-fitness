@@ -856,6 +856,7 @@ export type Database = {
           telegram_subscribed: boolean
           updated_at: string
           user_id: string
+          waist_measurement_interval: number
           weight_measurement_interval: number
           whoop_api_url: string | null
         }
@@ -870,6 +871,7 @@ export type Database = {
           telegram_subscribed?: boolean
           updated_at?: string
           user_id: string
+          waist_measurement_interval?: number
           weight_measurement_interval?: number
           whoop_api_url?: string | null
         }
@@ -884,6 +886,7 @@ export type Database = {
           telegram_subscribed?: boolean
           updated_at?: string
           user_id?: string
+          waist_measurement_interval?: number
           weight_measurement_interval?: number
           whoop_api_url?: string | null
         }
