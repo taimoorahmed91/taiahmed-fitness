@@ -5,13 +5,17 @@ import { useToast } from '@/hooks/use-toast';
 interface UserSettings {
   daily_calorie_goal: number;
   weight_measurement_interval: number;
+  waist_measurement_interval: number;
 }
 
+const DEFAULTS: UserSettings = {
+  daily_calorie_goal: 2000,
+  weight_measurement_interval: 3,
+  waist_measurement_interval: 7,
+};
+
 export const useUserSettings = () => {
-  const [settings, setSettings] = useState<UserSettings>({ 
-    daily_calorie_goal: 2000,
-    weight_measurement_interval: 3
-  });
+  const [settings, setSettings] = useState<UserSettings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -19,7 +23,7 @@ export const useUserSettings = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setSettings({ daily_calorie_goal: 2000, weight_measurement_interval: 3 });
+        setSettings(DEFAULTS);
         setLoading(false);
         return;
       }
@@ -33,22 +37,23 @@ export const useUserSettings = () => {
       if (error) throw error;
 
       if (data) {
-        setSettings({ 
+        setSettings({
           daily_calorie_goal: data.daily_calorie_goal,
-          weight_measurement_interval: data.weight_measurement_interval || 3
+          weight_measurement_interval: data.weight_measurement_interval || 3,
+          waist_measurement_interval: (data as any).waist_measurement_interval || 7,
         });
       } else {
-        // Create default settings for new user
         const { data: newData, error: insertError } = await supabase
           .from('fittrack_user_settings')
-          .insert({ user_id: user.id, daily_calorie_goal: 2000, weight_measurement_interval: 3 })
+          .insert({ user_id: user.id, daily_calorie_goal: 2000, weight_measurement_interval: 3, waist_measurement_interval: 7 } as any)
           .select()
           .single();
 
         if (insertError) throw insertError;
-        setSettings({ 
+        setSettings({
           daily_calorie_goal: newData.daily_calorie_goal,
-          weight_measurement_interval: newData.weight_measurement_interval || 3
+          weight_measurement_interval: newData.weight_measurement_interval || 3,
+          waist_measurement_interval: (newData as any).waist_measurement_interval || 7,
         });
       }
     } catch (error) {
@@ -72,33 +77,19 @@ export const useUserSettings = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to update settings',
-          variant: 'destructive',
-        });
+        toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
         return;
       }
-
       const { error } = await supabase
         .from('fittrack_user_settings')
         .update({ daily_calorie_goal: goal })
         .eq('user_id', user.id);
-
       if (error) throw error;
-
       setSettings((prev) => ({ ...prev, daily_calorie_goal: goal }));
-      toast({
-        title: 'Success',
-        description: 'Daily calorie goal updated',
-      });
+      toast({ title: 'Success', description: 'Daily calorie goal updated' });
     } catch (error) {
       console.error('Error updating calorie goal:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update calorie goal',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to update calorie goal', variant: 'destructive' });
     }
   };
 
@@ -106,35 +97,41 @@ export const useUserSettings = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to update settings',
-          variant: 'destructive',
-        });
+        toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
         return;
       }
-
       const { error } = await supabase
         .from('fittrack_user_settings')
         .update({ weight_measurement_interval: interval })
         .eq('user_id', user.id);
-
       if (error) throw error;
-
       setSettings((prev) => ({ ...prev, weight_measurement_interval: interval }));
-      toast({
-        title: 'Success',
-        description: `Weight measurement interval updated to every ${interval} days`,
-      });
+      toast({ title: 'Success', description: `Weight measurement interval updated to every ${interval} days` });
     } catch (error) {
       console.error('Error updating weight interval:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update weight interval',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to update weight interval', variant: 'destructive' });
     }
   };
 
-  return { settings, loading, updateCalorieGoal, updateWeightInterval, refetch: fetchSettings };
+  const updateWaistInterval = async (interval: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
+        return;
+      }
+      const { error } = await supabase
+        .from('fittrack_user_settings')
+        .update({ waist_measurement_interval: interval } as any)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      setSettings((prev) => ({ ...prev, waist_measurement_interval: interval }));
+      toast({ title: 'Success', description: `Waist measurement interval updated to every ${interval} days` });
+    } catch (error) {
+      console.error('Error updating waist interval:', error);
+      toast({ title: 'Error', description: 'Failed to update waist interval', variant: 'destructive' });
+    }
+  };
+
+  return { settings, loading, updateCalorieGoal, updateWeightInterval, updateWaistInterval, refetch: fetchSettings };
 };
