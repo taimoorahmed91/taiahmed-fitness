@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { usePersonalDataHistory, PersonalHistoryField } from '@/hooks/usePersonalDataHistory';
 import { useWeight } from '@/hooks/useWeight';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Activity, KeyRound, RefreshCw, Copy, Trash2, AlertTriangle } from 'lucide-react';
+import { User, Activity, KeyRound, RefreshCw, Copy, Trash2, AlertTriangle, History, ChevronDown, ChevronUp } from 'lucide-react';
 
 
 const calcAge = (dob: string | null): number | null => {
