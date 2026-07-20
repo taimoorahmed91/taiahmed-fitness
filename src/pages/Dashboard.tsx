@@ -269,7 +269,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} dailySummary={summary} recoveryScore={latestRecoveryScore} />
+      <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} waistMeasurementInterval={settings.waist_measurement_interval} dailySummary={summary} recoveryScore={latestRecoveryScore} />
 
       <div className="grid lg:grid-cols-4 gap-6">
         <CalorieGoalProgress 

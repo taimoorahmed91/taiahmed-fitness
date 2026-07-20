@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dumbbell, CalendarOff, Scale, Activity, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Dumbbell, CalendarOff, Scale, Activity, CheckCircle, AlertTriangle, Ruler } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePersonalData } from '@/hooks/usePersonalData';
 interface DailySummary {
@@ -15,17 +15,21 @@ interface DailySummary {
 
 interface StatsCardsProps {
   weightMeasurementInterval: number;
+  waistMeasurementInterval: number;
   dailySummary: DailySummary | null;
   recoveryScore?: number | null;
 }
 
-export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoveryScore = null }: StatsCardsProps) => {
+export const StatsCards = ({ weightMeasurementInterval, waistMeasurementInterval, dailySummary, recoveryScore = null }: StatsCardsProps) => {
   const { data: personalData } = usePersonalData();
   const [didWorkoutToday, setDidWorkoutToday] = useState<boolean>(false);
   const [didWorkoutYesterday, setDidWorkoutYesterday] = useState<boolean>(false);
   const [weightDueToday, setWeightDueToday] = useState<boolean | null>(null);
   const [daysUntilWeight, setDaysUntilWeight] = useState<number>(0);
   const [lastWeightDiffDays, setLastWeightDiffDays] = useState<number | null>(null);
+  const [waistDueToday, setWaistDueToday] = useState<boolean | null>(null);
+  const [daysUntilWaist, setDaysUntilWaist] = useState<number>(0);
+  const [lastWaistDiffDays, setLastWaistDiffDays] = useState<number | null>(null);
   const [whoopSyncedToday, setWhoopSyncedToday] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +40,6 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
   const yesterdayWasWorkoutDay = workoutDays.includes(yesterdayDow);
   const missedYesterdayWorkout = yesterdayWasWorkoutDay && !didWorkoutYesterday && !isWorkoutDay && !didWorkoutToday;
 
-  // Fetch gym session for today and last weight date on mount
   useEffect(() => {
     const fetchStatus = async () => {
       try {
@@ -48,7 +51,6 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
 
         const today = new Date().toISOString().split('T')[0];
 
-        // Check if user has logged a gym session today
         const { data: gymData } = await supabase
           .from('fittrack_gym_sessions')
           .select('id')
@@ -58,7 +60,6 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
 
         setDidWorkoutToday(gymData && gymData.length > 0);
 
-        // Yesterday's gym session
         const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
         const { data: yGym } = await supabase
           .from('fittrack_gym_sessions')
@@ -68,7 +69,6 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
           .limit(1);
         setDidWorkoutYesterday(yGym && yGym.length > 0);
 
-        // Check if WHOOP data was fetched/created today (use created_at, not date, since date reflects cycle end which is typically yesterday)
         const todayStart = new Date(today + 'T00:00:00').toISOString();
         const tomorrowStart = new Date(new Date(today + 'T00:00:00').getTime() + 86400000).toISOString();
         const { data: whoopData } = await supabase
@@ -81,7 +81,6 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
 
         setWhoopSyncedToday(whoopData && whoopData.length > 0);
 
-        // Fetch last weight entry
         const { data: weightData } = await supabase
           .from('fittrack_weight')
           .select('date')
@@ -96,8 +95,24 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
           const diffDays = Math.floor((todayDate.getTime() - lastWeightDate.getTime()) / (1000 * 60 * 60 * 24));
           setLastWeightDiffDays(diffDays);
         } else {
-          // No weight entries yet
           setLastWeightDiffDays(null);
+        }
+
+        const { data: waistData } = await supabase
+          .from('fittrack_waist')
+          .select('date')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (waistData?.date) {
+          const lastWaistDate = new Date(waistData.date);
+          const todayDate = new Date(today);
+          const diffDays = Math.floor((todayDate.getTime() - lastWaistDate.getTime()) / (1000 * 60 * 60 * 24));
+          setLastWaistDiffDays(diffDays);
+        } else {
+          setLastWaistDiffDays(null);
         }
       } catch (error) {
         console.error('Error fetching status:', error);
@@ -107,28 +122,36 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
     };
 
     fetchStatus();
-  }, [dailySummary]); // Re-fetch when summary updates
+  }, [dailySummary]);
 
-  // Recalculate weight status when interval or lastWeightDiffDays changes
   useEffect(() => {
     if (lastWeightDiffDays === null) {
-      // No weight entries yet, measurement is due
+      setWeightDueToday(true);
+      setDaysUntilWeight(0);
+    } else if (lastWeightDiffDays >= weightMeasurementInterval) {
       setWeightDueToday(true);
       setDaysUntilWeight(0);
     } else {
-      if (lastWeightDiffDays >= weightMeasurementInterval) {
-        setWeightDueToday(true);
-        setDaysUntilWeight(0);
-      } else {
-        setWeightDueToday(false);
-        setDaysUntilWeight(weightMeasurementInterval - lastWeightDiffDays);
-      }
+      setWeightDueToday(false);
+      setDaysUntilWeight(weightMeasurementInterval - lastWeightDiffDays);
     }
   }, [weightMeasurementInterval, lastWeightDiffDays]);
 
+  useEffect(() => {
+    if (lastWaistDiffDays === null) {
+      setWaistDueToday(true);
+      setDaysUntilWaist(0);
+    } else if (lastWaistDiffDays >= waistMeasurementInterval) {
+      setWaistDueToday(true);
+      setDaysUntilWaist(0);
+    } else {
+      setWaistDueToday(false);
+      setDaysUntilWaist(waistMeasurementInterval - lastWaistDiffDays);
+    }
+  }, [waistMeasurementInterval, lastWaistDiffDays]);
+
   const showWorkoutReminder = (isWorkoutDay && !didWorkoutToday) || missedYesterdayWorkout;
 
-  // Determine title and subtitle for workout card
   let workoutTitle: string;
   let workoutSubtitle: string;
   if (didWorkoutToday) {
@@ -150,7 +173,7 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
   }
 
   return (
-    <div className="grid md:grid-cols-3 gap-6">
+    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* Workout Status Card */}
       <Card className="shadow-md">
         <CardContent className="pt-6">
@@ -188,6 +211,24 @@ export const StatsCards = ({ weightMeasurementInterval, dailySummary, recoverySc
             </div>
             <div className={`p-2 rounded-lg ${!weightDueToday ? 'bg-muted' : 'bg-primary/10'}`}>
               <Scale className={`h-5 w-5 ${weightDueToday ? 'text-primary' : 'text-muted-foreground'}`} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Waist Status Card */}
+      <Card className="shadow-md">
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Waist</p>
+              <p className={`text-sm font-medium mt-1 ${!waistDueToday ? 'text-muted-foreground' : ''}`}>
+                {loading ? '...' : (waistDueToday ? 'Measure your waist today' : `Next measurement in ${daysUntilWaist} day${daysUntilWaist !== 1 ? 's' : ''}`)}
+              </p>
+              <p className="text-xs text-muted-foreground">{waistDueToday ? 'Time to check in!' : 'On track'}</p>
+            </div>
+            <div className={`p-2 rounded-lg ${!waistDueToday ? 'bg-muted' : 'bg-primary/10'}`}>
+              <Ruler className={`h-5 w-5 ${waistDueToday ? 'text-primary' : 'text-muted-foreground'}`} />
             </div>
           </div>
         </CardContent>
