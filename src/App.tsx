@@ -21,6 +21,7 @@ import Welcome from "./pages/Welcome";
 import PendingApproval from "./pages/PendingApproval";
 import AdminApproval from "./pages/AdminApproval";
 import NotFound from "./pages/NotFound";
+import OAuthConsent from "./pages/OAuthConsent";
 import Achievements from "./pages/Achievements";
 import WhoopData from "./pages/WhoopData";
 import ActivityLogs from "./pages/ActivityLogs";
@@ -79,6 +80,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={isLoggedIn ? getLoggedInRedirect() : <Welcome />} />
+      <Route path="/oauth/consent" element={<OAuthConsent />} />
       <Route path="/pending-approval" element={isLoggedIn ? <PendingApproval /> : <Navigate to="/" replace />} />
       <Route
         path="/dashboard"
