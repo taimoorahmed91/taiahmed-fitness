@@ -80,6 +80,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={isLoggedIn ? getLoggedInRedirect() : <Welcome />} />
+      <Route path="/oauth/consent" element={<OAuthConsent />} />
       <Route path="/pending-approval" element={isLoggedIn ? <PendingApproval /> : <Navigate to="/" replace />} />
       <Route
         path="/dashboard"
