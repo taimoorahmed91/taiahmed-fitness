@@ -21,6 +21,7 @@ import Welcome from "./pages/Welcome";
 import PendingApproval from "./pages/PendingApproval";
 import AdminApproval from "./pages/AdminApproval";
 import NotFound from "./pages/NotFound";
+import OAuthConsent from "./pages/OAuthConsent";
 import Achievements from "./pages/Achievements";
 import WhoopData from "./pages/WhoopData";
 import ActivityLogs from "./pages/ActivityLogs";
