@@ -40,7 +40,7 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
       mode === 'single'
         ? [date]
         : range?.from
-          ? eachDayOfInterval({ from: range.from, to: range.to ?? range.from })
+          ? eachDayOfInterval({ start: range.from, end: range.to ?? range.from })
           : [];
 
     if (dates.length === 0) return;
@@ -69,7 +69,7 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
 
   const rangeCount =
     mode === 'range' && range?.from
-      ? eachDayOfInterval({ from: range.from, to: range.to ?? range.from }).length
+      ? eachDayOfInterval({ start: range.from, end: range.to ?? range.from }).length
       : 0;
 
   return (
