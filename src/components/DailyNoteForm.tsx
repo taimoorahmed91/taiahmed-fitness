@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
+import { format, eachDayOfInterval } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -11,13 +10,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SYMPTOM_TAGS } from '@/hooks/useDailyNotes';
+import type { DateRange } from 'react-day-picker';
 
 interface DailyNoteFormProps {
   onSubmit: (note: { date: string; tags: string[]; severity?: number | null; notes?: string }) => void;
 }
 
 export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
+  const [mode, setMode] = useState<'single' | 'range'>('single');
   const [date, setDate] = useState<Date>(new Date());
+  const [range, setRange] = useState<DateRange | undefined>({ from: new Date(), to: new Date() });
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [severity, setSeverity] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
@@ -34,11 +36,22 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
       return;
     }
 
-    onSubmit({
-      date: format(date, 'yyyy-MM-dd'),
-      tags: selectedTags,
-      severity,
-      notes: notes.trim() || undefined,
+    const dates: Date[] =
+      mode === 'single'
+        ? [date]
+        : range?.from
+          ? eachDayOfInterval({ start: range.from, end: range.to ?? range.from })
+          : [];
+
+    if (dates.length === 0) return;
+
+    dates.forEach((d) => {
+      onSubmit({
+        date: format(d, 'yyyy-MM-dd'),
+        tags: selectedTags,
+        severity,
+        notes: notes.trim() || undefined,
+      });
     });
 
     // Reset form
@@ -46,6 +59,18 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
     setSeverity(null);
     setNotes('');
   };
+
+  const rangeLabel =
+    range?.from
+      ? range.to && format(range.to, 'yyyy-MM-dd') !== format(range.from, 'yyyy-MM-dd')
+        ? `${format(range.from, 'PPP')} — ${format(range.to, 'PPP')}`
+        : format(range.from, 'PPP')
+      : 'Pick a date range';
+
+  const rangeCount =
+    mode === 'range' && range?.from
+      ? eachDayOfInterval({ start: range.from, end: range.to ?? range.from }).length
+      : 0;
 
   return (
     <Card>
@@ -57,9 +82,31 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Mode toggle */}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={mode === 'single' ? 'default' : 'outline'}
+              size="sm"
+              className="flex-1"
+              onClick={() => setMode('single')}
+            >
+              Single Date
+            </Button>
+            <Button
+              type="button"
+              variant={mode === 'range' ? 'default' : 'outline'}
+              size="sm"
+              className="flex-1"
+              onClick={() => setMode('range')}
+            >
+              Date Range
+            </Button>
+          </div>
+
           {/* Date Picker */}
           <div className="space-y-2">
-            <Label>Date</Label>
+            <Label>{mode === 'single' ? 'Date' : 'Date Range'}</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -70,19 +117,39 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, 'PPP') : <span>Pick a date</span>}
+                  {mode === 'single' ? (
+                    date ? format(date, 'PPP') : <span>Pick a date</span>
+                  ) : (
+                    <span>{rangeLabel}</span>
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(d) => d && setDate(d)}
-                  initialFocus
-                  className="p-3 pointer-events-auto"
-                />
+                {mode === 'single' ? (
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(d) => d && setDate(d)}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                ) : (
+                  <Calendar
+                    mode="range"
+                    selected={range}
+                    onSelect={setRange}
+                    initialFocus
+                    numberOfMonths={2}
+                    className="p-3 pointer-events-auto"
+                  />
+                )}
               </PopoverContent>
             </Popover>
+            {mode === 'range' && rangeCount > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Will save the same note for {rangeCount} day{rangeCount === 1 ? '' : 's'}.
+              </p>
+            )}
           </div>
 
           {/* Quick Tags */}
