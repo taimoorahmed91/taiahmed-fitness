@@ -23,7 +23,7 @@ const DailyNotes = () => {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <DailyNoteForm onSubmit={addNote} />
-          <DailyNotesList notes={notes} onDelete={deleteNote} />
+          <DailyNotesList notes={notes} onDelete={deleteNote} onEdit={addNote} />
         </div>
       </main>
     </div>
