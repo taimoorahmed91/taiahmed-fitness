@@ -1,15 +1,20 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Trash2, AlertCircle } from 'lucide-react';
-import { DailyNote } from '@/hooks/useDailyNotes';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { FileText, Trash2, AlertCircle, Pencil } from 'lucide-react';
+import { DailyNote, SYMPTOM_TAGS } from '@/hooks/useDailyNotes';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
 
 interface DailyNotesListProps {
   notes: DailyNote[];
   onDelete: (id: string) => void;
+  onEdit: (note: { date: string; tags: string[]; severity?: number | null; notes?: string }) => void;
 }
 
 const getSeverityColor = (severity: number | null) => {
@@ -19,8 +24,35 @@ const getSeverityColor = (severity: number | null) => {
   return 'bg-red-500/20 text-red-700 dark:text-red-400';
 };
 
-export const DailyNotesList = ({ notes, onDelete }: DailyNotesListProps) => {
+export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps) => {
   const pagination = usePagination(notes, { pageSize: 20 });
+  const [editing, setEditing] = useState<DailyNote | null>(null);
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editSeverity, setEditSeverity] = useState<number | null>(null);
+  const [editNotes, setEditNotes] = useState('');
+
+  const openEdit = (note: DailyNote) => {
+    setEditing(note);
+    setEditTags(note.tags || []);
+    setEditSeverity(note.severity);
+    setEditNotes(note.notes || '');
+  };
+
+  const toggleEditTag = (tag: string) => {
+    setEditTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  };
+
+  const saveEdit = () => {
+    if (!editing) return;
+    if (editTags.length === 0 && !editNotes.trim()) return;
+    onEdit({
+      date: editing.date,
+      tags: editTags,
+      severity: editSeverity,
+      notes: editNotes.trim() || undefined,
+    });
+    setEditing(null);
+  };
 
   return (
     <Card>
@@ -68,14 +100,25 @@ export const DailyNotesList = ({ notes, onDelete }: DailyNotesListProps) => {
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{note.notes}</p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 text-destructive hover:text-destructive"
-                      onClick={() => onDelete(note.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(note)}
+                        aria-label="Edit note"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => onDelete(note.id)}
+                        aria-label="Delete note"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -91,6 +134,69 @@ export const DailyNotesList = ({ notes, onDelete }: DailyNotesListProps) => {
           </>
         )}
       </CardContent>
+
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Note {editing && `— ${format(new Date(editing.date), 'PPP')}`}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Symptoms / Tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {SYMPTOM_TAGS.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant={editTags.includes(tag) ? 'default' : 'outline'}
+                    className="cursor-pointer transition-colors"
+                    onClick={() => toggleEditTag(tag)}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Severity (optional)</Label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <Button
+                    key={level}
+                    type="button"
+                    variant={editSeverity === level ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setEditSeverity(editSeverity === level ? null : level)}
+                  >
+                    {level}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Additional Notes (optional)</Label>
+              <Textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                maxLength={10000}
+                rows={6}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={editTags.length === 0 && !editNotes.trim()}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
