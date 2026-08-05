@@ -12,6 +12,7 @@ export interface PersonalData {
   target_weight_kg: number | null;
   gym_day_calorie_target: number | null;
   rest_day_calorie_target: number | null;
+  protein_multiplier: number | null;
   workout_days: number[];
 }
 
@@ -24,6 +25,7 @@ const empty: PersonalData = {
   target_weight_kg: null,
   gym_day_calorie_target: null,
   rest_day_calorie_target: null,
+  protein_multiplier: null,
   workout_days: [],
 };
 
@@ -51,6 +53,7 @@ export const usePersonalData = () => {
         target_weight_kg: row.target_weight_kg ? Number(row.target_weight_kg) : null,
         gym_day_calorie_target: (row as any).gym_day_calorie_target ?? null,
         rest_day_calorie_target: (row as any).rest_day_calorie_target ?? null,
+        protein_multiplier: (row as any).protein_multiplier != null ? Number((row as any).protein_multiplier) : null,
         workout_days: ((row as any).workout_days ?? []) as number[],
       });
     } else {
