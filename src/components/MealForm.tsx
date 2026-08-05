@@ -58,11 +58,13 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
     onSubmit({
       food: food.trim(),
       calories: parseInt(calories),
+      protein: protein === '' ? null : parseFloat(protein),
       time,
       date,
     });
     setFood('');
     setCalories('');
+    setProtein('');
     setTime('');
     toast.success('Meal logged successfully!');
   };
