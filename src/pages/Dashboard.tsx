@@ -273,17 +273,13 @@ const Dashboard = () => {
 
       <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} waistMeasurementInterval={settings.waist_measurement_interval} dailySummary={summary} recoveryScore={latestRecoveryScore} />
 
-      <div className="grid lg:grid-cols-4 gap-6">
-        <CalorieGoalProgress 
-          current={getTodayCalories()} 
-          goal={effectiveGoal} 
+      <div className="grid lg:grid-cols-2 gap-6">
+        <CalorieGoalProgress
+          current={getTodayCalories()}
+          goal={effectiveGoal}
           onGoalChange={updateCalorieGoal}
           autoMode={autoMode}
           dayType={autoMode ? (isGymDay ? 'gym' : 'rest') : undefined}
-        />
-        <YesterdayStatus 
-          yesterdayCalories={yesterdayCalories} 
-          goal={yesterdayGoal} 
         />
         <WeightIntervalSetting
           interval={settings.weight_measurement_interval}
@@ -291,15 +287,22 @@ const Dashboard = () => {
           waistInterval={settings.waist_measurement_interval}
           onWaistIntervalChange={updateWaistInterval}
         />
-        <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>
 
-      <div className="grid lg:grid-cols-4 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
+        <YesterdayStatus
+          yesterdayCalories={yesterdayCalories}
+          goal={yesterdayGoal}
+        />
         <ProteinTargetCard
           multiplier={personalData.protein_multiplier}
           currentWeight={weightEntries[0]?.weight ?? null}
           todayProtein={getTodayProtein()}
         />
+      </div>
+
+      <div className="grid lg:grid-cols-1 gap-6">
+        <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
