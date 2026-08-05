@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { Beef } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,8 +11,10 @@ interface ProteinTargetCardProps {
 
 export const ProteinTargetCard = ({ multiplier, currentWeight, todayProtein }: ProteinTargetCardProps) => {
   const target = multiplier && currentWeight ? multiplier * currentWeight : null;
-  const pct = target ? Math.min(100, Math.round((todayProtein / target) * 100)) : 0;
-  const reached = target !== null && todayProtein >= target;
+  const goal = target ?? 0;
+  const current = todayProtein;
+  const percentage = goal > 0 ? Math.min(Math.round((current / goal) * 100), 100) : 0;
+  const remaining = Math.max(goal - current, 0);
 
   return (
     <Card className="shadow-md">
@@ -21,32 +24,38 @@ export const ProteinTargetCard = ({ multiplier, currentWeight, todayProtein }: P
           Daily Protein Target
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {target === null ? (
           <p className="text-sm text-muted-foreground">
             Set a protein multiplier in Personal Data and log a weight entry to see your daily target.
           </p>
         ) : (
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              {multiplier} g/kg × {currentWeight} kg
-            </p>
-            <div className="flex items-baseline gap-2">
-              <span className={cn('text-3xl font-bold', reached ? 'text-chart-2' : 'text-foreground')}>
-                {Math.round(target)}
-              </span>
-              <span className="text-muted-foreground">g protein / day</span>
+          <>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Progress</span>
+              <span className="font-semibold">{percentage}%</span>
             </div>
-            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-              <div
-                className={cn('h-full rounded-full transition-all', reached ? 'bg-chart-2' : 'bg-primary')}
-                style={{ width: `${pct}%` }}
-              />
+            <Progress value={percentage} className="h-3" />
+            <div className="grid grid-cols-3 gap-4 pt-2">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{Math.round(current)}</p>
+                <p className="text-xs text-muted-foreground">Consumed</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-foreground">{Math.round(goal)}</p>
+                <p className="text-xs text-muted-foreground">Goal</p>
+              </div>
+              <div className="text-center">
+                <p className={cn('text-2xl font-bold', remaining > 0 ? 'text-chart-2' : 'text-chart-2')}>
+                  {Math.round(remaining)}
+                </p>
+                <p className="text-xs text-muted-foreground">Remaining</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {Math.round(todayProtein)} g logged today ({pct}% of target)
+            <p className="text-xs text-muted-foreground text-center">
+              {percentage}% of target reached today
             </p>
-          </div>
+          </>
         )}
       </CardContent>
     </Card>
