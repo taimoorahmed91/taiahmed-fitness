@@ -124,6 +124,10 @@ const Meals = () => {
               <p className="text-3xl font-bold">{todayCalories} cal</p>
             </div>
             <div>
+              <p className="text-sm text-muted-foreground">Today's Protein</p>
+              <p className="text-xl font-semibold">{Math.round(getTodayProtein())} g</p>
+            </div>
+            <div>
               <p className="text-sm text-muted-foreground">Remaining Today</p>
               <p className={`text-xl font-semibold ${caloriesRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
                 {caloriesRemaining} cal
