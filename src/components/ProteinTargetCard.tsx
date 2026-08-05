@@ -52,9 +52,6 @@ export const ProteinTargetCard = ({ multiplier, currentWeight, todayProtein }: P
                 <p className="text-xs text-muted-foreground">Remaining</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground text-center">
-              {percentage}% of target reached today
-            </p>
           </>
         )}
       </CardContent>
