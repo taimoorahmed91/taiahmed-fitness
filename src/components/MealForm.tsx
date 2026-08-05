@@ -7,8 +7,8 @@ import { Utensils } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MealFormProps {
-  onSubmit: (meal: { food: string; calories: number; time: string; date: string }) => void;
-  prefillData?: { food: string; calories: number } | null;
+  onSubmit: (meal: { food: string; calories: number; protein: number | null; time: string; date: string }) => void;
+  prefillData?: { food: string; calories: number; protein?: number | null } | null;
   onPrefillConsumed?: () => void;
 }
 
@@ -20,6 +20,7 @@ const getCurrentTime = () => {
 export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormProps) => {
   const [food, setFood] = useState('');
   const [calories, setCalories] = useState('');
+  const [protein, setProtein] = useState('');
   const [time, setTime] = useState(getCurrentTime);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -28,6 +29,7 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
     if (prefillData) {
       setFood(prefillData.food);
       setCalories(prefillData.calories.toString());
+      setProtein(prefillData.protein != null ? prefillData.protein.toString() : '');
       setTime(getCurrentTime());
       setDate(new Date().toISOString().split('T')[0]);
       onPrefillConsumed?.();
@@ -35,11 +37,11 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
     }
   }, [prefillData, onPrefillConsumed]);
 
-  const handleCaloriesChange = (value: string) => {
+  const handleNumericChange = (value: string, setter: (v: string) => void) => {
     // Allow digits and decimal separators, convert comma to dot
     const sanitized = value.replace(',', '.');
     if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
-      setCalories(sanitized);
+      setter(sanitized);
     }
   };
 
