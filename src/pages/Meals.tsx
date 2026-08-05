@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Utensils } from 'lucide-react';
 
 const Meals = () => {
-  const { meals, addMeal, deleteMeal, updateMeal, getTodayCalories } = useMeals();
+  const { meals, addMeal, deleteMeal, updateMeal, getTodayCalories, getTodayProtein } = useMeals();
   const { settings } = useUserSettings();
   const { sessions: gymSessions } = useGymSessions();
   const { data: personalData } = usePersonalData();
