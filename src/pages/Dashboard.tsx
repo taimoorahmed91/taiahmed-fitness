@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { StatsCards } from '@/components/StatsCards';
 import { CalorieChart } from '@/components/CalorieChart';
+import { ProteinChart } from '@/components/ProteinChart';
 import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
@@ -294,6 +295,10 @@ const Dashboard = () => {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <CalorieChart data={calorieChartData} notesMap={notesMap} />
+        <ProteinChart data={calorieChartData} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
         <WorkoutDurationChart data={getWeeklyWorkoutData()} />
       </div>
 
