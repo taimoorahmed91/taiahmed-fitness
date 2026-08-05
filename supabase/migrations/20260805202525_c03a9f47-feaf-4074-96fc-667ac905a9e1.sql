@@ -1,0 +1,1 @@
+ALTER TABLE public.fittrack_meals ADD COLUMN IF NOT EXISTS protein numeric;
