@@ -26,11 +26,11 @@ const Meals = () => {
   const { data: personalData } = usePersonalData();
   const { activities: extraActivities } = useExtraActivities();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
-  const [editForm, setEditForm] = useState({ food: '', calories: '', time: '', date: '' });
-  const [prefillData, setPrefillData] = useState<{ food: string; calories: number } | null>(null);
+  const [editForm, setEditForm] = useState({ food: '', calories: '', protein: '', time: '', date: '' });
+  const [prefillData, setPrefillData] = useState<{ food: string; calories: number; protein?: number | null } | null>(null);
 
   const handleCopyMeal = (meal: Meal) => {
-    setPrefillData({ food: meal.food, calories: meal.calories });
+    setPrefillData({ food: meal.food, calories: meal.calories, protein: meal.protein });
   };
 
   const handlePrefillConsumed = () => {
@@ -43,6 +43,7 @@ const Meals = () => {
     setEditForm({
       food: meal.food,
       calories: meal.calories.toString(),
+      protein: meal.protein != null ? meal.protein.toString() : '',
       time: meal.time,
       date: meal.date,
     });
@@ -54,6 +55,7 @@ const Meals = () => {
     await updateMeal(editingMeal.id, {
       food: editForm.food,
       calories: parseInt(editForm.calories) || 0,
+      protein: editForm.protein === '' ? null : parseFloat(editForm.protein.replace(',', '.')),
       time: editForm.time,
       date: editForm.date,
     });
@@ -162,14 +164,27 @@ const Meals = () => {
                 onChange={(e) => setEditForm({ ...editForm, food: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-calories">Calories</Label>
-              <Input
-                id="edit-calories"
-                type="number"
-                value={editForm.calories}
-                onChange={(e) => setEditForm({ ...editForm, calories: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-calories">Calories</Label>
+                <Input
+                  id="edit-calories"
+                  type="number"
+                  value={editForm.calories}
+                  onChange={(e) => setEditForm({ ...editForm, calories: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-protein">Protein (g)</Label>
+                <Input
+                  id="edit-protein"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="e.g., 32"
+                  value={editForm.protein}
+                  onChange={(e) => setEditForm({ ...editForm, protein: e.target.value })}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
