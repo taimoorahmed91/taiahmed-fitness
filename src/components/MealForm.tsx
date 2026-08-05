@@ -133,14 +133,6 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
               />
             </div>
           </div>
-
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
           <Button type="submit" className="w-full">
             Log Meal
           </Button>
