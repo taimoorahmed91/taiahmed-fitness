@@ -98,9 +98,22 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
                 inputMode="decimal"
                 placeholder="e.g., 450"
                 value={calories}
-                onChange={(e) => handleCaloriesChange(e.target.value)}
+                onChange={(e) => handleNumericChange(e.target.value, setCalories)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="protein">Protein (g)</Label>
+              <Input
+                id="protein"
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g., 32"
+                value={protein}
+                onChange={(e) => handleNumericChange(e.target.value, setProtein)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="time">Time Eaten</Label>
               <Input
@@ -110,9 +123,17 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
                 onChange={(e) => setTime(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+
             <Input
               id="date"
               type="date"
