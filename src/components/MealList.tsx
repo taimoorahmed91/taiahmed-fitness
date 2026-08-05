@@ -233,7 +233,12 @@ const MealItem = ({
       </div>
     </div>
     <div className="flex items-center gap-2 shrink-0">
-      <span className="font-semibold text-primary text-sm">{meal.calories} cal</span>
+      <div className="text-right">
+        <span className="block font-semibold text-primary text-sm">{meal.calories} cal</span>
+        {meal.protein != null && (
+          <span className="block text-xs text-muted-foreground">{meal.protein} g protein</span>
+        )}
+      </div>
       {onCopy && (
         <Button variant="ghost" size="icon" onClick={() => onCopy(meal)} className="h-8 w-8" title="Copy to form">
           <Copy className="h-4 w-4 text-muted-foreground" />

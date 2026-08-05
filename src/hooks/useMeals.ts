@@ -59,6 +59,7 @@ export const useMeals = () => {
         id: meal.id,
         food: meal.food,
         calories: meal.calories,
+        protein: (meal as any).protein ?? null,
         time: meal.time,
         date: meal.date,
       }));
@@ -111,15 +112,16 @@ export const useMeals = () => {
           user_id: user.id,
           food: meal.food,
           calories: meal.calories,
+          protein: meal.protein ?? null,
           time: meal.time,
           date: meal.date,
-        })
+        } as any)
         .select()
         .single();
 
       if (error) throw error;
 
-      const newMeal: Meal = { id: data.id, food: data.food, calories: data.calories, time: data.time, date: data.date };
+      const newMeal: Meal = { id: data.id, food: data.food, calories: data.calories, protein: (data as any).protein ?? null, time: data.time, date: data.date };
       setMeals((prev) => [newMeal, ...prev]);
       logActivity({ action: 'create', category: 'meal', details: { food: meal.food, calories: meal.calories, time: meal.time, date: meal.date } });
     } catch (error: any) {
@@ -161,14 +163,21 @@ export const useMeals = () => {
     return meals.filter((meal) => meal.date === today).reduce((sum, meal) => sum + meal.calories, 0);
   };
 
+  const getTodayProtein = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return meals.filter((meal) => meal.date === today).reduce((sum, meal) => sum + (meal.protein || 0), 0);
+  };
+
   const getWeeklyData = () => {
-    const days: { date: string; fullDate: string; calories: number }[] = [];
+    const days: { date: string; fullDate: string; calories: number; protein: number }[] = [];
     for (let i = 7; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      const dayCalories = meals.filter((meal) => meal.date === dateStr).reduce((sum, meal) => sum + meal.calories, 0);
-      days.push({ date: date.toLocaleDateString('en-US', { weekday: 'short' }), fullDate: dateStr, calories: dayCalories });
+      const dayMeals = meals.filter((meal) => meal.date === dateStr);
+      const dayCalories = dayMeals.reduce((sum, meal) => sum + meal.calories, 0);
+      const dayProtein = dayMeals.reduce((sum, meal) => sum + (meal.protein || 0), 0);
+      days.push({ date: date.toLocaleDateString('en-US', { weekday: 'short' }), fullDate: dateStr, calories: dayCalories, protein: Math.round(dayProtein) });
     }
     return days;
   };
@@ -188,5 +197,5 @@ export const useMeals = () => {
     return Object.entries(periods).map(([name, data]) => ({ name, calories: data.calories, count: data.count }));
   };
 
-  return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: fetchMeals };
+  return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getTodayProtein, getWeeklyData, getMealsByTimeOfDay, refetch: fetchMeals };
 };

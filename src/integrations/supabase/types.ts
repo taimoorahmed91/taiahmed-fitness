@@ -713,6 +713,7 @@ export type Database = {
           date: string
           food: string
           id: string
+          protein: number | null
           time: string
           updated_at: string
           user_id: string
@@ -723,6 +724,7 @@ export type Database = {
           date: string
           food: string
           id?: string
+          protein?: number | null
           time: string
           updated_at?: string
           user_id: string
@@ -733,6 +735,7 @@ export type Database = {
           date?: string
           food?: string
           id?: string
+          protein?: number | null
           time?: string
           updated_at?: string
           user_id?: string

@@ -2,6 +2,7 @@ export interface Meal {
   id: string;
   food: string;
   calories: number;
+  protein?: number | null;
   time: string;
   date: string;
 }
