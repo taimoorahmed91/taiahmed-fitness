@@ -7,6 +7,7 @@ import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
+import { ProteinTargetCard } from '@/components/ProteinTargetCard';
 import { WeightChart } from '@/components/WeightChart';
 import { WaistChart } from '@/components/WaistChart';
 import { SleepChart } from '@/components/SleepChart';
@@ -61,7 +62,7 @@ const ResetCountdown = () => {
 };
 
 const Dashboard = () => {
-  const { meals, getTodayCalories, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
+  const { meals, getTodayCalories, getTodayProtein, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
   const { getThisWeekSessions, getWeeklyWorkoutData, sessions: gymSessions, refetch: refetchGym } = useGymSessions();
   const { settings, updateCalorieGoal, updateWeightInterval, updateWaistInterval, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
@@ -291,6 +292,14 @@ const Dashboard = () => {
           onWaistIntervalChange={updateWaistInterval}
         />
         <MealTimeChart data={getMealsByTimeOfDay()} />
+      </div>
+
+      <div className="grid lg:grid-cols-4 gap-6">
+        <ProteinTargetCard
+          multiplier={personalData.protein_multiplier}
+          currentWeight={weightEntries[0]?.weight ?? null}
+          todayProtein={getTodayProtein()}
+        />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

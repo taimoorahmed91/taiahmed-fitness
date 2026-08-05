@@ -39,6 +39,7 @@ const PersonalDataPage = () => {
   const [targetWeight, setTargetWeight] = useState('');
   const [gymTarget, setGymTarget] = useState('');
   const [restTarget, setRestTarget] = useState('');
+  const [proteinMultiplier, setProteinMultiplier] = useState('');
   const [workoutDays, setWorkoutDays] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -51,6 +52,7 @@ const PersonalDataPage = () => {
     setTargetWeight(data.target_weight_kg?.toString() || '');
     setGymTarget(data.gym_day_calorie_target?.toString() || '');
     setRestTarget(data.rest_day_calorie_target?.toString() || '');
+    setProteinMultiplier(data.protein_multiplier?.toString() || '');
     setWorkoutDays(data.workout_days || []);
   }, [data]);
 
@@ -76,6 +78,7 @@ const PersonalDataPage = () => {
       target_weight_kg: targetWeight ? parseFloat(targetWeight) : null,
       gym_day_calorie_target: gymTarget ? parseInt(gymTarget, 10) : null,
       rest_day_calorie_target: restTarget ? parseInt(restTarget, 10) : null,
+      protein_multiplier: proteinMultiplier ? parseFloat(proteinMultiplier) : null,
       workout_days: workoutDays,
     });
     setSaving(false);
@@ -219,6 +222,23 @@ const PersonalDataPage = () => {
                     latest={latestFor('rest_day_calorie_target')}
                     history={historyFor('rest_day_calorie_target')}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="proteinMultiplier">Protein Multiplier (g/kg)</Label>
+                  <Input
+                    id="proteinMultiplier"
+                    inputMode="decimal"
+                    value={proteinMultiplier}
+                    onChange={(e) => handleNumeric(e.target.value, setProteinMultiplier)}
+                    placeholder="e.g. 2.2"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Grams of protein per kg of body weight. Multiplied by your current weight to set the daily protein target on the dashboard.
+                    {currentWeight && proteinMultiplier
+                      ? ` Current target: ${Math.round(parseFloat(proteinMultiplier) * currentWeight)} g`
+                      : ''}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
