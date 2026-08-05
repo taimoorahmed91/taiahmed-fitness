@@ -31,16 +31,14 @@ export const ProteinChart = ({ data }: ProteinChartProps) => {
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Drumstick className="h-5 w-5 text-primary" />
             Weekly Protein
           </CardTitle>
-          {avgProtein > 0 && (
-            <span className="text-sm text-muted-foreground">
-              Avg: <span className="font-semibold text-foreground">{avgProtein}</span> g/day
-            </span>
-          )}
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            Avg: <span className="font-semibold text-foreground">{avgProtein}</span> g/day
+          </span>
         </div>
       </CardHeader>
       <CardContent>
