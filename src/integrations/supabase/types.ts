@@ -752,6 +752,7 @@ export type Database = {
           gym_day_calorie_target: number | null
           height_cm: number | null
           id: string
+          protein_multiplier: number | null
           rest_day_calorie_target: number | null
           target_weight_kg: number | null
           updated_at: string
@@ -767,6 +768,7 @@ export type Database = {
           gym_day_calorie_target?: number | null
           height_cm?: number | null
           id?: string
+          protein_multiplier?: number | null
           rest_day_calorie_target?: number | null
           target_weight_kg?: number | null
           updated_at?: string
@@ -782,6 +784,7 @@ export type Database = {
           gym_day_calorie_target?: number | null
           height_cm?: number | null
           id?: string
+          protein_multiplier?: number | null
           rest_day_calorie_target?: number | null
           target_weight_kg?: number | null
           updated_at?: string
