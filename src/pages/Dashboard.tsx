@@ -273,7 +273,7 @@ const Dashboard = () => {
 
       <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} waistMeasurementInterval={settings.waist_measurement_interval} dailySummary={summary} recoveryScore={latestRecoveryScore} />
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <CalorieGoalProgress
           current={getTodayCalories()}
           goal={effectiveGoal}
@@ -287,9 +287,6 @@ const Dashboard = () => {
           waistInterval={settings.waist_measurement_interval}
           onWaistIntervalChange={updateWaistInterval}
         />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
         <YesterdayStatus
           yesterdayCalories={yesterdayCalories}
           goal={yesterdayGoal}
