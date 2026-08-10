@@ -7,8 +7,8 @@ import { Utensils } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MealFormProps {
-  onSubmit: (meal: { food: string; calories: number; protein: number | null; time: string; date: string }) => void;
-  prefillData?: { food: string; calories: number; protein?: number | null } | null;
+  onSubmit: (meal: { food: string; calories: number; protein: number | null; carbs: number | null; time: string; date: string }) => void;
+  prefillData?: { food: string; calories: number; protein?: number | null; carbs?: number | null } | null;
   onPrefillConsumed?: () => void;
 }
 
