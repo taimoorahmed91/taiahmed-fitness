@@ -114,6 +114,7 @@ export const useMeals = () => {
           food: meal.food,
           calories: meal.calories,
           protein: meal.protein ?? null,
+          carbs: meal.carbs ?? null,
           time: meal.time,
           date: meal.date,
         } as any)
@@ -122,7 +123,7 @@ export const useMeals = () => {
 
       if (error) throw error;
 
-      const newMeal: Meal = { id: data.id, food: data.food, calories: data.calories, protein: (data as any).protein ?? null, time: data.time, date: data.date };
+      const newMeal: Meal = { id: data.id, food: data.food, calories: data.calories, protein: (data as any).protein ?? null, carbs: (data as any).carbs ?? null, time: data.time, date: data.date };
       setMeals((prev) => [newMeal, ...prev]);
       logActivity({ action: 'create', category: 'meal', details: { food: meal.food, calories: meal.calories, time: meal.time, date: meal.date } });
     } catch (error: any) {
