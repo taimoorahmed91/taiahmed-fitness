@@ -205,5 +205,5 @@ export const useMeals = () => {
     return Object.entries(periods).map(([name, data]) => ({ name, calories: data.calories, count: data.count }));
   };
 
-  return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getTodayProtein, getWeeklyData, getMealsByTimeOfDay, refetch: fetchMeals };
+  return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: fetchMeals };
 };
