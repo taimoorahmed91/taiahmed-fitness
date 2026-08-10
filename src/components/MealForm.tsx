@@ -61,12 +61,14 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
       food: food.trim(),
       calories: parseInt(calories),
       protein: protein === '' ? null : parseFloat(protein),
+      carbs: carbs === '' ? null : parseFloat(carbs),
       time,
       date,
     });
     setFood('');
     setCalories('');
     setProtein('');
+    setCarbs('');
     setTime('');
     toast.success('Meal logged successfully!');
   };
