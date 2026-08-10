@@ -194,6 +194,19 @@ const Meals = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="edit-carbs">Carbs (g)</Label>
+                <Input
+                  id="edit-carbs"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="e.g., 120"
+                  value={editForm.carbs}
+                  onChange={(e) => setEditForm({ ...editForm, carbs: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="edit-time">Time</Label>
                 <Input
                   id="edit-time"
