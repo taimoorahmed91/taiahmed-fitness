@@ -60,6 +60,7 @@ export const useMeals = () => {
         food: meal.food,
         calories: meal.calories,
         protein: (meal as any).protein ?? null,
+        carbs: (meal as any).carbs ?? null,
         time: meal.time,
         date: meal.date,
       }));
