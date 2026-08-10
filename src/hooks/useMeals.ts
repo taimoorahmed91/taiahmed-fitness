@@ -170,8 +170,13 @@ export const useMeals = () => {
     return meals.filter((meal) => meal.date === today).reduce((sum, meal) => sum + (meal.protein || 0), 0);
   };
 
+  const getTodayCarbs = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return meals.filter((meal) => meal.date === today).reduce((sum, meal) => sum + (meal.carbs || 0), 0);
+  };
+
   const getWeeklyData = () => {
-    const days: { date: string; fullDate: string; calories: number; protein: number }[] = [];
+    const days: { date: string; fullDate: string; calories: number; protein: number; carbs: number }[] = [];
     for (let i = 7; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
@@ -179,7 +184,8 @@ export const useMeals = () => {
       const dayMeals = meals.filter((meal) => meal.date === dateStr);
       const dayCalories = dayMeals.reduce((sum, meal) => sum + meal.calories, 0);
       const dayProtein = dayMeals.reduce((sum, meal) => sum + (meal.protein || 0), 0);
-      days.push({ date: date.toLocaleDateString('en-US', { weekday: 'short' }), fullDate: dateStr, calories: dayCalories, protein: Math.round(dayProtein) });
+      const dayCarbs = dayMeals.reduce((sum, meal) => sum + (meal.carbs || 0), 0);
+      days.push({ date: date.toLocaleDateString('en-US', { weekday: 'short' }), fullDate: dateStr, calories: dayCalories, protein: Math.round(dayProtein), carbs: Math.round(dayCarbs) });
     }
     return days;
   };
