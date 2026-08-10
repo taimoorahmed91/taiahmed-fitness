@@ -40,6 +40,7 @@ const PersonalDataPage = () => {
   const [gymTarget, setGymTarget] = useState('');
   const [restTarget, setRestTarget] = useState('');
   const [proteinMultiplier, setProteinMultiplier] = useState('');
+  const [carbMultiplier, setCarbMultiplier] = useState('');
   const [workoutDays, setWorkoutDays] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -53,6 +54,7 @@ const PersonalDataPage = () => {
     setGymTarget(data.gym_day_calorie_target?.toString() || '');
     setRestTarget(data.rest_day_calorie_target?.toString() || '');
     setProteinMultiplier(data.protein_multiplier?.toString() || '');
+    setCarbMultiplier(data.carb_multiplier?.toString() || '');
     setWorkoutDays(data.workout_days || []);
   }, [data]);
 
@@ -79,6 +81,7 @@ const PersonalDataPage = () => {
       gym_day_calorie_target: gymTarget ? parseInt(gymTarget, 10) : null,
       rest_day_calorie_target: restTarget ? parseInt(restTarget, 10) : null,
       protein_multiplier: proteinMultiplier ? parseFloat(proteinMultiplier) : null,
+      carb_multiplier: carbMultiplier ? parseFloat(carbMultiplier) : null,
       workout_days: workoutDays,
     });
     setSaving(false);
@@ -237,6 +240,23 @@ const PersonalDataPage = () => {
                     Grams of protein per kg of body weight. Multiplied by your current weight to set the daily protein target on the dashboard.
                     {currentWeight && proteinMultiplier
                       ? ` Current target: ${Math.round(parseFloat(proteinMultiplier) * currentWeight)} g`
+                      : ''}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="carbMultiplier">Carb Multiplier (g/kg)</Label>
+                  <Input
+                    id="carbMultiplier"
+                    inputMode="decimal"
+                    value={carbMultiplier}
+                    onChange={(e) => handleNumeric(e.target.value, setCarbMultiplier)}
+                    placeholder="e.g. 3.5"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Grams of carbs per kg of body weight. Multiplied by your current weight to set the daily carb target on the dashboard.
+                    {currentWeight && carbMultiplier
+                      ? ` Current target: ${Math.round(parseFloat(carbMultiplier) * currentWeight)} g`
                       : ''}
                   </p>
                 </div>

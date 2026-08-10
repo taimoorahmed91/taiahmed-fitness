@@ -2,12 +2,14 @@ import { useState, useMemo, useEffect } from 'react';
 import { StatsCards } from '@/components/StatsCards';
 import { CalorieChart } from '@/components/CalorieChart';
 import { ProteinChart } from '@/components/ProteinChart';
+import { CarbChart } from '@/components/CarbChart';
 import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
 import { ProteinTargetCard } from '@/components/ProteinTargetCard';
+import { CarbTargetCard } from '@/components/CarbTargetCard';
 import { WeightChart } from '@/components/WeightChart';
 import { WaistChart } from '@/components/WaistChart';
 import { SleepChart } from '@/components/SleepChart';
@@ -62,7 +64,7 @@ const ResetCountdown = () => {
 };
 
 const Dashboard = () => {
-  const { meals, getTodayCalories, getTodayProtein, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
+  const { meals, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
   const { getThisWeekSessions, getWeeklyWorkoutData, sessions: gymSessions, refetch: refetchGym } = useGymSessions();
   const { settings, updateCalorieGoal, updateWeightInterval, updateWaistInterval, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
@@ -287,18 +289,23 @@ const Dashboard = () => {
           waistInterval={settings.waist_measurement_interval}
           onWaistIntervalChange={updateWaistInterval}
         />
-        <YesterdayStatus
-          yesterdayCalories={yesterdayCalories}
-          goal={yesterdayGoal}
-        />
         <ProteinTargetCard
           multiplier={personalData.protein_multiplier}
           currentWeight={weightEntries[0]?.weight ?? null}
           todayProtein={getTodayProtein()}
         />
+        <CarbTargetCard
+          multiplier={personalData.carb_multiplier}
+          currentWeight={weightEntries[0]?.weight ?? null}
+          todayCarbs={getTodayCarbs()}
+        />
       </div>
 
-      <div className="grid lg:grid-cols-1 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
+        <YesterdayStatus
+          yesterdayCalories={yesterdayCalories}
+          goal={yesterdayGoal}
+        />
         <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>
 
@@ -306,6 +313,11 @@ const Dashboard = () => {
         <CalorieChart data={calorieChartData} notesMap={notesMap} />
         <ProteinChart data={calorieChartData} />
       </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <CarbChart data={calorieChartData} />
+      </div>
+
 
       <div className="grid lg:grid-cols-2 gap-6">
         <WorkoutDurationChart data={getWeeklyWorkoutData()} />

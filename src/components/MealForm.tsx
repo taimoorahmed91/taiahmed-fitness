@@ -7,8 +7,8 @@ import { Utensils } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MealFormProps {
-  onSubmit: (meal: { food: string; calories: number; protein: number | null; time: string; date: string }) => void;
-  prefillData?: { food: string; calories: number; protein?: number | null } | null;
+  onSubmit: (meal: { food: string; calories: number; protein: number | null; carbs: number | null; time: string; date: string }) => void;
+  prefillData?: { food: string; calories: number; protein?: number | null; carbs?: number | null } | null;
   onPrefillConsumed?: () => void;
 }
 
@@ -21,6 +21,7 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
   const [food, setFood] = useState('');
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
   const [time, setTime] = useState(getCurrentTime);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -30,6 +31,7 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
       setFood(prefillData.food);
       setCalories(prefillData.calories.toString());
       setProtein(prefillData.protein != null ? prefillData.protein.toString() : '');
+      setCarbs(prefillData.carbs != null ? prefillData.carbs.toString() : '');
       setTime(getCurrentTime());
       setDate(new Date().toISOString().split('T')[0]);
       onPrefillConsumed?.();
@@ -59,12 +61,14 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
       food: food.trim(),
       calories: parseInt(calories),
       protein: protein === '' ? null : parseFloat(protein),
+      carbs: carbs === '' ? null : parseFloat(carbs),
       time,
       date,
     });
     setFood('');
     setCalories('');
     setProtein('');
+    setCarbs('');
     setTime('');
     toast.success('Meal logged successfully!');
   };
@@ -110,6 +114,19 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
                 placeholder="e.g., 32"
                 value={protein}
                 onChange={(e) => handleNumericChange(e.target.value, setProtein)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="carbs">Carbs (g)</Label>
+              <Input
+                id="carbs"
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g., 120"
+                value={carbs}
+                onChange={(e) => handleNumericChange(e.target.value, setCarbs)}
               />
             </div>
           </div>

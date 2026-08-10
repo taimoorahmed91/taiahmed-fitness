@@ -238,6 +238,9 @@ const MealItem = ({
         {meal.protein != null && (
           <span className="block text-xs text-muted-foreground">{meal.protein} g protein</span>
         )}
+        {meal.carbs != null && (
+          <span className="block text-xs text-muted-foreground">{meal.carbs} g carbs</span>
+        )}
       </div>
       {onCopy && (
         <Button variant="ghost" size="icon" onClick={() => onCopy(meal)} className="h-8 w-8" title="Copy to form">

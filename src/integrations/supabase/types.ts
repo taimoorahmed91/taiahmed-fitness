@@ -709,6 +709,7 @@ export type Database = {
       fittrack_meals: {
         Row: {
           calories: number
+          carbs: number | null
           created_at: string
           date: string
           food: string
@@ -720,6 +721,7 @@ export type Database = {
         }
         Insert: {
           calories: number
+          carbs?: number | null
           created_at?: string
           date: string
           food: string
@@ -731,6 +733,7 @@ export type Database = {
         }
         Update: {
           calories?: number
+          carbs?: number | null
           created_at?: string
           date?: string
           food?: string
@@ -745,6 +748,7 @@ export type Database = {
       fittrack_personal_data: {
         Row: {
           age: number | null
+          carb_multiplier: number | null
           created_at: string
           dob: string | null
           full_name: string | null
@@ -761,6 +765,7 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          carb_multiplier?: number | null
           created_at?: string
           dob?: string | null
           full_name?: string | null
@@ -777,6 +782,7 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          carb_multiplier?: number | null
           created_at?: string
           dob?: string | null
           full_name?: string | null

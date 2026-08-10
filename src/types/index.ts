@@ -3,6 +3,7 @@ export interface Meal {
   food: string;
   calories: number;
   protein?: number | null;
+  carbs?: number | null;
   time: string;
   date: string;
 }
