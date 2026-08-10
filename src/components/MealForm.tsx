@@ -21,6 +21,7 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
   const [food, setFood] = useState('');
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
   const [time, setTime] = useState(getCurrentTime);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -30,6 +31,7 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
       setFood(prefillData.food);
       setCalories(prefillData.calories.toString());
       setProtein(prefillData.protein != null ? prefillData.protein.toString() : '');
+      setCarbs(prefillData.carbs != null ? prefillData.carbs.toString() : '');
       setTime(getCurrentTime());
       setDate(new Date().toISOString().split('T')[0]);
       onPrefillConsumed?.();
