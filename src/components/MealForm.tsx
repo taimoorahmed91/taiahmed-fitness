@@ -129,6 +129,8 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
                 onChange={(e) => handleNumericChange(e.target.value, setCarbs)}
               />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="time">Time Eaten</Label>
               <Input
