@@ -20,17 +20,17 @@ import { Label } from '@/components/ui/label';
 import { Utensils } from 'lucide-react';
 
 const Meals = () => {
-  const { meals, addMeal, deleteMeal, updateMeal, getTodayCalories, getTodayProtein } = useMeals();
+  const { meals, addMeal, deleteMeal, updateMeal, getTodayCalories, getTodayProtein, getTodayCarbs } = useMeals();
   const { settings } = useUserSettings();
   const { sessions: gymSessions } = useGymSessions();
   const { data: personalData } = usePersonalData();
   const { activities: extraActivities } = useExtraActivities();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
-  const [editForm, setEditForm] = useState({ food: '', calories: '', protein: '', time: '', date: '' });
-  const [prefillData, setPrefillData] = useState<{ food: string; calories: number; protein?: number | null } | null>(null);
+  const [editForm, setEditForm] = useState({ food: '', calories: '', protein: '', carbs: '', time: '', date: '' });
+  const [prefillData, setPrefillData] = useState<{ food: string; calories: number; protein?: number | null; carbs?: number | null } | null>(null);
 
   const handleCopyMeal = (meal: Meal) => {
-    setPrefillData({ food: meal.food, calories: meal.calories, protein: meal.protein });
+    setPrefillData({ food: meal.food, calories: meal.calories, protein: meal.protein, carbs: meal.carbs });
   };
 
   const handlePrefillConsumed = () => {
