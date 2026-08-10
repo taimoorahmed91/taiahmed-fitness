@@ -44,6 +44,7 @@ const Meals = () => {
       food: meal.food,
       calories: meal.calories.toString(),
       protein: meal.protein != null ? meal.protein.toString() : '',
+      carbs: meal.carbs != null ? meal.carbs.toString() : '',
       time: meal.time,
       date: meal.date,
     });
@@ -51,15 +52,16 @@ const Meals = () => {
 
   const handleSaveEdit = async () => {
     if (!editingMeal) return;
-    
+
     await updateMeal(editingMeal.id, {
       food: editForm.food,
       calories: parseInt(editForm.calories) || 0,
       protein: editForm.protein === '' ? null : parseFloat(editForm.protein.replace(',', '.')),
+      carbs: editForm.carbs === '' ? null : parseFloat(editForm.carbs.replace(',', '.')),
       time: editForm.time,
       date: editForm.date,
     });
-    
+
     setEditingMeal(null);
   };
 
