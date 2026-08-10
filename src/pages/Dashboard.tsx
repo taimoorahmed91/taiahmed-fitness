@@ -287,18 +287,23 @@ const Dashboard = () => {
           waistInterval={settings.waist_measurement_interval}
           onWaistIntervalChange={updateWaistInterval}
         />
-        <YesterdayStatus
-          yesterdayCalories={yesterdayCalories}
-          goal={yesterdayGoal}
-        />
         <ProteinTargetCard
           multiplier={personalData.protein_multiplier}
           currentWeight={weightEntries[0]?.weight ?? null}
           todayProtein={getTodayProtein()}
         />
+        <CarbTargetCard
+          multiplier={personalData.carb_multiplier}
+          currentWeight={weightEntries[0]?.weight ?? null}
+          todayCarbs={getTodayCarbs()}
+        />
       </div>
 
-      <div className="grid lg:grid-cols-1 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
+        <YesterdayStatus
+          yesterdayCalories={yesterdayCalories}
+          goal={yesterdayGoal}
+        />
         <MealTimeChart data={getMealsByTimeOfDay()} />
       </div>
 
@@ -306,6 +311,11 @@ const Dashboard = () => {
         <CalorieChart data={calorieChartData} notesMap={notesMap} />
         <ProteinChart data={calorieChartData} />
       </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <CarbChart data={calorieChartData} />
+      </div>
+
 
       <div className="grid lg:grid-cols-2 gap-6">
         <WorkoutDurationChart data={getWeeklyWorkoutData()} />
