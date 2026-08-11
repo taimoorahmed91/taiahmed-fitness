@@ -45,6 +45,8 @@ export const useUserSettings = () => {
           daily_calorie_goal: data.daily_calorie_goal,
           weight_measurement_interval: data.weight_measurement_interval || 3,
           waist_measurement_interval: (data as any).waist_measurement_interval || 7,
+          set_rest_seconds: (data as any).set_rest_seconds ?? 60,
+          exercise_rest_seconds: (data as any).exercise_rest_seconds ?? 90,
         });
       } else {
         const { data: newData, error: insertError } = await supabase
@@ -58,6 +60,8 @@ export const useUserSettings = () => {
           daily_calorie_goal: newData.daily_calorie_goal,
           weight_measurement_interval: newData.weight_measurement_interval || 3,
           waist_measurement_interval: (newData as any).waist_measurement_interval || 7,
+          set_rest_seconds: (newData as any).set_rest_seconds ?? 60,
+          exercise_rest_seconds: (newData as any).exercise_rest_seconds ?? 90,
         });
       }
     } catch (error) {
@@ -137,5 +141,25 @@ export const useUserSettings = () => {
     }
   };
 
-  return { settings, loading, updateCalorieGoal, updateWeightInterval, updateWaistInterval, refetch: fetchSettings };
+  const updateRestTimers = async (setRest: number, exerciseRest: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
+        return;
+      }
+      const { error } = await supabase
+        .from('fittrack_user_settings')
+        .update({ set_rest_seconds: setRest, exercise_rest_seconds: exerciseRest } as any)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      setSettings((prev) => ({ ...prev, set_rest_seconds: setRest, exercise_rest_seconds: exerciseRest }));
+      toast({ title: 'Success', description: 'Rest timers updated' });
+    } catch (error) {
+      console.error('Error updating rest timers:', error);
+      toast({ title: 'Error', description: 'Failed to update rest timers', variant: 'destructive' });
+    }
+  };
+
+  return { settings, loading, updateRestTimers, updateCalorieGoal, updateWeightInterval, updateWaistInterval, refetch: fetchSettings };
 };
