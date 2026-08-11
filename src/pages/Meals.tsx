@@ -6,6 +6,7 @@ import { useUserSettings } from '@/hooks/useUserSettings';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
+import { useWeight } from '@/hooks/useWeight';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
