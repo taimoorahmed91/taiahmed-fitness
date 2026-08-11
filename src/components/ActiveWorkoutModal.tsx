@@ -149,6 +149,10 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
   return { reps: result, notes: noteMap, sequences: seqMap, setCounts };
 };
 
+const DEFAULT_REST_TIMER_SETTINGS: RestTimerSettings = { setRestSeconds: 60, exerciseRestSeconds: 90 };
+
+// Local cache only — the source of truth is fittrack_user_settings so the
+// durations are identical on every device the user logs in from.
 const loadRestTimerSettings = (): RestTimerSettings => {
   try {
     const saved = localStorage.getItem(REST_TIMER_SETTINGS_KEY);
@@ -156,11 +160,38 @@ const loadRestTimerSettings = (): RestTimerSettings => {
   } catch (e) {
     console.error('Failed to load rest timer settings:', e);
   }
-  return { setRestSeconds: 60, exerciseRestSeconds: 90 };
+  return DEFAULT_REST_TIMER_SETTINGS;
 };
 
 const saveRestTimerSettings = (settings: RestTimerSettings) => {
   localStorage.setItem(REST_TIMER_SETTINGS_KEY, JSON.stringify(settings));
+};
+
+const fetchRestTimerSettings = async (): Promise<RestTimerSettings | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('fittrack_user_settings')
+    .select('set_rest_seconds, exercise_rest_seconds')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    setRestSeconds: (data as any).set_rest_seconds ?? DEFAULT_REST_TIMER_SETTINGS.setRestSeconds,
+    exerciseRestSeconds: (data as any).exercise_rest_seconds ?? DEFAULT_REST_TIMER_SETTINGS.exerciseRestSeconds,
+  };
+};
+
+const persistRestTimerSettings = async (settings: RestTimerSettings) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from('fittrack_user_settings')
+    .update({
+      set_rest_seconds: settings.setRestSeconds,
+      exercise_rest_seconds: settings.exerciseRestSeconds,
+    } as any)
+    .eq('user_id', user.id);
 };
 
 const saveActiveWorkout = (state: ActiveWorkoutState) => {
