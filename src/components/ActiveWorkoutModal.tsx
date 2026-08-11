@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { GymSession } from '@/types';
 import { Progress } from '@/components/ui/progress';
 import { logActivity } from '@/hooks/useActivityLog';
+import { supabase } from '@/integrations/supabase/client';
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
