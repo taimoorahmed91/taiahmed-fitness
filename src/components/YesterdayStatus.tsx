@@ -74,9 +74,9 @@ export const YesterdayStatus = ({ yesterdayCalories, goal }: YesterdayStatusProp
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
+        <div className="space-y-2 text-center">
           <p className="text-sm text-muted-foreground">{yesterdayStr}</p>
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline justify-center gap-2">
             <span className={cn('text-3xl font-bold', config.color)}>
               {yesterdayCalories > 0 ? yesterdayCalories : '—'}
             </span>
