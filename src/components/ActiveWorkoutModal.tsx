@@ -247,6 +247,20 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [timerSettings, setTimerSettings] = useState<RestTimerSettings>(loadRestTimerSettings);
   const [showSettings, setShowSettings] = useState(false);
 
+  // Pull the authoritative durations from the user's account so every device
+  // (phone, laptop) uses the same rest times.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchRestTimerSettings().then((remote) => {
+      if (!cancelled && remote) {
+        setTimerSettings(remote);
+        saveRestTimerSettings(remote);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [open]);
+
   // Track previous values to detect when a rep is newly entered
   const prevExerciseSets = useRef<Record<number, ExerciseSets>>({});
 
