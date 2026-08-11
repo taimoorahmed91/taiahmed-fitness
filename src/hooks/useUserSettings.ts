@@ -6,12 +6,16 @@ interface UserSettings {
   daily_calorie_goal: number;
   weight_measurement_interval: number;
   waist_measurement_interval: number;
+  set_rest_seconds: number;
+  exercise_rest_seconds: number;
 }
 
 const DEFAULTS: UserSettings = {
   daily_calorie_goal: 2000,
   weight_measurement_interval: 3,
   waist_measurement_interval: 7,
+  set_rest_seconds: 60,
+  exercise_rest_seconds: 90,
 };
 
 export const useUserSettings = () => {
