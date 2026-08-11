@@ -25,6 +25,7 @@ const Meals = () => {
   const { sessions: gymSessions } = useGymSessions();
   const { data: personalData } = usePersonalData();
   const { activities: extraActivities } = useExtraActivities();
+  const { entries: weightEntries } = useWeight();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [editForm, setEditForm] = useState({ food: '', calories: '', protein: '', carbs: '', time: '', date: '' });
   const [prefillData, setPrefillData] = useState<{ food: string; calories: number; protein?: number | null; carbs?: number | null } | null>(null);
