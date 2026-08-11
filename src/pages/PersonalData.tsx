@@ -382,10 +382,6 @@ const RestTimerCard = () => {
     </Card>
   );
 };
-      </main>
-    </div>
-  );
-};
 
 const formatRemaining = (expiresAt: string | null) => {
   if (!expiresAt) return '';
