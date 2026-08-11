@@ -6,6 +6,7 @@ import { useUserSettings } from '@/hooks/useUserSettings';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
+import { useWeight } from '@/hooks/useWeight';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -25,6 +26,7 @@ const Meals = () => {
   const { sessions: gymSessions } = useGymSessions();
   const { data: personalData } = usePersonalData();
   const { activities: extraActivities } = useExtraActivities();
+  const { entries: weightEntries } = useWeight();
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [editForm, setEditForm] = useState({ food: '', calories: '', protein: '', carbs: '', time: '', date: '' });
   const [prefillData, setPrefillData] = useState<{ food: string; calories: number; protein?: number | null; carbs?: number | null } | null>(null);
@@ -86,6 +88,16 @@ const Meals = () => {
     return base + extras;
   }, [gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
   const caloriesRemaining = Math.max(0, calorieGoal - todayCalories);
+
+  const currentWeight = weightEntries[0]?.weight ?? null;
+  const proteinRemaining = useMemo(() => {
+    if (!personalData.protein_multiplier || !currentWeight) return null;
+    return Math.max(0, Math.round(personalData.protein_multiplier * currentWeight - getTodayProtein()));
+  }, [personalData.protein_multiplier, currentWeight, meals]);
+  const carbsRemaining = useMemo(() => {
+    if (!personalData.carb_multiplier || !currentWeight) return null;
+    return Math.max(0, Math.round(personalData.carb_multiplier * currentWeight - getTodayCarbs()));
+  }, [personalData.carb_multiplier, currentWeight, meals]);
   
   const todayMeals = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -138,6 +150,20 @@ const Meals = () => {
               <p className={`text-xl font-semibold ${caloriesRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
                 {caloriesRemaining} cal
               </p>
+              <div className="flex gap-4 mt-1">
+                <p className="text-sm text-muted-foreground">
+                  Protein:{' '}
+                  <span className={`font-semibold ${proteinRemaining === null ? 'text-muted-foreground' : proteinRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    {proteinRemaining === null ? '—' : `${proteinRemaining} g`}
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Carbs:{' '}
+                  <span className={`font-semibold ${carbsRemaining === null ? 'text-muted-foreground' : carbsRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    {carbsRemaining === null ? '—' : `${carbsRemaining} g`}
+                  </span>
+                </p>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
               <div>

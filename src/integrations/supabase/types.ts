@@ -861,8 +861,10 @@ export type Database = {
           created_at: string
           daily_calorie_goal: number
           email_subscribed: boolean
+          exercise_rest_seconds: number
           id: string
           notification_schedule: string | null
+          set_rest_seconds: number
           telegram_chat_id: string | null
           telegram_chat_id_set: boolean
           telegram_subscribed: boolean
@@ -876,8 +878,10 @@ export type Database = {
           created_at?: string
           daily_calorie_goal?: number
           email_subscribed?: boolean
+          exercise_rest_seconds?: number
           id?: string
           notification_schedule?: string | null
+          set_rest_seconds?: number
           telegram_chat_id?: string | null
           telegram_chat_id_set?: boolean
           telegram_subscribed?: boolean
@@ -891,8 +895,10 @@ export type Database = {
           created_at?: string
           daily_calorie_goal?: number
           email_subscribed?: boolean
+          exercise_rest_seconds?: number
           id?: string
           notification_schedule?: string | null
+          set_rest_seconds?: number
           telegram_chat_id?: string | null
           telegram_chat_id_set?: boolean
           telegram_subscribed?: boolean

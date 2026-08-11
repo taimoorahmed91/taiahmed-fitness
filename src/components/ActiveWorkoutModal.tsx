@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { GymSession } from '@/types';
 import { Progress } from '@/components/ui/progress';
 import { logActivity } from '@/hooks/useActivityLog';
+import { supabase } from '@/integrations/supabase/client';
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
@@ -149,6 +150,10 @@ const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousRe
   return { reps: result, notes: noteMap, sequences: seqMap, setCounts };
 };
 
+const DEFAULT_REST_TIMER_SETTINGS: RestTimerSettings = { setRestSeconds: 60, exerciseRestSeconds: 90 };
+
+// Local cache only — the source of truth is fittrack_user_settings so the
+// durations are identical on every device the user logs in from.
 const loadRestTimerSettings = (): RestTimerSettings => {
   try {
     const saved = localStorage.getItem(REST_TIMER_SETTINGS_KEY);
@@ -156,11 +161,38 @@ const loadRestTimerSettings = (): RestTimerSettings => {
   } catch (e) {
     console.error('Failed to load rest timer settings:', e);
   }
-  return { setRestSeconds: 60, exerciseRestSeconds: 90 };
+  return DEFAULT_REST_TIMER_SETTINGS;
 };
 
 const saveRestTimerSettings = (settings: RestTimerSettings) => {
   localStorage.setItem(REST_TIMER_SETTINGS_KEY, JSON.stringify(settings));
+};
+
+const fetchRestTimerSettings = async (): Promise<RestTimerSettings | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('fittrack_user_settings')
+    .select('set_rest_seconds, exercise_rest_seconds')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    setRestSeconds: (data as any).set_rest_seconds ?? DEFAULT_REST_TIMER_SETTINGS.setRestSeconds,
+    exerciseRestSeconds: (data as any).exercise_rest_seconds ?? DEFAULT_REST_TIMER_SETTINGS.exerciseRestSeconds,
+  };
+};
+
+const persistRestTimerSettings = async (settings: RestTimerSettings) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from('fittrack_user_settings')
+    .update({
+      set_rest_seconds: settings.setRestSeconds,
+      exercise_rest_seconds: settings.exerciseRestSeconds,
+    } as any)
+    .eq('user_id', user.id);
 };
 
 const saveActiveWorkout = (state: ActiveWorkoutState) => {
@@ -214,6 +246,20 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   // Timer settings
   const [timerSettings, setTimerSettings] = useState<RestTimerSettings>(loadRestTimerSettings);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Pull the authoritative durations from the user's account so every device
+  // (phone, laptop) uses the same rest times.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchRestTimerSettings().then((remote) => {
+      if (!cancelled && remote) {
+        setTimerSettings(remote);
+        saveRestTimerSettings(remote);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [open]);
 
   // Track previous values to detect when a rep is newly entered
   const prevExerciseSets = useRef<Record<number, ExerciseSets>>({});
@@ -479,9 +525,12 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
       }
 
-      // Warmup does not trigger a rest timer. Last working set triggers
-      // exercise rest; intermediate working sets trigger set rest.
-      if (repKey !== 'warmup') {
+      // Warmup now also starts a rest timer (set rest) before the first
+      // working set. Last working set triggers exercise rest; intermediate
+      // working sets trigger set rest.
+      if (repKey === 'warmup') {
+        startRestTimer('set');
+      } else {
         const setNum = parseInt(repKey.replace('set', ''), 10);
         const lastSet = exerciseSetCount[exerciseIndex] || 3;
         if (setNum >= lastSet) {
@@ -625,6 +674,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const newSettings = { setRestSeconds: setRest, exerciseRestSeconds: exerciseRest };
     setTimerSettings(newSettings);
     saveRestTimerSettings(newSettings);
+    void persistRestTimerSettings(newSettings);
     setShowSettings(false);
   };
 
