@@ -138,6 +138,20 @@ const Meals = () => {
               <p className={`text-xl font-semibold ${caloriesRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
                 {caloriesRemaining} cal
               </p>
+              <div className="flex gap-4 mt-1">
+                <p className="text-sm text-muted-foreground">
+                  Protein:{' '}
+                  <span className={`font-semibold ${proteinRemaining === null ? 'text-muted-foreground' : proteinRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    {proteinRemaining === null ? '—' : `${proteinRemaining} g`}
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Carbs:{' '}
+                  <span className={`font-semibold ${carbsRemaining === null ? 'text-muted-foreground' : carbsRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    {carbsRemaining === null ? '—' : `${carbsRemaining} g`}
+                  </span>
+                </p>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
               <div>
