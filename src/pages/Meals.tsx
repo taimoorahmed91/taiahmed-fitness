@@ -86,6 +86,16 @@ const Meals = () => {
     return base + extras;
   }, [gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
   const caloriesRemaining = Math.max(0, calorieGoal - todayCalories);
+
+  const currentWeight = weightEntries[0]?.weight ?? null;
+  const proteinRemaining = useMemo(() => {
+    if (!personalData.protein_multiplier || !currentWeight) return null;
+    return Math.max(0, Math.round(personalData.protein_multiplier * currentWeight - getTodayProtein()));
+  }, [personalData.protein_multiplier, currentWeight, meals]);
+  const carbsRemaining = useMemo(() => {
+    if (!personalData.carb_multiplier || !currentWeight) return null;
+    return Math.max(0, Math.round(personalData.carb_multiplier * currentWeight - getTodayCarbs()));
+  }, [personalData.carb_multiplier, currentWeight, meals]);
   
   const todayMeals = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
