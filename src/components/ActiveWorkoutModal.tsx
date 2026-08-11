@@ -511,9 +511,12 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
       }
 
-      // Warmup does not trigger a rest timer. Last working set triggers
-      // exercise rest; intermediate working sets trigger set rest.
-      if (repKey !== 'warmup') {
+      // Warmup now also starts a rest timer (set rest) before the first
+      // working set. Last working set triggers exercise rest; intermediate
+      // working sets trigger set rest.
+      if (repKey === 'warmup') {
+        startRestTimer('set');
+      } else {
         const setNum = parseInt(repKey.replace('set', ''), 10);
         const lastSet = exerciseSetCount[exerciseIndex] || 3;
         if (setNum >= lastSet) {
