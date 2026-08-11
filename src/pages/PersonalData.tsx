@@ -304,7 +304,84 @@ const PersonalDataPage = () => {
           </CardContent>
         </Card>
 
+        <RestTimerCard />
+
         <ApiTokenCard />
+      </main>
+    </div>
+  );
+};
+
+const RestTimerCard = () => {
+  const { settings, loading, updateRestTimers } = useUserSettings();
+  const [setRest, setSetRest] = useState('');
+  const [exerciseRest, setExerciseRest] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setSetRest(String(settings.set_rest_seconds));
+      setExerciseRest(String(settings.exercise_rest_seconds));
+    }
+  }, [loading, settings.set_rest_seconds, settings.exercise_rest_seconds]);
+
+  const handleSave = async () => {
+    const s = parseInt(setRest, 10);
+    const e = parseInt(exerciseRest, 10);
+    if (!Number.isFinite(s) || !Number.isFinite(e) || s < 5 || e < 5 || s > 900 || e > 900) {
+      toast.error('Enter values between 5 and 900 seconds');
+      return;
+    }
+    setSaving(true);
+    await updateRestTimers(s, e);
+    setSaving(false);
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Timer className="h-5 w-5 text-primary" />
+          Workout rest timers
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          These durations are saved to your account, so the same values apply on every device you log in from.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="set-rest">Rest between sets (seconds)</Label>
+            <Input
+              id="set-rest"
+              type="number"
+              inputMode="numeric"
+              min={5}
+              max={900}
+              value={setRest}
+              onChange={(ev) => setSetRest(ev.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="exercise-rest">Rest between exercises (seconds)</Label>
+            <Input
+              id="exercise-rest"
+              type="number"
+              inputMode="numeric"
+              min={5}
+              max={900}
+              value={exerciseRest}
+              onChange={(ev) => setExerciseRest(ev.target.value)}
+            />
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving || loading}>
+          {saving ? 'Saving...' : 'Save rest timers'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
       </main>
     </div>
   );
