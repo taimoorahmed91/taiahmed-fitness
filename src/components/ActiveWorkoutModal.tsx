@@ -674,6 +674,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const newSettings = { setRestSeconds: setRest, exerciseRestSeconds: exerciseRest };
     setTimerSettings(newSettings);
     saveRestTimerSettings(newSettings);
+    void persistRestTimerSettings(newSettings);
     setShowSettings(false);
   };
 
