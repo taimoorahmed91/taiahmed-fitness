@@ -6,6 +6,7 @@ interface UserContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  recovering: boolean;
   isApproved: boolean | null;
   isOwner: boolean | null;
   signInWithGoogle: () => Promise<void>;
