@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
 import { useToast } from '@/hooks/use-toast';
 
 interface DailySummary {
