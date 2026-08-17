@@ -11,6 +11,7 @@ import { GymSession } from '@/types';
 import { Progress } from '@/components/ui/progress';
 import { logActivity } from '@/hooks/useActivityLog';
 import { supabase } from '@/integrations/supabase/client';
+import { getSessionUser } from '@/lib/authSession';
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
@@ -169,7 +170,7 @@ const saveRestTimerSettings = (settings: RestTimerSettings) => {
 };
 
 const fetchRestTimerSettings = async (): Promise<RestTimerSettings | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return null;
   const { data } = await supabase
     .from('fittrack_user_settings')
@@ -184,7 +185,7 @@ const fetchRestTimerSettings = async (): Promise<RestTimerSettings | null> => {
 };
 
 const persistRestTimerSettings = async (settings: RestTimerSettings) => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return;
   await supabase
     .from('fittrack_user_settings')

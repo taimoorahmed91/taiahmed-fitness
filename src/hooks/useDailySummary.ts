@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
 import { useToast } from '@/hooks/use-toast';
 
 interface DailySummary {
@@ -19,7 +20,7 @@ export const useDailySummary = () => {
 
   const fetchSummary = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         setSummary(null);
         setLoading(false);
@@ -49,7 +50,7 @@ export const useDailySummary = () => {
   useEffect(() => {
     fetchSummary();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const subscription = onAuthIdentityChange(() => {
       fetchSummary();
     });
 

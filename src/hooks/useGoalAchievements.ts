@@ -1,5 +1,6 @@
  import { useState, useEffect, useCallback } from 'react';
  import { supabase } from '@/integrations/supabase/client';
+import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
  
  export interface WeeklyAchievement {
    week_start: string;
@@ -123,7 +124,7 @@
  
    const fetchAchievements = useCallback(async () => {
      try {
-       const { data: { user } } = await supabase.auth.getUser();
+       const user = await getSessionUser();
        if (!user) {
          setLoading(false);
          return;
@@ -286,9 +287,9 @@
    useEffect(() => {
      fetchAchievements();
  
-     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+     const subscription = onAuthIdentityChange(() => {
        fetchAchievements();
-     });
+    });
  
      return () => subscription.unsubscribe();
    }, [fetchAchievements]);

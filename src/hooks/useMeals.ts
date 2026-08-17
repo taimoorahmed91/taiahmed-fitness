@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Meal } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/hooks/useActivityLog';
 
@@ -19,7 +20,7 @@ export const useMeals = () => {
 
   const fetchMeals = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         setMeals([]);
         setLoading(false);
@@ -80,7 +81,7 @@ export const useMeals = () => {
   useEffect(() => {
     fetchMeals();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const subscription = onAuthIdentityChange(() => {
       fetchMeals();
     });
 
@@ -89,7 +90,7 @@ export const useMeals = () => {
 
   const addMeal = async (meal: Omit<Meal, 'id'>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({ title: 'Error', description: 'You must be logged in to add meals', variant: 'destructive' });
         return;

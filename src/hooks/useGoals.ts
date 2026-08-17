@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/hooks/useActivityLog';
 
@@ -65,7 +66,7 @@ export const useGoals = () => {
 
   const fetchGoals = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) { setGoals([]); setGoalsProgress([]); setLoading(false); return; }
 
       const todayStr = new Date().toISOString().split('T')[0];
@@ -161,7 +162,7 @@ export const useGoals = () => {
     customEndDate?: Date
   ) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) throw new Error('Not authenticated');
 
       let startDate: Date;
@@ -222,7 +223,7 @@ export const useGoals = () => {
 
   useEffect(() => {
     fetchGoals();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { fetchGoals(); });
+    const subscription = onAuthIdentityChange(() => { fetchGoals(); });
     return () => subscription.unsubscribe();
   }, [fetchGoals]);
 

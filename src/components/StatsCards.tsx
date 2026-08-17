@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dumbbell, CalendarOff, Scale, Activity, CheckCircle, AlertTriangle, Ruler } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { getSessionUser } from '@/lib/authSession';
 import { usePersonalData } from '@/hooks/usePersonalData';
 interface DailySummary {
   id: string;
@@ -43,7 +44,7 @@ export const StatsCards = ({ weightMeasurementInterval, waistMeasurementInterval
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getSessionUser();
         if (!user) {
           setLoading(false);
           return;

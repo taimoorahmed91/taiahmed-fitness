@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getSessionUser } from '@/lib/authSession';
 
 export type LogCategory = 
   | 'weight' 
@@ -44,7 +45,7 @@ interface LogEntry {
  */
 export const logActivity = async (entry: LogEntry) => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return;
 
     await supabase.from('fittrack_activity_logs' as any).insert({
