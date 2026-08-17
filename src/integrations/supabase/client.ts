@@ -11,17 +11,9 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
-    storageKey: 'fittrack-auth',
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
-    // Serialize token refresh across tabs so background tabs don't each rotate
-    // the refresh token (which causes "refresh token not found" logouts).
-    lock: async (name, acquireTimeout, fn) => {
-      const navigatorLocks = (globalThis.navigator as Navigator & { locks?: LockManager })?.locks;
-      if (!navigatorLocks) return fn();
-      return navigatorLocks.request(`fittrack-auth-lock:${name}`, { mode: 'exclusive' }, () => fn());
-    },
+    flowType: 'implicit',
   },
 });
