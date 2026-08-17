@@ -204,6 +204,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       user, 
       session,
       loading,
+      recovering,
       isApproved,
       isOwner,
       signInWithGoogle, 
