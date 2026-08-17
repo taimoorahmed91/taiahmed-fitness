@@ -38,11 +38,11 @@ const LoadingSpinner = () => (
 );
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isLoggedIn, loading, isApproved } = useUser();
-  
-  // Only show loading spinner for a reasonable time during initial load
-  // After that, treat as not logged in to avoid infinite spinning
-  if (loading) {
+  const { isLoggedIn, loading, recovering, isApproved } = useUser();
+
+  // Initial load, or an in-flight attempt to restore a dropped session:
+  // wait instead of bouncing the user to the welcome screen.
+  if (loading || recovering) {
     return <LoadingSpinner />;
   }
   
@@ -64,9 +64,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { isLoggedIn, loading, isApproved } = useUser();
+  const { isLoggedIn, loading, recovering, isApproved } = useUser();
 
-  if (loading) {
+  if (loading || recovering) {
     return <LoadingSpinner />;
   }
 
