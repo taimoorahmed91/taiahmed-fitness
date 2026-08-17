@@ -384,22 +384,11 @@ const RestTimerCard = () => {
   );
 };
 
-const formatRemaining = (expiresAt: string | null) => {
-  if (!expiresAt) return '';
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return 'expired';
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  return `${h}h ${m}m remaining`;
-};
-
 const ApiTokenCard = () => {
   const [loading, setLoading] = useState(true);
   const [exists, setExists] = useState(false);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [plainToken, setPlainToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [, setTick] = useState(0);
 
   const call = async (action: 'status' | 'generate' | 'revoke') => {
     const { data, error } = await supabase.functions.invoke('api-token', { body: { action } });
@@ -420,7 +409,6 @@ const ApiTokenCard = () => {
     try {
       const data = await call('status');
       setExists(!!data.exists);
-      setExpiresAt(data.expires_at ?? null);
       if (!data.exists) setPlainToken(null);
     } catch (e) {
       console.error(e);
@@ -433,26 +421,11 @@ const ApiTokenCard = () => {
     refreshStatus();
   }, []);
 
-  // ticking countdown
-  useEffect(() => {
-    if (!expiresAt) return;
-    const id = setInterval(() => {
-      setTick((t) => t + 1);
-      if (new Date(expiresAt).getTime() <= Date.now()) {
-        setExists(false);
-        setExpiresAt(null);
-        setPlainToken(null);
-      }
-    }, 30_000);
-    return () => clearInterval(id);
-  }, [expiresAt]);
-
   const handleGenerate = async () => {
     setBusy(true);
     try {
       const data = await call('generate');
       setExists(true);
-      setExpiresAt(data.expires_at ?? null);
       setPlainToken(data.token ?? null);
       toast.success('New token generated. Copy it now — it will not be shown again.');
     } catch (e) {
@@ -468,7 +441,6 @@ const ApiTokenCard = () => {
     try {
       await call('revoke');
       setExists(false);
-      setExpiresAt(null);
       setPlainToken(null);
       toast.success('Token revoked');
     } catch {
@@ -498,7 +470,7 @@ const ApiTokenCard = () => {
         <p className="text-sm text-muted-foreground">
           Your personal MCP token for external integrations. Only a SHA-256 hash is stored —
           the plaintext is shown <strong>once at generation</strong> and cannot be revealed again.
-          Valid for a maximum of <strong>3 hours</strong>, then auto-deleted.
+          The token <strong>does not expire</strong> — it stays valid until you refresh or revoke it.
         </p>
 
         {loading ? (
@@ -540,7 +512,7 @@ const ApiTokenCard = () => {
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">
-                    Valid for 3 hours — {formatRemaining(expiresAt)}
+                    Active — no expiry; valid until refreshed or revoked
                   </span>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={handleGenerate} disabled={busy} className="gap-2">
