@@ -21,6 +21,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [isOwner, setIsOwner] = useState<boolean | null>(null);
+  const [recovering, setRecovering] = useState(false);
+  const explicitLogoutRef = useRef(false);
+  const recoveringRef = useRef(false);
 
   const checkProfileStatus = async (userId: string) => {
     const { data: profile } = await supabase
