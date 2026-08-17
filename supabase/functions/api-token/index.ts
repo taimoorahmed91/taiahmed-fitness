@@ -6,7 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const TOKEN_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
 const GENERATE_COOLDOWN_MS = 30 * 1000; // 30s between generations
 
 function b64url(arr: Uint8Array): string {
@@ -59,25 +58,18 @@ serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE);
 
-    // Always purge expired tokens for this user first
-    await admin
-      .from("fittrack_api_tokens")
-      .delete()
-      .eq("user_id", user.id)
-      .lt("expires_at", new Date().toISOString());
-
     const { action } = await req.json().catch(() => ({ action: "status" }));
 
     if (action === "status") {
       const { data } = await admin
         .from("fittrack_api_tokens")
-        .select("expires_at, created_at")
+        .select("created_at")
         .eq("user_id", user.id)
         .maybeSingle();
       return new Response(
         JSON.stringify({
           exists: !!data,
-          expires_at: data?.expires_at ?? null,
+          expires_at: null,
           created_at: data?.created_at ?? null,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -105,12 +97,11 @@ serve(async (req) => {
       const token = generateRandomToken();
       const token_hash = await sha256Hex(token);
       const now = new Date();
-      const expires_at = new Date(now.getTime() + TOKEN_TTL_MS).toISOString();
 
       const { error: upsertErr } = await admin
         .from("fittrack_api_tokens")
         .upsert(
-          { user_id: user.id, token_hash, expires_at, created_at: now.toISOString() },
+          { user_id: user.id, token_hash, expires_at: null, created_at: now.toISOString() },
           { onConflict: "user_id" },
         );
       if (upsertErr) throw upsertErr;
@@ -119,7 +110,7 @@ serve(async (req) => {
         .from("fittrack_api_token_rate")
         .upsert({ user_id: user.id, last_generated_at: now.toISOString() }, { onConflict: "user_id" });
 
-      return new Response(JSON.stringify({ token, expires_at }), {
+      return new Response(JSON.stringify({ token, expires_at: null }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

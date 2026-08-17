@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Meal } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { validateSessionBeforeOperation } from '@/hooks/useSessionValidator';
 import { logActivity } from '@/hooks/useActivityLog';
 
 const getMealPeriod = (time: string): string => {
@@ -90,17 +89,6 @@ export const useMeals = () => {
 
   const addMeal = async (meal: Omit<Meal, 'id'>) => {
     try {
-      const isSessionValid = await validateSessionBeforeOperation();
-      if (!isSessionValid) {
-        toast({
-          title: 'Session Expired',
-          description: 'Your session has expired. Please refresh the page and log in again.',
-          variant: 'destructive',
-        });
-        logActivity({ action: 'create', category: 'meal', status: 'error', error_message: 'Session expired', details: { food: meal.food, calories: meal.calories } });
-        return;
-      }
-
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({ title: 'Error', description: 'You must be logged in to add meals', variant: 'destructive' });
