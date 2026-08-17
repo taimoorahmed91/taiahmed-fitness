@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { GymSession } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { validateSessionBeforeOperation } from '@/hooks/useSessionValidator';
 import { logActivity } from '@/hooks/useActivityLog';
 
 export const useGymSessions = () => {
@@ -47,13 +46,6 @@ export const useGymSessions = () => {
   }, []);
 
   const addSession = async (session: Omit<GymSession, 'id'>) => {
-    const isSessionValid = await validateSessionBeforeOperation();
-    if (!isSessionValid) {
-      toast({ title: 'Session Expired', description: 'Your session has expired. Please refresh the page and log in again.', variant: 'destructive' });
-      logActivity({ action: 'create', category: 'gym', status: 'error', error_message: 'Session expired', details: { exercise: session.exercise } });
-      throw new Error('Session expired');
-    }
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast({ title: 'Error', description: 'You must be logged in to add sessions', variant: 'destructive' });
