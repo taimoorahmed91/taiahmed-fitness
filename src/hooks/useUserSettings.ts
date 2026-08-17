@@ -25,7 +25,7 @@ export const useUserSettings = () => {
 
   const fetchSettings = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         setSettings(DEFAULTS);
         setLoading(false);
@@ -74,7 +74,7 @@ export const useUserSettings = () => {
   useEffect(() => {
     fetchSettings();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const subscription = onAuthIdentityChange(() => {
       fetchSettings();
     });
 
@@ -83,7 +83,7 @@ export const useUserSettings = () => {
 
   const updateCalorieGoal = async (goal: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
         return;
@@ -103,7 +103,7 @@ export const useUserSettings = () => {
 
   const updateWeightInterval = async (interval: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
         return;
@@ -123,7 +123,7 @@ export const useUserSettings = () => {
 
   const updateWaistInterval = async (interval: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
         return;
@@ -143,7 +143,7 @@ export const useUserSettings = () => {
 
   const updateRestTimers = async (setRest: number, exerciseRest: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
         return;

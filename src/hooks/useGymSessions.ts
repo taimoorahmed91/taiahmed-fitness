@@ -11,7 +11,7 @@ export const useGymSessions = () => {
 
   const fetchSessions = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) { setSessions([]); setLoading(false); return; }
 
       const { data, error } = await supabase
@@ -41,12 +41,12 @@ export const useGymSessions = () => {
 
   useEffect(() => {
     fetchSessions();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { fetchSessions(); });
+    const subscription = onAuthIdentityChange(() => { fetchSessions(); });
     return () => subscription.unsubscribe();
   }, []);
 
   const addSession = async (session: Omit<GymSession, 'id'>) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) {
       toast({ title: 'Error', description: 'You must be logged in to add sessions', variant: 'destructive' });
       throw new Error('Not logged in');
@@ -135,7 +135,7 @@ export const useGymSessions = () => {
 
   const getLastSessionByTemplateName = async (templateName: string): Promise<GymSession | null> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) return null;
 
       const { data, error } = await supabase

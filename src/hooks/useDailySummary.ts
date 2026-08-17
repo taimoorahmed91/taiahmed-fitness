@@ -19,7 +19,7 @@ export const useDailySummary = () => {
 
   const fetchSummary = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         setSummary(null);
         setLoading(false);
@@ -49,7 +49,7 @@ export const useDailySummary = () => {
   useEffect(() => {
     fetchSummary();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const subscription = onAuthIdentityChange(() => {
       fetchSummary();
     });
 

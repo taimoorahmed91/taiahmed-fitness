@@ -27,7 +27,7 @@ const Messaging = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getSessionUser();
         if (!user) {
           setLoading(false);
           return;
@@ -72,7 +72,7 @@ const Messaging = () => {
 
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({
           title: 'Error',
@@ -113,7 +113,7 @@ const Messaging = () => {
   const handleSubscriptionToggle = async (subscribe: boolean) => {
     setSubscribing(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({
           title: 'Error',
@@ -150,7 +150,7 @@ const Messaging = () => {
   const handleEmailSubscriptionToggle = async (subscribe: boolean) => {
     setEmailSubscribing(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({
           title: 'Error',
@@ -187,7 +187,7 @@ const Messaging = () => {
   const handleScheduleSave = async (schedule: string) => {
     setScheduleSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) {
         toast({
           title: 'Error',

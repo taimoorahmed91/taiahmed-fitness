@@ -43,7 +43,7 @@ export const StatsCards = ({ weightMeasurementInterval, waistMeasurementInterval
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getSessionUser();
         if (!user) {
           setLoading(false);
           return;

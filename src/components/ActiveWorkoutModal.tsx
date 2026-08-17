@@ -169,7 +169,7 @@ const saveRestTimerSettings = (settings: RestTimerSettings) => {
 };
 
 const fetchRestTimerSettings = async (): Promise<RestTimerSettings | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return null;
   const { data } = await supabase
     .from('fittrack_user_settings')
@@ -184,7 +184,7 @@ const fetchRestTimerSettings = async (): Promise<RestTimerSettings | null> => {
 };
 
 const persistRestTimerSettings = async (settings: RestTimerSettings) => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return;
   await supabase
     .from('fittrack_user_settings')

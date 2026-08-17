@@ -18,7 +18,7 @@ export const useWorkoutTemplates = () => {
 
   const fetchTemplates = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) { setTemplates([]); setLoading(false); return; }
 
       const { data, error } = await supabase.from('fittrack_workout_templates').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
@@ -35,13 +35,13 @@ export const useWorkoutTemplates = () => {
 
   useEffect(() => {
     fetchTemplates();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { fetchTemplates(); });
+    const subscription = onAuthIdentityChange(() => { fetchTemplates(); });
     return () => subscription.unsubscribe();
   }, []);
 
   const addTemplate = async (template: { name: string; exercises: string[] }) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSessionUser();
       if (!user) { toast({ title: 'Error', description: 'You must be logged in to create templates', variant: 'destructive' }); return; }
 
       const { data, error } = await supabase.from('fittrack_workout_templates').insert({ user_id: user.id, name: template.name, exercises: template.exercises }).select().single();
