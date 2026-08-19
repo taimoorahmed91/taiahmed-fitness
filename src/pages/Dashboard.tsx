@@ -301,13 +301,15 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6">
         <YesterdayStatus
           yesterdayCalories={yesterdayCalories}
           goal={yesterdayGoal}
         />
         <MealTimeChart data={getMealsByTimeOfDay()} />
+        <RecoveryChart data={recoveryChartData} />
       </div>
+
 
       <div className="grid lg:grid-cols-2 gap-6">
         <CalorieChart data={calorieChartData} notesMap={notesMap} />
