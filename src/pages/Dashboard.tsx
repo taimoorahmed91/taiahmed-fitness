@@ -123,10 +123,12 @@ const Dashboard = () => {
     return withScore?.recovery_score ?? null;
   }, [whoopEntries]);
 
-  // WHOOP recovery trend (oldest -> newest)
+  // WHOOP recovery trend for the last 7 days (oldest -> newest)
   const recoveryChartData = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const sevenDaysAgo = shiftISODateByDays(today, -6);
     return whoopEntries
-      .filter((e) => e.recovery_score != null)
+      .filter((e) => e.recovery_score != null && e.date >= sevenDaysAgo && e.date <= today)
       .map((e) => {
         const [, month, day] = e.date.split('-');
         return { date: `${month}/${day}`, recovery: Number(e.recovery_score) };
