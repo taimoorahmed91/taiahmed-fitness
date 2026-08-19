@@ -8,6 +8,8 @@ import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
+import { RecoveryChart } from '@/components/RecoveryChart';
+
 import { ProteinTargetCard } from '@/components/ProteinTargetCard';
 import { CarbTargetCard } from '@/components/CarbTargetCard';
 import { WeightChart } from '@/components/WeightChart';
@@ -120,7 +122,20 @@ const Dashboard = () => {
     const withScore = whoopEntries.find((e) => e.recovery_score != null);
     return withScore?.recovery_score ?? null;
   }, [whoopEntries]);
+
+  // WHOOP recovery trend (oldest -> newest)
+  const recoveryChartData = useMemo(() => {
+    return whoopEntries
+      .filter((e) => e.recovery_score != null)
+      .map((e) => {
+        const [, month, day] = e.date.split('-');
+        return { date: `${month}/${day}`, recovery: Number(e.recovery_score) };
+      })
+      .reverse();
+  }, [whoopEntries]);
+
   // Auto-refresh every 30 seconds (only on Dashboard) - includes daily summary to keep it updated
+
   useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
 
   const notesMap = useMemo(() => getNotesMap(), [getNotesMap]);
@@ -301,13 +316,15 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6">
         <YesterdayStatus
           yesterdayCalories={yesterdayCalories}
           goal={yesterdayGoal}
         />
         <MealTimeChart data={getMealsByTimeOfDay()} />
+        <RecoveryChart data={recoveryChartData} />
       </div>
+
 
       <div className="grid lg:grid-cols-2 gap-6">
         <CalorieChart data={calorieChartData} notesMap={notesMap} />
