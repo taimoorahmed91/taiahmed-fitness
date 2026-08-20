@@ -277,10 +277,19 @@ const Dashboard = () => {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-medium break-words">{meal.food}</p>
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {meal.time}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {meal.time}
+                      </span>
+                      {(meal.protein != null || meal.carbs != null) && (
+                        <span className="text-xs text-muted-foreground">
+                          {meal.protein != null && `${meal.protein}g protein`}
+                          {meal.protein != null && meal.carbs != null && ' · '}
+                          {meal.carbs != null && `${meal.carbs}g carbs`}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className="font-semibold text-primary shrink-0 ml-2">{meal.calories} cal</span>
                 </div>
