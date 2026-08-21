@@ -143,15 +143,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     initSession();
 
-    // When the tab comes back or the network returns, make sure the session is
-    // still alive (and refresh it) rather than silently failing the next query.
+    // Supabase owns token refresh and coordinates it across tabs. Reading the
+    // session here lets it perform its normal recovery without starting a
+    // second, manual refresh that can race the auto-refresh cycle.
     const revalidate = () => {
       if (document.visibilityState !== 'visible') return;
-      supabase.auth.getSession().then(({ data }) => {
-        if (!isMounted || !data.session) return;
-        const expiresAt = (data.session.expires_at ?? 0) * 1000;
-        if (expiresAt - Date.now() < 5 * 60 * 1000) {
-          void supabase.auth.refreshSession();
+      supabase.auth.getSession().then(({ error }) => {
+        if (isMounted && error) {
+          console.warn('Session revalidation failed:', error.message);
         }
       });
     };
