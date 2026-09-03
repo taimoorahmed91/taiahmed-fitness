@@ -174,9 +174,14 @@ const Dashboard = () => {
   }, [getWeeklyData]);
   
   const calorieBalanceData = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const sevenDaysAgo = shiftISODateByDays(today, -6);
+
     const mealsByDate = new Map<string, number>();
     meals.forEach((meal) => {
-      mealsByDate.set(meal.date, (mealsByDate.get(meal.date) || 0) + meal.calories);
+      if (meal.date >= sevenDaysAgo && meal.date <= today) {
+        mealsByDate.set(meal.date, (mealsByDate.get(meal.date) || 0) + meal.calories);
+      }
     });
 
     return whoopEntries
@@ -184,7 +189,7 @@ const Dashboard = () => {
         if (entry.kilojoule == null) return false;
         // Use created_at minus 1 day as reference date
         const refDate = shiftISODateByDays(entry.created_at.split('T')[0], -1);
-        return mealsByDate.has(refDate);
+        return refDate >= sevenDaysAgo && refDate <= today && mealsByDate.has(refDate);
       })
       .map((entry) => {
         const burned = Math.round(Number(entry.kilojoule) / 4.184);
