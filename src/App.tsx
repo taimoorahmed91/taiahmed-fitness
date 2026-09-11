@@ -26,6 +26,7 @@ import WhoopData from "./pages/WhoopData";
 import ActivityLogs from "./pages/ActivityLogs";
 import PersonalData from "./pages/PersonalData";
 import ExtraActivities from "./pages/ExtraActivities";
+import CalorieHistory from "./pages/CalorieHistory";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
 
@@ -228,6 +229,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ExtraActivities />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calorie-history"
+        element={
+          <ProtectedRoute>
+            <CalorieHistory />
           </ProtectedRoute>
         }
       />
