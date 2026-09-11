@@ -9,6 +9,7 @@ import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
 import { RecoveryChart } from '@/components/RecoveryChart';
+import { MacroTargetChart } from '@/components/MacroTargetChart';
 
 import { ProteinTargetCard } from '@/components/ProteinTargetCard';
 import { CarbTargetCard } from '@/components/CarbTargetCard';
