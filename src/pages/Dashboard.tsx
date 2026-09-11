@@ -137,6 +137,57 @@ const Dashboard = () => {
       .reverse();
   }, [whoopEntries]);
 
+  // Actual vs target for calories, protein and carbs over the last 30 days (oldest -> newest)
+  const macroComparisonData = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const start = shiftISODateByDays(today, -29);
+
+    const sortedWeights = [...weightEntries].sort((a, b) => a.date.localeCompare(b.date));
+    const weightOn = (date: string) => {
+      let value: number | null = null;
+      for (const entry of sortedWeights) {
+        if (entry.date <= date) value = entry.weight;
+        else break;
+      }
+      return value ?? sortedWeights[0]?.weight ?? null;
+    };
+
+    const calories: { date: string; actual: number; target: number | null }[] = [];
+    const protein: { date: string; actual: number; target: number | null }[] = [];
+    const carbs: { date: string; actual: number; target: number | null }[] = [];
+
+    for (let i = 0; i < 30; i++) {
+      const date = shiftISODateByDays(start, i);
+      const dayMeals = meals.filter((m) => m.date === date);
+      const { goal } = resolveGoalForDate(date);
+      const weight = weightOn(date);
+      const proteinTarget =
+        personalData.protein_multiplier && weight ? personalData.protein_multiplier * weight : null;
+      const carbTarget =
+        personalData.carb_multiplier && weight ? personalData.carb_multiplier * weight : null;
+      const [, month, day] = date.split('-');
+      const label = `${month}/${day}`;
+
+      calories.push({
+        date: label,
+        actual: dayMeals.reduce((s, m) => s + m.calories, 0),
+        target: goal,
+      });
+      protein.push({
+        date: label,
+        actual: dayMeals.reduce((s, m) => s + (m.protein || 0), 0),
+        target: proteinTarget,
+      });
+      carbs.push({
+        date: label,
+        actual: dayMeals.reduce((s, m) => s + (m.carbs || 0), 0),
+        target: carbTarget,
+      });
+    }
+
+    return { calories, protein, carbs };
+  }, [meals, weightEntries, gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
+
   // Auto-refresh every 30 seconds (only on Dashboard) - includes daily summary to keep it updated
 
   useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
