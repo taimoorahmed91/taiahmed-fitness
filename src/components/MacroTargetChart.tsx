@@ -19,6 +19,30 @@ interface MacroTargetChartProps {
 }
 
 export const MacroTargetChart = ({ data, title, unit, color }: MacroTargetChartProps) => {
+  const yDomain = useMemo(() => {
+    const values = data
+      .flatMap((d) => [d.actual, d.target])
+      .filter((v): v is number => v != null);
+
+    if (values.length === 0) return [0, 1];
+
+    let min = Math.min(...values);
+    let max = Math.max(...values);
+
+    if (max === min) {
+      max += 1;
+      min = Math.max(0, min - 1);
+    }
+
+    const range = max - min;
+    const pad = Math.max(1, range * 0.1);
+
+    const yMin = Math.max(0, Math.floor(min - pad));
+    const yMax = Math.ceil(max + pad);
+
+    return [yMin, yMax];
+  }, [data]);
+
   return (
     <Card className="shadow-md">
       <CardHeader>
