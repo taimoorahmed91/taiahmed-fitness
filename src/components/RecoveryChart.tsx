@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { HeartPulse } from 'lucide-react';
@@ -8,6 +9,27 @@ interface RecoveryChartProps {
 
 export const RecoveryChart = ({ data }: RecoveryChartProps) => {
   const latest = data.length > 0 ? data[data.length - 1].recovery : null;
+
+  const yDomain = useMemo(() => {
+    if (data.length === 0) return [0, 100];
+
+    const values = data.map((d) => d.recovery);
+    let min = Math.min(...values);
+    let max = Math.max(...values);
+
+    if (max === min) {
+      max = Math.min(100, max + 1);
+      min = Math.max(0, min - 1);
+    }
+
+    const range = max - min;
+    const pad = Math.max(1, range * 0.1);
+
+    const yMin = Math.max(0, Math.floor(min - pad));
+    const yMax = Math.min(100, Math.ceil(max + pad));
+
+    return [yMin, yMax];
+  }, [data]);
 
   return (
     <Card className="shadow-md">
@@ -38,7 +60,7 @@ export const RecoveryChart = ({ data }: RecoveryChartProps) => {
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
               />
               <YAxis
-                domain={[0, 100]}
+                domain={yDomain}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
