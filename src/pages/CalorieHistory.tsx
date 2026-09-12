@@ -135,9 +135,22 @@ const CalorieHistory = () => {
       });
   }, [meals, sessions, activities, personalData, settings.daily_calorie_goal, weightEntries]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => {
+      if (startDate && endDate) return row.date >= startDate && row.date <= endDate;
+      if (startDate) return row.date === startDate;
+      if (endDate) return row.date <= endDate;
+      return true;
+    });
+  }, [rows, startDate, endDate]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [startDate, endDate]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageRows = filteredRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-background">
