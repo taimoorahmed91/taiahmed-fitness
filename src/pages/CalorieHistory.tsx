@@ -74,6 +74,8 @@ const CalorieHistory = () => {
   const { settings } = useUserSettings();
   const { entries: weightEntries } = useWeight();
   const [page, setPage] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const rows = useMemo<DayRow[]>(() => {
     const dates = new Set<string>();
