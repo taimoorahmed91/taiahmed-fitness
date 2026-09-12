@@ -1,15 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { PaginationControls } from '@/components/PaginationControls';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useWeight } from '@/hooks/useWeight';
-import { History, Dumbbell, Moon } from 'lucide-react';
+import { History, Dumbbell, Moon, Search } from 'lucide-react';
 
 const PAGE_SIZE = 20;
 
@@ -71,6 +74,8 @@ const CalorieHistory = () => {
   const { settings } = useUserSettings();
   const { entries: weightEntries } = useWeight();
   const [page, setPage] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const rows = useMemo<DayRow[]>(() => {
     const dates = new Set<string>();
@@ -130,9 +135,22 @@ const CalorieHistory = () => {
       });
   }, [meals, sessions, activities, personalData, settings.daily_calorie_goal, weightEntries]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => {
+      if (startDate && endDate) return row.date >= startDate && row.date <= endDate;
+      if (startDate) return row.date === startDate;
+      if (endDate) return row.date <= endDate;
+      return true;
+    });
+  }, [rows, startDate, endDate]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [startDate, endDate]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageRows = filteredRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-background">
@@ -148,12 +166,55 @@ const CalorieHistory = () => {
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
+              <Search className="h-5 w-5 text-primary" />
+              Search by date
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-3 items-end">
+              <div className="space-y-2">
+                <Label htmlFor="start-date">From</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end-date">To</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mt-3">
+              Select a single date to filter that day, or choose a range.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
               <History className="h-5 w-5 text-primary" />
-              Daily records ({rows.length})
+              Daily records ({filteredRows.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {rows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No data logged yet.</p>
             ) : (
               <>
@@ -213,7 +274,7 @@ const CalorieHistory = () => {
                 <PaginationControls
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={rows.length}
+                  totalItems={filteredRows.length}
                   onPageChange={setPage}
                   hasNextPage={currentPage < totalPages}
                   hasPrevPage={currentPage > 1}
