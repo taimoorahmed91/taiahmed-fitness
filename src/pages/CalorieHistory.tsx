@@ -166,12 +166,55 @@ const CalorieHistory = () => {
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
+              <Search className="h-5 w-5 text-primary" />
+              Search by date
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-3 items-end">
+              <div className="space-y-2">
+                <Label htmlFor="start-date">From</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end-date">To</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mt-3">
+              Select a single date to filter that day, or choose a range.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
               <History className="h-5 w-5 text-primary" />
-              Daily records ({rows.length})
+              Daily records ({filteredRows.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {rows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No data logged yet.</p>
             ) : (
               <>
