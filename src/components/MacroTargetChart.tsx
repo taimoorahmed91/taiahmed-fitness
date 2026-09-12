@@ -56,7 +56,7 @@ export const MacroTargetChart = ({ data, title, unit, color }: MacroTargetChartP
             <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="date" tick={{ fontSize: 12 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" width={50} />
+              <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" width={50} domain={yDomain} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
