@@ -60,7 +60,7 @@ export const RecoveryChart = ({ data }: RecoveryChartProps) => {
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
               />
               <YAxis
-                domain={[0, 100]}
+                domain={yDomain}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
