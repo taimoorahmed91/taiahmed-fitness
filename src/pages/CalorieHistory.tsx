@@ -274,7 +274,7 @@ const CalorieHistory = () => {
                 <PaginationControls
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={rows.length}
+                  totalItems={filteredRows.length}
                   onPageChange={setPage}
                   hasNextPage={currentPage < totalPages}
                   hasPrevPage={currentPage > 1}
