@@ -1,15 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { PaginationControls } from '@/components/PaginationControls';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useWeight } from '@/hooks/useWeight';
-import { History, Dumbbell, Moon } from 'lucide-react';
+import { History, Dumbbell, Moon, Search } from 'lucide-react';
 
 const PAGE_SIZE = 20;
 
