@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Target, Pencil, Check, X } from 'lucide-react';
-import { formatRange } from '@/lib/targets';
 import { TargetRangeBar } from '@/components/TargetRangeBar';
 
 interface CalorieGoalProgressProps {
@@ -20,8 +19,6 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, onGoalChange, auto
   const [editValue, setEditValue] = useState(goal.toString());
 
   const range = { min: goal, max: Math.max(goal, goalMax ?? goal) };
-  const percentage = Math.round((current / goal) * 100);
-  const remainingLabel = formatRange({ min: Math.max(range.min - current, 0), max: Math.max(range.max - current, 0) });
 
   const handleSave = () => {
     const newGoal = parseInt(editValue);
@@ -74,6 +71,24 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, onGoalChange, auto
           <span className="text-sm text-muted-foreground">Consumed</span>
           <span className="text-2xl font-bold text-primary">{current}</span>
         </div>
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="h-8"
+              min="1"
+              autoFocus
+            />
+            <Button variant="ghost" size="icon" onClick={handleSave} className="h-8 w-8 shrink-0">
+              <Check className="h-4 w-4 text-chart-2" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleCancel} className="h-8 w-8 shrink-0">
+              <X className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        ) : (
         <div className="space-y-2">
           <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
             <span className="text-sm text-muted-foreground">
