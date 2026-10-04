@@ -12,20 +12,23 @@ import {
 } from 'recharts';
 import { BarChart3, LineChart as LineIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface MacroTargetChartProps {
   data: { date: string; actual: number; min: number | null; max: number | null }[];
   title: string;
   unit: string;
-  color: string;
   storageKey?: string;
 }
 
 type Range = '7' | '30';
 type Style = 'line' | 'bar';
 
-const LABELS: Record<string, string> = { actual: 'Actual', min: 'Min', max: 'Max' };
+const LABELS: Record<string, string> = { actual: 'Actual intake', min: 'Min target', max: 'Max target' };
+const ACTUAL_COLOR = 'hsl(var(--chart-actual))';
+const MIN_COLOR = 'hsl(var(--chart-min))';
+const MAX_COLOR = 'hsl(var(--chart-max))';
 
 const readPref = <T extends string>(key: string, allowed: T[], fallback: T): T => {
   try {
@@ -37,21 +40,23 @@ const readPref = <T extends string>(key: string, allowed: T[], fallback: T): T =
 };
 
 const Seg = ({ active, onClick, children, label }: { active: boolean; onClick: () => void; children: React.ReactNode; label: string }) => (
-  <button
+  <Button
     type="button"
+    variant="ghost"
+    size="sm"
     aria-label={label}
     aria-pressed={active}
     onClick={onClick}
     className={cn(
-      'px-2 py-1 text-xs font-medium transition-colors flex items-center',
+      'h-7 rounded-none px-2 text-xs font-medium transition-colors flex items-center',
       active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
     )}
   >
     {children}
-  </button>
+  </Button>
 );
 
-export const MacroTargetChart = ({ data, title, unit, color, storageKey }: MacroTargetChartProps) => {
+export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetChartProps) => {
   const key = `fittrack_macro_chart_${storageKey ?? title}`;
   const [range, setRange] = useState<Range>(() => readPref<Range>(`${key}_range`, ['7', '30'], '7'));
   const [style, setStyle] = useState<Style>(() => readPref<Style>(`${key}_style`, ['line', 'bar'], 'line'));
@@ -124,12 +129,12 @@ export const MacroTargetChart = ({ data, title, unit, color, storageKey }: Macro
               />
               <Legend formatter={(value) => LABELS[value] ?? value} />
               {style === 'bar' ? (
-                <Bar dataKey="actual" fill={color} radius={[4, 4, 0, 0]} name="actual" />
+                <Bar dataKey="actual" fill={ACTUAL_COLOR} radius={[4, 4, 0, 0]} name="actual" />
               ) : (
-                <Line type="monotone" dataKey="actual" stroke={color} strokeWidth={2} dot={{ r: 3 }} name="actual" connectNulls />
+                <Line type="monotone" dataKey="actual" stroke={ACTUAL_COLOR} strokeWidth={3.5} dot={{ r: 4, fill: ACTUAL_COLOR, stroke: 'hsl(var(--card))', strokeWidth: 1.5 }} activeDot={{ r: 6 }} name="actual" connectNulls />
               )}
-              <Line type="monotone" dataKey="min" stroke="#22c55e" strokeWidth={2} strokeDasharray="5 5" dot={false} name="min" connectNulls />
-              <Line type="monotone" dataKey="max" stroke="#f97316" strokeWidth={2} strokeDasharray="5 5" dot={false} name="max" connectNulls />
+              <Line type="monotone" dataKey="min" stroke={MIN_COLOR} strokeWidth={2} strokeDasharray="8 5" dot={false} name="min" connectNulls />
+              <Line type="monotone" dataKey="max" stroke={MAX_COLOR} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} name="max" connectNulls />
             </ComposedChart>
           </ResponsiveContainer>
         )}

@@ -363,9 +363,9 @@ const Dashboard = () => {
 
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <MacroTargetChart data={macroComparisonData.calories} title="Calories: Actual vs Target" unit="cal" color="hsl(var(--primary))" />
-        <MacroTargetChart data={macroComparisonData.protein} title="Protein: Actual vs Target" unit="g" color="#22c55e" />
-        <MacroTargetChart data={macroComparisonData.carbs} title="Carbs: Actual vs Target" unit="g" color="#f59e0b" />
+        <MacroTargetChart data={macroComparisonData.calories} title="Calories: Actual vs Target" unit="cal" />
+        <MacroTargetChart data={macroComparisonData.protein} title="Protein: Actual vs Target" unit="g" />
+        <MacroTargetChart data={macroComparisonData.carbs} title="Carbs: Actual vs Target" unit="g" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
