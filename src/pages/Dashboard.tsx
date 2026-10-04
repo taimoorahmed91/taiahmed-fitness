@@ -17,7 +17,6 @@ import { WeightChart } from '@/components/WeightChart';
 import { WaistChart } from '@/components/WaistChart';
 import { SleepChart } from '@/components/SleepChart';
 import { GoalsCard } from '@/components/GoalsCard';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WeightIntervalSetting } from '@/components/WeightIntervalSetting';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
@@ -238,7 +237,7 @@ const Dashboard = () => {
       .reverse();
   }, [meals, whoopEntries]);
 
-  const [timeFilter, setTimeFilter] = useState('today');
+  const timeFilter = 'today' as string;
 
   // Calculate yesterday's calories
   const yesterdayCalories = useMemo(() => {
@@ -281,17 +280,6 @@ const Dashboard = () => {
         <ResetCountdown />
       </div>
 
-      <Select value={timeFilter} onValueChange={setTimeFilter}>
-        <SelectTrigger className="w-full sm:w-[180px] bg-card">
-          <SelectValue placeholder="Filter by time" />
-        </SelectTrigger>
-        <SelectContent className="bg-popover z-50">
-          <SelectItem value="all">All Time</SelectItem>
-          <SelectItem value="today">Today</SelectItem>
-          <SelectItem value="week">This Week</SelectItem>
-          <SelectItem value="month">This Month</SelectItem>
-        </SelectContent>
-      </Select>
 
       <Card className="shadow-md">
         <CardHeader>
