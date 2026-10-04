@@ -34,6 +34,7 @@ import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
+import { resolveCalorieRange, macroRange } from '@/lib/targets';
 const shiftISODateByDays = (isoDate: string, days: number) => {
   const date = new Date(`${isoDate}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -85,21 +86,11 @@ const Dashboard = () => {
       .filter((a) => a.date === dateStr)
       .reduce((sum, a) => sum + (a.calories || 0), 0);
 
-  // Resolve effective calorie goal for a given date based on workout activity that day
+  // Resolve effective calorie min/max for a given date based on workout activity that day
   const resolveGoalForDate = (dateStr: string) => {
     const workedOut = gymSessions.some((s) => s.date === dateStr);
-    const gymTarget = personalData.gym_day_calorie_target;
-    const restTarget = personalData.rest_day_calorie_target;
-    const auto = gymTarget != null || restTarget != null;
-    let goal = settings.daily_calorie_goal;
-    if (auto) {
-      if (workedOut && gymTarget != null) goal = gymTarget;
-      else if (!workedOut && restTarget != null) goal = restTarget;
-      else if (gymTarget != null) goal = gymTarget;
-      else if (restTarget != null) goal = restTarget;
-    }
-    goal += extraCaloriesForDate(dateStr);
-    return { goal, workedOut, auto };
+    const r = resolveCalorieRange(personalData, settings.daily_calorie_goal, workedOut, extraCaloriesForDate(dateStr));
+    return { goal: r.min, goalMax: r.max, workedOut, auto: r.auto };
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -109,7 +100,7 @@ const Dashboard = () => {
     return d.toISOString().split('T')[0];
   })();
 
-  const { goal: effectiveGoal, workedOut: isGymDay, auto: autoMode } = useMemo(
+  const { goal: effectiveGoal, goalMax: effectiveGoalMax, workedOut: isGymDay, auto: autoMode } = useMemo(
     () => resolveGoalForDate(todayStr),
     [gymSessions, personalData, settings.daily_calorie_goal, todayStr, extraActivities]
   );
@@ -152,37 +143,24 @@ const Dashboard = () => {
       return value ?? sortedWeights[0]?.weight ?? null;
     };
 
-    const calories: { date: string; actual: number; target: number | null }[] = [];
-    const protein: { date: string; actual: number; target: number | null }[] = [];
-    const carbs: { date: string; actual: number; target: number | null }[] = [];
+    type Row = { date: string; actual: number; min: number | null; max: number | null };
+    const calories: Row[] = [];
+    const protein: Row[] = [];
+    const carbs: Row[] = [];
 
     for (let i = 0; i < 30; i++) {
       const date = shiftISODateByDays(start, i);
       const dayMeals = meals.filter((m) => m.date === date);
-      const { goal } = resolveGoalForDate(date);
+      const { goal, goalMax } = resolveGoalForDate(date);
       const weight = weightOn(date);
-      const proteinTarget =
-        personalData.protein_multiplier && weight ? personalData.protein_multiplier * weight : null;
-      const carbTarget =
-        personalData.carb_multiplier && weight ? personalData.carb_multiplier * weight : null;
+      const pr = macroRange(personalData.protein_multiplier, personalData.protein_multiplier_max, weight);
+      const cr = macroRange(personalData.carb_multiplier, personalData.carb_multiplier_max, weight);
       const [, month, day] = date.split('-');
       const label = `${month}/${day}`;
 
-      calories.push({
-        date: label,
-        actual: dayMeals.reduce((s, m) => s + m.calories, 0),
-        target: goal,
-      });
-      protein.push({
-        date: label,
-        actual: dayMeals.reduce((s, m) => s + (m.protein || 0), 0),
-        target: proteinTarget,
-      });
-      carbs.push({
-        date: label,
-        actual: dayMeals.reduce((s, m) => s + (m.carbs || 0), 0),
-        target: carbTarget,
-      });
+      calories.push({ date: label, actual: dayMeals.reduce((s, m) => s + m.calories, 0), min: goal, max: goalMax });
+      protein.push({ date: label, actual: dayMeals.reduce((s, m) => s + (m.protein || 0), 0), min: pr?.min ?? null, max: pr?.max ?? null });
+      carbs.push({ date: label, actual: dayMeals.reduce((s, m) => s + (m.carbs || 0), 0), min: cr?.min ?? null, max: cr?.max ?? null });
     }
 
     return { calories, protein, carbs };
@@ -362,6 +340,7 @@ const Dashboard = () => {
         <CalorieGoalProgress
           current={getTodayCalories()}
           goal={effectiveGoal}
+          goalMax={effectiveGoalMax}
           onGoalChange={updateCalorieGoal}
           autoMode={autoMode}
           dayType={autoMode ? (isGymDay ? 'gym' : 'rest') : undefined}
@@ -374,11 +353,13 @@ const Dashboard = () => {
         />
         <ProteinTargetCard
           multiplier={personalData.protein_multiplier}
+          multiplierMax={personalData.protein_multiplier_max}
           currentWeight={weightEntries[0]?.weight ?? null}
           todayProtein={getTodayProtein()}
         />
         <CarbTargetCard
           multiplier={personalData.carb_multiplier}
+          multiplierMax={personalData.carb_multiplier_max}
           currentWeight={weightEntries[0]?.weight ?? null}
           todayCarbs={getTodayCarbs()}
         />
