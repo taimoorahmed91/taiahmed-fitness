@@ -70,7 +70,7 @@ const ResetCountdown = () => {
 const Dashboard = () => {
   const { meals, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
   const { getThisWeekSessions, getWeeklyWorkoutData, sessions: gymSessions, refetch: refetchGym } = useGymSessions();
-  const { settings, updateCalorieGoal, updateWeightInterval, updateWaistInterval, refetch: refetchSettings } = useUserSettings();
+  const { settings, updateWeightInterval, updateWaistInterval, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
   const { entries: waistEntries, refetch: refetchWaist } = useWaist();
   const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
@@ -341,7 +341,6 @@ const Dashboard = () => {
           current={getTodayCalories()}
           goal={effectiveGoal}
           goalMax={effectiveGoalMax}
-          onGoalChange={updateCalorieGoal}
           autoMode={autoMode}
           dayType={autoMode ? (isGymDay ? 'gym' : 'rest') : undefined}
         />

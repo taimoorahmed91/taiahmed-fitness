@@ -82,26 +82,6 @@ export const useUserSettings = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const updateCalorieGoal = async (goal: number) => {
-    try {
-      const user = await getSessionUser();
-      if (!user) {
-        toast({ title: 'Error', description: 'You must be logged in to update settings', variant: 'destructive' });
-        return;
-      }
-      const { error } = await supabase
-        .from('fittrack_user_settings')
-        .update({ daily_calorie_goal: goal })
-        .eq('user_id', user.id);
-      if (error) throw error;
-      setSettings((prev) => ({ ...prev, daily_calorie_goal: goal }));
-      toast({ title: 'Success', description: 'Daily calorie goal updated' });
-    } catch (error) {
-      console.error('Error updating calorie goal:', error);
-      toast({ title: 'Error', description: 'Failed to update calorie goal', variant: 'destructive' });
-    }
-  };
-
   const updateWeightInterval = async (interval: number) => {
     try {
       const user = await getSessionUser();
@@ -162,5 +142,5 @@ export const useUserSettings = () => {
     }
   };
 
-  return { settings, loading, updateRestTimers, updateCalorieGoal, updateWeightInterval, updateWaistInterval, refetch: fetchSettings };
+  return { settings, loading, updateRestTimers, updateWeightInterval, updateWaistInterval, refetch: fetchSettings };
 };
