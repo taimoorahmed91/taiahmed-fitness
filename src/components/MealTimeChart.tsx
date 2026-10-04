@@ -9,10 +9,10 @@ interface MealTimeChartProps {
 }
 
 const COLORS: Record<string, string> = {
-  Morning: 'hsl(var(--chart-time-morning))',
-  Lunch: 'hsl(var(--chart-time-lunch))',
-  Afternoon: 'hsl(var(--chart-time-afternoon))',
-  Evening: 'hsl(var(--chart-time-evening))',
+  Morning: 'hsl(var(--primary))',
+  Lunch: 'hsl(var(--chart-min))',
+  Afternoon: 'hsl(var(--chart-max))',
+  Evening: 'hsl(var(--chart-actual))',
 };
 
 export const MealTimeChart = ({ data7, data30 }: MealTimeChartProps) => {
