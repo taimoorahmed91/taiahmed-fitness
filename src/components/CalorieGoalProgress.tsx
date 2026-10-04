@@ -8,17 +8,19 @@ import { Target, Pencil, Check, X } from 'lucide-react';
 interface CalorieGoalProgressProps {
   current: number;
   goal: number;
+  goalMax?: number;
   onGoalChange: (goal: number) => void;
   autoMode?: boolean;
   dayType?: 'gym' | 'rest';
 }
 
-export const CalorieGoalProgress = ({ current, goal, onGoalChange, autoMode = false, dayType }: CalorieGoalProgressProps) => {
+export const CalorieGoalProgress = ({ current, goal, goalMax, onGoalChange, autoMode = false, dayType }: CalorieGoalProgressProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(goal.toString());
 
-  const percentage = Math.min(Math.round((current / goal) * 100), 100);
-  const remaining = Math.max(goal - current, 0);
+  const range = { min: goal, max: Math.max(goal, goalMax ?? goal) };
+  const percentage = Math.round((current / goal) * 100);
+  const remainingLabel = formatRange({ min: Math.max(range.min - current, 0), max: Math.max(range.max - current, 0) });
 
   const handleSave = () => {
     const newGoal = parseInt(editValue);
