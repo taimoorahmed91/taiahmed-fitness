@@ -1,8 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { StatsCards } from '@/components/StatsCards';
-import { CalorieChart } from '@/components/CalorieChart';
-import { ProteinChart } from '@/components/ProteinChart';
-import { CarbChart } from '@/components/CarbChart';
 import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
@@ -372,13 +369,8 @@ const Dashboard = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <CalorieChart data={calorieChartData} notesMap={notesMap} />
-        <ProteinChart data={calorieChartData} />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <CarbChart data={calorieChartData} />
         <WorkoutDurationChart data={getWeeklyWorkoutData()} />
+        <CalorieBalanceChart data={calorieBalanceData} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -388,12 +380,9 @@ const Dashboard = () => {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <SleepChart data={sleepChartData} notesMap={notesMap} />
-        <CalorieBalanceChart data={calorieBalanceData} />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
         <GoalsCard />
       </div>
+
     </div>
   );
 };
