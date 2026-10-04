@@ -17,7 +17,7 @@ import { WeightChart } from '@/components/WeightChart';
 import { WaistChart } from '@/components/WaistChart';
 import { SleepChart } from '@/components/SleepChart';
 import { GoalsCard } from '@/components/GoalsCard';
-import { SearchFilter } from '@/components/SearchFilter';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WeightIntervalSetting } from '@/components/WeightIntervalSetting';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
@@ -238,7 +238,6 @@ const Dashboard = () => {
       .reverse();
   }, [meals, whoopEntries]);
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('today');
 
   // Calculate yesterday's calories
@@ -259,8 +258,6 @@ const Dashboard = () => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     return meals.filter((meal) => {
-      const matchesSearch = meal.food.toLowerCase().includes(searchQuery.toLowerCase());
-      
       let matchesTime = true;
       if (timeFilter === 'today') {
         matchesTime = meal.date === today;
@@ -270,9 +267,9 @@ const Dashboard = () => {
         matchesTime = new Date(meal.date) >= monthStart;
       }
       
-      return matchesSearch && matchesTime;
+      return matchesTime;
     });
-  }, [meals, searchQuery, timeFilter]);
+  }, [meals, timeFilter]);
 
   return (
     <div className="container py-8 space-y-6">
@@ -284,12 +281,17 @@ const Dashboard = () => {
         <ResetCountdown />
       </div>
 
-      <SearchFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        timeFilter={timeFilter}
-        onTimeFilterChange={setTimeFilter}
-      />
+      <Select value={timeFilter} onValueChange={setTimeFilter}>
+        <SelectTrigger className="w-full sm:w-[180px] bg-card">
+          <SelectValue placeholder="Filter by time" />
+        </SelectTrigger>
+        <SelectContent className="bg-popover z-50">
+          <SelectItem value="all">All Time</SelectItem>
+          <SelectItem value="today">Today</SelectItem>
+          <SelectItem value="week">This Week</SelectItem>
+          <SelectItem value="month">This Month</SelectItem>
+        </SelectContent>
+      </Select>
 
       <Card className="shadow-md">
         <CardHeader>
@@ -301,7 +303,7 @@ const Dashboard = () => {
         <CardContent>
           {filteredMeals.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              {searchQuery ? 'No meals match your search.' : 'No meals logged. Start tracking!'}
+              No meals logged. Start tracking!
             </p>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
