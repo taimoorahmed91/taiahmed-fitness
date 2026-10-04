@@ -1,0 +1,1 @@
+Use semantic chart role tokens in global CSS for actual intake and minimum/maximum target series; this keeps chart contrast consistent in both themes.

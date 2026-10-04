@@ -66,6 +66,9 @@ All colors MUST be HSL.
     --chart-4: 24 94% 53%;
 
     --chart-5: 0 0% 45%;
+    --chart-actual: 0 0% 18%;
+    --chart-min: 145 70% 32%;
+    --chart-max: 4 78% 48%;
 
     --sidebar: 0 0% 98%;
 
@@ -137,6 +140,9 @@ All colors MUST be HSL.
     --chart-3: 48 96% 76%;
     --chart-4: 27 95% 60%;
     --chart-5: 0 0% 45%;
+    --chart-actual: 0 0% 96%;
+    --chart-min: 145 65% 58%;
+    --chart-max: 5 85% 66%;
     --sidebar: 0 0% 14%;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
