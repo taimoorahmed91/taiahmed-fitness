@@ -65,7 +65,7 @@ const ResetCountdown = () => {
 
 const Dashboard = () => {
   const { meals, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
-  const { getThisWeekSessions, getWeeklyWorkoutData, sessions: gymSessions, refetch: refetchGym } = useGymSessions();
+  const { sessions: gymSessions, refetch: refetchGym } = useGymSessions();
   const { settings, updateWeightInterval, updateWaistInterval, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
   const { entries: waistEntries, refetch: refetchWaist } = useWaist();
@@ -111,18 +111,29 @@ const Dashboard = () => {
     return withScore?.recovery_score ?? null;
   }, [whoopEntries]);
 
-  // WHOOP recovery trend for the last 7 days (oldest -> newest)
+  // WHOOP recovery trend for the last 30 days (oldest -> newest)
   const recoveryChartData = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const sevenDaysAgo = shiftISODateByDays(today, -6);
+    const thirtyDaysAgo = shiftISODateByDays(today, -29);
     return whoopEntries
-      .filter((e) => e.recovery_score != null && e.date >= sevenDaysAgo && e.date <= today)
-      .map((e) => {
-        const [, month, day] = e.date.split('-');
-        return { date: `${month}/${day}`, recovery: Number(e.recovery_score) };
-      })
+      .filter((e) => e.recovery_score != null && e.date >= thirtyDaysAgo && e.date <= today)
+      .map((e) => ({ date: e.date, recovery: Number(e.recovery_score) }))
       .reverse();
   }, [whoopEntries]);
+
+  const workoutChartData = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const start = shiftISODateByDays(today, -29);
+    const totals = new Map<string, number>();
+    gymSessions.forEach(session => {
+      if (session.date >= start && session.date <= today)
+        totals.set(session.date, (totals.get(session.date) ?? 0) + session.duration);
+    });
+    return Array.from({ length: 30 }, (_, index) => {
+      const date = shiftISODateByDays(start, index);
+      return { date, duration: totals.get(date) ?? 0 };
+    });
+  }, [gymSessions]);
 
   // Actual vs target for calories, protein and carbs over the last 30 days (oldest -> newest)
   const macroComparisonData = useMemo(() => {
@@ -201,11 +212,11 @@ const Dashboard = () => {
   
   const calorieBalanceData = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const sevenDaysAgo = shiftISODateByDays(today, -6);
+    const thirtyDaysAgo = shiftISODateByDays(today, -29);
 
     const mealsByDate = new Map<string, number>();
     meals.forEach((meal) => {
-      if (meal.date >= sevenDaysAgo && meal.date <= today) {
+      if (meal.date >= thirtyDaysAgo && meal.date <= today) {
         mealsByDate.set(meal.date, (mealsByDate.get(meal.date) || 0) + meal.calories);
       }
     });
@@ -215,17 +226,15 @@ const Dashboard = () => {
         if (entry.kilojoule == null) return false;
         // Use created_at minus 1 day as reference date
         const refDate = shiftISODateByDays(entry.created_at.split('T')[0], -1);
-        return refDate >= sevenDaysAgo && refDate <= today && mealsByDate.has(refDate);
+        return refDate >= thirtyDaysAgo && refDate <= today && mealsByDate.has(refDate);
       })
       .map((entry) => {
         const burned = Math.round(Number(entry.kilojoule) / 4.184);
         const refDate = shiftISODateByDays(entry.created_at.split('T')[0], -1);
         const consumed = mealsByDate.get(refDate) || 0;
         const balance = burned - consumed;
-        const [year, month, day] = refDate.split('-');
-
         return {
-          date: `${month}/${day}`,
+          date: refDate,
           consumed,
           burned,
           balance,
@@ -369,7 +378,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <WorkoutDurationChart data={getWeeklyWorkoutData()} />
+        <WorkoutDurationChart data={workoutChartData} />
         <CalorieBalanceChart data={calorieBalanceData} />
       </div>
 
