@@ -8,7 +8,14 @@ interface MealTimeChartProps {
   data14: { name: string; calories: number; count: number }[];
   data30: { name: string; calories: number; count: number }[];
 }
-...
+
+const COLORS: Record<string, string> = {
+  Morning: 'hsl(var(--primary))',
+  Lunch: 'hsl(var(--chart-min))',
+  Afternoon: 'hsl(var(--chart-max))',
+  Evening: 'hsl(var(--chart-actual))',
+};
+
 export const MealTimeChart = ({ data7, data14, data30 }: MealTimeChartProps) => {
   const { range, setRange } = useChartRange('meal_time');
   const data = range === '7' ? data7 : range === '14' ? data14 : data30;
