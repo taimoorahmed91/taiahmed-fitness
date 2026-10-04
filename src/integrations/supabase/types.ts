@@ -749,15 +749,19 @@ export type Database = {
         Row: {
           age: number | null
           carb_multiplier: number | null
+          carb_multiplier_max: number | null
           created_at: string
           dob: string | null
           full_name: string | null
           gender: string | null
           gym_day_calorie_target: number | null
+          gym_day_calorie_target_max: number | null
           height_cm: number | null
           id: string
           protein_multiplier: number | null
+          protein_multiplier_max: number | null
           rest_day_calorie_target: number | null
+          rest_day_calorie_target_max: number | null
           target_weight_kg: number | null
           updated_at: string
           user_id: string
@@ -766,15 +770,19 @@ export type Database = {
         Insert: {
           age?: number | null
           carb_multiplier?: number | null
+          carb_multiplier_max?: number | null
           created_at?: string
           dob?: string | null
           full_name?: string | null
           gender?: string | null
           gym_day_calorie_target?: number | null
+          gym_day_calorie_target_max?: number | null
           height_cm?: number | null
           id?: string
           protein_multiplier?: number | null
+          protein_multiplier_max?: number | null
           rest_day_calorie_target?: number | null
+          rest_day_calorie_target_max?: number | null
           target_weight_kg?: number | null
           updated_at?: string
           user_id: string
@@ -783,15 +791,19 @@ export type Database = {
         Update: {
           age?: number | null
           carb_multiplier?: number | null
+          carb_multiplier_max?: number | null
           created_at?: string
           dob?: string | null
           full_name?: string | null
           gender?: string | null
           gym_day_calorie_target?: number | null
+          gym_day_calorie_target_max?: number | null
           height_cm?: number | null
           id?: string
           protein_multiplier?: number | null
+          protein_multiplier_max?: number | null
           rest_day_calorie_target?: number | null
+          rest_day_calorie_target_max?: number | null
           target_weight_kg?: number | null
           updated_at?: string
           user_id?: string
