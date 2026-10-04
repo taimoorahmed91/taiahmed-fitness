@@ -42,6 +42,10 @@ const PersonalDataPage = () => {
   const [restTarget, setRestTarget] = useState('');
   const [proteinMultiplier, setProteinMultiplier] = useState('');
   const [carbMultiplier, setCarbMultiplier] = useState('');
+  const [gymTargetMax, setGymTargetMax] = useState('');
+  const [restTargetMax, setRestTargetMax] = useState('');
+  const [proteinMultiplierMax, setProteinMultiplierMax] = useState('');
+  const [carbMultiplierMax, setCarbMultiplierMax] = useState('');
   const [workoutDays, setWorkoutDays] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -56,6 +60,10 @@ const PersonalDataPage = () => {
     setRestTarget(data.rest_day_calorie_target?.toString() || '');
     setProteinMultiplier(data.protein_multiplier?.toString() || '');
     setCarbMultiplier(data.carb_multiplier?.toString() || '');
+    setGymTargetMax(data.gym_day_calorie_target_max?.toString() || '');
+    setRestTargetMax(data.rest_day_calorie_target_max?.toString() || '');
+    setProteinMultiplierMax(data.protein_multiplier_max?.toString() || '');
+    setCarbMultiplierMax(data.carb_multiplier_max?.toString() || '');
     setWorkoutDays(data.workout_days || []);
   }, [data]);
 
@@ -71,6 +79,18 @@ const PersonalDataPage = () => {
   };
 
   const handleSave = async () => {
+    const pairs: [string, string, string][] = [
+      ['Gym day calories', gymTarget, gymTargetMax],
+      ['Rest day calories', restTarget, restTargetMax],
+      ['Protein multiplier', proteinMultiplier, proteinMultiplierMax],
+      ['Carb multiplier', carbMultiplier, carbMultiplierMax],
+    ];
+    for (const [label, mn, mx] of pairs) {
+      if (mn && mx && parseFloat(mx) < parseFloat(mn)) {
+        toast.error(`${label}: Max must be greater than or equal to Min`);
+        return;
+      }
+    }
     setSaving(true);
     const { error } = await save({
       full_name: fullName || null,
@@ -83,6 +103,10 @@ const PersonalDataPage = () => {
       rest_day_calorie_target: restTarget ? parseInt(restTarget, 10) : null,
       protein_multiplier: proteinMultiplier ? parseFloat(proteinMultiplier) : null,
       carb_multiplier: carbMultiplier ? parseFloat(carbMultiplier) : null,
+      gym_day_calorie_target_max: gymTargetMax ? parseInt(gymTargetMax, 10) : gymTarget ? parseInt(gymTarget, 10) : null,
+      rest_day_calorie_target_max: restTargetMax ? parseInt(restTargetMax, 10) : restTarget ? parseInt(restTarget, 10) : null,
+      protein_multiplier_max: proteinMultiplierMax ? parseFloat(proteinMultiplierMax) : proteinMultiplier ? parseFloat(proteinMultiplier) : null,
+      carb_multiplier_max: carbMultiplierMax ? parseFloat(carbMultiplierMax) : carbMultiplier ? parseFloat(carbMultiplier) : null,
       workout_days: workoutDays,
     });
     setSaving(false);
@@ -192,75 +216,41 @@ const PersonalDataPage = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="gymTarget">Gym Day Calorie Target</Label>
-                  <Input
-                    id="gymTarget"
-                    inputMode="numeric"
-                    value={gymTarget}
-                    onChange={(e) => handleNumeric(e.target.value, setGymTarget)}
-                    placeholder="e.g. 2400"
-                  />
-                  <p className="text-xs text-muted-foreground">Used as your daily goal on days you log a workout.</p>
-                  <FieldHistory
-                    field="gym_day_calorie_target"
-                    unit="kcal"
-                    latest={latestFor('gym_day_calorie_target')}
-                    history={historyFor('gym_day_calorie_target')}
-                  />
-                </div>
+                <MinMaxField
+                  label="Gym Day Calorie Target (kcal)"
+                  min={gymTarget} max={gymTargetMax}
+                  onMin={(v) => handleNumeric(v, setGymTarget)} onMax={(v) => handleNumeric(v, setGymTargetMax)}
+                  placeholders={['e.g. 2300', 'e.g. 2600']}
+                  hint="Used as your daily range on days you log a workout."
+                />
+                <FieldHistory field="gym_day_calorie_target" unit="kcal (min)" latest={latestFor('gym_day_calorie_target')} history={historyFor('gym_day_calorie_target')} />
+                <FieldHistory field="gym_day_calorie_target_max" unit="kcal (max)" latest={latestFor('gym_day_calorie_target_max')} history={historyFor('gym_day_calorie_target_max')} />
 
-                <div className="space-y-2">
-                  <Label htmlFor="restTarget">Rest Day Calorie Target</Label>
-                  <Input
-                    id="restTarget"
-                    inputMode="numeric"
-                    value={restTarget}
-                    onChange={(e) => handleNumeric(e.target.value, setRestTarget)}
-                    placeholder="e.g. 1900"
-                  />
-                  <p className="text-xs text-muted-foreground">Used as your daily goal on days with no workout.</p>
-                  <FieldHistory
-                    field="rest_day_calorie_target"
-                    unit="kcal"
-                    latest={latestFor('rest_day_calorie_target')}
-                    history={historyFor('rest_day_calorie_target')}
-                  />
-                </div>
+                <MinMaxField
+                  label="Rest Day Calorie Target (kcal)"
+                  min={restTarget} max={restTargetMax}
+                  onMin={(v) => handleNumeric(v, setRestTarget)} onMax={(v) => handleNumeric(v, setRestTargetMax)}
+                  placeholders={['e.g. 1900', 'e.g. 2200']}
+                  hint="Used as your daily range on days with no workout."
+                />
+                <FieldHistory field="rest_day_calorie_target" unit="kcal (min)" latest={latestFor('rest_day_calorie_target')} history={historyFor('rest_day_calorie_target')} />
+                <FieldHistory field="rest_day_calorie_target_max" unit="kcal (max)" latest={latestFor('rest_day_calorie_target_max')} history={historyFor('rest_day_calorie_target_max')} />
 
-                <div className="space-y-2">
-                  <Label htmlFor="proteinMultiplier">Protein Multiplier (g/kg)</Label>
-                  <Input
-                    id="proteinMultiplier"
-                    inputMode="decimal"
-                    value={proteinMultiplier}
-                    onChange={(e) => handleNumeric(e.target.value, setProteinMultiplier)}
-                    placeholder="e.g. 2.2"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Grams of protein per kg of body weight. Multiplied by your current weight to set the daily protein target on the dashboard.
-                    {currentWeight && proteinMultiplier
-                      ? ` Current target: ${Math.round(parseFloat(proteinMultiplier) * currentWeight)} g`
-                      : ''}
-                  </p>
-                </div>
+                <MinMaxField
+                  label="Protein Multiplier (g/kg)"
+                  min={proteinMultiplier} max={proteinMultiplierMax}
+                  onMin={(v) => handleNumeric(v, setProteinMultiplier)} onMax={(v) => handleNumeric(v, setProteinMultiplierMax)}
+                  placeholders={['e.g. 1.8', 'e.g. 2.2']}
+                  hint={`Grams of protein per kg of body weight.${currentWeight && proteinMultiplier ? ` Current range: ${Math.round(parseFloat(proteinMultiplier) * currentWeight)}–${Math.round(parseFloat(proteinMultiplierMax || proteinMultiplier) * currentWeight)} g` : ''}`}
+                />
 
-                <div className="space-y-2">
-                  <Label htmlFor="carbMultiplier">Carb Multiplier (g/kg)</Label>
-                  <Input
-                    id="carbMultiplier"
-                    inputMode="decimal"
-                    value={carbMultiplier}
-                    onChange={(e) => handleNumeric(e.target.value, setCarbMultiplier)}
-                    placeholder="e.g. 3.5"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Grams of carbs per kg of body weight. Multiplied by your current weight to set the daily carb target on the dashboard.
-                    {currentWeight && carbMultiplier
-                      ? ` Current target: ${Math.round(parseFloat(carbMultiplier) * currentWeight)} g`
-                      : ''}
-                  </p>
-                </div>
+                <MinMaxField
+                  label="Carb Multiplier (g/kg)"
+                  min={carbMultiplier} max={carbMultiplierMax}
+                  onMin={(v) => handleNumeric(v, setCarbMultiplier)} onMax={(v) => handleNumeric(v, setCarbMultiplierMax)}
+                  placeholders={['e.g. 3', 'e.g. 4']}
+                  hint={`Grams of carbs per kg of body weight.${currentWeight && carbMultiplier ? ` Current range: ${Math.round(parseFloat(carbMultiplier) * currentWeight)}–${Math.round(parseFloat(carbMultiplierMax || carbMultiplier) * currentWeight)} g` : ''}`}
+                />
 
                 <div className="space-y-2">
                   <Label>Workout Days</Label>
@@ -312,6 +302,29 @@ const PersonalDataPage = () => {
     </div>
   );
 };
+
+const MinMaxField = ({
+  label, min, max, onMin, onMax, placeholders, hint,
+}: {
+  label: string; min: string; max: string;
+  onMin: (v: string) => void; onMax: (v: string) => void;
+  placeholders: [string, string]; hint?: string;
+}) => (
+  <div className="space-y-2">
+    <Label>{label}</Label>
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <span className="text-xs text-muted-foreground">Min</span>
+        <Input inputMode="decimal" value={min} onChange={(e) => onMin(e.target.value)} placeholder={placeholders[0]} />
+      </div>
+      <div>
+        <span className="text-xs text-muted-foreground">Max</span>
+        <Input inputMode="decimal" value={max} onChange={(e) => onMax(e.target.value)} placeholder={placeholders[1]} />
+      </div>
+    </div>
+    {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+  </div>
+);
 
 const RestTimerCard = () => {
   const { settings, loading, updateRestTimers } = useUserSettings();

@@ -69,35 +69,25 @@ const Meals = () => {
 
   // Calculate stats with dynamic gym/rest day target
   const todayCalories = getTodayCalories();
-  const calorieGoal = useMemo(() => {
+  const calorieRange = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const workedOut = gymSessions.some((s) => s.date === today);
-    const gymTarget = personalData.gym_day_calorie_target;
-    const restTarget = personalData.rest_day_calorie_target;
-    const auto = gymTarget != null || restTarget != null;
-    let base = settings.daily_calorie_goal;
-    if (auto) {
-      if (workedOut && gymTarget != null) base = gymTarget;
-      else if (!workedOut && restTarget != null) base = restTarget;
-      else if (gymTarget != null) base = gymTarget;
-      else if (restTarget != null) base = restTarget;
-    }
     const extras = extraActivities
       .filter((a) => a.date === today)
       .reduce((sum, a) => sum + (a.calories || 0), 0);
-    return base + extras;
+    return resolveCalorieRange(personalData, settings.daily_calorie_goal, workedOut, extras);
   }, [gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
-  const caloriesRemaining = Math.max(0, calorieGoal - todayCalories);
+  const caloriesRemaining = Math.max(0, calorieRange.min - todayCalories);
+  const remainingRange = (r: { min: number; max: number } | null, eaten: number) =>
+    r ? formatRange({ min: Math.max(0, r.min - eaten), max: Math.max(0, r.max - eaten) }) : null;
+  const caloriesRemainingLabel = remainingRange(calorieRange, todayCalories)!;
+  const caloriesLeftToMax = Math.max(0, calorieRange.max - todayCalories);
 
   const currentWeight = weightEntries[0]?.weight ?? null;
-  const proteinRemaining = useMemo(() => {
-    if (!personalData.protein_multiplier || !currentWeight) return null;
-    return Math.max(0, Math.round(personalData.protein_multiplier * currentWeight - getTodayProtein()));
-  }, [personalData.protein_multiplier, currentWeight, meals]);
-  const carbsRemaining = useMemo(() => {
-    if (!personalData.carb_multiplier || !currentWeight) return null;
-    return Math.max(0, Math.round(personalData.carb_multiplier * currentWeight - getTodayCarbs()));
-  }, [personalData.carb_multiplier, currentWeight, meals]);
+  const proteinR = macroRange(personalData.protein_multiplier, personalData.protein_multiplier_max, currentWeight);
+  const carbR = macroRange(personalData.carb_multiplier, personalData.carb_multiplier_max, currentWeight);
+  const proteinRemaining = remainingRange(proteinR, getTodayProtein());
+  const carbsRemaining = remainingRange(carbR, getTodayCarbs());
   
   const todayMeals = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
