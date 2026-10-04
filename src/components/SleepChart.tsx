@@ -4,7 +4,7 @@ import { TrendChart } from './TrendChart';
 
 interface SleepChartProps { data: { date: string; hours: number; whoopHours?: number }[]; notesMap?: Map<string, DailyNote> }
 const series = [
-  { key: 'hours', label: 'Manual Sleep', color: 'hsl(var(--chart-actual))' },
+  { key: 'hours', label: 'Manual Sleep', color: 'hsl(var(--primary))' },
   { key: 'whoopHours', label: 'WHOOP In Bed', color: 'hsl(var(--chart-min))', dashed: true },
 ];
 export const SleepChart = ({ data, notesMap }: SleepChartProps) =>
