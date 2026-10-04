@@ -2,3 +2,4 @@
 - [x] Extend dashboard data to 30 days for charts previously restricted to seven.
 - [ ] Verify charts render and controls switch correctly in an authenticated preview (blocked if no preview session is available).
 - [x] Add 7D/30D meal-time distribution with a percentage legend and distinct category colors.
+- [x] Match single-series trend lines and bars to their title icon color; preserve multi-series color roles.
