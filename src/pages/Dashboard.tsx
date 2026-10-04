@@ -258,7 +258,6 @@ const Dashboard = () => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     return meals.filter((meal) => {
-      
       let matchesTime = true;
       if (timeFilter === 'today') {
         matchesTime = meal.date === today;
