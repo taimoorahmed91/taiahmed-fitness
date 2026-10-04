@@ -4,3 +4,4 @@
 - [x] Add 7D/30D meal-time distribution with a percentage legend and distinct category colors.
 - [x] Match single-series trend lines and bars to their title icon color; preserve multi-series color roles.
 - [x] Match the meal-time pie slices to the dashboard's existing chart palette.
+- [x] Use dashboard orange and green rather than white and green for the two-series sleep chart.
