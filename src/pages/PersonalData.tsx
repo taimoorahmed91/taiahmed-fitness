@@ -12,7 +12,7 @@ import { useWeight } from '@/hooks/useWeight';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Activity, KeyRound, RefreshCw, Copy, Trash2, AlertTriangle, History, ChevronDown, ChevronUp, Timer } from 'lucide-react';
+import { User, Activity, KeyRound, RefreshCw, Copy, Trash2, AlertTriangle, History, ChevronDown, ChevronUp, Timer, Flame, CalendarDays } from 'lucide-react';
 
 
 const calcAge = (dob: string | null): number | null => {
@@ -120,22 +120,21 @@ const PersonalDataPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="container py-6 max-w-4xl">
-        <div className="flex items-center gap-2 mb-6">
+      <main className="container py-6 max-w-6xl space-y-6">
+        <div className="flex items-center gap-2">
           <User className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Personal Data</h1>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Your profile</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-muted-foreground text-sm">Loading...</p>
-            ) : (
-              <>
-                <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
-                  <div className="space-y-4">
+        {loading ? (
+          <p className="text-muted-foreground text-sm">Loading...</p>
+        ) : (
+          <>
+            <div className="grid lg:grid-cols-2 gap-6 items-start">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><User className="h-5 w-5 text-primary" />Body &amp; profile</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Name</Label>
                   <Input
@@ -195,10 +194,6 @@ const PersonalDataPage = () => {
                     placeholder="e.g. 175"
                   />
                 </div>
-
-                  </div>
-
-                  <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="target">Target Weight (kg)</Label>
                   <Input
@@ -215,7 +210,14 @@ const PersonalDataPage = () => {
                     history={historyFor('target_weight_kg')}
                   />
                 </div>
-
+                  <BmiCard heightCm={height ? parseFloat(height) : null} weightKg={currentWeight} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5 text-primary" />Nutrition targets</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                 <MinMaxField
                   label="Gym Day Calorie Target (kcal)"
                   min={gymTarget} max={gymTargetMax}
@@ -252,6 +254,15 @@ const PersonalDataPage = () => {
                   hint={`Grams of carbs per kg of body weight.${currentWeight && carbMultiplier ? ` Current range: ${Math.round(parseFloat(carbMultiplier) * currentWeight)}–${Math.round(parseFloat(carbMultiplierMax || carbMultiplier) * currentWeight)} g` : ''}`}
                 />
 
+                </CardContent>
+              </Card>
+            </div>
+            <div className="grid lg:grid-cols-2 gap-6 items-start">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-primary" />Training schedule</CardTitle>
+                </CardHeader>
+                <CardContent>
                 <div className="space-y-2">
                   <Label>Workout Days</Label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -283,20 +294,15 @@ const PersonalDataPage = () => {
                   <p className="text-xs text-muted-foreground">Used by the dashboard to determine workout vs rest days.</p>
                 </div>
 
-                  <BmiCard heightCm={height ? parseFloat(height) : null} weightKg={currentWeight} />
-                  </div>
-                </div>
-
-                <Button onClick={handleSave} disabled={saving} className="w-full mt-6">
-                  {saving ? 'Saving...' : 'Save'}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <RestTimerCard />
-
+                </CardContent>
+              </Card>
+              <RestTimerCard />
+            </div>
+            <Button onClick={handleSave} disabled={saving} className="w-full">
+              {saving ? 'Saving...' : 'Save profile, targets & schedule'}
+            </Button>
+          </>
+        )}
         <ApiTokenCard />
       </main>
     </div>
@@ -352,7 +358,7 @@ const RestTimerCard = () => {
   };
 
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Timer className="h-5 w-5 text-primary" />
@@ -472,7 +478,7 @@ const ApiTokenCard = () => {
   const masked = '•'.repeat(40);
 
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="h-5 w-5 text-primary" />
