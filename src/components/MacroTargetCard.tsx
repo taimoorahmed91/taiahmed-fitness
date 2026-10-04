@@ -21,25 +21,25 @@ export const MacroTargetCard = ({ title, icon, range, current, emptyText }: Prop
         <p className="text-sm text-muted-foreground">{emptyText}</p>
       ) : (
         <>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-semibold">{Math.round((current / range.min) * 100)}% of min</span>
-          </div>
           <TargetRangeBar current={current} range={range} />
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-primary">{Math.round(current)}</p>
-              <p className="text-xs text-muted-foreground">Consumed</p>
+          <div className="flex items-baseline justify-between pt-1">
+            <span className="text-sm text-muted-foreground">Consumed</span>
+            <span className="text-2xl font-bold text-primary">{Math.round(current)}</span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+              <span className="text-sm text-muted-foreground">
+                Min <span className="font-semibold text-foreground">{Math.round(range.min)}</span>
+              </span>
+              <span className="text-sm text-chart-2 font-medium">Remaining {Math.max(Math.round(range.min - current), 0)}</span>
+              <span className="text-sm font-semibold">{Math.round((current / range.min) * 100)}%</span>
             </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-foreground">{formatRange(range)}</p>
-              <p className="text-xs text-muted-foreground">Min–Max</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-chart-2">
-                {formatRange({ min: Math.max(range.min - current, 0), max: Math.max(range.max - current, 0) })}
-              </p>
-              <p className="text-xs text-muted-foreground">Remaining</p>
+            <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+              <span className="text-sm text-muted-foreground">
+                Max <span className="font-semibold text-foreground">{Math.round(range.max)}</span>
+              </span>
+              <span className="text-sm text-chart-2 font-medium">Remaining {Math.max(Math.round(range.max - current), 0)}</span>
+              <span className="text-sm font-semibold">{Math.round((current / range.max) * 100)}%</span>
             </div>
           </div>
         </>
