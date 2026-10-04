@@ -7,10 +7,12 @@ import { logActivity } from '@/hooks/useActivityLog';
 
 const getMealPeriod = (time: string): string => {
   const hour = parseInt(time.split(':')[0], 10);
-  if (hour >= 5 && hour < 11) return 'Morning';
-  if (hour >= 11 && hour < 14) return 'Lunch';
-  if (hour >= 14 && hour < 18) return 'Afternoon';
-  return 'Evening';
+  if (hour < 8) return 'Overnight';
+  if (hour < 11) return 'Morning';
+  if (hour < 14) return 'Midday';
+  if (hour < 18) return 'Afternoon';
+  if (hour < 22) return 'Evening';
+  return 'Late night';
 };
 
 export const useMeals = () => {
@@ -185,10 +187,12 @@ export const useMeals = () => {
     start.setUTCDate(start.getUTCDate() - (days - 1));
     const since = start.toISOString().slice(0, 10);
     const periods: Record<string, { calories: number; count: number }> = {
+      Overnight: { calories: 0, count: 0 },
       Morning: { calories: 0, count: 0 },
-      Lunch: { calories: 0, count: 0 },
+      Midday: { calories: 0, count: 0 },
       Afternoon: { calories: 0, count: 0 },
       Evening: { calories: 0, count: 0 },
+      'Late night': { calories: 0, count: 0 },
     };
     meals.filter((meal) => meal.date >= since && meal.date <= today).forEach((meal) => {
       const period = getMealPeriod(meal.time);
