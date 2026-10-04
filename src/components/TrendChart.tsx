@@ -29,8 +29,8 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
   const max = values.length ? Math.max(...values) : 1;
   const pad = Math.max(cap ? 1 : 0.5, (max - min) * 0.1);
   const domain = view.style === 'bar'
-    ? [Math.min(0, Math.floor(min - (min < 0 ? pad : 0))), Math.max(1, Math.ceil(max + pad))]
-    : [Math.min(0, Math.floor(min - pad)), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.ceil(max + pad)];
+    ? [Math.min(0, Math.floor(min - (min < 0 ? pad : 0))), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.max(1, Math.ceil(max + pad))]
+    : [min < 0 ? Math.floor(min - pad) : Math.max(0, Math.floor(min - pad)), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.ceil(max + pad)];
   const noteDots = shown.filter(row => notesMap?.has(row.date) && typeof row[series[0]?.key] === 'number');
 
   return (
