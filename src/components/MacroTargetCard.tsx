@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TargetRangeBar } from '@/components/TargetRangeBar';
-import { Range, formatRange } from '@/lib/targets';
+import { Range } from '@/lib/targets';
 
 interface Props {
   title: string;
