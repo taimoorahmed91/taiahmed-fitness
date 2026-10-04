@@ -12,16 +12,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface MacroTargetChartProps {
-  data: { date: string; actual: number; target: number | null }[];
+  data: { date: string; actual: number; min: number | null; max: number | null }[];
   title: string;
   unit: string;
   color: string;
 }
 
+const LABELS: Record<string, string> = { actual: 'Actual', min: 'Min', max: 'Max' };
+
 export const MacroTargetChart = ({ data, title, unit, color }: MacroTargetChartProps) => {
   const yDomain = useMemo(() => {
     const values = data
-      .flatMap((d) => [d.actual, d.target])
+      .flatMap((d) => [d.actual, d.min, d.max])
       .filter((v): v is number => v != null);
 
     if (values.length === 0) return [0, 1];
@@ -37,10 +39,7 @@ export const MacroTargetChart = ({ data, title, unit, color }: MacroTargetChartP
     const range = max - min;
     const pad = Math.max(1, range * 0.1);
 
-    const yMin = Math.max(0, Math.floor(min - pad));
-    const yMax = Math.ceil(max + pad);
-
-    return [yMin, yMax];
+    return [Math.max(0, Math.floor(min - pad)), Math.ceil(max + pad)];
   }, [data]);
 
   return (
@@ -65,29 +64,13 @@ export const MacroTargetChart = ({ data, title, unit, color }: MacroTargetChartP
                 }}
                 formatter={(value: number | undefined, name?: string) => [
                   `${Math.round(value ?? 0)} ${unit}`,
-                  name === 'actual' ? 'Actual' : 'Target',
+                  LABELS[name ?? ''] ?? name,
                 ]}
               />
-              <Legend formatter={(value) => (value === 'actual' ? 'Actual' : 'Target')} />
-              <Line
-                type="monotone"
-                dataKey="actual"
-                stroke={color}
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                name="actual"
-                connectNulls
-              />
-              <Line
-                type="monotone"
-                dataKey="target"
-                stroke="hsl(var(--muted-foreground))"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-                name="target"
-                connectNulls
-              />
+              <Legend formatter={(value) => LABELS[value] ?? value} />
+              <Line type="monotone" dataKey="actual" stroke={color} strokeWidth={2} dot={{ r: 3 }} name="actual" connectNulls />
+              <Line type="monotone" dataKey="min" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="min" connectNulls />
+              <Line type="monotone" dataKey="max" stroke="hsl(var(--destructive))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="max" connectNulls />
             </LineChart>
           </ResponsiveContainer>
         )}
