@@ -8,6 +8,7 @@ import { usePersonalData } from '@/hooks/usePersonalData';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { useWeight } from '@/hooks/useWeight';
 import { Meal } from '@/types';
+import { resolveCalorieRange, macroRange, formatRange } from '@/lib/targets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -137,19 +138,19 @@ const Meals = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Remaining Today</p>
-              <p className={`text-xl font-semibold ${caloriesRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
-                {caloriesRemaining} cal
+              <p className={`text-xl font-semibold ${caloriesLeftToMax === 0 ? 'text-destructive' : 'text-green-600'}`}>
+                {caloriesRemainingLabel} cal
               </p>
               <div className="flex gap-4 mt-1">
                 <p className="text-sm text-muted-foreground">
                   Protein:{' '}
-                  <span className={`font-semibold ${proteinRemaining === null ? 'text-muted-foreground' : proteinRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
+                  <span className={`font-semibold ${proteinRemaining === null ? 'text-muted-foreground' : 'text-green-600'}`}>
                     {proteinRemaining === null ? '—' : `${proteinRemaining} g`}
                   </span>
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Carbs:{' '}
-                  <span className={`font-semibold ${carbsRemaining === null ? 'text-muted-foreground' : carbsRemaining === 0 ? 'text-destructive' : 'text-green-600'}`}>
+                  <span className={`font-semibold ${carbsRemaining === null ? 'text-muted-foreground' : 'text-green-600'}`}>
                     {carbsRemaining === null ? '—' : `${carbsRemaining} g`}
                   </span>
                 </p>

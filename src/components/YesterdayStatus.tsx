@@ -1,57 +1,29 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingDown, TrendingUp, Target, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatRange } from '@/lib/targets';
 
 interface YesterdayStatusProps {
   yesterdayCalories: number;
   goal: number;
+  goalMax?: number;
 }
 
-export const YesterdayStatus = ({ yesterdayCalories, goal }: YesterdayStatusProps) => {
-  const difference = yesterdayCalories - goal;
-  const percentageOfGoal = Math.round((yesterdayCalories / goal) * 100);
-  
-  // Determine status: within 10% of goal is "on track"
-  const tolerance = goal * 0.1;
-  const isOnTrack = Math.abs(difference) <= tolerance;
-  const isUnder = difference < -tolerance;
-  const isOver = difference > tolerance;
+export const YesterdayStatus = ({ yesterdayCalories, goal, goalMax }: YesterdayStatusProps) => {
+  const max = Math.max(goal, goalMax ?? goal);
+  const range = { min: goal, max };
 
   const getStatusConfig = () => {
     if (yesterdayCalories === 0) {
-      return {
-        icon: Calendar,
-        title: 'No Data',
-        description: 'No meals logged yesterday',
-        color: 'text-muted-foreground',
-        bgColor: 'bg-muted/50',
-      };
+      return { icon: Calendar, title: 'No Data', description: 'No meals logged yesterday', color: 'text-muted-foreground', bgColor: 'bg-muted/50' };
     }
-    if (isOnTrack) {
-      return {
-        icon: Target,
-        title: 'On Track!',
-        description: `You hit ${percentageOfGoal}% of your goal`,
-        color: 'text-chart-2',
-        bgColor: 'bg-chart-2/10',
-      };
+    if (yesterdayCalories < goal) {
+      return { icon: TrendingDown, title: 'Under Min', description: `${goal - yesterdayCalories} calories under your minimum`, color: 'text-amber-500', bgColor: 'bg-amber-500/10' };
     }
-    if (isUnder) {
-      return {
-        icon: TrendingDown,
-        title: 'Under Goal',
-        description: `${Math.abs(difference)} calories under your goal`,
-        color: 'text-blue-500',
-        bgColor: 'bg-blue-500/10',
-      };
+    if (yesterdayCalories > max) {
+      return { icon: TrendingUp, title: 'Over Max', description: `${yesterdayCalories - max} calories over your maximum`, color: 'text-destructive', bgColor: 'bg-destructive/10' };
     }
-    return {
-      icon: TrendingUp,
-      title: 'Over Goal',
-      description: `${difference} calories over your goal`,
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10',
-    };
+    return { icon: Target, title: 'Within Range!', description: `Between ${formatRange(range)} cal`, color: 'text-chart-2', bgColor: 'bg-chart-2/10' };
   };
 
   const config = getStatusConfig();
@@ -59,11 +31,7 @@ export const YesterdayStatus = ({ yesterdayCalories, goal }: YesterdayStatusProp
 
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    month: 'short', 
-    day: 'numeric' 
-  });
+  const yesterdayStr = yesterday.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
   return (
     <Card className={cn('shadow-md', config.bgColor)}>
@@ -80,9 +48,7 @@ export const YesterdayStatus = ({ yesterdayCalories, goal }: YesterdayStatusProp
             <span className={cn('text-3xl font-bold', config.color)}>
               {yesterdayCalories > 0 ? yesterdayCalories : '—'}
             </span>
-            {yesterdayCalories > 0 && (
-              <span className="text-muted-foreground">/ {goal} cal</span>
-            )}
+            {yesterdayCalories > 0 && <span className="text-muted-foreground">/ {formatRange(range)} cal</span>}
           </div>
           <p className={cn('text-sm font-medium', config.color)}>{config.title}</p>
           <p className="text-xs text-muted-foreground">{config.description}</p>
