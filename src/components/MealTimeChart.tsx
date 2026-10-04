@@ -5,6 +5,7 @@ import { ChartRangeControls, useChartRange } from './ChartViewControls';
 
 interface MealTimeChartProps {
   data7: { name: string; calories: number; count: number }[];
+  data14: { name: string; calories: number; count: number }[];
   data30: { name: string; calories: number; count: number }[];
 }
 
@@ -15,9 +16,9 @@ const COLORS: Record<string, string> = {
   Evening: 'hsl(var(--chart-actual))',
 };
 
-export const MealTimeChart = ({ data7, data30 }: MealTimeChartProps) => {
+export const MealTimeChart = ({ data7, data14, data30 }: MealTimeChartProps) => {
   const { range, setRange } = useChartRange('meal_time');
-  const data = range === '7' ? data7 : data30;
+  const data = range === '7' ? data7 : range === '14' ? data14 : data30;
   const filteredData = data.filter((d) => d.calories > 0);
   const total = filteredData.reduce((sum, d) => sum + d.calories, 0);
 

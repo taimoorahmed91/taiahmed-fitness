@@ -366,7 +366,7 @@ const Dashboard = () => {
           goal={yesterdayGoal}
           goalMax={yesterdayGoalMax}
         />
-        <MealTimeChart data7={getMealsByTimeOfDay(7)} data30={getMealsByTimeOfDay(30)} />
+        <MealTimeChart data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} />
         <RecoveryChart data={recoveryChartData} />
       </div>
 

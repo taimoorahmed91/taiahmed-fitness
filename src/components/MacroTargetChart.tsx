@@ -22,7 +22,7 @@ interface MacroTargetChartProps {
   storageKey?: string;
 }
 
-type Range = '7' | '30';
+type Range = '7' | '14' | '30';
 type Style = 'line' | 'bar';
 
 const LABELS: Record<string, string> = { actual: 'Actual intake', min: 'Min target', max: 'Max target' };
@@ -58,7 +58,7 @@ const Seg = ({ active, onClick, children, label }: { active: boolean; onClick: (
 
 export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetChartProps) => {
   const key = `fittrack_macro_chart_${storageKey ?? title}`;
-  const [range, setRange] = useState<Range>(() => readPref<Range>(`${key}_range`, ['7', '30'], '7'));
+  const [range, setRange] = useState<Range>(() => readPref<Range>(`${key}_range`, ['7', '14', '30'], '7'));
   const [style, setStyle] = useState<Style>(() => readPref<Style>(`${key}_style`, ['line', 'bar'], 'line'));
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
     }
   }, [key, range, style]);
 
-  const shown = useMemo(() => (range === '7' ? data.slice(-7) : data), [data, range]);
+  const shown = useMemo(() => (range === '30' ? data : data.slice(-Number(range))), [data, range]);
 
   const yDomain = useMemo(() => {
     const values = shown.flatMap((d) => [d.actual, d.min, d.max]).filter((v): v is number => v != null);
@@ -94,6 +94,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
           <div className="flex items-center gap-2">
             <div className="flex rounded-md border overflow-hidden">
               <Seg label="Last 7 days" active={range === '7'} onClick={() => setRange('7')}>7D</Seg>
+              <Seg label="Last 14 days" active={range === '14'} onClick={() => setRange('14')}>14D</Seg>
               <Seg label="Last 30 days" active={range === '30'} onClick={() => setRange('30')}>30D</Seg>
             </div>
             <div className="flex rounded-md border overflow-hidden">

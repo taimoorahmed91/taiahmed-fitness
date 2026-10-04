@@ -3,7 +3,7 @@ import { BarChart3, LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export type ChartRange = '7' | '30';
+export type ChartRange = '7' | '14' | '30';
 export type ChartStyle = 'line' | 'bar';
 
 const preference = <T extends string>(key: string, values: T[], fallback: T): T => {
@@ -16,7 +16,7 @@ const preference = <T extends string>(key: string, values: T[], fallback: T): T 
 };
 
 export const useChartRange = (key: string) => {
-  const [range, setRange] = useState<ChartRange>(() => preference(`fittrack_chart_${key}_range`, ['7', '30'], '7'));
+  const [range, setRange] = useState<ChartRange>(() => preference(`fittrack_chart_${key}_range`, ['7', '14', '30'], '7'));
 
   useEffect(() => {
     try { localStorage.setItem(`fittrack_chart_${key}_range`, range); }
@@ -57,7 +57,7 @@ export const ChartRangeControls = ({ range, setRange }: ReturnType<typeof useCha
       {value}D
     </Button>
   );
-  return <div className="flex shrink-0 overflow-hidden rounded-md border">{item('7', 'Last 7 days')}{item('30', 'Last 30 days')}</div>;
+  return <div className="flex shrink-0 overflow-hidden rounded-md border">{item('7', 'Last 7 days')}{item('14', 'Last 14 days')}{item('30', 'Last 30 days')}</div>;
 };
 
 export const ChartViewControls = ({ range, setRange, style, setStyle }: ReturnType<typeof useChartView>) => {
@@ -71,6 +71,7 @@ export const ChartViewControls = ({ range, setRange, style, setStyle }: ReturnTy
     <div className="flex items-center gap-2 shrink-0">
       <div className="flex rounded-md border overflow-hidden">
         {item(range === '7', 'Last 7 days', () => setRange('7'), '7D')}
+        {item(range === '14', 'Last 14 days', () => setRange('14'), '14D')}
         {item(range === '30', 'Last 30 days', () => setRange('30'), '30D')}
       </div>
       <div className="flex rounded-md border overflow-hidden">
