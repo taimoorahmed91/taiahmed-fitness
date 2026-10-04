@@ -105,6 +105,7 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, onGoalChange, auto
             <span className="text-sm font-semibold">{Math.round((current / range.max) * 100)}%</span>
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   );
