@@ -179,14 +179,18 @@ export const useMeals = () => {
     return days;
   };
 
-  const getMealsByTimeOfDay = () => {
+  const getMealsByTimeOfDay = (days: 7 | 30) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const start = new Date(`${today}T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() - (days - 1));
+    const since = start.toISOString().slice(0, 10);
     const periods: Record<string, { calories: number; count: number }> = {
       Morning: { calories: 0, count: 0 },
       Lunch: { calories: 0, count: 0 },
       Afternoon: { calories: 0, count: 0 },
       Evening: { calories: 0, count: 0 },
     };
-    meals.forEach((meal) => {
+    meals.filter((meal) => meal.date >= since && meal.date <= today).forEach((meal) => {
       const period = getMealPeriod(meal.time);
       periods[period].calories += meal.calories;
       periods[period].count += 1;

@@ -1,2 +1,3 @@
 Use semantic chart role tokens in global CSS for actual intake and minimum/maximum target series; this keeps chart contrast consistent in both themes.
 Use shared chart view controls for dashboard trends, with 7/30-day calendar filtering and persisted line/bar preferences; this keeps timeframes consistent across metrics.
+Use the shared range-only chart control for categorical charts and aggregate meals over inclusive UTC calendar dates; this avoids presenting inapplicable line/bar modes while matching trend timeframes.
