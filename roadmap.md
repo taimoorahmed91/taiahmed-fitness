@@ -1,3 +1,4 @@
 - [x] Add 7D/30D and line/bar views to WHOOP recovery, workout duration, calorie balance, weight, waist, and sleep charts.
 - [x] Extend dashboard data to 30 days for charts previously restricted to seven.
 - [ ] Verify charts render and controls switch correctly in an authenticated preview (blocked if no preview session is available).
+- [x] Add 7D/30D meal-time distribution with a percentage legend and distinct category colors.

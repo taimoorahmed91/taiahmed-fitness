@@ -69,6 +69,10 @@ All colors MUST be HSL.
     --chart-actual: 0 0% 18%;
     --chart-min: 145 70% 32%;
     --chart-max: 4 78% 48%;
+    --chart-time-morning: 185 72% 35%;
+    --chart-time-lunch: 28 89% 48%;
+    --chart-time-afternoon: 270 52% 51%;
+    --chart-time-evening: 3 72% 49%;
 
     --sidebar: 0 0% 98%;
 
@@ -143,6 +147,10 @@ All colors MUST be HSL.
     --chart-actual: 0 0% 96%;
     --chart-min: 145 65% 58%;
     --chart-max: 5 85% 66%;
+    --chart-time-morning: 185 68% 58%;
+    --chart-time-lunch: 42 92% 60%;
+    --chart-time-afternoon: 270 67% 74%;
+    --chart-time-evening: 3 81% 65%;
     --sidebar: 0 0% 14%;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
