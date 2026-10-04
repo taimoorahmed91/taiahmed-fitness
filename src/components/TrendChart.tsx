@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DailyNote } from '@/hooks/useDailyNotes';
 import { ChartViewControls, chartDateLabel, recentChartData, useChartView, ChartStyle } from './ChartViewControls';
 
-type Series = { key: string; label: string; color: string; dashed?: boolean; signed?: boolean };
+type Series = { key: string; label: string; color: string; dashed?: boolean };
 type Row = { date: string; [key: string]: string | number | null | undefined };
 
 interface TrendChartProps {
@@ -30,7 +30,7 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
   const pad = Math.max(cap ? 1 : 0.5, (max - min) * 0.1);
   const domain = view.style === 'bar'
     ? [Math.min(0, Math.floor(min - (min < 0 ? pad : 0))), Math.max(1, Math.ceil(max + pad))]
-    : [Math.max(0, Math.floor(min - pad)), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.ceil(max + pad)];
+    : [Math.min(0, Math.floor(min - pad)), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.ceil(max + pad)];
   const noteDots = shown.filter(row => notesMap?.has(row.date) && typeof row[series[0]?.key] === 'number');
 
   return (
