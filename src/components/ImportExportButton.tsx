@@ -151,6 +151,10 @@ export const ImportExportButton = () => {
           rest_day_calorie_target: (pd as any).rest_day_calorie_target ?? null,
           protein_multiplier: (pd as any).protein_multiplier != null ? Number((pd as any).protein_multiplier) : null,
           carb_multiplier: (pd as any).carb_multiplier != null ? Number((pd as any).carb_multiplier) : null,
+          gym_day_calorie_target_max: (pd as any).gym_day_calorie_target_max ?? (pd as any).gym_day_calorie_target ?? null,
+          rest_day_calorie_target_max: (pd as any).rest_day_calorie_target_max ?? (pd as any).rest_day_calorie_target ?? null,
+          protein_multiplier_max: (pd as any).protein_multiplier_max != null ? Number((pd as any).protein_multiplier_max) : (pd as any).protein_multiplier != null ? Number((pd as any).protein_multiplier) : null,
+          carb_multiplier_max: (pd as any).carb_multiplier_max != null ? Number((pd as any).carb_multiplier_max) : (pd as any).carb_multiplier != null ? Number((pd as any).carb_multiplier) : null,
           workout_days: Array.isArray((pd as any).workout_days) ? (pd as any).workout_days : [],
         });
       }

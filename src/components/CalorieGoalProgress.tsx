@@ -4,6 +4,8 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Target, Pencil, Check, X } from 'lucide-react';
+import { formatRange } from '@/lib/targets';
+import { TargetRangeBar } from '@/components/TargetRangeBar';
 
 interface CalorieGoalProgressProps {
   current: number;
@@ -72,7 +74,7 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, onGoalChange, auto
           <span className="text-muted-foreground">Progress</span>
           <span className="font-semibold">{percentage}%</span>
         </div>
-        <Progress value={percentage} className="h-3" />
+        <TargetRangeBar current={current} range={range} />
         <div className="grid grid-cols-3 gap-4 pt-2">
           <div className="text-center">
             <p className="text-2xl font-bold text-primary">{current}</p>
@@ -99,13 +101,13 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, onGoalChange, auto
               </div>
             ) : (
               <>
-                <p className="text-2xl font-bold text-foreground">{goal}</p>
-                <p className="text-xs text-muted-foreground">Goal</p>
+                <p className="text-xl font-bold text-foreground">{formatRange(range)}</p>
+                <p className="text-xs text-muted-foreground">Min–Max</p>
               </>
             )}
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-chart-2">{remaining}</p>
+            <p className="text-xl font-bold text-chart-2">{remainingLabel}</p>
             <p className="text-xs text-muted-foreground">Remaining</p>
           </div>
         </div>
