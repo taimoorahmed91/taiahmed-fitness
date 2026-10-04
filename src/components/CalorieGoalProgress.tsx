@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Target, Pencil, Check, X } from 'lucide-react';
-import { formatRange } from '@/lib/targets';
 import { TargetRangeBar } from '@/components/TargetRangeBar';
 
 interface CalorieGoalProgressProps {
@@ -20,8 +19,6 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, onGoalChange, auto
   const [editValue, setEditValue] = useState(goal.toString());
 
   const range = { min: goal, max: Math.max(goal, goalMax ?? goal) };
-  const percentage = Math.round((current / goal) * 100);
-  const remainingLabel = formatRange({ min: Math.max(range.min - current, 0), max: Math.max(range.max - current, 0) });
 
   const handleSave = () => {
     const newGoal = parseInt(editValue);
@@ -68,48 +65,47 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, onGoalChange, auto
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Progress</span>
-          <span className="font-semibold">{percentage}%</span>
-        </div>
+      <CardContent className="space-y-3">
         <TargetRangeBar current={current} range={range} />
-        <div className="grid grid-cols-3 gap-4 pt-2">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-primary">{current}</p>
-            <p className="text-xs text-muted-foreground">Consumed</p>
+        <div className="flex items-baseline justify-between pt-1">
+          <span className="text-sm text-muted-foreground">Consumed</span>
+          <span className="text-2xl font-bold text-primary">{current}</span>
+        </div>
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="h-8"
+              min="1"
+              autoFocus
+            />
+            <Button variant="ghost" size="icon" onClick={handleSave} className="h-8 w-8 shrink-0">
+              <Check className="h-4 w-4 text-chart-2" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleCancel} className="h-8 w-8 shrink-0">
+              <X className="h-4 w-4 text-destructive" />
+            </Button>
           </div>
-          <div className="text-center">
-            {isEditing ? (
-              <div className="space-y-1">
-                <Input
-                  type="number"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  className="h-8 text-center text-lg font-bold"
-                  min="1"
-                />
-                <div className="flex justify-center gap-1">
-                  <Button variant="ghost" size="icon" onClick={handleSave} className="h-6 w-6">
-                    <Check className="h-3 w-3 text-chart-2" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={handleCancel} className="h-6 w-6">
-                    <X className="h-3 w-3 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p className="text-xl font-bold text-foreground">{formatRange(range)}</p>
-                <p className="text-xs text-muted-foreground">Min–Max</p>
-              </>
-            )}
+        ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+            <span className="text-sm text-muted-foreground">
+              Min <span className="font-semibold text-foreground">{Math.round(range.min)}</span>
+            </span>
+            <span className="text-sm text-chart-2 font-medium">Remaining {Math.max(range.min - current, 0)}</span>
+            <span className="text-sm font-semibold">{Math.round((current / range.min) * 100)}%</span>
           </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-chart-2">{remainingLabel}</p>
-            <p className="text-xs text-muted-foreground">Remaining</p>
+          <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+            <span className="text-sm text-muted-foreground">
+              Max <span className="font-semibold text-foreground">{Math.round(range.max)}</span>
+            </span>
+            <span className="text-sm text-chart-2 font-medium">Remaining {Math.max(range.max - current, 0)}</span>
+            <span className="text-sm font-semibold">{Math.round((current / range.max) * 100)}%</span>
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   );
