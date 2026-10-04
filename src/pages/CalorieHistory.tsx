@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { TargetRangeBar } from '@/components/TargetRangeBar';
+import { Range, resolveCalorieRange, macroRange, rangeStatus, formatRange } from '@/lib/targets';
 import { PaginationControls } from '@/components/PaginationControls';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,22 +20,14 @@ const PAGE_SIZE = 20;
 interface DayRow {
   date: string;
   workedOut: boolean;
-  calories: { consumed: number; target: number };
-  protein: { consumed: number; target: number | null };
-  carbs: { consumed: number; target: number | null };
+  calories: { consumed: number; target: Range };
+  protein: { consumed: number; target: Range | null };
+  carbs: { consumed: number; target: Range | null };
   extraCalories: number;
 }
 
-const pct = (consumed: number, target: number | null) =>
-  target && target > 0 ? Math.round((consumed / target) * 100) : null;
-
-const pctTone = (p: number | null) => {
-  if (p === null) return 'text-muted-foreground';
-  if (p <= 90) return 'text-blue-500';
-  if (p <= 105) return 'text-green-500';
-  if (p <= 120) return 'text-yellow-500';
-  return 'text-red-500';
-};
+const pct = (consumed: number, target: number) =>
+  target > 0 ? Math.round((consumed / target) * 100) : null;
 
 const MacroCell = ({
   label,
@@ -44,24 +37,30 @@ const MacroCell = ({
 }: {
   label: string;
   consumed: number;
-  target: number | null;
+  target: Range | null;
   unit: string;
 }) => {
-  const p = pct(consumed, target);
+  const status = target ? rangeStatus(consumed, target) : null;
+  const tone =
+    status === null ? 'text-muted-foreground' : status === 'under' ? 'text-amber-500' : status === 'within' ? 'text-green-500' : 'text-red-500';
+  const pMin = target ? pct(consumed, target.min) : null;
+  const pMax = target ? pct(consumed, target.max) : null;
   return (
     <div className="rounded-lg border bg-background p-3">
       <div className="flex items-baseline justify-between">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-        <span className={`text-sm font-semibold ${pctTone(p)}`}>{p !== null ? `${p}%` : '—'}</span>
+        <span className={`text-sm font-semibold ${tone}`} title="% of min / % of max">
+          {target ? (pMin === pMax ? `${pMin}%` : `${pMin}% / ${pMax}%`) : '—'}
+        </span>
       </div>
       <p className="mt-1 text-sm font-medium">
         {Math.round(consumed)}
         <span className="text-muted-foreground">
           {' '}
-          / {target != null ? Math.round(target) : '—'} {unit}
+          / {target ? formatRange(target) : '—'} {unit}
         </span>
       </p>
-      <Progress value={Math.min(p ?? 0, 100)} className="mt-2 h-1.5" />
+      {target && <TargetRangeBar current={consumed} range={target} className="mt-1" />}
     </div>
   );
 };
@@ -106,23 +105,12 @@ const CalorieHistory = () => {
           .filter((a) => a.date === date)
           .reduce((s, a) => s + (a.calories || 0), 0);
 
-        const gymTarget = personalData.gym_day_calorie_target;
-        const restTarget = personalData.rest_day_calorie_target;
-        const auto = gymTarget != null || restTarget != null;
-        let target = settings.daily_calorie_goal;
-        if (auto) {
-          if (workedOut && gymTarget != null) target = gymTarget;
-          else if (!workedOut && restTarget != null) target = restTarget;
-          else if (gymTarget != null) target = gymTarget;
-          else if (restTarget != null) target = restTarget;
-        }
-        target += extraCalories;
+        const r = resolveCalorieRange(personalData, settings.daily_calorie_goal, workedOut, extraCalories);
+        const target: Range = { min: r.min, max: r.max };
 
         const weight = weightOn(date);
-        const proteinTarget =
-          personalData.protein_multiplier && weight ? personalData.protein_multiplier * weight : null;
-        const carbTarget =
-          personalData.carb_multiplier && weight ? personalData.carb_multiplier * weight : null;
+        const proteinTarget = macroRange(personalData.protein_multiplier, personalData.protein_multiplier_max, weight);
+        const carbTarget = macroRange(personalData.carb_multiplier, personalData.carb_multiplier_max, weight);
 
         return {
           date,

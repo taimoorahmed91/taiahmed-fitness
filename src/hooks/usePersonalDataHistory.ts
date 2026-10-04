@@ -5,7 +5,9 @@ import { useUser } from '@/contexts/UserContext';
 export type PersonalHistoryField =
   | 'target_weight_kg'
   | 'gym_day_calorie_target'
-  | 'rest_day_calorie_target';
+  | 'rest_day_calorie_target'
+  | 'gym_day_calorie_target_max'
+  | 'rest_day_calorie_target_max';
 
 export interface PersonalHistoryEntry {
   id: string;

@@ -104,7 +104,7 @@ const Dashboard = () => {
     () => resolveGoalForDate(todayStr),
     [gymSessions, personalData, settings.daily_calorie_goal, todayStr, extraActivities]
   );
-  const { goal: yesterdayGoal } = useMemo(
+  const { goal: yesterdayGoal, goalMax: yesterdayGoalMax } = useMemo(
     () => resolveGoalForDate(yesterdayStr),
     [gymSessions, personalData, settings.daily_calorie_goal, yesterdayStr, extraActivities]
   );
@@ -369,6 +369,7 @@ const Dashboard = () => {
         <YesterdayStatus
           yesterdayCalories={yesterdayCalories}
           goal={yesterdayGoal}
+          goalMax={yesterdayGoalMax}
         />
         <MealTimeChart data={getMealsByTimeOfDay()} />
         <RecoveryChart data={recoveryChartData} />
