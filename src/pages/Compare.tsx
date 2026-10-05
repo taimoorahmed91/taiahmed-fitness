@@ -108,7 +108,7 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
         <div className="text-center">{b.duration} min</div>
         <div className="text-center">
           {a.duration !== b.duration && (
-            <span className={`text-xs ${b.duration - a.duration > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-xs ${b.duration - a.duration > 0 ? 'text-chart-min' : 'text-chart-max'}`}>
               ({b.duration - a.duration > 0 ? '+' : ''}{b.duration - a.duration})
             </span>
           )}
@@ -146,9 +146,9 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
               <h4 className="font-semibold text-foreground">{name}</h4>
               {ea && eb && (
                 ea.sets.length === eb.sets.length ? (
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4 text-chart-min" />
                 ) : (
-                  <X className="h-4 w-4 text-orange-500" />
+                  <X className="h-4 w-4 text-primary" />
                 )
               )}
             </div>
@@ -168,9 +168,9 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
                   <div className="font-medium text-muted-foreground flex items-center gap-1">
                     {lbl}
                     {sameReps && sameWeight ? (
-                      <Check className="h-3 w-3 text-green-600" />
+                      <Check className="h-3 w-3 text-chart-min" />
                     ) : (
-                      <X className="h-3 w-3 text-orange-500" />
+                      <X className="h-3 w-3 text-primary" />
                     )}
                   </div>
                   <div className="text-center">{fmtSet(sa)}</div>
@@ -179,12 +179,12 @@ const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
                     {(repsDiff !== null && repsDiff !== 0) || (wDiff !== null && wDiff !== 0) ? (
                       <div className="text-xs space-x-2">
                         {repsDiff !== null && repsDiff !== 0 && (
-                          <span className={repsDiff > 0 ? 'text-green-600' : 'text-red-600'}>
+                          <span className={repsDiff > 0 ? 'text-chart-min' : 'text-chart-max'}>
                             {repsDiff > 0 ? '+' : ''}{repsDiff} reps
                           </span>
                         )}
                         {wDiff !== null && wDiff !== 0 && (
-                          <span className={wDiff > 0 ? 'text-green-600' : 'text-red-600'}>
+                          <span className={wDiff > 0 ? 'text-chart-min' : 'text-chart-max'}>
                             {wDiff > 0 ? '+' : ''}{wDiff}kg
                           </span>
                         )}
@@ -219,10 +219,10 @@ const Compare = () => {
   const { entries: sleepEntries, loading: sleepLoading } = useSleep();
 
   const categories = [
-    { id: 'meals' as const, label: 'Meals', icon: Utensils, color: 'bg-orange-500' },
-    { id: 'gym' as const, label: 'Gym', icon: Dumbbell, color: 'bg-blue-500' },
-    { id: 'weight' as const, label: 'Weight', icon: Scale, color: 'bg-green-500' },
-    { id: 'sleep' as const, label: 'Sleep', icon: Moon, color: 'bg-purple-500' },
+    { id: 'meals' as const, label: 'Meals', icon: Utensils, color: 'bg-primary' },
+    { id: 'gym' as const, label: 'Gym', icon: Dumbbell, color: 'bg-chart-2' },
+    { id: 'weight' as const, label: 'Weight', icon: Scale, color: 'bg-chart-min' },
+    { id: 'sleep' as const, label: 'Sleep', icon: Moon, color: 'bg-chart-5' },
   ];
 
   const getEntries = () => {
@@ -306,8 +306,8 @@ const Compare = () => {
   const getValueDifference = (field: CompareField, val1: any, val2: any) => {
     if (field.key === 'calories' || field.key === 'duration' || field.key === 'weight' || field.key === 'hours') {
       const diff = val1 - val2;
-      if (diff > 0) return { text: `+${diff}`, color: 'text-green-600' };
-      if (diff < 0) return { text: `${diff}`, color: 'text-red-600' };
+      if (diff > 0) return { text: `+${diff}`, color: 'text-chart-min' };
+      if (diff < 0) return { text: `${diff}`, color: 'text-chart-max' };
       return { text: '0', color: 'text-muted-foreground' };
     }
     return null;
@@ -436,9 +436,9 @@ const Compare = () => {
                           <div className="font-medium text-foreground flex items-center gap-2">
                             {field.label}
                             {isSame ? (
-                              <Check className="h-4 w-4 text-green-600" />
+                              <Check className="h-4 w-4 text-chart-min" />
                             ) : (
-                              <X className="h-4 w-4 text-orange-500" />
+                              <X className="h-4 w-4 text-primary" />
                             )}
                           </div>
                           <div className="text-center">

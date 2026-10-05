@@ -10,16 +10,16 @@ interface InsightCardProps {
 export const InsightCard = ({ insight }: InsightCardProps) => {
   const correlationStyles = {
     positive: {
-      bg: 'bg-green-500/10 border-green-500/20',
+      bg: 'bg-chart-min/10 border-chart-min/20',
       icon: TrendingUp,
-      iconColor: 'text-green-500',
-      valueColor: 'text-green-600',
+      iconColor: 'text-chart-min',
+      valueColor: 'text-chart-min',
     },
     negative: {
-      bg: 'bg-red-500/10 border-red-500/20',
+      bg: 'bg-chart-max/10 border-chart-max/20',
       icon: TrendingDown,
-      iconColor: 'text-red-500',
-      valueColor: 'text-red-600',
+      iconColor: 'text-chart-max',
+      valueColor: 'text-chart-max',
     },
     neutral: {
       bg: 'bg-muted/50 border-muted',

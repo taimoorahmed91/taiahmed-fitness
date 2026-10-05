@@ -18,9 +18,9 @@
  };
  
  const categoryColors = {
-   calories: 'text-orange-500',
-   workouts: 'text-blue-500',
-   sleep: 'text-purple-500',
+   calories: 'text-primary',
+   workouts: 'text-chart-2',
+   sleep: 'text-chart-5',
  };
  
  const categoryLabels = {
@@ -68,14 +68,14 @@
            </Card>
            <Card>
              <CardContent className="p-4 text-center">
-               <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
+               <Check className="h-8 w-8 mx-auto mb-2 text-chart-min" />
                <p className="text-2xl font-bold">{stats.goalsMetCount}</p>
                <p className="text-sm text-muted-foreground">Goals Met</p>
              </CardContent>
            </Card>
            <Card>
              <CardContent className="p-4 text-center">
-               <Flame className="h-8 w-8 mx-auto mb-2 text-orange-500" />
+               <Flame className="h-8 w-8 mx-auto mb-2 text-primary" />
                <p className="text-2xl font-bold">{stats.currentStreak}</p>
                <p className="text-sm text-muted-foreground">Current Streak</p>
              </CardContent>
@@ -98,6 +98,15 @@
              </CardTitle>
            </CardHeader>
            <CardContent>
+             {stats.badges.length > 0 && (
+               <div className="mb-6 space-y-1">
+                 <div className="flex justify-between text-xs text-muted-foreground">
+                   <span>Collection progress</span>
+                   <span>{Math.round((earnedBadges.length / stats.badges.length) * 100)}%</span>
+                 </div>
+                 <Progress value={(earnedBadges.length / stats.badges.length) * 100} className="h-2" />
+               </div>
+             )}
              {earnedBadges.length > 0 && (
                <div className="mb-6">
                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Earned</h3>
@@ -171,13 +180,13 @@
                    <div
                      key={`${week.week_start}-${week.category}-${index}`}
                      className={`p-4 rounded-lg border ${
-                       week.met ? 'bg-green-500/10 border-green-500/20' : 'bg-muted/50 border-border'
+                       week.met ? 'bg-chart-min/10 border-chart-min/20' : 'bg-muted/50 border-border'
                      }`}
                    >
                      <div className="flex items-center justify-between mb-2">
                        <div className="flex items-center gap-2">
                          {week.met ? (
-                           <Check className="h-5 w-5 text-green-500" />
+                           <Check className="h-5 w-5 text-chart-min" />
                          ) : (
                            <X className="h-5 w-5 text-muted-foreground" />
                          )}
