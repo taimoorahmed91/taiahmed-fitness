@@ -204,27 +204,6 @@ const Gym = () => {
     toast.success(`Template "${session.exercise}" created with ${exercises.length} exercise(s)`);
   };
 
-  // Calculate stats
-  const thisWeekSessions = getThisWeekSessions();
-  const thisWeekCount = thisWeekSessions.length;
-  
-  const todayWorkouts = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return sessions.filter(s => s.date === today).length;
-  }, [sessions]);
-
-  const totalDuration = useMemo(() => {
-    return sessions.reduce((sum, s) => sum + s.duration, 0);
-  }, [sessions]);
-
-  const thisWeekDuration = useMemo(() => {
-    return thisWeekSessions.reduce((sum, s) => sum + s.duration, 0);
-  }, [thisWeekSessions]);
-
-  const avgDuration = useMemo(() => {
-    if (sessions.length === 0) return 0;
-    return Math.round(totalDuration / sessions.length);
-  }, [sessions, totalDuration]);
 
   return (
     <div className="container py-8 space-y-6">
