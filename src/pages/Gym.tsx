@@ -5,7 +5,6 @@ import { DataFilter } from '@/components/DataFilter';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useDataFilter } from '@/hooks/useDataFilter';
 import { useWorkoutTemplates, WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
-import { WorkoutTemplateForm } from '@/components/WorkoutTemplateForm';
 import { WorkoutTemplateList } from '@/components/WorkoutTemplateList';
 import { ActiveWorkoutModal } from '@/components/ActiveWorkoutModal';
 import { EditTemplateModal } from '@/components/EditTemplateModal';
@@ -274,15 +273,14 @@ const Gym = () => {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6 mt-6">
-          <div className="grid lg:grid-cols-2 gap-6">
-            <WorkoutTemplateForm onSubmit={addTemplate} />
-            <WorkoutTemplateList
-              templates={templates}
-              onDelete={deleteTemplate}
-              onStart={handleStartWorkout}
-              onEdit={handleEditTemplate}
-            />
-          </div>
+          <WorkoutTemplateList
+            templates={templates}
+            sessions={sessions}
+            onCreate={addTemplate}
+            onDelete={deleteTemplate}
+            onStart={handleStartWorkout}
+            onEdit={handleEditTemplate}
+          />
         </TabsContent>
       </Tabs>
 

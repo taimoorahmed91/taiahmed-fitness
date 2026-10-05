@@ -2,21 +2,17 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, X, ClipboardList } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface WorkoutTemplateFormProps {
-  onSubmit: (template: { name: string; exercises: string[] }) => void;
+  onSubmit: (template: { name: string; exercises: string[] }) => void | Promise<void>;
+  onDone?: () => void;
 }
 
-export const WorkoutTemplateForm = ({ onSubmit }: WorkoutTemplateFormProps) => {
+export const WorkoutTemplateForm = ({ onSubmit, onDone }: WorkoutTemplateFormProps) => {
   const [name, setName] = useState('');
   const [exercises, setExercises] = useState<string[]>(['']);
-
-  const handleAddExercise = () => {
-    setExercises([...exercises, '']);
-  };
 
   const handleRemoveExercise = (index: number) => {
     if (exercises.length === 1) {
@@ -32,7 +28,7 @@ export const WorkoutTemplateForm = ({ onSubmit }: WorkoutTemplateFormProps) => {
     setExercises(updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       toast.error('Please enter a template name');
@@ -43,70 +39,47 @@ export const WorkoutTemplateForm = ({ onSubmit }: WorkoutTemplateFormProps) => {
       toast.error('Please add at least one exercise');
       return;
     }
-    onSubmit({ name: name.trim(), exercises: validExercises });
+    await onSubmit({ name: name.trim(), exercises: validExercises });
     setName('');
     setExercises(['']);
+    onDone?.();
   };
 
   return (
-    <Card className="shadow-md">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <ClipboardList className="h-5 w-5 text-primary" />
-          Create Template
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="template-name">Template Name</Label>
-            <Input
-              id="template-name"
-              placeholder="e.g., Push Day, Leg Day"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={100}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Exercises</Label>
-            <div className="space-y-2">
-              {exercises.map((exercise, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    placeholder={`Exercise ${index + 1}`}
-                    value={exercise}
-                    onChange={(e) => handleExerciseChange(index, e.target.value)}
-                    maxLength={200}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveExercise(index)}
-                    className="shrink-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="template-name">Template Name</Label>
+        <Input
+          id="template-name"
+          placeholder="e.g., Push Day, Leg Day"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={100}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Exercises</Label>
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+          {exercises.map((exercise, index) => (
+            <div key={index} className="flex gap-2">
+              <Input
+                placeholder={`Exercise ${index + 1}`}
+                value={exercise}
+                onChange={(e) => handleExerciseChange(index, e.target.value)}
+                maxLength={200}
+              />
+              <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveExercise(index)} className="shrink-0">
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAddExercise}
-              className="w-full mt-2"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Exercise
-            </Button>
-          </div>
-          <Button type="submit" className="w-full">
-            Save Template
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          ))}
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => setExercises([...exercises, ''])} className="w-full mt-2">
+          <Plus className="h-4 w-4 mr-1" />
+          Add Exercise
+        </Button>
+      </div>
+      <Button type="submit" className="w-full">Save Template</Button>
+    </form>
   );
 };
