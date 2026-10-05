@@ -93,12 +93,22 @@ const AdminApproval = () => {
   }
 
   return (
-    <main className="container py-6">
+    <main className="container py-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <CheckCircle className="h-8 w-8 text-primary" />
+        <div>
+          <h1 className="text-3xl font-bold">User Approval</h1>
+          <p className="text-muted-foreground">Review people who signed up and grant them access</p>
+        </div>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            User Approval
+            <User className="h-5 w-5 text-primary" />
+            Pending users
+            <span className="ml-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+              {pendingUsers.length}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -107,22 +117,30 @@ const AdminApproval = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : pendingUsers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No pending users to approve
-            </p>
+            <div className="py-10 text-center">
+              <CheckCircle className="mx-auto mb-2 h-10 w-10 text-chart-min" />
+              <p className="text-muted-foreground">All caught up — no pending users to approve</p>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
               {pendingUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                  className="flex items-center justify-between gap-3 p-4 rounded-lg border bg-card"
                 >
-                  <div className="flex flex-col gap-1">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary">
+                    {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">
+                      <span className="font-medium truncate">
                         {user.full_name || 'No name'}
                       </span>
+                      {user.created_at && (
+                        <span className="text-xs text-muted-foreground">
+                          · waiting {Math.max(0, Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000))}d
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Mail className="h-3 w-3" />

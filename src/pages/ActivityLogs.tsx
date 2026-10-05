@@ -22,16 +22,16 @@ interface ActivityLog {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  weight: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  meal: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
-  sleep: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  gym: 'bg-green-500/10 text-green-500 border-green-500/20',
-  waist: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
-  daily_notes: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-  goals: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
-  workout_templates: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
-  settings: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
-  auth: 'bg-red-500/10 text-red-500 border-red-500/20',
+  weight: 'bg-chart-2/10 text-chart-2 border-chart-2/20',
+  meal: 'bg-primary/10 text-primary border-primary/20',
+  sleep: 'bg-chart-5/10 text-chart-5 border-chart-5/20',
+  gym: 'bg-chart-min/10 text-chart-min border-chart-min/20',
+  waist: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
+  daily_notes: 'bg-primary/10 text-primary border-primary/20',
+  goals: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
+  workout_templates: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
+  settings: 'bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20',
+  auth: 'bg-chart-max/10 text-chart-max border-chart-max/20',
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -197,7 +197,7 @@ const ActivityLogs = () => {
           </Card>
           <Card>
             <CardContent className="pt-4 pb-4 text-center">
-              <p className="text-2xl font-bold text-green-500">
+              <p className="text-2xl font-bold text-chart-min">
                 {filteredLogs.filter(l => l.status === 'success').length}
               </p>
               <p className="text-xs text-muted-foreground">Successful</p>
