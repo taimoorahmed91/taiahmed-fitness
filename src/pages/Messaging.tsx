@@ -239,7 +239,31 @@ const Messaging = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Messaging Settings</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <MessageCircle className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold">Messaging Settings</h1>
+            <p className="text-muted-foreground">Choose where and when Fittrack sends you updates</p>
+          </div>
+        </div>
+        <div className="mb-8 grid gap-3 sm:grid-cols-3">
+          {[
+            { icon: MessageCircle, label: 'Telegram', on: hasTelegramSet && isSubscribed, text: !hasTelegramSet ? 'Not connected' : isSubscribed ? 'Subscribed' : 'Connected, paused' },
+            { icon: Mail, label: 'Email', on: isEmailSubscribed, text: isEmailSubscribed ? 'Subscribed' : 'Off' },
+            { icon: Clock, label: 'Schedule', on: !!notificationSchedule, text: notificationSchedule ? 'Set' : 'Not set' },
+          ].map((t) => (
+            <Card key={t.label}>
+              <CardContent className="flex items-center justify-between p-4">
+                <span className="flex items-center gap-2 font-medium">
+                  <t.icon className="h-4 w-4 text-primary" /> {t.label}
+                </span>
+                <span className={`rounded-full border px-2 py-0.5 text-xs ${t.on ? 'border-chart-min/40 text-chart-min' : 'text-muted-foreground'}`}>
+                  {t.text}
+                </span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Left Column: Telegram + Email */}
