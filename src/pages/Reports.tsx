@@ -87,17 +87,17 @@ const Reports = () => {
         </Tabs>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card><CardContent className="pt-6 text-center"><Flame className="h-8 w-8 mx-auto mb-2 text-orange-500" /><p className="text-2xl font-bold">{stats.avgCalories.toLocaleString()}</p><p className="text-sm text-muted-foreground">Avg Daily Calories</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><Flame className="h-8 w-8 mx-auto mb-2 text-primary" /><p className="text-2xl font-bold">{stats.avgCalories.toLocaleString()}</p><p className="text-sm text-muted-foreground">Avg Daily Calories</p></CardContent></Card>
           <Card><CardContent className="pt-6 text-center"><Dumbbell className="h-8 w-8 mx-auto mb-2 text-primary" /><p className="text-2xl font-bold">{stats.totalWorkouts}</p><p className="text-sm text-muted-foreground">Total Workouts</p></CardContent></Card>
           <Card><CardContent className="pt-6 text-center"><Moon className="h-8 w-8 mx-auto mb-2 text-indigo-500" /><p className="text-2xl font-bold">{stats.avgSleepHours}h</p><p className="text-sm text-muted-foreground">Avg Sleep</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center"><Scale className="h-8 w-8 mx-auto mb-2 text-teal-500" /><p className="text-2xl font-bold">{stats.avgWeight > 0 ? `${stats.avgWeight}kg` : '--'}</p><p className="text-sm text-muted-foreground">Avg Weight</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><Scale className="h-8 w-8 mx-auto mb-2 text-chart-3" /><p className="text-2xl font-bold">{stats.avgWeight > 0 ? `${stats.avgWeight}kg` : '--'}</p><p className="text-sm text-muted-foreground">Avg Weight</p></CardContent></Card>
         </div>
 
         <ReportCharts data={chartData} />
 
         {correlationInsights.length > 0 && (
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Lightbulb className="h-5 w-5 text-yellow-500" />Insights</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Lightbulb className="h-5 w-5 text-primary" />Insights</CardTitle></CardHeader>
             <CardContent><div className="grid sm:grid-cols-2 gap-4">{correlationInsights.map((insight, i) => <InsightCard key={i} insight={insight} />)}</div></CardContent>
           </Card>
         )}

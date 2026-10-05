@@ -110,15 +110,15 @@ const Calendar = () => {
   const getEntryIcon = (type: string) => {
     switch (type) {
       case 'meal':
-        return <Utensils className="h-3 w-3 text-orange-500" />;
+        return <Utensils className="h-3 w-3 text-primary" />;
       case 'gym':
-        return <Dumbbell className="h-3 w-3 text-blue-500" />;
+        return <Dumbbell className="h-3 w-3 text-chart-2" />;
       case 'weight':
-        return <Scale className="h-3 w-3 text-green-500" />;
+        return <Scale className="h-3 w-3 text-chart-min" />;
       case 'sleep':
-        return <Moon className="h-3 w-3 text-purple-500" />;
+        return <Moon className="h-3 w-3 text-chart-5" />;
       case 'waist':
-        return <Ruler className="h-3 w-3 text-teal-500" />;
+        return <Ruler className="h-3 w-3 text-chart-3" />;
       case 'note':
         return <FileText className="h-3 w-3 text-destructive" />;
       default:
@@ -133,7 +133,7 @@ const Calendar = () => {
       case 'meal':
         return (
           <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Utensils className="h-4 w-4 text-orange-500" />
+            <Utensils className="h-4 w-4 text-primary" />
             <div className="flex-1">
               <p className="font-medium text-sm">{entry.data.food}</p>
               <p className="text-xs text-muted-foreground">{entry.data.calories} cal at {entry.data.time}</p>
@@ -143,7 +143,7 @@ const Calendar = () => {
       case 'gym':
         return (
           <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Dumbbell className="h-4 w-4 text-blue-500" />
+            <Dumbbell className="h-4 w-4 text-chart-2" />
             <div className="flex-1">
               <p className="font-medium text-sm">{entry.data.exercise}</p>
               <p className="text-xs text-muted-foreground">{entry.data.duration} minutes</p>
@@ -153,7 +153,7 @@ const Calendar = () => {
       case 'weight':
         return (
           <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Scale className="h-4 w-4 text-green-500" />
+            <Scale className="h-4 w-4 text-chart-min" />
             <div className="flex-1">
               <p className="font-medium text-sm">{entry.data.weight} kg</p>
               {entry.data.notes && <p className="text-xs text-muted-foreground">{entry.data.notes}</p>}
@@ -163,7 +163,7 @@ const Calendar = () => {
       case 'sleep':
         return (
           <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Moon className="h-4 w-4 text-purple-500" />
+            <Moon className="h-4 w-4 text-chart-5" />
             <div className="flex-1">
               <p className="font-medium text-sm">{entry.data.hours} hours</p>
               {entry.data.notes && <p className="text-xs text-muted-foreground">{entry.data.notes}</p>}
@@ -173,7 +173,7 @@ const Calendar = () => {
       case 'waist':
         return (
           <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Ruler className="h-4 w-4 text-teal-500" />
+            <Ruler className="h-4 w-4 text-chart-3" />
             <div className="flex-1">
               <p className="font-medium text-sm">{entry.data.waist} cm</p>
               {entry.data.notes && <p className="text-xs text-muted-foreground">{entry.data.notes}</p>}
