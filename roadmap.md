@@ -7,5 +7,5 @@
 - [x] Use dashboard orange and green rather than white and green for the two-series sleep chart.
 ## Page audit phases
 - [x] Phase 1: Gym weekly schedule tracker + last workout snapshot
-- [ ] Phase 2: Meals target bars, macro split, simpler filters
+- [x] Phase 2: Meals target bars, macro split, simpler filters
 - [ ] Phase 3: Extra Activity impact card + full-width history

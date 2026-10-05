@@ -8,7 +8,8 @@ import { usePersonalData } from '@/hooks/usePersonalData';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { useWeight } from '@/hooks/useWeight';
 import { Meal } from '@/types';
-import { resolveCalorieRange, macroRange, formatRange } from '@/lib/targets';
+import { resolveCalorieRange, macroRange } from '@/lib/targets';
+import { MealsTodayCard } from '@/components/MealsTodayCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -70,40 +71,28 @@ const Meals = () => {
 
   // Calculate stats with dynamic gym/rest day target
   const todayCalories = getTodayCalories();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const workedOutToday = gymSessions.some((s) => s.date === todayStr);
   const calorieRange = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const workedOut = gymSessions.some((s) => s.date === today);
     const extras = extraActivities
-      .filter((a) => a.date === today)
+      .filter((a) => a.date === todayStr)
       .reduce((sum, a) => sum + (a.calories || 0), 0);
-    return resolveCalorieRange(personalData, settings.daily_calorie_goal, workedOut, extras);
-  }, [gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
-  const caloriesRemaining = Math.max(0, calorieRange.min - todayCalories);
-  const remainingRange = (r: { min: number; max: number } | null, eaten: number) =>
-    r ? formatRange({ min: Math.max(0, r.min - eaten), max: Math.max(0, r.max - eaten) }) : null;
-  const caloriesRemainingLabel = remainingRange(calorieRange, todayCalories)!;
-  const caloriesLeftToMax = Math.max(0, calorieRange.max - todayCalories);
+    return resolveCalorieRange(personalData, settings.daily_calorie_goal, workedOutToday, extras);
+  }, [workedOutToday, todayStr, personalData, settings.daily_calorie_goal, extraActivities]);
+  const caloriesRemaining = Math.max(0, calorieRange.max - todayCalories);
 
   const currentWeight = weightEntries[0]?.weight ?? null;
   const proteinR = macroRange(personalData.protein_multiplier, personalData.protein_multiplier_max, currentWeight);
   const carbR = macroRange(personalData.carb_multiplier, personalData.carb_multiplier_max, currentWeight);
-  const proteinRemaining = remainingRange(proteinR, getTodayProtein());
-  const carbsRemaining = remainingRange(carbR, getTodayCarbs());
-  
-  const todayMeals = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return meals.filter(m => m.date === today).length;
-  }, [meals]);
+
+  const todayMeals = meals.filter((m) => m.date === todayStr).length;
 
   const weeklyCalories = useMemo(() => {
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-    return meals
-      .filter(m => m.date >= weekStartStr)
-      .reduce((sum, m) => sum + m.calories, 0);
-  }, [meals]);
+    const start = new Date(`${todayStr}T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() - 6);
+    const since = start.toISOString().slice(0, 10);
+    return meals.filter((m) => m.date >= since && m.date <= todayStr).reduce((sum, m) => sum + m.calories, 0);
+  }, [meals, todayStr]);
 
   return (
     <div className="container py-8 space-y-6">
@@ -115,63 +104,19 @@ const Meals = () => {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6 items-start">
         <MealForm onSubmit={addMeal} prefillData={prefillData} onPrefillConsumed={handlePrefillConsumed} />
-        
-        {/* Stats Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Stats</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Today's Calories</p>
-              <p className="text-3xl font-bold">{todayCalories} cal</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Today's Protein</p>
-              <p className="text-xl font-semibold">{Math.round(getTodayProtein())} g</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Today's Carbs</p>
-              <p className="text-xl font-semibold">{Math.round(getTodayCarbs())} g</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Remaining Today</p>
-              <p className={`text-xl font-semibold ${caloriesLeftToMax === 0 ? 'text-destructive' : 'text-green-600'}`}>
-                {caloriesRemainingLabel} cal
-              </p>
-              <div className="flex gap-4 mt-1">
-                <p className="text-sm text-muted-foreground">
-                  Protein:{' '}
-                  <span className={`font-semibold ${proteinRemaining === null ? 'text-muted-foreground' : 'text-green-600'}`}>
-                    {proteinRemaining === null ? '—' : `${proteinRemaining} g`}
-                  </span>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Carbs:{' '}
-                  <span className={`font-semibold ${carbsRemaining === null ? 'text-muted-foreground' : 'text-green-600'}`}>
-                    {carbsRemaining === null ? '—' : `${carbsRemaining} g`}
-                  </span>
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-              <div>
-                <p className="text-sm text-muted-foreground">Today's Meals</p>
-                <p className="text-xl font-semibold">{todayMeals}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Meals</p>
-                <p className="text-xl font-semibold">{meals.length}</p>
-              </div>
-            </div>
-            <div className="pt-4 border-t">
-              <p className="text-sm text-muted-foreground">This Week's Calories</p>
-              <p className="text-xl font-semibold">{weeklyCalories.toLocaleString()} cal</p>
-            </div>
-          </CardContent>
-        </Card>
+        <MealsTodayCard
+          calories={todayCalories}
+          protein={getTodayProtein()}
+          carbs={getTodayCarbs()}
+          calorieRange={calorieRange}
+          proteinRange={proteinR}
+          carbRange={carbR}
+          mealsToday={todayMeals}
+          weekCalories={weeklyCalories}
+          dayType={calorieRange.auto ? (workedOutToday ? 'Gym day' : 'Rest day') : null}
+        />
       </div>
 
       <MealList meals={meals} onDelete={deleteMeal} onEdit={handleEditClick} onCopy={handleCopyMeal} caloriesRemainingToday={caloriesRemaining} />
