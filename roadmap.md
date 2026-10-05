@@ -8,4 +8,4 @@
 ## Page audit phases
 - [x] Phase 1: Gym weekly schedule tracker + last workout snapshot
 - [x] Phase 2: Meals target bars, macro split, simpler filters
-- [ ] Phase 3: Extra Activity impact card + full-width history
+- [x] Phase 3: Extra Activity impact card + full-width history
