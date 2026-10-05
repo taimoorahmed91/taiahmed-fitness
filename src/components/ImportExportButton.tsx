@@ -156,6 +156,7 @@ export const ImportExportButton = () => {
           protein_multiplier_max: (pd as any).protein_multiplier_max != null ? Number((pd as any).protein_multiplier_max) : (pd as any).protein_multiplier != null ? Number((pd as any).protein_multiplier) : null,
           carb_multiplier_max: (pd as any).carb_multiplier_max != null ? Number((pd as any).carb_multiplier_max) : (pd as any).carb_multiplier != null ? Number((pd as any).carb_multiplier) : null,
           workout_days: Array.isArray((pd as any).workout_days) ? (pd as any).workout_days : [],
+          workout_day_templates: (pd as any).workout_day_templates && typeof (pd as any).workout_day_templates === 'object' ? (pd as any).workout_day_templates : {},
         });
       }
 

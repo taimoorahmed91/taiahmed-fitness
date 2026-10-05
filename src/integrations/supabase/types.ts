@@ -765,6 +765,7 @@ export type Database = {
           target_weight_kg: number | null
           updated_at: string
           user_id: string
+          workout_day_templates: Json
           workout_days: number[]
         }
         Insert: {
@@ -786,6 +787,7 @@ export type Database = {
           target_weight_kg?: number | null
           updated_at?: string
           user_id: string
+          workout_day_templates?: Json
           workout_days?: number[]
         }
         Update: {
@@ -807,6 +809,7 @@ export type Database = {
           target_weight_kg?: number | null
           updated_at?: string
           user_id?: string
+          workout_day_templates?: Json
           workout_days?: number[]
         }
         Relationships: []
