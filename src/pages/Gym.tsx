@@ -10,6 +10,8 @@ import { WorkoutTemplateList } from '@/components/WorkoutTemplateList';
 import { ActiveWorkoutModal } from '@/components/ActiveWorkoutModal';
 import { EditTemplateModal } from '@/components/EditTemplateModal';
 import { EditWorkoutSessionModal } from '@/components/EditWorkoutSessionModal';
+import { GymOverviewCard } from '@/components/GymOverviewCard';
+import { usePersonalData } from '@/hooks/usePersonalData';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -47,6 +49,7 @@ const readPausedWorkout = (): PausedWorkoutInfo | null => {
 const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions, getLastSessionByTemplateName } = useGymSessions();
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useWorkoutTemplates();
+  const { data: personalData } = usePersonalData();
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
@@ -201,27 +204,6 @@ const Gym = () => {
     toast.success(`Template "${session.exercise}" created with ${exercises.length} exercise(s)`);
   };
 
-  // Calculate stats
-  const thisWeekSessions = getThisWeekSessions();
-  const thisWeekCount = thisWeekSessions.length;
-  
-  const todayWorkouts = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return sessions.filter(s => s.date === today).length;
-  }, [sessions]);
-
-  const totalDuration = useMemo(() => {
-    return sessions.reduce((sum, s) => sum + s.duration, 0);
-  }, [sessions]);
-
-  const thisWeekDuration = useMemo(() => {
-    return thisWeekSessions.reduce((sum, s) => sum + s.duration, 0);
-  }, [thisWeekSessions]);
-
-  const avgDuration = useMemo(() => {
-    if (sessions.length === 0) return 0;
-    return Math.round(totalDuration / sessions.length);
-  }, [sessions, totalDuration]);
 
   return (
     <div className="container py-8 space-y-6">
@@ -268,36 +250,7 @@ const Gym = () => {
           <div className="grid lg:grid-cols-2 gap-6">
             <GymForm onStart={handleStartManualWorkout} />
             
-            {/* Stats Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">This Week's Workouts</p>
-                  <p className="text-3xl font-bold">{thisWeekCount}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">This Week's Duration</p>
-                  <p className="text-xl font-semibold">{thisWeekDuration} min</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Today's Workouts</p>
-                    <p className="text-xl font-semibold">{todayWorkouts}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Workouts</p>
-                    <p className="text-xl font-semibold">{sessions.length}</p>
-                  </div>
-                </div>
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">Average Workout Duration</p>
-                  <p className="text-xl font-semibold">{avgDuration} min</p>
-                </div>
-              </CardContent>
-            </Card>
+            <GymOverviewCard sessions={sessions} workoutDays={personalData.workout_days || []} />
           </div>
 
           {/* Filter and List */}
