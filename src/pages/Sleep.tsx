@@ -94,9 +94,9 @@ const Sleep = () => {
     : null;
 
   const getSleepQuality = (hours: number) => {
-    if (hours >= 7 && hours <= 9) return { label: 'Good', color: 'text-green-600' };
-    if (hours >= 6 && hours < 7) return { label: 'Fair', color: 'text-yellow-600' };
-    return { label: 'Poor', color: 'text-destructive' };
+    if (hours >= 7 && hours <= 9) return { label: 'Good', color: 'text-chart-min border-chart-min/40' };
+    if (hours >= 6 && hours < 7) return { label: 'Fair', color: 'text-primary border-primary/40' };
+    return { label: 'Poor', color: 'text-chart-max border-chart-max/40' };
   };
 
   return (
@@ -170,34 +170,56 @@ const Sleep = () => {
           </Card>
 
           {/* Stats Card */}
-          <Card>
+          <Card className="h-full">
             <CardHeader>
-              <CardTitle>Sleep Stats</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Moon className="h-5 w-5 text-primary" />
+                Sleep Overview
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {entries.length > 0 ? (
-                <>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Last Night</p>
-                    <p className="text-3xl font-bold">{entries[0]?.hours} hours</p>
-                    {entries[0] && (
-                      <p className={`text-sm ${getSleepQuality(entries[0].hours).color}`}>
-                        {getSleepQuality(entries[0].hours).label}
-                      </p>
-                    )}
-                  </div>
-                  {avgSleep && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">7-Day Average</p>
-                      <p className="text-xl font-semibold">{avgSleep} hours</p>
+              {entries.length > 0 ? (() => {
+                const last30 = entries.slice(0, 30);
+                const avg30 = (last30.reduce((s, e) => s + e.hours, 0) / last30.length).toFixed(1);
+                const best = Math.max(...last30.map((e) => e.hours));
+                const worst = Math.min(...last30.map((e) => e.hours));
+                const optimal = last30.filter((e) => e.hours >= 7 && e.hours <= 9).length;
+                const q = getSleepQuality(entries[0].hours);
+                return (
+                  <>
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Last Night</p>
+                        <p className="text-4xl font-bold tracking-tight">
+                          {entries[0]?.hours} <span className="text-lg font-medium text-muted-foreground">hours</span>
+                        </p>
+                        <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${q.color}`}>{q.label}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Total Entries</p>
+                        <p className="text-xl font-semibold">{entries.length}</p>
+                      </div>
                     </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Entries</p>
-                    <p className="text-xl font-semibold">{entries.length}</p>
-                  </div>
-                </>
-              ) : (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {[
+                        { label: '7-Day Avg', value: avgSleep ? `${avgSleep} h` : '—' },
+                        { label: '30-Entry Avg', value: `${avg30} h` },
+                        { label: 'Best Night', value: `${best} h` },
+                        { label: 'Shortest', value: `${worst} h` },
+                      ].map((t) => (
+                        <div key={t.label} className="rounded-lg border bg-muted/30 p-3">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t.label}</p>
+                          <p className="mt-1 text-sm font-semibold">{t.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                      <span className="font-medium">{optimal} of {last30.length}</span>
+                      <span className="text-muted-foreground"> recent nights in the 7–9 h optimal range</span>
+                    </div>
+                  </>
+                );
+              })() : (
                 <p className="text-muted-foreground">No sleep entries yet</p>
               )}
             </CardContent>

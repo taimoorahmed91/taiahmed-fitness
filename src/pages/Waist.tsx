@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, subDays, parseISO } from 'date-fns';
+import { format, subDays, parseISO, differenceInCalendarDays } from 'date-fns';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,12 @@ import { useWaist, WaistEntry } from '@/hooks/useWaist';
 import { useDataFilter } from '@/hooks/useDataFilter';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
+import { MetricOverviewCard, GoalPanel } from '@/components/MetricOverviewCard';
+import { useUserSettings } from '@/hooks/useUserSettings';
 
 const Waist = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useWaist();
+  const { settings } = useUserSettings();
   const [waist, setWaist] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
@@ -194,72 +197,34 @@ const Waist = () => {
           </Card>
 
           {/* Stats Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {latestWaist ? (
-                <>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Latest Waist</p>
-                    <p className="text-3xl font-bold">{latestWaist} cm</p>
-                  </div>
-                  {waistChange !== null && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Change from Previous</p>
-                      <p className={`text-xl font-semibold ${waistChange > 0 ? 'text-destructive' : waistChange < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {waistChange > 0 ? '+' : ''}{waistChange.toFixed(1)} cm
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Entries</p>
-                    <p className="text-xl font-semibold">{entries.length}</p>
-                  </div>
-
-                  {/* Period Changes */}
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-muted-foreground mb-3">Waist Change Over Time</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">7 Days</p>
-                        {periodChanges.day7 !== null ? (
-                          <p className={`text-sm font-semibold ${periodChanges.day7 > 0 ? 'text-destructive' : periodChanges.day7 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                            {periodChanges.day7 > 0 ? '+' : ''}{periodChanges.day7.toFixed(1)} cm
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">—</p>
-                        )}
-                      </div>
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">15 Days</p>
-                        {periodChanges.day15 !== null ? (
-                          <p className={`text-sm font-semibold ${periodChanges.day15 > 0 ? 'text-destructive' : periodChanges.day15 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                            {periodChanges.day15 > 0 ? '+' : ''}{periodChanges.day15.toFixed(1)} cm
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">—</p>
-                        )}
-                      </div>
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">30 Days</p>
-                        {periodChanges.day30 !== null ? (
-                          <p className={`text-sm font-semibold ${periodChanges.day30 > 0 ? 'text-destructive' : periodChanges.day30 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                            {periodChanges.day30 > 0 ? '+' : ''}{periodChanges.day30.toFixed(1)} cm
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">—</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <p className="text-muted-foreground">No waist entries yet</p>
-              )}
-            </CardContent>
-          </Card>
+          <MetricOverviewCard
+            title="Waist Overview"
+            latestLabel="Latest Waist"
+            latest={latestWaist}
+            unit="cm"
+            totalEntries={entries.length}
+            emptyText="No waist entries yet"
+            deltas={[
+              { label: 'vs Previous', value: waistChange },
+              { label: '7 Days', value: periodChanges.day7 },
+              { label: '15 Days', value: periodChanges.day15 },
+              { label: '30 Days', value: periodChanges.day30 },
+            ]}
+            extra={(() => {
+              const last = entries[0]?.date;
+              if (!last) return null;
+              const interval = settings.waist_measurement_interval || 7;
+              const since = differenceInCalendarDays(new Date(), parseISO(last));
+              const left = interval - since;
+              return (
+                <GoalPanel
+                  label={`Measure every ${interval} days`}
+                  detail={since === 0 ? 'Logged today' : left > 0 ? `Next in ${left} day${left === 1 ? '' : 's'}` : `Due ${-left === 0 ? 'today' : `${-left} day${left === -1 ? '' : 's'} ago`}`}
+                  progress={(since / interval) * 100}
+                />
+              );
+            })()}
+          />
         </div>
 
         {/* Search and Filter */}
