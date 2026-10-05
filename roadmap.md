@@ -12,3 +12,4 @@
 - [x] Body pages phase 1: Weight, Waist, Sleep overview cards
 - [x] Body pages phase 2: Calorie History summary, Daily Notes insights/filters, WHOOP layout
 - [x] Body pages phase 3: Calendar month summary, theme colors on Compare/Reports/Achievements, badge progress
+- [x] Body pages phase 4: Audit Log colors, Messaging status overview, User Approval redesign
