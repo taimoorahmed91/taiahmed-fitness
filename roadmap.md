@@ -9,3 +9,5 @@
 - [x] Phase 1: Gym weekly schedule tracker + last workout snapshot
 - [x] Phase 2: Meals target bars, macro split, simpler filters
 - [x] Phase 3: Extra Activity impact card + full-width history
+- [x] Body pages phase 1: Weight, Waist, Sleep overview cards
+- [x] Body pages phase 2: Calorie History summary, Daily Notes insights/filters, WHOOP layout

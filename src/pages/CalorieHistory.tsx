@@ -42,7 +42,7 @@ const MacroCell = ({
 }) => {
   const status = target ? rangeStatus(consumed, target) : null;
   const tone =
-    status === null ? 'text-muted-foreground' : status === 'under' ? 'text-amber-500' : status === 'within' ? 'text-green-500' : 'text-red-500';
+    status === null ? 'text-muted-foreground' : status === 'under' ? 'text-primary' : status === 'within' ? 'text-chart-min' : 'text-chart-max';
   const pMin = target ? pct(consumed, target.min) : null;
   const pMax = target ? pct(consumed, target.max) : null;
   return (
@@ -140,59 +140,133 @@ const CalorieHistory = () => {
   const currentPage = Math.min(page, totalPages);
   const pageRows = filteredRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  const summary = useMemo(() => {
+    const n = filteredRows.length;
+    if (!n) return null;
+    const avg = (f: (r: DayRow) => number) => Math.round(filteredRows.reduce((s, r) => s + f(r), 0) / n);
+    const inRange = (k: 'calories' | 'protein' | 'carbs') => {
+      const withT = filteredRows.filter((r) => r[k].target);
+      return { hit: withT.filter((r) => rangeStatus(r[k].consumed, r[k].target!) === 'within').length, of: withT.length };
+    };
+    return {
+      days: n,
+      gym: filteredRows.filter((r) => r.workedOut).length,
+      cal: avg((r) => r.calories.consumed),
+      protein: avg((r) => r.protein.consumed),
+      carbs: avg((r) => r.carbs.consumed),
+      calHit: inRange('calories'),
+      proteinHit: inRange('protein'),
+      carbHit: inRange('carbs'),
+    };
+  }, [filteredRows]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const quickRange = (days: number | null) => {
+    if (days === null) {
+      setStartDate('');
+      setEndDate('');
+      return;
+    }
+    const d = new Date(`${today}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - (days - 1));
+    setStartDate(d.toISOString().slice(0, 10));
+    setEndDate(today);
+  };
+  const activeQuick = (days: number) => {
+    const d = new Date(`${today}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - (days - 1));
+    return startDate === d.toISOString().slice(0, 10) && endDate === today;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="container py-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Calorie History</h1>
-          <p className="text-muted-foreground mt-1">
-            Daily targets versus what you actually ate, with protein and carbs.
-          </p>
+        <div className="flex items-center gap-3">
+          <History className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold">Calorie History</h1>
+            <p className="text-muted-foreground mt-1">
+              Daily targets versus what you actually ate, with protein and carbs.
+            </p>
+          </div>
         </div>
 
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Search className="h-5 w-5 text-primary" />
-              Search by date
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-3 items-end">
-              <div className="space-y-2">
-                <Label htmlFor="start-date">From</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Search className="h-5 w-5 text-primary" />
+                Search by date
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {[7, 14, 30].map((d) => (
+                  <Button key={d} size="sm" variant={activeQuick(d) ? 'default' : 'outline'} onClick={() => quickRange(d)}>
+                    {d}D
+                  </Button>
+                ))}
+                <Button size="sm" variant={!startDate && !endDate ? 'default' : 'outline'} onClick={() => quickRange(null)}>
+                  All
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="end-date">To</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+              <div className="grid gap-4 grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="start-date">From</Label>
+                  <Input id="start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end-date">To</Label>
+                  <Input id="end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setStartDate('');
-                  setEndDate('');
-                }}
-              >
+              <Button variant="outline" className="w-full" onClick={() => quickRange(null)}>
                 Clear
               </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mt-3">
-              Select a single date to filter that day, or choose a range.
-            </p>
-          </CardContent>
-        </Card>
+              <p className="text-sm text-muted-foreground">
+                Select a single date to filter that day, or choose a range.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-md lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg">Summary for selected days</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!summary ? (
+                <p className="text-muted-foreground">No days in this selection.</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    <span className="rounded-full border px-3 py-1">{summary.days} days</span>
+                    <span className="flex items-center gap-1 rounded-full border px-3 py-1"><Dumbbell className="h-3 w-3" /> {summary.gym} gym</span>
+                    <span className="flex items-center gap-1 rounded-full border px-3 py-1"><Moon className="h-3 w-3" /> {summary.days - summary.gym} rest</span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {[
+                      { label: 'Avg calories', value: `${summary.cal} cal`, hit: summary.calHit },
+                      { label: 'Avg protein', value: `${summary.protein} g`, hit: summary.proteinHit },
+                      { label: 'Avg carbs', value: `${summary.carbs} g`, hit: summary.carbHit },
+                    ].map((t) => (
+                      <div key={t.label} className="rounded-lg border bg-muted/30 p-3">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{t.label}</p>
+                        <p className="mt-1 text-2xl font-bold">{t.value}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {t.hit.of ? (
+                            <>In range <span className="font-semibold text-chart-min">{t.hit.hit}</span> of {t.hit.of} days ({Math.round((t.hit.hit / t.hit.of) * 100)}%)</>
+                          ) : 'No target set'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
 
         <Card className="shadow-md">
           <CardHeader>

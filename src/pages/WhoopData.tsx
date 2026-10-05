@@ -78,6 +78,18 @@ const WhoopData = () => {
   };
 
   const latestEntry = entries[0];
+  const avg7 = (() => {
+    const recent = entries.slice(0, 7);
+    const avg = (vals: (number | null)[], d = 0) => {
+      const v = vals.filter((x): x is number => x != null).map(Number);
+      return v.length ? Number((v.reduce((a, b) => a + b, 0) / v.length).toFixed(d)) : null;
+    };
+    return {
+      recovery: avg(recent.map((e) => e.recovery_score)),
+      rhr: avg(recent.map((e) => e.resting_heart_rate)),
+      strain: avg(recent.map((e) => e.strain), 1),
+    };
+  })();
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,40 +108,6 @@ const WhoopData = () => {
             <p className="text-xs text-muted-foreground">Auto-syncs daily at 14:00 CET</p>
           </div>
         </div>
-
-        {/* WHOOP API URL config */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <LinkIcon className="h-4 w-4" /> WHOOP API URL
-            </CardTitle>
-            <CardDescription>
-              Paste the WHOOP data endpoint URL used by Sync Now.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="whoop-url" className="sr-only">WHOOP URL</Label>
-                <Input
-                  id="whoop-url"
-                  type="url"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder={savedUrl || 'https://...'}
-                />
-                {savedUrl && (
-                  <p className="text-xs text-muted-foreground break-all">
-                    Current: {savedUrl}
-                  </p>
-                )}
-              </div>
-              <Button onClick={handleSaveUrl} disabled={savingUrl}>
-                {savingUrl ? 'Saving...' : 'Save URL'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Summary Cards */}
         {latestEntry && (
@@ -180,6 +158,55 @@ const WhoopData = () => {
             </Card>
           </div>
         )}
+
+        {latestEntry && (
+          <p className="-mt-2 text-sm text-muted-foreground">
+            Latest reading: <span className="font-medium text-foreground">{latestEntry.date}</span>
+            {avg7.recovery !== null && <> · 7-day avg recovery <span className="font-medium text-foreground">{avg7.recovery}%</span></>}
+            {avg7.rhr !== null && <> · RHR <span className="font-medium text-foreground">{avg7.rhr} bpm</span></>}
+            {avg7.strain !== null && <> · strain <span className="font-medium text-foreground">{avg7.strain}</span></>}
+          </p>
+        )}
+
+        {/* WHOOP API URL config */}
+        <Card>
+          <details className="group">
+          <summary className="cursor-pointer list-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <LinkIcon className="h-4 w-4" /> WHOOP API URL
+              <Badge variant={savedUrl ? 'default' : 'outline'} className="ml-1">{savedUrl ? 'Connected' : 'Not set'}</Badge>
+              <span className="ml-auto text-xs font-normal text-muted-foreground group-open:hidden">Click to edit</span>
+            </CardTitle>
+            <CardDescription>
+              Paste the WHOOP data endpoint URL used by Sync Now.
+            </CardDescription>
+          </CardHeader>
+          </summary>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="whoop-url" className="sr-only">WHOOP URL</Label>
+                <Input
+                  id="whoop-url"
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder={savedUrl || 'https://...'}
+                />
+                {savedUrl && (
+                  <p className="text-xs text-muted-foreground break-all">
+                    Current: {savedUrl}
+                  </p>
+                )}
+              </div>
+              <Button onClick={handleSaveUrl} disabled={savingUrl}>
+                {savingUrl ? 'Saving...' : 'Save URL'}
+              </Button>
+            </div>
+          </CardContent>
+          </details>
+        </Card>
 
         {/* Data Table */}
         <Card>
