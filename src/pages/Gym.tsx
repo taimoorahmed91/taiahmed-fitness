@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dumbbell, ClipboardList, PlayCircle } from 'lucide-react';
+import { Dumbbell, ClipboardList, PlayCircle, CalendarCheck, Play } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
