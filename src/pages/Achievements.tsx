@@ -98,6 +98,15 @@
              </CardTitle>
            </CardHeader>
            <CardContent>
+             {stats.badges.length > 0 && (
+               <div className="mb-6 space-y-1">
+                 <div className="flex justify-between text-xs text-muted-foreground">
+                   <span>Collection progress</span>
+                   <span>{Math.round((earnedBadges.length / stats.badges.length) * 100)}%</span>
+                 </div>
+                 <Progress value={(earnedBadges.length / stats.badges.length) * 100} className="h-2" />
+               </div>
+             )}
              {earnedBadges.length > 0 && (
                <div className="mb-6">
                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Earned</h3>
