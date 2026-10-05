@@ -102,71 +102,42 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
         </div>
         
         <div className="space-y-3 mt-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by food name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by food name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <Input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="flex-1"
-              placeholder="Filter by date"
-            />
-            <Select value={calorieFilter} onValueChange={(v: 'all' | 'low' | 'medium' | 'high') => setCalorieFilter(v)}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Calories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All calories</SelectItem>
-                <SelectItem value="low">Low (&lt;300)</SelectItem>
-                <SelectItem value="medium">Medium (300-600)</SelectItem>
-                <SelectItem value="high">High (&gt;600)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground whitespace-nowrap">Calorie range:</span>
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              placeholder="Min"
-              value={calorieMin}
-              onChange={(e) => setCalorieMin(e.target.value)}
-              className="flex-1"
-            />
-            <span className="text-muted-foreground">to</span>
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              placeholder="Max"
-              value={calorieMax}
-              onChange={(e) => setCalorieMax(e.target.value)}
-              className="flex-1"
+              className="sm:w-44"
+              aria-label="Filter by date"
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {caloriesRemainingToday !== undefined && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setCalorieMin('0');
-                  setCalorieMax(String(Math.max(0, Math.floor(caloriesRemainingToday))));
-                }}
-                className="h-8 text-xs"
-              >
-                Calorie limit today (0 - {Math.max(0, Math.floor(caloriesRemainingToday))} cal)
-              </Button>
-            )}
+            {caloriesRemainingToday !== undefined && (() => {
+              const limit = String(Math.max(0, Math.floor(caloriesRemainingToday)));
+              const active = calorieMin === '0' && calorieMax === limit;
+              return (
+                <Button
+                  variant={active ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setCalorieMin(active ? '' : '0');
+                    setCalorieMax(active ? '' : limit);
+                  }}
+                  className="h-8 text-xs"
+                >
+                  Fits today's budget (≤ {limit} cal)
+                </Button>
+              );
+            })()}
             <Button
               variant={excludeBeforeNoon ? 'default' : 'outline'}
               size="sm"
