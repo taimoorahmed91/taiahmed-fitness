@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dumbbell, ClipboardList, PlayCircle } from 'lucide-react';
+import { Dumbbell, ClipboardList, PlayCircle, CalendarCheck, Play } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
@@ -232,6 +232,37 @@ const Gym = () => {
       )}
 
 
+
+      {(() => {
+        const dow = new Date().getDay();
+        if (!(personalData.workout_days || []).includes(dow)) return null;
+        const tplId = personalData.workout_day_templates?.[String(dow)];
+        const tpl = tplId ? templates.find((t) => t.id === tplId) : undefined;
+        if (!tpl) return null;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const doneToday = sessions.some(
+          (s) => s.date === todayStr && s.exercise?.trim().toLowerCase() === tpl.name.trim().toLowerCase()
+        );
+        return (
+          <Card className="border-primary/40">
+            <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <CalendarCheck className="h-5 w-5 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium truncate">Today: {tpl.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {doneToday ? 'Already done today — nice work.' : `${tpl.exercises.length} exercise${tpl.exercises.length !== 1 ? 's' : ''} planned`}
+                  </p>
+                </div>
+              </div>
+              <Button variant={doneToday ? 'outline' : 'default'} onClick={() => handleStartWorkout(tpl)}>
+                <Play className="h-4 w-4 mr-1" />
+                {doneToday ? 'Start again' : 'Start workout'}
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <Tabs defaultValue="log" className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
