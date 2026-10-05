@@ -14,6 +14,9 @@ export default {
   	},
   	extend: {
   		colors: {
+  			'chart-min': 'hsl(var(--chart-min))',
+  			'chart-max': 'hsl(var(--chart-max))',
+  			'chart-actual': 'hsl(var(--chart-actual))',
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',

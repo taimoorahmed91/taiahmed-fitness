@@ -10,6 +10,8 @@ import { WorkoutTemplateList } from '@/components/WorkoutTemplateList';
 import { ActiveWorkoutModal } from '@/components/ActiveWorkoutModal';
 import { EditTemplateModal } from '@/components/EditTemplateModal';
 import { EditWorkoutSessionModal } from '@/components/EditWorkoutSessionModal';
+import { GymOverviewCard } from '@/components/GymOverviewCard';
+import { usePersonalData } from '@/hooks/usePersonalData';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -47,6 +49,7 @@ const readPausedWorkout = (): PausedWorkoutInfo | null => {
 const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions, getLastSessionByTemplateName } = useGymSessions();
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useWorkoutTemplates();
+  const { data: personalData } = usePersonalData();
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
@@ -268,36 +271,7 @@ const Gym = () => {
           <div className="grid lg:grid-cols-2 gap-6">
             <GymForm onStart={handleStartManualWorkout} />
             
-            {/* Stats Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">This Week's Workouts</p>
-                  <p className="text-3xl font-bold">{thisWeekCount}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">This Week's Duration</p>
-                  <p className="text-xl font-semibold">{thisWeekDuration} min</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Today's Workouts</p>
-                    <p className="text-xl font-semibold">{todayWorkouts}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Workouts</p>
-                    <p className="text-xl font-semibold">{sessions.length}</p>
-                  </div>
-                </div>
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">Average Workout Duration</p>
-                  <p className="text-xl font-semibold">{avgDuration} min</p>
-                </div>
-              </CardContent>
-            </Card>
+            <GymOverviewCard sessions={sessions} workoutDays={personalData.workout_days || []} />
           </div>
 
           {/* Filter and List */}
