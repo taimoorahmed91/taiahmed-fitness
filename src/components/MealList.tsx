@@ -3,7 +3,6 @@ import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Clock, Calendar, Pencil, Search, X, Copy } from 'lucide-react';
 import { SortControl } from '@/components/SortControl';
 import { usePagination } from '@/hooks/usePagination';
@@ -19,9 +18,7 @@ interface MealListProps {
 
 export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingToday }: MealListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'date' | 'time' | 'calories'>('all');
   const [dateFilter, setDateFilter] = useState('');
-  const [calorieFilter, setCalorieFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [calorieMin, setCalorieMin] = useState('');
   const [calorieMax, setCalorieMax] = useState('');
   const [excludeBeforeNoon, setExcludeBeforeNoon] = useState(false);
@@ -50,11 +47,6 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
     if (dateFilter && meal.date !== dateFilter) {
       return false;
     }
-    if (calorieFilter !== 'all') {
-      if (calorieFilter === 'low' && meal.calories > 300) return false;
-      if (calorieFilter === 'medium' && (meal.calories <= 300 || meal.calories > 600)) return false;
-      if (calorieFilter === 'high' && meal.calories <= 600) return false;
-    }
     const min = calorieMin === '' ? null : parseInt(calorieMin);
     const max = calorieMax === '' ? null : parseInt(calorieMax);
     if (min !== null && !isNaN(min) && meal.calories < min) return false;
@@ -76,14 +68,12 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
   const clearFilters = () => {
     setSearchTerm('');
     setDateFilter('');
-    setCalorieFilter('all');
     setCalorieMin('');
     setCalorieMax('');
     setExcludeBeforeNoon(false);
-    setFilterType('all');
   };
 
-  const hasActiveFilters = searchTerm || dateFilter || calorieFilter !== 'all' || calorieMin !== '' || calorieMax !== '' || excludeBeforeNoon;
+  const hasActiveFilters = searchTerm || dateFilter || calorieMin !== '' || calorieMax !== '' || excludeBeforeNoon;
 
   return (
     <Card className="shadow-md">
