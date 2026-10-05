@@ -11,3 +11,4 @@
 - [x] Phase 3: Extra Activity impact card + full-width history
 - [x] Body pages phase 1: Weight, Waist, Sleep overview cards
 - [x] Body pages phase 2: Calorie History summary, Daily Notes insights/filters, WHOOP layout
+- [x] Body pages phase 3: Calendar month summary, theme colors on Compare/Reports/Achievements, badge progress
