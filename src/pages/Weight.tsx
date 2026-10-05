@@ -14,9 +14,12 @@ import { useWeight, WeightEntry } from '@/hooks/useWeight';
 import { useDataFilter } from '@/hooks/useDataFilter';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
+import { MetricOverviewCard, GoalPanel } from '@/components/MetricOverviewCard';
+import { usePersonalData } from '@/hooks/usePersonalData';
 
 const Weight = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useWeight();
+  const { data: personalData } = usePersonalData();
   const [weight, setWeight] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
@@ -90,6 +93,8 @@ const Weight = () => {
   const latestWeight = entries[0]?.weight;
   const previousWeight = entries[1]?.weight;
   const weightChange = latestWeight && previousWeight ? latestWeight - previousWeight : null;
+  const targetWeight = personalData.target_weight_kg;
+  const startWeight = entries[entries.length - 1]?.weight ?? latestWeight ?? 0;
 
   // Calculate weight differences for 7, 15, and 30 days ago
   const periodChanges = useMemo(() => {
@@ -193,72 +198,35 @@ const Weight = () => {
           </Card>
 
           {/* Stats Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {latestWeight ? (
-                <>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Latest Weight</p>
-                    <p className="text-3xl font-bold">{latestWeight} kg</p>
-                  </div>
-                  {weightChange !== null && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Change from Previous</p>
-                      <p className={`text-xl font-semibold ${weightChange > 0 ? 'text-destructive' : weightChange < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {weightChange > 0 ? '+' : ''}{weightChange.toFixed(1)} kg
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Entries</p>
-                    <p className="text-xl font-semibold">{entries.length}</p>
-                  </div>
-
-                  {/* Period Changes */}
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-muted-foreground mb-3">Weight Change Over Time</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">7 Days</p>
-                        {periodChanges.day7 !== null ? (
-                          <p className={`text-sm font-semibold ${periodChanges.day7 > 0 ? 'text-destructive' : periodChanges.day7 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                            {periodChanges.day7 > 0 ? '+' : ''}{periodChanges.day7.toFixed(1)} kg
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">—</p>
-                        )}
-                      </div>
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">15 Days</p>
-                        {periodChanges.day15 !== null ? (
-                          <p className={`text-sm font-semibold ${periodChanges.day15 > 0 ? 'text-destructive' : periodChanges.day15 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                            {periodChanges.day15 > 0 ? '+' : ''}{periodChanges.day15.toFixed(1)} kg
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">—</p>
-                        )}
-                      </div>
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground">30 Days</p>
-                        {periodChanges.day30 !== null ? (
-                          <p className={`text-sm font-semibold ${periodChanges.day30 > 0 ? 'text-destructive' : periodChanges.day30 < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                            {periodChanges.day30 > 0 ? '+' : ''}{periodChanges.day30.toFixed(1)} kg
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">—</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </>
+          <MetricOverviewCard
+            title="Weight Overview"
+            latestLabel="Latest Weight"
+            latest={latestWeight}
+            unit="kg"
+            totalEntries={entries.length}
+            emptyText="No weight entries yet"
+            deltas={[
+              { label: 'vs Previous', value: weightChange },
+              { label: '7 Days', value: periodChanges.day7 },
+              { label: '15 Days', value: periodChanges.day15 },
+              { label: '30 Days', value: periodChanges.day30 },
+            ]}
+            extra={
+              targetWeight && latestWeight ? (
+                <GoalPanel
+                  label={`Target ${targetWeight} kg`}
+                  detail={
+                    Math.abs(latestWeight - targetWeight) < 0.05
+                      ? 'Goal reached'
+                      : `${Math.abs(latestWeight - targetWeight).toFixed(1)} kg to go`
+                  }
+                  progress={startWeight !== targetWeight ? ((startWeight - latestWeight) / (startWeight - targetWeight)) * 100 : 100}
+                />
               ) : (
-                <p className="text-muted-foreground">No weight entries yet</p>
-              )}
-            </CardContent>
-          </Card>
+                <GoalPanel label="No target weight set" detail="Set one on the Personal page" />
+              )
+            }
+          />
         </div>
 
         {/* Search and Filter */}
