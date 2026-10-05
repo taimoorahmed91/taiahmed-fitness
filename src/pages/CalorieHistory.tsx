@@ -42,7 +42,7 @@ const MacroCell = ({
 }) => {
   const status = target ? rangeStatus(consumed, target) : null;
   const tone =
-    status === null ? 'text-muted-foreground' : status === 'under' ? 'text-amber-500' : status === 'within' ? 'text-green-500' : 'text-red-500';
+    status === null ? 'text-muted-foreground' : status === 'under' ? 'text-primary' : status === 'within' ? 'text-chart-min' : 'text-chart-max';
   const pMin = target ? pct(consumed, target.min) : null;
   const pMax = target ? pct(consumed, target.max) : null;
   return (

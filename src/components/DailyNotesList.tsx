@@ -19,9 +19,9 @@ interface DailyNotesListProps {
 
 const getSeverityColor = (severity: number | null) => {
   if (!severity) return '';
-  if (severity <= 2) return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400';
-  if (severity <= 3) return 'bg-orange-500/20 text-orange-700 dark:text-orange-400';
-  return 'bg-red-500/20 text-red-700 dark:text-red-400';
+  if (severity <= 2) return 'bg-primary/15 text-primary';
+  if (severity <= 3) return 'bg-chart-max/10 text-chart-max';
+  return 'bg-destructive/20 text-destructive';
 };
 
 export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps) => {
