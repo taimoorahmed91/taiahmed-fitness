@@ -19,6 +19,8 @@ export interface PersonalData {
   carb_multiplier: number | null;
   carb_multiplier_max: number | null;
   workout_days: number[];
+  /** Map of weekday index (0=Sun..6=Sat, as string) to workout template id. */
+  workout_day_templates: Record<string, string>;
 }
 
 const empty: PersonalData = {
@@ -37,6 +39,7 @@ const empty: PersonalData = {
   carb_multiplier: null,
   carb_multiplier_max: null,
   workout_days: [],
+  workout_day_templates: {},
 };
 
 export const usePersonalData = () => {
@@ -70,6 +73,7 @@ export const usePersonalData = () => {
         carb_multiplier: (row as any).carb_multiplier != null ? Number((row as any).carb_multiplier) : null,
         carb_multiplier_max: (row as any).carb_multiplier_max != null ? Number((row as any).carb_multiplier_max) : null,
         workout_days: ((row as any).workout_days ?? []) as number[],
+        workout_day_templates: ((row as any).workout_day_templates ?? {}) as Record<string, string>,
       });
     } else {
       setData({ ...empty, full_name: user.user_metadata?.full_name ?? null });

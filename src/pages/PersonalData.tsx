@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useWorkoutTemplates } from '@/hooks/useWorkoutTemplates';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePersonalDataHistory, PersonalHistoryField } from '@/hooks/usePersonalDataHistory';
 import { useWeight } from '@/hooks/useWeight';
 import { useUserSettings } from '@/hooks/useUserSettings';
@@ -47,6 +49,8 @@ const PersonalDataPage = () => {
   const [proteinMultiplierMax, setProteinMultiplierMax] = useState('');
   const [carbMultiplierMax, setCarbMultiplierMax] = useState('');
   const [workoutDays, setWorkoutDays] = useState<number[]>([]);
+  const [dayTemplates, setDayTemplates] = useState<Record<string, string>>({});
+  const { templates } = useWorkoutTemplates();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -65,6 +69,7 @@ const PersonalDataPage = () => {
     setProteinMultiplierMax(data.protein_multiplier_max?.toString() || '');
     setCarbMultiplierMax(data.carb_multiplier_max?.toString() || '');
     setWorkoutDays(data.workout_days || []);
+    setDayTemplates(data.workout_day_templates || {});
   }, [data]);
 
   const handleDobChange = (val: string) => {
@@ -108,6 +113,9 @@ const PersonalDataPage = () => {
       protein_multiplier_max: proteinMultiplierMax ? parseFloat(proteinMultiplierMax) : proteinMultiplier ? parseFloat(proteinMultiplier) : null,
       carb_multiplier_max: carbMultiplierMax ? parseFloat(carbMultiplierMax) : carbMultiplier ? parseFloat(carbMultiplier) : null,
       workout_days: workoutDays,
+      workout_day_templates: Object.fromEntries(
+        Object.entries(dayTemplates).filter(([k, v]) => workoutDays.includes(Number(k)) && templates.some((t) => t.id === v))
+      ),
     });
     setSaving(false);
     if (error) toast.error('Failed to save personal data');
@@ -264,8 +272,8 @@ const PersonalDataPage = () => {
                 </CardHeader>
                 <CardContent>
                 <div className="space-y-2">
-                  <Label>Workout Days</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <Label>Workout Days & templates</Label>
+                  <div className="space-y-2">
                     {[
                       { v: 1, l: 'Monday' },
                       { v: 2, l: 'Tuesday' },
@@ -274,24 +282,51 @@ const PersonalDataPage = () => {
                       { v: 5, l: 'Friday' },
                       { v: 6, l: 'Saturday' },
                       { v: 0, l: 'Sunday' },
-                    ].map((d) => (
-                      <div key={d.v} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`wd-${d.v}`}
-                          checked={workoutDays.includes(d.v)}
-                          onCheckedChange={(checked) => {
-                            setWorkoutDays((prev) =>
-                              checked
-                                ? [...prev, d.v].sort((a, b) => a - b)
-                                : prev.filter((x) => x !== d.v)
-                            );
-                          }}
-                        />
-                        <Label htmlFor={`wd-${d.v}`} className="cursor-pointer">{d.l}</Label>
-                      </div>
-                    ))}
+                    ].map((d) => {
+                      const on = workoutDays.includes(d.v);
+                      return (
+                        <div key={d.v} className="flex items-center gap-3 min-h-9">
+                          <Checkbox
+                            id={`wd-${d.v}`}
+                            checked={on}
+                            onCheckedChange={(checked) => {
+                              setWorkoutDays((prev) =>
+                                checked
+                                  ? [...prev, d.v].sort((a, b) => a - b)
+                                  : prev.filter((x) => x !== d.v)
+                              );
+                            }}
+                          />
+                          <Label htmlFor={`wd-${d.v}`} className="cursor-pointer w-24 shrink-0">{d.l}</Label>
+                          {on ? (
+                            <Select
+                              value={dayTemplates[String(d.v)] || 'none'}
+                              onValueChange={(val) =>
+                                setDayTemplates((prev) => {
+                                  const next = { ...prev };
+                                  if (val === 'none') delete next[String(d.v)]; else next[String(d.v)] = val;
+                                  return next;
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="No template" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">No template</SelectItem>
+                                {templates.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Rest day</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <p className="text-xs text-muted-foreground">Used by the dashboard to determine workout vs rest days.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Used by the dashboard to determine workout vs rest days.{templates.length === 0 && ' Create templates on the Gym page to assign them here.'}
+                  </p>
                 </div>
 
                 </CardContent>
