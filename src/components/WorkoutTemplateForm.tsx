@@ -48,6 +48,14 @@ export const WorkoutTemplateForm = ({ onSubmit }: WorkoutTemplateFormProps) => {
     setExercises(['']);
   };
 
+  if (bare) {
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {fields}
+      </form>
+    );
+  }
+
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-4">
@@ -58,6 +66,15 @@ export const WorkoutTemplateForm = ({ onSubmit }: WorkoutTemplateFormProps) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {fields}
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+const _unused = () => (
+        <form className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="template-name">Template Name</Label>
             <Input
