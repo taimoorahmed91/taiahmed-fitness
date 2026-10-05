@@ -214,6 +214,34 @@ const Calendar = () => {
           <h1 className="text-3xl font-bold">Calendar View</h1>
         </div>
 
+        {(() => {
+          const prefix = format(currentMonth, 'yyyy-MM');
+          const inMonth = (d: string) => d.startsWith(prefix);
+          const tiles = [
+            { icon: Utensils, label: 'Days with meals', value: new Set(meals.filter((m) => inMonth(m.date)).map((m) => m.date)).size, tone: 'text-primary' },
+            { icon: Dumbbell, label: 'Workouts', value: sessions.filter((s) => inMonth(s.date)).length, tone: 'text-chart-2' },
+            { icon: Scale, label: 'Weigh-ins', value: weightEntries.filter((e) => inMonth(e.date)).length, tone: 'text-chart-min' },
+            { icon: Moon, label: 'Sleep logs', value: sleepEntries.filter((e) => inMonth(e.date)).length, tone: 'text-chart-5' },
+            { icon: Ruler, label: 'Waist logs', value: waistEntries.filter((e) => inMonth(e.date)).length, tone: 'text-chart-3' },
+            { icon: FileText, label: 'Notes', value: notes.filter((n) => inMonth(n.date)).length, tone: 'text-destructive' },
+          ];
+          return (
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {tiles.map((t) => (
+                <Card key={t.label}>
+                  <CardContent className="p-3">
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <t.icon className={cn('h-3.5 w-3.5', t.tone)} /> {t.label}
+                    </p>
+                    <p className="mt-1 text-xl font-bold">{t.value}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          );
+        })()}
+
+
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Calendar Grid */}
           <Card className="lg:col-span-2">
