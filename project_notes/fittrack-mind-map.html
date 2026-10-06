@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FitTrack Repository Mind Map</title>
+<style>
+  :root {
+    --cisco-blue: #3070e7;
+    --cisco-blue-dark: #0f1729;
+    --cisco-ink: #1a1a1a;
+    --cisco-slate: #64748b;
+    --cisco-bg: #f8fafc;
+    --cisco-surface: #ffffff;
+    --cisco-border: #c9d3d8;
+    --cisco-line: #8aa6b0;
+    --energy: #e8743b;
+    --recovery: #6ab04c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    padding: 2rem 1.25rem 3rem;
+    background: var(--cisco-bg);
+    color: var(--cisco-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.45;
+  }
+
+  .mono {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.72rem;
+    color: var(--cisco-slate);
+    word-break: break-word;
+  }
+
+  header.page-header {
+    max-width: 1200px;
+    margin: 0 auto 2rem;
+    text-align: center;
+  }
+
+  header.page-header h1 {
+    margin: 0 0 0.4rem;
+    font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.2rem);
+    color: var(--cisco-blue-dark);
+    letter-spacing: -0.01em;
+  }
+
+  header.page-header p {
+    margin: 0;
+    color: var(--cisco-slate);
+    font-size: 0.95rem;
+    max-width: 640px;
+    margin-inline: auto;
+  }
+
+  /* ============ MIND MAP STRUCTURE ============ */
+
+  .mindmap {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .root-node {
+    background: var(--cisco-blue-dark);
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 0.85rem 2rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(0, 80, 126, 0.35);
+    border: 2px solid var(--cisco-blue);
+  }
+
+  .root-node small {
+    display: block;
+    font-weight: 400;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-top: 0.15rem;
+  }
+
+  /* trunk line dropping from root to the branch rail */
+  .trunk {
+    width: 2px;
+    height: 2rem;
+    background: var(--cisco-line);
+  }
+
+  /* horizontal rail connecting all branch stems (desktop only) */
+  .branch-rail {
+    width: 100%;
+    max-width: 1100px;
+    height: 2px;
+    background: var(--cisco-line);
+    position: relative;
+  }
+
+  .branches {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.75rem 1.25rem;
+    padding-top: 1.5rem;
+  }
+
+  .branch {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* stem connecting a branch card up to the horizontal rail */
+  .branch::before {
+    content: "";
+    position: absolute;
+    top: -1.5rem;
+    left: 50%;
+    width: 2px;
+    height: 1.5rem;
+    background: var(--cisco-line);
+    transform: translateX(-1px);
+  }
+
+  .branch-head {
+    border-radius: 10px;
+    padding: 0.55rem 0.8rem;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.92rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+  }
+
+  .branch-head .tag {
+    display: block;
+    font-weight: 400;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.9;
+    margin-top: 0.1rem;
+  }
+
+  /* color assignment per branch, cycling the Cisco + supporting palette */
+  .b1 .branch-head { background: var(--cisco-blue-dark); }
+  .b2 .branch-head { background: var(--cisco-blue); }
+  .b3 .branch-head { background: var(--energy); }
+  .b4 .branch-head { background: var(--energy); filter: brightness(0.9); }
+  .b5 .branch-head { background: var(--recovery); }
+  .b6 .branch-head { background: var(--cisco-blue-dark); }
+  .b7 .branch-head { background: var(--cisco-blue); }
+  .b8 .branch-head { background: var(--cisco-slate); }
+
+  /* children list: a vertical spine with elbow connectors, org-chart style */
+  .children {
+    list-style: none;
+    margin: 0;
+    padding: 0.85rem 0 0 1.1rem;
+    position: relative;
+    border-left: 2px solid var(--cisco-border);
+    margin-left: 0.6rem;
+    flex: 1;
+  }
+
+  .children li {
+    position: relative;
+    margin-bottom: 0.55rem;
+  }
+
+  .children li:last-child { margin-bottom: 0; }
+
+  /* elbow: horizontal tick from the spine to each child box */
+  .children li::before {
+    content: "";
+    position: absolute;
+    top: 0.7rem;
+    left: -1.1rem;
+    width: 0.9rem;
+    height: 2px;
+    background: var(--cisco-border);
+  }
+
+  .child-node {
+    background: var(--cisco-surface);
+    border: 1px solid var(--cisco-border);
+    border-radius: 8px;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .child-node .label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cisco-ink);
+    margin-bottom: 0.15rem;
+  }
+
+  .child-node .mono { display: block; }
+
+  /* ============ TABLE OF CONTENTS ============ */
+
+  .toc {
+    max-width: 1100px;
+    margin: 0 auto 2rem;
+    background: var(--cisco-surface);
+    border: 1px solid var(--cisco-border);
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+  }
+
+  .toc p {
+    margin: 0 0 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--cisco-slate);
+  }
+
+  .toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+    counter-reset: toc;
+  }
+
+  .toc li {
+    counter-increment: toc;
+    font-size: 0.85rem;
+  }
+
+  .toc li::before {
+    content: counter(toc) ". ";
+    color: var(--cisco-slate);
+  }
+
+  .toc a {
+    color: var(--cisco-blue-dark);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .toc a:hover,
+  .toc a:focus-visible {
+    color: var(--cisco-blue);
+  }
+
+  /* ============ CROSS-DOMAIN FLOWS ============ */
+
+  .flows {
+    max-width: 1100px;
+    margin: 2.75rem auto 0;
+    background: var(--cisco-surface);
+    border: 1px solid var(--cisco-border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .flows h2 {
+    margin: 0 0 0.9rem;
+    font-size: 1.05rem;
+    color: var(--cisco-blue-dark);
+  }
+
+  .flow-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem 1.5rem;
+  }
+
+  .flow-list li {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    padding-left: 1.1rem;
+    position: relative;
+  }
+
+  .flow-list li::before {
+    content: "\2192";
+    position: absolute;
+    left: 0;
+    color: var(--cisco-blue);
+    font-weight: 700;
+  }
+
+  .flow-list .mono { font-size: 0.7rem; }
+
+  /* ============ FEATURE GUIDE ============ */
+
+  .feature-guide {
+    max-width: 1100px;
+    margin: 2.75rem auto 0;
+  }
+
+  .feature-guide > h2 {
+    margin: 0 0 0.3rem;
+    font-size: 1.3rem;
+    color: var(--cisco-blue-dark);
+    text-align: center;
+  }
+
+  .feature-guide > .fg-intro {
+    margin: 0 auto 1.5rem;
+    max-width: 680px;
+    text-align: center;
+    font-size: 0.88rem;
+    color: var(--cisco-slate);
+  }
+
+  /* thin rail echoing the mind-map branch rail, ties this section back to it visually */
+  .fg-rail {
+    width: 100%;
+    max-width: 1100px;
+    height: 2px;
+    background: var(--cisco-line);
+    margin: 0 auto 1.75rem;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+
+  .feature-card {
+    background: var(--cisco-surface);
+    border: 1px solid var(--cisco-border);
+    border-left: 4px solid var(--accent, var(--cisco-blue));
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  }
+
+  .feature-card h3 {
+    margin: 0 0 0.65rem;
+    font-size: 1rem;
+    color: var(--cisco-ink);
+  }
+
+  .fc-block {
+    margin-bottom: 0.7rem;
+  }
+
+  .fc-block:last-of-type {
+    margin-bottom: 0.5rem;
+  }
+
+  .fc-label {
+    display: block;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent, var(--cisco-blue));
+    margin-bottom: 0.25rem;
+  }
+
+  .fc-block p {
+    margin: 0;
+    font-size: 0.83rem;
+    line-height: 1.45;
+  }
+
+  .fc-block ol,
+  .fc-block ul {
+    margin: 0;
+    padding-left: 1.15rem;
+    font-size: 0.83rem;
+    line-height: 1.45;
+  }
+
+  .fc-block li {
+    margin-bottom: 0.2rem;
+  }
+
+  .fc-source {
+    margin: 0;
+    padding-top: 0.55rem;
+    border-top: 1px dashed var(--cisco-border);
+  }
+
+  /* ============ LEGEND + SOURCE NOTE ============ */
+
+  .footer-grid {
+    max-width: 1100px;
+    margin: 1.5rem auto 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .legend, .source-note {
+    background: var(--cisco-surface);
+    border: 1px solid var(--cisco-border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+  }
+
+  .legend h2, .source-note h2 {
+    margin: 0 0 0.6rem;
+    font-size: 0.95rem;
+    color: var(--cisco-blue-dark);
+  }
+
+  .legend ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .legend li {
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .swatch {
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 3px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .sw-root { background: var(--cisco-blue-dark); }
+  .sw-blue { background: var(--cisco-blue); }
+  .sw-energy { background: var(--energy); }
+  .sw-recovery { background: var(--recovery); }
+  .sw-slate { background: var(--cisco-slate); }
+
+  .source-note p {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    color: var(--cisco-slate);
+  }
+
+  .source-note p:last-child { margin-bottom: 0; }
+
+  /* ============ RESPONSIVE FALLBACK ============ */
+
+  @media (max-width: 900px) {
+    .branches { grid-template-columns: repeat(2, 1fr); }
+    .flow-list { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr; }
+    .feature-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 640px) {
+    body { padding: 1.25rem 0.85rem 2rem; }
+    .branches { grid-template-columns: 1fr; gap: 1.5rem; }
+    .branch-rail { display: none; }
+    .trunk { height: 1.25rem; }
+    .branch::before { top: -1.25rem; height: 1.25rem; }
+    .root-node { padding: 0.7rem 1.4rem; font-size: 1rem; }
+    .children { padding-left: 0.9rem; margin-left: 0.4rem; }
+    .toc ol { flex-direction: column; gap: 0.35rem; }
+    .fg-rail { display: none; }
+  }
+
+  /* ============ PRINT ============ */
+
+  @media print {
+    body { background: #ffffff; padding: 0.5in; }
+    .flows, .legend, .source-note {
+      border: 1px solid #999;
+      box-shadow: none;
+      break-inside: avoid;
+    }
+    .branch { break-inside: avoid; }
+    .branch-rail { background: #999; }
+    .toc { border: 1px solid #999; break-inside: avoid; }
+    .feature-card { border: 1px solid #999; box-shadow: none; break-inside: avoid; }
+    .fg-rail { background: #999; }
+    a[href]::after { content: ""; }
+  }
+
+  /* reduced motion / no JS anyway, but keep any future transitions inert */
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>FitTrack Repository Mind Map</h1>
+  <p>A static map of how the FitTrack codebase is organized: eight conceptual branches covering pages, components, hooks, Supabase edge functions, and migrations.</p>
+</header>
+
+<nav class="toc" aria-label="Table of contents">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#mind-map">Mind Map</a></li>
+    <li><a href="#cross-domain-flows">Cross-Domain Flows</a></li>
+    <li><a href="#feature-guide">Feature Guide</a></li>
+    <li><a href="#source-note">Source Note</a></li>
+  </ol>
+</nav>
+
+<main class="mindmap" id="mind-map">
+
+  <div class="root-node">
+    FitTrack
+    <small>React + Vite + Supabase fitness tracker</small>
+  </div>
+  <div class="trunk"></div>
+  <div class="branch-rail"></div>
+
+  <div class="branches">
+
+    <!-- 1. User Access -->
+    <section class="branch b1" aria-labelledby="b1-h">
+      <h2 class="branch-head" id="b1-h">User Access<span class="tag">Auth &amp; approval</span></h2>
+      <ul class="children">
+        <li class="child-node">
+          <span class="label">Welcome / sign-in</span>
+          <span class="mono">src/pages/Welcome.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Pending approval gate</span>
+          <span class="mono">src/pages/PendingApproval.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Admin approval queue</span>
+          <span class="mono">src/pages/AdminApproval.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">OAuth consent screen</span>
+          <span class="mono">src/pages/OAuthConsent.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Session / user context</span>
+          <span class="mono">src/contexts/UserContext.tsx, src/lib/authSession.ts</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 2. Daily Dashboard -->
+    <section class="branch b2" aria-labelledby="b2-h">
+      <h2 class="branch-head" id="b2-h">Daily Dashboard<span class="tag">Today at a glance</span></h2>
+      <ul class="children">
+        <li class="child-node">
+          <span class="label">Dashboard shell</span>
+          <span class="mono">src/pages/Dashboard.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Summary stat cards</span>
+          <span class="mono">src/components/StatsCards.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Calorie goal progress</span>
+          <span class="mono">src/components/CalorieGoalProgress.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Yesterday status recap</span>
+          <span class="mono">src/components/YesterdayStatus.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Goals card</span>
+          <span class="mono">src/components/GoalsCard.tsx, src/hooks/useGoals.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Daily summary data</span>
+          <span class="mono">src/hooks/useDailySummary.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Body trend charts (shown here, not on the body pages)</span>
+          <span class="mono">src/components/WeightChart.tsx, WaistChart.tsx, SleepChart.tsx, RecoveryChart.tsx</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 3. Nutrition & Energy -->
+    <section class="branch b3" aria-labelledby="b3-h">
+      <h2 class="branch-head" id="b3-h">Nutrition &amp; Energy<span class="tag">Meals &amp; macros</span></h2>
+      <ul class="children">
+        <li class="child-node">
+          <span class="label">Meals log &amp; targets</span>
+          <span class="mono">src/pages/Meals.tsx, src/hooks/useMeals.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Calorie balance chart</span>
+          <span class="mono">src/components/CalorieBalanceChart.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Macro target chart + cards</span>
+          <span class="mono">src/components/MacroTargetChart.tsx, ProteinTargetCard.tsx, CarbTargetCard.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Meal-time distribution</span>
+          <span class="mono">src/components/MealTimeChart.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Calorie history archive</span>
+          <span class="mono">src/pages/CalorieHistory.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Target range resolver</span>
+          <span class="mono">src/lib/targets.ts</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 4. Training & Activity -->
+    <section class="branch b4" aria-labelledby="b4-h">
+      <h2 class="branch-head" id="b4-h">Training &amp; Activity<span class="tag">Workouts &amp; extras</span></h2>
+      <ul class="children">
+        <li class="child-node">
+          <span class="label">Gym sessions &amp; templates</span>
+          <span class="mono">src/pages/Gym.tsx, src/hooks/useGymSessions.ts, useWorkoutTemplates.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Active workout modal</span>
+          <span class="mono">src/components/ActiveWorkoutModal.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Workout duration chart</span>
+          <span class="mono">src/components/WorkoutDurationChart.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Extra activity impact</span>
+          <span class="mono">src/pages/ExtraActivities.tsx, src/hooks/useExtraActivities.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Template edit/list forms</span>
+          <span class="mono">src/components/WorkoutTemplateForm.tsx, GymForm.tsx, GymList.tsx</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 5. Health & Recovery -->
+    <section class="branch b5" aria-labelledby="b5-h">
+      <h2 class="branch-head" id="b5-h">Health &amp; Recovery<span class="tag">Body &amp; WHOOP</span></h2>
+      <ul class="children">
+        <li class="child-node">
+          <span class="label">Weight tracking</span>
+          <span class="mono">src/pages/Weight.tsx, useWeight.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Waist tracking</span>
+          <span class="mono">src/pages/Waist.tsx, useWaist.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Sleep tracking</span>
+          <span class="mono">src/pages/Sleep.tsx, useSleep.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Shared metric overview card (Weight, Waist)</span>
+          <span class="mono">src/components/MetricOverviewCard.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">WHOOP recovery data</span>
+          <span class="mono">src/pages/WhoopData.tsx, useWhoopData.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">WHOOP sync function</span>
+          <span class="mono">supabase/functions/sync-whoop-data/index.ts</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 6. Analysis & Motivation -->
+    <section class="branch b6" aria-labelledby="b6-h">
+      <h2 class="branch-head" id="b6-h">Analysis &amp; Motivation<span class="tag">Trends &amp; wins</span></h2>
+      <ul class="children">
+        <li class="child-node">
+          <span class="label">Reports &amp; report charts</span>
+          <span class="mono">src/pages/Reports.tsx, src/components/ReportCharts.tsx, useReportData.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Period comparison</span>
+          <span class="mono">src/pages/Compare.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Calendar overview</span>
+          <span class="mono">src/pages/Calendar.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Achievements</span>
+          <span class="mono">src/pages/Achievements.tsx, src/hooks/useGoalAchievements.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Shareable summary export</span>
+          <span class="mono">src/components/ShareableSummary.tsx, src/lib/exportData.ts</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 7. Personalization & Communication -->
+    <section class="branch b7" aria-labelledby="b7-h">
+      <h2 class="branch-head" id="b7-h">Personalization &amp; Communication<span class="tag">Settings &amp; notes</span></h2>
+      <ul class="children">
+        <li class="child-node">
+          <span class="label">Personal data &amp; history</span>
+          <span class="mono">src/pages/PersonalData.tsx, usePersonalData.ts, usePersonalDataHistory.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">User settings</span>
+          <span class="mono">src/hooks/useUserSettings.ts, src/components/WeightIntervalSetting.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Daily notes</span>
+          <span class="mono">src/pages/DailyNotes.tsx, useDailyNotes.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Messaging &amp; chat bot</span>
+          <span class="mono">src/pages/Messaging.tsx, src/components/ChatBot.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Notification scheduling</span>
+          <span class="mono">src/components/NotificationScheduleForm.tsx</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Chat webhook function</span>
+          <span class="mono">supabase/functions/chat-webhook/index.ts</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 8. Platform Architecture -->
+    <section class="branch b8" aria-labelledby="b8-h">
+      <h2 class="branch-head" id="b8-h">Platform Architecture<span class="tag">Data &amp; infra</span></h2>
+      <ul class="children">
+        <li class="child-node">
+          <span class="label">Supabase client &amp; types</span>
+          <span class="mono">src/integrations/supabase/client.ts, types.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">API token exchange</span>
+          <span class="mono">supabase/functions/api-token/index.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Schema migrations (50 files)</span>
+          <span class="mono">supabase/migrations/*.sql</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Activity &amp; audit logging</span>
+          <span class="mono">src/pages/ActivityLogs.tsx, src/hooks/useActivityLog.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">Shared utilities &amp; filters</span>
+          <span class="mono">src/lib/utils.ts, jsonExportImport.ts, useDataFilter.ts, usePagination.ts</span>
+        </li>
+        <li class="child-node">
+          <span class="label">App shell, routing, navigation</span>
+          <span class="mono">src/App.tsx, src/components/Navigation.tsx, NavLink.tsx</span>
+        </li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<section class="flows" id="cross-domain-flows" aria-labelledby="flows-h">
+  <h2 id="flows-h">Cross-Domain Data Flows</h2>
+  <ul class="flow-list">
+    <li>
+      WHOOP sync function feeds <strong>Health &amp; Recovery</strong> and <strong>Daily Dashboard</strong> recovery/strain metrics.
+      <span class="mono">sync-whoop-data &#8594; useWhoopData &#8594; Dashboard, WhoopData</span>
+    </li>
+    <li>
+      Settings, workout-day status, and extra activity establish calorie targets; meal entries show progress against them.
+      <span class="mono">useUserSettings + useGymSessions + useExtraActivities &#8594; targets.ts &#8594; Dashboard, Reports</span>
+    </li>
+    <li>
+      Approval status from <strong>User Access</strong> gates every authenticated route rendered by the app shell.
+      <span class="mono">UserContext &#8594; App.tsx route guards &#8594; all pages</span>
+    </li>
+    <li>
+      Daily notes remain date-linked records, while authenticated assistant requests travel through the chat webhook to n8n.
+      <span class="mono">useDailyNotes &#8594; DailyNotes | ChatBot &#8594; chat-webhook &#8594; n8n</span>
+    </li>
+    <li>
+      Personal targets and protein settings influence dashboard calculations and nutrition progress views.
+      <span class="mono">usePersonalData + useUserSettings &#8594; targets.ts &#8594; Dashboard, Nutrition</span>
+    </li>
+    <li>
+       All 50 migrations define the tables every hook in every branch reads/writes via the Supabase client.
+      <span class="mono">migrations/*.sql &#8594; client.ts &#8594; all hooks</span>
+    </li>
+  </ul>
+</section>
+
+<section class="feature-guide" id="feature-guide" aria-labelledby="feature-guide-h">
+  <h2 id="feature-guide-h">Feature Guide: What It Does, How to Use It, and Why It Helps</h2>
+  <p class="fg-intro">Seventeen user-facing features, each read off the branches above. Every card states what the feature does, the concrete steps to use it, and the concrete advantages it gives &mdash; grounded in the pages, hooks, and functions that implement it.</p>
+  <div class="fg-rail" aria-hidden="true"></div>
+
+  <div class="feature-grid">
+
+    <article class="feature-card" style="--accent: var(--cisco-blue-dark);">
+      <h3>Sign-in &amp; Approval</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>New users sign in with a Google account; access is held at a waiting screen until an owner approves the profile.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>On the welcome screen, select &ldquo;Sign in with Google&rdquo;.</li>
+          <li>If not yet approved, you land on &ldquo;Please wait to be allowed&rdquo; (sign out from there if needed).</li>
+          <li>An owner opens User Approval and selects Approve next to the pending name.</li>
+          <li>Reload the app to reach the Dashboard once approved.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>One-click Google sign-in, no separate password to manage.</li>
+          <li>Owner-gated approval keeps the tracker private to intended users.</li>
+          <li>A separate OAuth consent screen supports connecting external integrations without sharing credentials.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Welcome.tsx, PendingApproval.tsx, AdminApproval.tsx, OAuthConsent.tsx, src/contexts/UserContext.tsx</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-blue);">
+      <h3>Dashboard</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Shows today's status in one place: calories vs. target, yesterday's recap, and open goals, with a visible countdown to the daily reset.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Dashboard from the nav (the default landing page after sign-in).</li>
+          <li>Review the stat cards and calorie goal progress bar for today.</li>
+          <li>Check the Yesterday status and Goals card for anything still open.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>One screen for &ldquo;where do I stand today&rdquo; instead of checking each tracker separately.</li>
+          <li>Calorie/macro targets adjust automatically for workout vs. rest days.</li>
+          <li>Visible UTC reset countdown removes ambiguity about when a new day starts.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Dashboard.tsx, src/components/StatsCards.tsx, CalorieGoalProgress.tsx, YesterdayStatus.tsx, GoalsCard.tsx, src/hooks/useDailySummary.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--energy);">
+      <h3>Meals &amp; Nutrition</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Logs individual meals with calories, protein, and carbs, and compares the day's intake against calorie and macro targets.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Meals from the nav.</li>
+          <li>Fill in &ldquo;What did you eat?&rdquo;, calories, and optional protein/carbs, then submit.</li>
+          <li>Use the list's edit, copy, or delete actions to adjust a logged meal.</li>
+          <li>Check Calorie History for the full logged archive.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Calorie and macro targets are computed automatically rather than entered by hand.</li>
+          <li>Meal-time distribution chart shows when calories are consumed, not just how many.</li>
+          <li>The copy action speeds up logging repeat meals.</li>
+          <li>Calorie History adds 7D/14D/30D/All quick filters and a Summary for Selected Days panel (avg calories, protein, carbs, target-range hit rate).</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Meals.tsx, CalorieHistory.tsx, src/components/MealForm.tsx, MealList.tsx, CalorieBalanceChart.tsx, MacroTargetChart.tsx, MealTimeChart.tsx, src/lib/targets.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--energy);">
+      <h3>Gym &amp; Workout Templates</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Runs and records gym sessions from reusable templates, tracking sets, reps, weight, and session duration per exercise.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Gym from the nav.</li>
+          <li>Create a template (name + exercises) or pick an existing one.</li>
+          <li>Select a template to start a workout; the active-session modal tracks sets as you go.</li>
+          <li>Finish, or pause and resume later; edit a past session's notes if needed.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Templates remove the need to retype the same exercise list every session.</li>
+          <li>Pause/resume support means an interrupted workout isn't lost.</li>
+          <li>Workout duration chart turns logged sessions into a visible training-volume trend.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Gym.tsx, src/components/WorkoutTemplateForm.tsx, WorkoutTemplateList.tsx, ActiveWorkoutModal.tsx, EditTemplateModal.tsx, EditWorkoutSessionModal.tsx, WorkoutDurationChart.tsx, src/hooks/useGymSessions.ts, useWorkoutTemplates.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--energy);">
+      <h3>Extra Activities</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Logs non-gym activity &mdash; walks, hikes, sports, chores &mdash; with optional duration and calories that count toward the day's calorie goal.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Extra Activity from the nav.</li>
+          <li>Fill in the activity details and, optionally, duration, calories, and notes, then select &ldquo;Add Activity&rdquo;.</li>
+          <li>Use the date range and search filters to find or edit a past entry.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Captures calorie-relevant movement that gym logging alone would miss.</li>
+          <li>Extra calories feed directly into the same daily target used by Dashboard and Meals.</li>
+          <li>Searchable, date-filtered history makes a specific entry easy to find later.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/ExtraActivities.tsx, src/hooks/useExtraActivities.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--recovery);">
+      <h3>Weight &amp; Waist</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Logs weight and waist measurements over time with notes, each on its own page with its own trend chart.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Weight or Waist from the nav.</li>
+          <li>Enter the measurement and an optional note, then select &ldquo;Add Entry&rdquo;.</li>
+          <li>Use search/sort to review history, or edit/delete an entry from its dialog.</li>
+          <li>Optionally set a logging-interval reminder from Personal Data.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Separate pages keep weight and waist overviews uncluttered from each other.</li>
+          <li>A shared overview card shows vs-previous, 7/15/30-day deltas, and progress toward a weight target or measuring cadence.</li>
+          <li>BMI on Personal Data is calculated automatically from the latest weight and stored height.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Weight.tsx, Waist.tsx, src/components/MetricOverviewCard.tsx, WeightIntervalSetting.tsx, src/hooks/useWeight.ts, useWaist.ts, usePersonalData.ts, useUserSettings.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--recovery);">
+      <h3>Sleep</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Logs sleep duration and notes per day. The page shows a Sleep Overview (last night, 7-day and 30-entry averages, best/shortest night, optimal-range tally); Dashboard charts it alongside other health trends.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Sleep from the nav.</li>
+          <li>Enter hours slept and an optional note, then select &ldquo;Add Entry&rdquo;.</li>
+          <li>Use search and sort controls to review past entries, or edit one from its dialog.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Dashboard and Calendar both surface sleep alongside the same day's meals and workouts.</li>
+          <li>Simple hours-plus-notes format keeps logging under a minute.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Sleep.tsx, src/hooks/useSleep.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--recovery);">
+      <h3>WHOOP Recovery</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Pulls WHOOP recovery, strain, and sleep data in from a configured API URL and displays it as a recovery trend alongside manually tracked entries.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open WHOOP Data from the nav.</li>
+          <li>Expand the collapsible WHOOP API URL panel, paste the URL, and save it.</li>
+          <li>Select the fetch/refresh action to pull in the latest entries.</li>
+          <li>Edit or delete an individual entry if a value looks wrong.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Wearable recovery and strain data supplements manually logged training and sleep.</li>
+          <li>A background sync function can keep entries current without a manual fetch every time.</li>
+          <li>Recovery chart feeds the same dashboard used for meals and training, giving one combined view.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/WhoopData.tsx, EditWhoopEntryDialog.tsx, src/hooks/useWhoopData.ts, supabase/functions/sync-whoop-data/index.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-blue-dark);">
+      <h3>Calendar</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Shows six month-summary tiles (meal days, workouts, weigh-ins, sleep logs, waist logs, notes) above a month grid where each day indicates which trackers have entries, filterable by type.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Calendar from the nav.</li>
+          <li>Use the filter selector to show all entry types or narrow to one (e.g. gym only).</li>
+          <li>Navigate between months with the arrow controls and select a day to see what was logged.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Gives a quick visual read on logging consistency across every tracker at once.</li>
+          <li>Filtering by category makes it easy to audit one habit at a time.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Calendar.tsx</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-blue);">
+      <h3>Compare</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Puts two dates side by side across meals, gym, weight, or sleep, including a set-by-set breakdown for gym sessions.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Compare from the nav.</li>
+          <li>Pick a category &mdash; meals, gym, weight, or sleep &mdash; and the two dates to compare.</li>
+          <li>For gym, review the exercise-by-exercise, set-by-set comparison parsed automatically from session notes.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Directly answers &ldquo;how does this compare to last time&rdquo; without manually cross-referencing history pages.</li>
+          <li>Granular gym comparison shows progress per exercise, not just per session.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Compare.tsx</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-blue-dark);">
+      <h3>Reports</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Summarizes calorie, workout, sleep, and weight stats over the last 7 or 30 days, with correlation-style insights and a shareable summary image.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Reports from the nav.</li>
+          <li>Switch between the &ldquo;Last 7 Days&rdquo; and &ldquo;Last 30 Days&rdquo; tabs.</li>
+          <li>Review the stat cards, charts, and insight cards.</li>
+          <li>Select Download or Share to export the summary as an image.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Turns scattered daily logs into a single period-level summary.</li>
+          <li>Shareable image export makes it easy to send progress outside the app.</li>
+          <li>Correlation insights surface patterns a single chart wouldn't show.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Reports.tsx, src/components/ReportCharts.tsx, InsightCard.tsx, ShareableSummary.tsx, src/hooks/useReportData.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-blue);">
+      <h3>Goals &amp; Achievements</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Tracks goal-hit streaks and awards badges for consistency across calories, workouts, and sleep.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Set targets via the Goals card on the Dashboard or via Personal Data targets.</li>
+          <li>Open Achievements from the nav to see goals set, goals met, current streak, and longest streak.</li>
+          <li>Review earned vs. not-yet-earned badges.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Converts daily targets into a visible motivation signal instead of silent pass/fail.</li>
+          <li>Separate categories (calories, workouts, sleep) stop one metric from hiding progress in another.</li>
+          <li>A collection-progress bar shows how many badges have been earned overall, at a glance.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Achievements.tsx, src/hooks/useGoalAchievements.ts, src/components/GoalsCard.tsx, src/hooks/useGoals.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-slate);">
+      <h3>Daily Notes</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Logs free-text notes (with optional tags and a severity score) about symptoms, feelings, or events on a given date, separate from the quantitative trackers.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Daily Notes from the nav.</li>
+          <li>Write a note in the form and submit it.</li>
+          <li>Search, or filter by tag, to find a specific note fast.</li>
+          <li>Edit or delete an existing note from the list.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Captures context (illness, stress, travel) that explains anomalies in weight, sleep, or calorie charts.</li>
+          <li>Notes stay date-linked, so they line up with the corresponding entries on Calendar.</li>
+          <li>Summary tiles surface patterns &mdash; total notes, last 30 days, most common tag, and average severity.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/DailyNotes.tsx, src/components/DailyNoteForm.tsx, DailyNotesList.tsx, src/hooks/useDailyNotes.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-slate);">
+      <h3>Personal Data &amp; Targets</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Stores profile basics, nutrition and training targets as min/max ranges, a per-weekday workout-template schedule, rest timers, an API token, and a live BMI reading.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Personal Data from the nav.</li>
+          <li>Fill in body/profile fields and nutrition target multipliers, min and max.</li>
+          <li>Assign a workout template to specific weekdays under Training Schedule.</li>
+          <li>Generate, refresh, or revoke the API token if external access is needed.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Min/max ranges, not single numbers, drive the calorie and macro targets used throughout the app.</li>
+          <li>Per-weekday template assignment ties training schedule directly to Gym.</li>
+          <li>BMI is computed live from stored height and the latest logged weight.</li>
+          <li>The token is shown in plaintext only once at generation, reducing exposure risk.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/PersonalData.tsx, src/hooks/usePersonalData.ts, usePersonalDataHistory.ts, src/lib/targets.ts, supabase/functions/api-token/index.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-blue);">
+      <h3>Messaging &amp; Assistant</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Configures Telegram and email notifications on a schedule, shown as status-overview cards (Telegram, Email, Schedule), and provides an in-app chat assistant for quick data questions.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Messaging from the nav.</li>
+          <li>Message the configured Telegram bot to get a chat ID, paste it in, and save.</li>
+          <li>Toggle Telegram/email subscriptions and set a notification schedule.</li>
+          <li>Use the chat bubble, available on any page, to ask quick questions by category.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>The notification schedule shows an actual cron expression, not a hidden black box.</li>
+          <li>The chat assistant is rate-limited, keeping it available without runaway usage.</li>
+          <li>Telegram and email channels can be toggled independently of each other.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/Messaging.tsx, src/components/NotificationScheduleForm.tsx, ChatBot.tsx, supabase/functions/chat-webhook/index.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-blue-dark);">
+      <h3>Data Import/Export</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Exports logged data as CSV (per category or all) or as a full/range JSON backup, and imports a previously exported JSON backup.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open the export/import menu from the top navigation bar, available on every page.</li>
+          <li>Choose CSV export for a single category or all data, or JSON export for a full/range backup.</li>
+          <li>To restore, choose Import, select a previously exported JSON file, and confirm the import dialog.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Available from every page, with no need to navigate to a specific settings screen first.</li>
+          <li>JSON backup/restore gives a path to move or recover data outside the live database.</li>
+          <li>CSV export supports pulling a single category, such as meals, into a spreadsheet.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/components/ImportExportButton.tsx, src/lib/exportData.ts, jsonExportImport.ts</p>
+    </article>
+
+    <article class="feature-card" style="--accent: var(--cisco-slate);">
+      <h3>Activity Logs / Admin</h3>
+      <div class="fc-block">
+        <span class="fc-label">What it does</span>
+        <p>Keeps a personal, filterable audit trail of actions across categories, and gives owners a User Approval queue &mdash; a two-column grid of pending sign-ups, each with an avatar initial and how long they've waited.</p>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">How to use it</span>
+        <ol>
+          <li>Open Audit Log from the nav to see recent actions, searchable and filterable by category and status.</li>
+          <li>Expand an entry to see its recorded details.</li>
+          <li>Owners only: open User Approval to review pending sign-ups (with wait time) and select Approve.</li>
+        </ol>
+      </div>
+      <div class="fc-block">
+        <span class="fc-label">Advantages</span>
+        <ul>
+          <li>Gives a factual trace of what changed and when, useful for spotting an accidental delete or duplicate entry.</li>
+          <li>Category and status filters make a specific event easy to find in a long history.</li>
+          <li>The approval queue shows how long each sign-up has waited, so the owner can prioritize at a glance.</li>
+        </ul>
+      </div>
+      <p class="mono fc-source">src/pages/ActivityLogs.tsx, AdminApproval.tsx, src/hooks/useActivityLog.ts, src/contexts/UserContext.tsx</p>
+    </article>
+
+  </div>
+</section>
+
+<div class="footer-grid">
+  <section class="legend" aria-labelledby="legend-h">
+    <h2 id="legend-h">Legend</h2>
+    <ul>
+      <li><span class="swatch sw-root"></span> Root / core system branches</li>
+      <li><span class="swatch sw-blue"></span> User-facing experience branches</li>
+      <li><span class="swatch sw-energy"></span> Activity &amp; energy branches</li>
+      <li><span class="swatch sw-recovery"></span> Body &amp; recovery branch</li>
+      <li><span class="swatch sw-slate"></span> Infrastructure branch</li>
+    </ul>
+    <p class="mono" style="margin-top:0.65rem;">Monospace text = repository file or folder path.</p>
+  </section>
+
+    <section class="source-note" id="source-note" aria-labelledby="source-h">
+    <h2 id="source-h">Source Note</h2>
+    <p>This map is derived directly from the FitTrack repository structure: 22 route pages (<span class="mono">src/pages/</span>), 52 components (<span class="mono">src/components/</span>), 22 data hooks (<span class="mono">src/hooks/</span>), 3 Supabase edge functions (<span class="mono">supabase/functions/</span>), and 50 SQL migrations (<span class="mono">supabase/migrations/</span>).</p>
+    <p>It groups implementation files by conceptual purpose rather than alphabetically, to reflect how the product actually behaves for a user.</p>
+  </section>
+</div>
+
+</body>
+</html>
