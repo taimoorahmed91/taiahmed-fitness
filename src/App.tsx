@@ -27,6 +27,7 @@ import ActivityLogs from "./pages/ActivityLogs";
 import PersonalData from "./pages/PersonalData";
 import ExtraActivities from "./pages/ExtraActivities";
 import CalorieHistory from "./pages/CalorieHistory";
+import HowTo from "./pages/HowTo";
 import { Navigation } from "./components/Navigation";
 import ChatBot from "./components/ChatBot";
 
@@ -237,6 +238,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <CalorieHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/how-to"
+        element={
+          <ProtectedRoute>
+            <HowTo />
           </ProtectedRoute>
         }
       />
