@@ -7,6 +7,8 @@ import { Trash2, Clock, Calendar, Pencil, Search, X, Copy } from 'lucide-react';
 import { SortControl } from '@/components/SortControl';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
+import { MealNutrientFilter } from '@/components/MealNutrientFilter';
+import { emptyNutrientFilter, matchesNutrientFilter } from '@/lib/mealNutrientFilter';
 
 interface MealListProps {
   meals: Meal[];
@@ -19,8 +21,9 @@ interface MealListProps {
 export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingToday }: MealListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
-  const [calorieMin, setCalorieMin] = useState('');
-  const [calorieMax, setCalorieMax] = useState('');
+  const [calorieFilter, setCalorieFilter] = useState(emptyNutrientFilter);
+  const [proteinFilter, setProteinFilter] = useState(emptyNutrientFilter);
+  const [carbFilter, setCarbFilter] = useState(emptyNutrientFilter);
   const [excludeBeforeNoon, setExcludeBeforeNoon] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
 
@@ -47,10 +50,9 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
     if (dateFilter && meal.date !== dateFilter) {
       return false;
     }
-    const min = calorieMin === '' ? null : parseInt(calorieMin);
-    const max = calorieMax === '' ? null : parseInt(calorieMax);
-    if (min !== null && !isNaN(min) && meal.calories < min) return false;
-    if (max !== null && !isNaN(max) && meal.calories > max) return false;
+    if (!matchesNutrientFilter(meal.calories, calorieFilter)) return false;
+    if (!matchesNutrientFilter(meal.protein, proteinFilter)) return false;
+    if (!matchesNutrientFilter(meal.carbs, carbFilter)) return false;
     if (excludeBeforeNoon && meal.time < '12:00') return false;
     return true;
   });
@@ -68,12 +70,14 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
   const clearFilters = () => {
     setSearchTerm('');
     setDateFilter('');
-    setCalorieMin('');
-    setCalorieMax('');
+    setCalorieFilter(emptyNutrientFilter());
+    setProteinFilter(emptyNutrientFilter());
+    setCarbFilter(emptyNutrientFilter());
     setExcludeBeforeNoon(false);
   };
 
-  const hasActiveFilters = searchTerm || dateFilter || calorieMin !== '' || calorieMax !== '' || excludeBeforeNoon;
+  const hasActiveFilters = searchTerm || dateFilter || excludeBeforeNoon ||
+    [calorieFilter, proteinFilter, carbFilter].some(f => f.min !== '' || (f.mode === 'range' && f.max !== ''));
 
   return (
     <Card className="shadow-md">
@@ -110,17 +114,21 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
               aria-label="Filter by date"
             />
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <MealNutrientFilter label="Calories" unit="cal" value={calorieFilter} onChange={setCalorieFilter} />
+            <MealNutrientFilter label="Protein" unit="g" value={proteinFilter} onChange={setProteinFilter} />
+            <MealNutrientFilter label="Carbs" unit="g" value={carbFilter} onChange={setCarbFilter} />
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             {caloriesRemainingToday !== undefined && (() => {
               const limit = String(Math.max(0, Math.floor(caloriesRemainingToday)));
-              const active = calorieMin === '0' && calorieMax === limit;
+              const active = calorieFilter.mode === 'range' && calorieFilter.min === '0' && calorieFilter.max === limit;
               return (
                 <Button
                   variant={active ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => {
-                    setCalorieMin(active ? '' : '0');
-                    setCalorieMax(active ? '' : limit);
+                    setCalorieFilter(active ? emptyNutrientFilter() : { mode: 'range', min: '0', max: limit });
                   }}
                   className="h-8 text-xs"
                 >
