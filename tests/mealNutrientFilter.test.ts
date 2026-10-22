@@ -1,6 +1,6 @@
 import { describe, it as test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchesNutrientFilter, normalizeNutrientInput, validNutrientInput } from './mealNutrientFilter';
+import { matchesNutrientFilter, normalizeNutrientInput, validNutrientInput } from '../src/lib/mealNutrientFilter';
 
 const expect = (actual: unknown) => ({
   toBe: (expected: unknown) => assert.strictEqual(actual, expected),
