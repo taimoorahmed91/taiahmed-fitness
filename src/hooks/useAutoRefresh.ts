@@ -17,19 +17,19 @@ export const useAutoRefresh = (
   }, [refetchFunctions]);
 
   useEffect(() => {
-    if (!enabled) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
+    if (!enabled) return;
+    const isVisible = () => typeof document === 'undefined' || document.visibilityState === 'visible';
 
+    // Skip ticks while the tab is hidden; refresh once when it becomes visible.
     intervalRef.current = setInterval(() => {
-      refetchAll();
+      if (isVisible()) refetchAll();
     }, intervalMs);
 
+    const onVisibility = () => { if (isVisible()) refetchAll(); };
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
