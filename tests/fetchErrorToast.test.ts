@@ -1,9 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import { shouldShowFetchError } from '../src/lib/fetchErrorToast';
-describe('shouldShowFetchError', () => {
-  it('shows once then stays quiet for 10 minutes', () => {
-    expect(shouldShowFetchError('k', 1000)).toBe(true);
-    expect(shouldShowFetchError('k', 1000 + 9 * 60000)).toBe(false);
-    expect(shouldShowFetchError('k', 1000 + 10 * 60000)).toBe(true);
-  });
+test('shows once then stays quiet for 10 minutes', () => {
+  assert.equal(shouldShowFetchError('k', 1000), true);
+  assert.equal(shouldShowFetchError('k', 1000 + 9 * 60000), false);
+  assert.equal(shouldShowFetchError('k', 1000 + 10 * 60000), true);
 });
