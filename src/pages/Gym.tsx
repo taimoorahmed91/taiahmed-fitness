@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { GymForm } from '@/components/GymForm';
 import { GymList } from '@/components/GymList';
 import { DataFilter } from '@/components/DataFilter';
@@ -131,20 +131,44 @@ const Gym = () => {
     setActiveTemplate(manualTemplate);
   };
 
+  // Resolve the template for a saved workout. Falls back to the locally saved
+  // exercise list so a workout is never lost when templates haven't loaded
+  // (slow network / offline). The saved workout is never cleared here.
+  const resolvePausedTemplate = (info: PausedWorkoutInfo): WorkoutTemplate | null => {
+    const tpl = templates.find((t) => t.id === info.templateId);
+    if (tpl) return tpl;
+    try {
+      const raw = localStorage.getItem(ACTIVE_WORKOUT_KEY);
+      const s = raw ? JSON.parse(raw) : null;
+      if (!s?.templateId) return null;
+      return { id: s.templateId, name: s.templateName || 'Workout', exercises: Array.isArray(s.exercises) ? s.exercises : [] } as WorkoutTemplate;
+    } catch {
+      return null;
+    }
+  };
+
   const handleResumePaused = () => {
     const info = pausedWorkout ?? blockedStart?.existing;
     if (!info) return;
-    const tpl = templates.find((t) => t.id === info.templateId);
+    const tpl = resolvePausedTemplate(info);
     if (!tpl) {
-      toast.error('Paused workout template not found. Clearing saved state.');
-      try { localStorage.removeItem(ACTIVE_WORKOUT_KEY); } catch { /* noop */ }
-      setPausedWorkout(null);
-      setBlockedStart(null);
+      toast.error('Could not read the paused workout. It has been kept on this device.');
       return;
     }
     setBlockedStart(null);
     setActiveTemplate(tpl);
   };
+
+  // After a refresh, reopen an interrupted workout automatically (once).
+  const autoResumed = useRef(false);
+  useEffect(() => {
+    if (autoResumed.current || activeTemplate) return;
+    const info = readPausedWorkout();
+    if (!info) { autoResumed.current = true; return; }
+    const tpl = resolvePausedTemplate(info);
+    if (tpl) { autoResumed.current = true; setActiveTemplate(tpl); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates]);
 
   const handleFinishWorkout = async (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string; end_time?: string }): Promise<boolean> => {
     try {

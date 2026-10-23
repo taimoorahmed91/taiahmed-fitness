@@ -1,3 +1,4 @@
+import { shouldShowFetchError } from '@/lib/fetchErrorToast';
 import { useState, useEffect } from 'react';
 import { GymSession } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +37,7 @@ export const useGymSessions = () => {
       setSessions(formattedSessions);
     } catch (error) {
       console.error('Error fetching gym sessions:', error);
-      toast({ title: 'Error', description: 'Failed to fetch gym sessions', variant: 'destructive' });
+      if (shouldShowFetchError('gym')) toast({ title: 'Error', description: 'Failed to fetch gym sessions', variant: 'destructive' });
     } finally { setLoading(false); }
   };
 

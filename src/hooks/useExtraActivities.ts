@@ -1,3 +1,4 @@
+import { shouldShowFetchError } from '@/lib/fetchErrorToast';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/contexts/UserContext';
@@ -47,7 +48,7 @@ export const useExtraActivities = () => {
       setActivities((data as ExtraActivity[]) || []);
     } catch (error: any) {
       console.error('Error fetching extra activities:', error);
-      toast({ title: 'Error', description: 'Failed to load extra activities', variant: 'destructive' });
+      if (shouldShowFetchError('extras')) toast({ title: 'Error', description: 'Failed to load extra activities', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

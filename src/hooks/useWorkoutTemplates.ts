@@ -1,3 +1,4 @@
+import { shouldShowFetchError } from '@/lib/fetchErrorToast';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
@@ -30,7 +31,7 @@ export const useWorkoutTemplates = () => {
       })));
     } catch (error) {
       console.error('Error fetching workout templates:', error);
-      toast({ title: 'Error', description: 'Failed to fetch workout templates', variant: 'destructive' });
+      if (shouldShowFetchError('templates')) toast({ title: 'Error', description: 'Failed to fetch workout templates', variant: 'destructive' });
     } finally { setLoading(false); }
   };
 

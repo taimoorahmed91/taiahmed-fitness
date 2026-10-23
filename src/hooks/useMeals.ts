@@ -1,3 +1,4 @@
+import { shouldShowFetchError } from '@/lib/fetchErrorToast';
 import { useState, useEffect } from 'react';
 import { Meal } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,7 +71,7 @@ export const useMeals = () => {
       setMeals(formattedMeals);
     } catch (error) {
       console.error('Error fetching meals:', error);
-      toast({
+      if (shouldShowFetchError('meals')) toast({
         title: 'Error',
         description: 'Failed to fetch meals',
         variant: 'destructive',

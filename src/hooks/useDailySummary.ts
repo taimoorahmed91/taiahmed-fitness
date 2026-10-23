@@ -1,3 +1,4 @@
+import { shouldShowFetchError } from '@/lib/fetchErrorToast';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
@@ -37,7 +38,7 @@ export const useDailySummary = () => {
       setSummary(data as DailySummary);
     } catch (error) {
       console.error('Error fetching daily summary:', error);
-      toast({
+      if (shouldShowFetchError('summary')) toast({
         title: 'Error',
         description: 'Failed to fetch daily summary',
         variant: 'destructive',
