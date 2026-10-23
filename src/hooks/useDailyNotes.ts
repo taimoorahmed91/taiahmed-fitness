@@ -1,3 +1,4 @@
+import { shouldShowFetchError } from '@/lib/fetchErrorToast';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/contexts/UserContext';
@@ -35,7 +36,7 @@ export const useDailyNotes = () => {
       setNotes(data || []);
     } catch (error: any) {
       console.error('Error fetching daily notes:', error);
-      toast({ title: 'Error', description: 'Failed to load daily notes', variant: 'destructive' });
+      if (shouldShowFetchError('notes')) toast({ title: 'Error', description: 'Failed to load daily notes', variant: 'destructive' });
     } finally { setLoading(false); }
   };
 
