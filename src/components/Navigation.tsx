@@ -5,6 +5,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { ImportExportButton } from './ImportExportButton';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/lib/utils';
+import { APP_VERSION } from '@/lib/version';
 import {
   Sheet,
   SheetContent,
@@ -65,7 +66,7 @@ export const Navigation = () => {
                   <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                     <Dumbbell className="h-5 w-5 text-primary-foreground" />
                   </div>
-                  <span>FitTrack</span>
+                  <span>FitTrack<span className="ml-1.5 text-sm">v{APP_VERSION}</span></span>
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 mt-2 px-4 pb-6 overflow-y-auto flex-1">
@@ -92,7 +93,7 @@ export const Navigation = () => {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <Dumbbell className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-xl hidden sm:inline">FitTrack</span>
+            <span className="font-bold text-xl hidden sm:inline">FitTrack<span className="ml-1.5 text-sm">v{APP_VERSION}</span></span>
           </Link>
         </div>
         <div className="flex items-center gap-2">
