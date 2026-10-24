@@ -5,6 +5,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { ImportExportButton } from './ImportExportButton';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/lib/utils';
+import { APP_VERSION } from '@/lib/version';
 import {
   Sheet,
   SheetContent,
