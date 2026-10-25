@@ -13,3 +13,7 @@
 - [x] Body pages phase 2: Calorie History summary, Daily Notes insights/filters, WHOOP layout
 - [x] Body pages phase 3: Calendar month summary, theme colors on Compare/Reports/Achievements, badge progress
 - [x] Body pages phase 4: Audit Log colors, Messaging status overview, User Approval redesign
+
+## Current updates
+- [ ] Order template exercise display by previous workout sequence, preserving active workout data.
+- [ ] Show dashboard last successful fetch time with a manual refresh control.
