@@ -354,6 +354,7 @@ const Gym = () => {
         onClose={() => setActiveTemplate(null)}
         onFinish={handleFinishWorkout}
         getLastSession={getLastSessionByTemplateName}
+        historySessions={sessions}
       />
 
       {/* Edit Template Modal */}

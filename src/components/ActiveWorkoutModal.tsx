@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,33 @@ import { logActivity } from '@/hooks/useActivityLog';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser } from '@/lib/authSession';
 import { workoutExerciseOrder } from '@/lib/workoutExerciseOrder';
+import { exerciseVolume, bestWeights, isPersonalRecord } from '@/lib/workoutStats';
+import { Trophy, Volume2, VolumeX } from 'lucide-react';
+
+const REST_ALERT_KEY = 'fittrack-rest-alert-enabled';
+
+// Short synthesized two-tone chime + vibration when a rest timer finishes.
+const playRestAlert = () => {
+  try { navigator.vibrate?.([200, 100, 200]); } catch { /* unsupported */ }
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    [880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.22;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.21);
+    });
+    setTimeout(() => ctx.close(), 800);
+  } catch { /* audio blocked */ }
+};
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
@@ -89,6 +116,7 @@ interface ActiveWorkoutModalProps {
   onClose: () => void;
   onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string; end_time?: string }) => Promise<boolean>;
   getLastSession?: (templateName: string) => Promise<GymSession | null>;
+  historySessions?: GymSession[];
 }
 
 // Extract the leading numeric weight value from an exercise name (e.g. "60kg Bench Press" -> "60")
@@ -216,7 +244,16 @@ const clearActiveWorkout = () => {
   localStorage.removeItem(ACTIVE_WORKOUT_KEY);
 };
 
-export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession }: ActiveWorkoutModalProps) => {
+export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession, historySessions = [] }: ActiveWorkoutModalProps) => {
+  const [restAlertOn, setRestAlertOn] = useState(() => localStorage.getItem(REST_ALERT_KEY) !== 'off');
+  const toggleRestAlert = () => setRestAlertOn((v) => {
+    localStorage.setItem(REST_ALERT_KEY, v ? 'off' : 'on');
+    return !v;
+  });
+  const allTimeBest = useMemo(
+    () => bestWeights(historySessions.map((s) => parseNotesToPreviousReps(s.notes).reps as unknown as Record<string, Record<string, string | undefined>>)),
+    [historySessions],
+  );
   const [extraExercises, setExtraExercises] = useState<string[]>([]);
   const [exerciseSets, setExerciseSets] = useState<Record<number, ExerciseSets>>({});
   const [exerciseTimestamps, setExerciseTimestamps] = useState<Record<number, ExerciseTimestamps>>({});
@@ -245,6 +282,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const [restTimerType, setRestTimerType] = useState<'set' | 'exercise'>('set');
   const [isRestTimerActive, setIsRestTimerActive] = useState(false);
   const restTimerStartedAt = useRef<Date | null>(null);
+  const restAlertRef = useRef(true);
 
   // Timer settings
   const [timerSettings, setTimerSettings] = useState<RestTimerSettings>(loadRestTimerSettings);
@@ -440,7 +478,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 1000);
       const remaining = Math.max(0, restTimerTotal - elapsed);
       setRestTimerRemaining(remaining);
-      if (remaining <= 0) setIsRestTimerActive(false);
+      if (remaining <= 0) {
+        setIsRestTimerActive(false);
+        // Only chime for timers that actually ran out now, not long-expired restores.
+        if (restAlertRef.current && Date.now() - startedAt.getTime() < (restTimerTotal + 5) * 1000) playRestAlert();
+      }
     };
 
     tick(); // immediate sync (e.g. when tab becomes visible again)
@@ -692,6 +734,14 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     setShowSettings(false);
   };
 
+  restAlertRef.current = restAlertOn;
+  const totalVolume = allExercises.reduce(
+    (sum, ex, i) => sum + exerciseVolume(exerciseSets[i] as unknown as Record<string, string | undefined>, extractWeightFromExerciseName(ex)),
+    0,
+  );
+  const isPR = (i: number, ex: string) =>
+    isPersonalRecord(exerciseSets[i] as unknown as Record<string, string | undefined>, allTimeBest[ex]);
+
   const completedCount = allExercises.filter((_, i) => isExerciseComplete(i)).length;
 
   if (!template) return null;
@@ -707,6 +757,17 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
               <Timer className="h-5 w-5 text-primary" />
               {template.name}
             </DialogTitle>
+            <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={toggleRestAlert}
+              aria-label={restAlertOn ? 'Mute rest timer alert' : 'Unmute rest timer alert'}
+              title={restAlertOn ? 'Rest alert: sound + vibration on' : 'Rest alert off'}
+            >
+              {restAlertOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -715,6 +776,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             >
               <Settings2 className="h-4 w-4" />
             </Button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -756,6 +818,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
         <div className="text-sm text-muted-foreground text-center mb-2">
           {completedCount}/{allExercises.length} exercises completed
+          {' · '}Volume <span className="font-semibold text-foreground">{Math.round(totalVolume).toLocaleString()} kg</span>
         </div>
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
           {workoutExerciseOrder(allExercises, previousSequences).map(({ exercise, index }) => {
@@ -790,6 +853,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                           {exercise}
                           {isExtra && (
                             <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">added</span>
+                          )}
+                          {isPR(index, exercise) && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                              <Trophy className="h-3 w-3" /> PR
+                            </span>
                           )}
                         </span>
                       </div>
