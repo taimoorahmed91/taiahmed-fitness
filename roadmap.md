@@ -15,5 +15,6 @@
 - [x] Body pages phase 4: Audit Log colors, Messaging status overview, User Approval redesign
 
 ## Current updates
-- [ ] Order template exercise display by previous workout sequence, preserving active workout data.
-- [ ] Show dashboard last successful fetch time with a manual refresh control.
+- [x] Order template exercise display by previous workout sequence, preserving original data indexes and saving display order for recovery; boundary tests pass.
+- [x] Show dashboard last successful meals fetch time with a single-flight manual refresh control.
+- [ ] Verify both updates signed in (external Supabase does not provide a managed preview session).
