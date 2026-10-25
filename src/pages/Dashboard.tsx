@@ -29,7 +29,8 @@ import { usePersonalData } from '@/hooks/usePersonalData';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
-import { Clock, Flame } from 'lucide-react';
+import { Clock, Flame, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { resolveCalorieRange, macroRange } from '@/lib/targets';
 const shiftISODateByDays = (isoDate: string, days: number) => {
   const date = new Date(`${isoDate}T00:00:00Z`);
@@ -64,7 +65,7 @@ const ResetCountdown = () => {
 };
 
 const Dashboard = () => {
-  const { meals, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
+  const { meals, lastFetchedAt, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
   const { sessions: gymSessions, refetch: refetchGym } = useGymSessions();
   const { settings, updateWeightInterval, updateWaistInterval, refetch: refetchSettings } = useUserSettings();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
@@ -173,9 +174,8 @@ const Dashboard = () => {
     return { calories, protein, carbs };
   }, [meals, weightEntries, gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
 
-  // Auto-refresh every 30 seconds (only on Dashboard) - includes daily summary to keep it updated
-
-  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
+  // Refresh every 30 minutes while visible; manual refresh uses the same single-flight guard.
+  const { refetchAll, isRefreshing } = useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
 
   const notesMap = useMemo(() => getNotesMap(), [getNotesMap]);
 
@@ -278,12 +278,22 @@ const Dashboard = () => {
 
   return (
     <div className="container py-8 space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Track your nutrition and fitness progress</p>
         </div>
-        <ResetCountdown />
+        <div className="flex flex-col items-end gap-2">
+          <ResetCountdown />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span title="Last successful meals fetch. Refresh retrieves the latest dashboard data.">
+              Last fetched: {lastFetchedAt ? <time dateTime={lastFetchedAt.toISOString()} className="font-mono text-foreground">{lastFetchedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</time> : 'Not yet'}
+            </span>
+            <Button variant="ghost" size="icon" aria-label="Refresh dashboard" title="Refresh dashboard" disabled={isRefreshing} onClick={() => void refetchAll()}>
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} />
+            </Button>
+          </div>
+        </div>
       </div>
 
 

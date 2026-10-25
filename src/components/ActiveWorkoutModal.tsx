@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { logActivity } from '@/hooks/useActivityLog';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser } from '@/lib/authSession';
+import { workoutExerciseOrder } from '@/lib/workoutExerciseOrder';
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
@@ -69,6 +70,7 @@ interface ActiveWorkoutState {
   exerciseSets: Record<number, ExerciseSets>;
   exerciseTimestamps: Record<number, ExerciseTimestamps>;
   exerciseSequence: ExerciseSequence;
+  previousSequences?: Record<string, number>;
   exerciseNotes: Record<number, string>;
   exerciseSetCount?: Record<number, number>;
   nextSequence: number;
@@ -286,6 +288,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         exerciseSets,
         exerciseTimestamps,
         exerciseSequence,
+        previousSequences,
         exerciseNotes,
         exerciseSetCount,
         nextSequence,
@@ -299,7 +302,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       };
       saveActiveWorkout(state);
     }
-  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, exerciseNotes, exerciseSetCount, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, previousSequences, exerciseNotes, exerciseSetCount, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
 
   useEffect(() => {
     if (!isCancelled && (isRestored || (open && startTime))) {
@@ -367,7 +370,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       
       setPreviousReps({});
       setPreviousNotes({});
-      setPreviousSequences({});
+      setPreviousSequences(savedState?.templateId === template.id ? savedState.previousSequences || {} : {});
       setShowAddExercise(false);
       setNewExerciseName('');
 
@@ -745,7 +748,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
           {completedCount}/{allExercises.length} exercises completed
         </div>
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-          {allExercises.map((exercise, index) => {
+          {workoutExerciseOrder(allExercises, previousSequences).map(({ exercise, index }) => {
             const isExtra = index >= template.exercises.length;
             const defaultWeight = extractWeightFromExerciseName(exercise);
             return (
