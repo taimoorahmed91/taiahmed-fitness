@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 interface UseAutoRefreshOptions {
   intervalMs?: number;
@@ -14,6 +14,7 @@ export const useAutoRefresh = (
   const { intervalMs = 30 * 60 * 1000, enabled = true, minGapMs = 60 * 1000 } = options; // Default: 30 minutes
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inFlight = useRef(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const lastRun = useRef(Date.now());
   const fnsRef = useRef(refetchFunctions);
   fnsRef.current = refetchFunctions;
@@ -22,11 +23,13 @@ export const useAutoRefresh = (
   const refetchAll = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    setIsRefreshing(true);
     lastRun.current = Date.now();
     try {
       await Promise.all(fnsRef.current.map(fn => fn()));
     } finally {
       inFlight.current = false;
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -54,5 +57,5 @@ export const useAutoRefresh = (
     };
   }, [enabled, intervalMs, minGapMs, refetchAll]);
 
-  return { refetchAll };
+  return { refetchAll, isRefreshing };
 };

@@ -19,6 +19,7 @@ const getMealPeriod = (time: string): string => {
 export const useMeals = () => {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const { toast } = useToast();
 
   const fetchMeals = async () => {
@@ -26,6 +27,7 @@ export const useMeals = () => {
       const user = await getSessionUser();
       if (!user) {
         setMeals([]);
+        setLastFetchedAt(null);
         setLoading(false);
         return;
       }
@@ -69,6 +71,7 @@ export const useMeals = () => {
       }));
 
       setMeals(formattedMeals);
+      setLastFetchedAt(new Date());
     } catch (error) {
       console.error('Error fetching meals:', error);
       if (shouldShowFetchError('meals')) toast({
@@ -203,5 +206,5 @@ export const useMeals = () => {
     return Object.entries(periods).map(([name, data]) => ({ name, calories: data.calories, count: data.count }));
   };
 
-  return { meals, loading, addMeal, updateMeal, deleteMeal, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: fetchMeals };
+  return { meals, loading, lastFetchedAt, addMeal, updateMeal, deleteMeal, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: fetchMeals };
 };

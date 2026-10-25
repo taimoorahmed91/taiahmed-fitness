@@ -13,3 +13,8 @@
 - [x] Body pages phase 2: Calorie History summary, Daily Notes insights/filters, WHOOP layout
 - [x] Body pages phase 3: Calendar month summary, theme colors on Compare/Reports/Achievements, badge progress
 - [x] Body pages phase 4: Audit Log colors, Messaging status overview, User Approval redesign
+
+## Current updates
+- [x] Order template exercise display by previous workout sequence, preserving original data indexes and saving display order for recovery; boundary tests pass.
+- [x] Show dashboard last successful meals fetch time with a single-flight manual refresh control.
+- [ ] Verify both updates signed in (external Supabase does not provide a managed preview session).
