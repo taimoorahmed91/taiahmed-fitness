@@ -311,6 +311,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   }, [persistState, isRestored, open, startTime, isCancelled]);
 
   useEffect(() => {
+    let cancelled = false;
     if (open && template) {
       const savedState = loadActiveWorkout();
       
@@ -378,11 +379,19 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         const tpl = template;
         const allEx = [...tpl.exercises];
         getLastSessionRef.current(tpl.name).then((lastSession) => {
+          if (cancelled) return;
           if (lastSession?.notes) {
             const parsed = parseNotesToPreviousReps(lastSession.notes);
             setPreviousReps(parsed.reps);
             setPreviousNotes(parsed.notes);
-            setPreviousSequences(parsed.sequences);
+            // Keep the saved display order on resume; history only orders a new workout.
+            const restoring = savedState?.templateId === tpl.id;
+            if (!restoring || !savedState.previousSequences) {
+              setPreviousSequences(parsed.sequences);
+            }
+            if (!restoring) {
+              setExpandedExercise((current) => current === 0 ? workoutExerciseOrder(allEx, parsed.sequences)[0]?.index ?? null : current);
+            }
             // Bump the default visible set count for any exercise whose previous
             // session logged more than 3 sets (capped at 6). Only raises counts —
             // never lowers a user's in-progress count.
@@ -403,6 +412,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         });
       }
     }
+    return () => { cancelled = true; };
     // Intentionally exclude getLastSession from deps — it's recreated on every
     // sessions update (auto-refresh / realtime) and would otherwise wipe the
     // in-memory previousReps/previousSequences placeholders mid-workout.
