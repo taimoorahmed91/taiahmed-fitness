@@ -13,6 +13,8 @@ import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useWeight } from '@/hooks/useWeight';
+import { useWhoopData } from '@/hooks/useWhoopData';
+import { projectMassChange } from '@/lib/energyBalance';
 import { History, Dumbbell, Moon, Search } from 'lucide-react';
 
 const PAGE_SIZE = 20;
@@ -72,6 +74,7 @@ const CalorieHistory = () => {
   const { data: personalData } = usePersonalData();
   const { settings } = useUserSettings();
   const { entries: weightEntries } = useWeight();
+  const { entries: whoopEntries } = useWhoopData();
   const [page, setPage] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -159,6 +162,18 @@ const CalorieHistory = () => {
       carbHit: inRange('carbs'),
     };
   }, [filteredRows]);
+
+  // WHOOP burn for a day comes from the cycle recorded the following day (matches the dashboard).
+  const projection = useMemo(() => {
+    const burnedByDate = new Map<string, number>();
+    whoopEntries.forEach((e) => {
+      if (e.kilojoule == null) return;
+      const d = new Date(`${e.created_at.split('T')[0]}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - 1);
+      burnedByDate.set(d.toISOString().slice(0, 10), Math.round(Number(e.kilojoule) / 4.184));
+    });
+    return projectMassChange(filteredRows.map((r) => ({ consumed: r.calories.consumed, burned: burnedByDate.get(r.date) || 0 })));
+  }, [filteredRows, whoopEntries]);
 
   const today = new Date().toISOString().slice(0, 10);
   const quickRange = (days: number | null) => {
@@ -260,6 +275,21 @@ const CalorieHistory = () => {
                         </p>
                       </div>
                     ))}
+                  </div>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Energy balance &amp; projected body mass</p>
+                    {projection.days === 0 ? (
+                      <p className="mt-1 text-sm text-muted-foreground">No days in this selection have both meals and WHOOP calories burned.</p>
+                    ) : (
+                      <>
+                        <p className={`mt-1 text-2xl font-bold ${projection.deficit >= 0 ? 'text-chart-min' : 'text-chart-max'}`}>
+                          {projection.kg <= 0 ? '−' : '+'}{Math.abs(projection.kg).toFixed(2)} kg
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Net {projection.deficit >= 0 ? 'deficit' : 'surplus'} of {Math.abs(Math.round(projection.deficit)).toLocaleString()} cal over {projection.days} day{projection.days === 1 ? '' : 's'} with WHOOP data (≈7,700 cal per kg). An estimate, not a measurement.
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
