@@ -105,7 +105,7 @@ const Meals = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6 items-start">
-        <MealForm onSubmit={addMeal} prefillData={prefillData} onPrefillConsumed={handlePrefillConsumed} />
+        <MealForm onSubmit={addMeal} meals={meals} prefillData={prefillData} onPrefillConsumed={handlePrefillConsumed} />
         <MealsTodayCard
           calories={todayCalories}
           protein={getTodayProtein()}
