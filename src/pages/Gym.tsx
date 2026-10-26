@@ -9,6 +9,7 @@ import { WorkoutTemplateList } from '@/components/WorkoutTemplateList';
 import { ActiveWorkoutModal } from '@/components/ActiveWorkoutModal';
 import { EditTemplateModal } from '@/components/EditTemplateModal';
 import { EditWorkoutSessionModal } from '@/components/EditWorkoutSessionModal';
+import { PersonalRecordsList } from '@/components/PersonalRecordsList';
 import { GymOverviewCard } from '@/components/GymOverviewCard';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { GymSession } from '@/types';
@@ -26,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dumbbell, ClipboardList, PlayCircle, CalendarCheck, Play } from 'lucide-react';
+import { Dumbbell, ClipboardList, PlayCircle, CalendarCheck, Play, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
@@ -289,7 +290,7 @@ const Gym = () => {
       })()}
 
       <Tabs defaultValue="log" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="log" className="flex items-center gap-2">
             <Dumbbell className="h-4 w-4" />
             Log Workout
@@ -297,6 +298,10 @@ const Gym = () => {
           <TabsTrigger value="templates" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
             Templates
+          </TabsTrigger>
+          <TabsTrigger value="records" className="flex items-center gap-2">
+            <Trophy className="h-4 w-4" />
+            Records
           </TabsTrigger>
         </TabsList>
 
@@ -336,6 +341,10 @@ const Gym = () => {
             onStart={handleStartWorkout}
             onEdit={handleEditTemplate}
           />
+        </TabsContent>
+
+        <TabsContent value="records" className="space-y-6 mt-6">
+          <PersonalRecordsList sessions={sessions} templates={templates} />
         </TabsContent>
       </Tabs>
 
