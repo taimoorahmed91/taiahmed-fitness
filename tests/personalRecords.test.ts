@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { personalRecords } from '../src/lib/workoutStats';
 
 describe('personalRecords', () => {
