@@ -18,3 +18,11 @@
 - [x] Order template exercise display by previous workout sequence, preserving original data indexes and saving display order for recovery; boundary tests pass.
 - [x] Show dashboard last successful meals fetch time with a single-flight manual refresh control.
 - [ ] Verify both updates signed in (external Supabase does not provide a managed preview session).
+
+## Enhancements round
+- [x] Rest timer sound + vibration with mute toggle
+- [x] Live workout volume and all-time PR badges
+- [x] Installable home-screen app (manifest, icons) and real page title/description
+- [x] Quick-add starred/frequent meals
+- [x] Projected body mass change from WHOOP energy balance on Calorie History
+- [ ] Verify signed in (no managed preview session for this project)

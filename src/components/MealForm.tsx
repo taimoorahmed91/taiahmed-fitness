@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type { Meal } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Utensils } from 'lucide-react';
+import { Utensils, Star } from 'lucide-react';
+
+const FAVORITES_KEY = 'fittrack-meal-favorites';
+const loadFavorites = (): string[] => {
+  try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { return []; }
+};
 import { toast } from 'sonner';
 
 interface MealFormProps {
   onSubmit: (meal: { food: string; calories: number; protein: number | null; carbs: number | null; time: string; date: string }) => void;
   prefillData?: { food: string; calories: number; protein?: number | null; carbs?: number | null } | null;
   onPrefillConsumed?: () => void;
+  meals?: Meal[];
 }
 
 const getCurrentTime = () => {
@@ -17,7 +24,37 @@ const getCurrentTime = () => {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 };
 
-export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormProps) => {
+export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] }: MealFormProps) => {
+  const [favorites, setFavorites] = useState<string[]>(loadFavorites);
+  const toggleFavorite = (name: string) => {
+    setFavorites((prev) => {
+      const key = name.toLowerCase();
+      const next = prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key];
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+  // Latest logged version of each meal; favorites first, then most frequent (logged 2+ times).
+  const quickMeals = useMemo(() => {
+    const byName = new Map<string, { meal: Meal; count: number }>();
+    [...meals].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`)).forEach((m) => {
+      const key = m.food.trim().toLowerCase();
+      const hit = byName.get(key);
+      if (hit) hit.count += 1; else byName.set(key, { meal: m, count: 1 });
+    });
+    const list = Array.from(byName.entries()).map(([key, v]) => ({ key, ...v, fav: favorites.includes(key) }));
+    const favs = list.filter((x) => x.fav);
+    const frequent = list.filter((x) => !x.fav && x.count >= 2).sort((a, b) => b.count - a.count).slice(0, 6);
+    return [...favs, ...frequent];
+  }, [meals, favorites]);
+  const quickFill = (m: Meal) => {
+    setFood(m.food);
+    setCalories(String(m.calories));
+    setProtein(m.protein != null ? String(m.protein) : '');
+    setCarbs(m.carbs != null ? String(m.carbs) : '');
+    setTime(getCurrentTime());
+    setDate(new Date().toISOString().split('T')[0]);
+  };
   const [food, setFood] = useState('');
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
@@ -82,6 +119,23 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed }: MealFormP
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {quickMeals.length > 0 && (
+          <div className="mb-4 space-y-2">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Quick add</Label>
+            <div className="flex flex-wrap gap-2">
+              {quickMeals.map(({ key, meal, fav }) => (
+                <div key={key} className={`flex items-center rounded-full border text-sm ${fav ? 'border-primary/50 bg-primary/10' : 'bg-muted/30'}`}>
+                  <button type="button" onClick={() => quickFill(meal)} className="max-w-[12rem] truncate py-1 pl-3 pr-1" title={`${meal.food} · ${meal.calories} cal`}>
+                    {meal.food} <span className="text-muted-foreground">· {meal.calories}</span>
+                  </button>
+                  <button type="button" onClick={() => toggleFavorite(meal.food)} className="py-1 pl-1 pr-2" aria-label={fav ? `Unstar ${meal.food}` : `Star ${meal.food}`}>
+                    <Star className={`h-3.5 w-3.5 ${fav ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="food">What did you eat?</Label>
