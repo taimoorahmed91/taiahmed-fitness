@@ -3,7 +3,7 @@ import { readinessLevel } from '@/lib/workoutStats';
 import { cn } from '@/lib/utils';
 
 const COPY = {
-  high: { label: 'High readiness', hint: 'Good day to push strain', cls: 'border-[hsl(var(--chart-min))]/40 text-[hsl(var(--chart-min))]' },
+  high: { label: 'High readiness', hint: 'Good day to push strain', cls: 'border-border text-[hsl(var(--chart-min))]' },
   medium: { label: 'Normal capacity', hint: 'Train as planned', cls: 'border-primary/40 text-primary' },
   low: { label: 'Low recovery', hint: 'Prioritize warmups & extend rest', cls: 'border-destructive/40 text-destructive' },
 };
