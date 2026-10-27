@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePersonalDataHistory, PersonalHistoryField } from '@/hooks/usePersonalDataHistory';
 import { useWeight } from '@/hooks/useWeight';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useInsightThresholds } from '@/hooks/useInsightThresholds';
+import { DEFAULT_RECOVERY_CUTOFF, DEFAULT_SLEEP_CUTOFF } from '@/lib/crossMetricIntelligence';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { User, Activity, KeyRound, RefreshCw, Copy, Trash2, AlertTriangle, History, ChevronDown, ChevronUp, Timer, Flame, CalendarDays } from 'lucide-react';
@@ -338,6 +340,7 @@ const PersonalDataPage = () => {
             </Button>
           </>
         )}
+        <InsightThresholdsCard />
         <ApiTokenCard />
       </main>
     </div>
@@ -433,6 +436,33 @@ const RestTimerCard = () => {
         <Button onClick={handleSave} disabled={saving || loading}>
           {saving ? 'Saving...' : 'Save rest timers'}
         </Button>
+      </CardContent>
+    </Card>
+  );
+};
+
+const InsightThresholdsCard = () => {
+  const { thresholds, save } = useInsightThresholds();
+  const [rec, setRec] = useState(String(thresholds.recoveryCutoff));
+  const [sleep, setSleep] = useState(String(thresholds.sleepCutoff));
+  const handleSave = () => {
+    const r = parseFloat(rec.replace(',', '.'));
+    const s = parseFloat(sleep.replace(',', '.'));
+    if (!(r > 0 && r <= 100) || !(s > 0 && s <= 24)) { toast.error('Recovery must be 1–100% and sleep 1–24 hours'); return; }
+    save({ recoveryCutoff: r, sleepCutoff: s });
+    toast.success('Insight cutoffs saved');
+  };
+  const reset = () => { setRec(String(DEFAULT_RECOVERY_CUTOFF)); setSleep(String(DEFAULT_SLEEP_CUTOFF)); save({ recoveryCutoff: DEFAULT_RECOVERY_CUTOFF, sleepCutoff: DEFAULT_SLEEP_CUTOFF }); };
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" />Insight cutoffs</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">Used by the Reports insights and the dashboard summary. Saved on this device.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2"><Label htmlFor="rec-cut">High recovery cutoff (%)</Label><Input id="rec-cut" inputMode="decimal" value={rec} onChange={(e) => setRec(e.target.value.replace(',', '.'))} /></div>
+          <div className="space-y-2"><Label htmlFor="sleep-cut">Short sleep cutoff (hours)</Label><Input id="sleep-cut" inputMode="decimal" value={sleep} onChange={(e) => setSleep(e.target.value.replace(',', '.'))} /></div>
+        </div>
+        <div className="flex gap-2"><Button onClick={handleSave}>Save cutoffs</Button><Button variant="outline" onClick={reset}>Reset to defaults</Button></div>
       </CardContent>
     </Card>
   );
