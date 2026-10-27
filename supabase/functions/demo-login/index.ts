@@ -1,6 +1,7 @@
 // Public one-click sign-in to a shared demo account filled with sample data.
-// The account is a normal approved user (never owner/admin). Sample data is
-// rebuilt at most once per UTC day so the last-30-days charts stay current.
+// The account is a normal approved user (never owner/admin) and is read-only
+// through RLS. Sample data is created on first login and only replaced when the
+// demo user presses "Generate random data" (action: "regenerate").
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -19,8 +20,7 @@ const TABLES = [
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-// Deterministic pseudo-random so the sample looks the same each rebuild.
-let seed = 42;
+let seed = 1;
 const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const between = (a: number, b: number) => a + rand() * (b - a);
 const round = (n: number, step = 1) => Math.round(n / step) * step;
@@ -49,7 +49,7 @@ const MEALS = [
 ];
 
 async function seedData(admin: ReturnType<typeof createClient>, uid: string) {
-  seed = 42;
+  seed = Math.floor(Math.random() * 2147483646) + 1;
   for (const t of TABLES) await admin.from(t).delete().eq("user_id", uid);
 
   const { data: templates } = await admin.from("fittrack_workout_templates")
@@ -132,10 +132,19 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
+    const body = await req.json().catch(() => ({}));
     const password = Deno.env.get("DEMO_USER_PASSWORD");
     if (!password) return json({ error: "Demo account is not configured" }, 500);
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
     const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { auth: { persistSession: false } });
+
+    if (body?.action === "regenerate") {
+      const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+      const { data: caller } = await admin.auth.getUser(jwt);
+      if (caller?.user?.email !== DEMO_EMAIL) return json({ error: "Only the demo account can do this" }, 403);
+      await seedData(admin, caller.user.id);
+      return json({ ok: true });
+    }
 
     // Email/password sign-in is off for this project, so mint a one-time
     // magic-link token server-side and exchange it for a session.
@@ -161,7 +170,7 @@ Deno.serve(async (req) => {
     }
 
     const { count } = await admin.from("fittrack_whoop_data").select("id", { count: "exact", head: true })
-      .eq("user_id", uid).eq("date", isoDay(0));
+      .eq("user_id", uid);
     if (!count) await seedData(admin, uid);
 
     const s = signIn.data.session!;
