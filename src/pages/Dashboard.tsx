@@ -31,7 +31,6 @@ import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { resolveCalorieRange, macroRange } from '@/lib/targets';
 const shiftISODateByDays = (isoDate: string, days: number) => {
   const date = new Date(`${isoDate}T00:00:00Z`);
