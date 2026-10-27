@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { daysSinceTemplate, isRecentlyDone } from '@/lib/recentTemplate';
 import { GymForm } from '@/components/GymForm';
 import { GymList } from '@/components/GymList';
 import { DataFilter } from '@/components/DataFilter';
