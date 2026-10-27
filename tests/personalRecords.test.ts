@@ -16,4 +16,12 @@ describe('personalRecords', () => {
     ]);
     expect(prs[0]).toMatchObject({ reps: 7, date: '2026-10-05' });
   });
+  it('merges alias names into one record and counts a session once', () => {
+    const prs = personalRecords([
+      { exercise: 'A', date: '2026-10-01', notes: '1.Seated Row: S1:10@60kg | 2.Cable Row: S1:10@50kg' },
+      { exercise: 'B', date: '2026-10-05', notes: '1.Cable Row: S1:8@55kg' },
+    ], { 'Seated Row': 'Cable Row' });
+    expect(prs).toHaveLength(1);
+    expect(prs[0]).toMatchObject({ exercise: 'Cable Row', weight: 60, sessions: 2 });
+  });
 });
