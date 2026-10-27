@@ -42,3 +42,32 @@ export const formatRange = (r: Range) =>
   Math.round(r.min) === Math.round(r.max)
     ? `${Math.round(r.min)}`
     : `${Math.round(r.min)}–${Math.round(r.max)}`;
+
+export type DayStatus = 'under' | 'within' | 'over' | null;
+
+const shiftDate = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * Adherence over the last `windowDays` UTC dates ending today (oldest first).
+ * Days without a status are unlogged and break the streak. Today counts toward
+ * the streak only once it is within range, since it is still in progress.
+ */
+export const adherenceSummary = (statusByDate: Record<string, DayStatus>, today: string, windowDays = 30) => {
+  const cells = Array.from({ length: windowDays }, (_, i) => {
+    const date = shiftDate(today, i - windowDays + 1);
+    return { date, status: statusByDate[date] ?? null };
+  });
+  let streak = 0;
+  let cursor = statusByDate[today] === 'within' ? today : shiftDate(today, -1);
+  while (statusByDate[cursor] === 'within') { streak++; cursor = shiftDate(cursor, -1); }
+  const rate = (n: number) => {
+    const slice = cells.slice(-n).filter((c) => c.status);
+    const hit = slice.filter((c) => c.status === 'within').length;
+    return { hit, logged: slice.length, pct: slice.length ? Math.round((hit / slice.length) * 100) : null };
+  };
+  return { cells, streak, week: rate(7), month: rate(windowDays) };
+};
