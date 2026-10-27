@@ -3,7 +3,7 @@ import { BarChart3, LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export type ChartRange = '7' | '14' | '30';
+export type ChartRange = '7' | '14' | '30' | '90' | 'all';
 export type ChartStyle = 'line' | 'bar';
 
 const preference = <T extends string>(key: string, values: T[], fallback: T): T => {
@@ -16,7 +16,7 @@ const preference = <T extends string>(key: string, values: T[], fallback: T): T 
 };
 
 export const useChartRange = (key: string) => {
-  const [range, setRange] = useState<ChartRange>(() => preference(`fittrack_chart_${key}_range`, ['7', '14', '30'], '7'));
+  const [range, setRange] = useState<ChartRange>(() => preference<ChartRange>(`fittrack_chart_${key}_range`, ['7', '14', '30', '90', 'all'], '7'));
 
   useEffect(() => {
     try { localStorage.setItem(`fittrack_chart_${key}_range`, range); }
@@ -40,6 +40,7 @@ export const useChartView = (key: string, defaultStyle: ChartStyle = 'line') => 
 };
 
 export const recentChartData = <T extends { date: string }>(data: T[], range: ChartRange): T[] => {
+  if (range === 'all') return [...data].sort((a, b) => a.date.localeCompare(b.date));
   const today = new Date().toISOString().slice(0, 10);
   const start = new Date(`${today}T00:00:00Z`);
   start.setUTCDate(start.getUTCDate() - (Number(range) - 1));
@@ -60,7 +61,7 @@ export const ChartRangeControls = ({ range, setRange }: ReturnType<typeof useCha
   return <div className="flex shrink-0 overflow-hidden rounded-md border">{item('7', 'Last 7 days')}{item('14', 'Last 14 days')}{item('30', 'Last 30 days')}</div>;
 };
 
-export const ChartViewControls = ({ range, setRange, style, setStyle }: ReturnType<typeof useChartView>) => {
+export const ChartViewControls = ({ range, setRange, style, setStyle, extended = false }: ReturnType<typeof useChartView> & { extended?: boolean }) => {
   const item = (active: boolean, label: string, onClick: () => void, child: React.ReactNode) => (
     <Button type="button" size="sm" variant="ghost" aria-label={label} aria-pressed={active} title={label} onClick={onClick}
       className={cn('h-7 rounded-none px-2 text-xs font-medium', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}>
@@ -73,6 +74,8 @@ export const ChartViewControls = ({ range, setRange, style, setStyle }: ReturnTy
         {item(range === '7', 'Last 7 days', () => setRange('7'), '7D')}
         {item(range === '14', 'Last 14 days', () => setRange('14'), '14D')}
         {item(range === '30', 'Last 30 days', () => setRange('30'), '30D')}
+        {extended && item(range === '90', 'Last 90 days', () => setRange('90'), '90D')}
+        {extended && item(range === 'all', 'All time', () => setRange('all'), 'All')}
       </div>
       <div className="flex rounded-md border overflow-hidden">
         {item(style === 'line', 'Line chart', () => setStyle('line'), <LineChart className="h-3.5 w-3.5" />)}
