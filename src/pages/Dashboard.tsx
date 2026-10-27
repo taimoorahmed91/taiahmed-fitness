@@ -14,6 +14,7 @@ import { WeightChart } from '@/components/WeightChart';
 import { WaistChart } from '@/components/WaistChart';
 import { SleepChart } from '@/components/SleepChart';
 import { GoalsCard } from '@/components/GoalsCard';
+import { CrossMetricSummaryCard } from '@/components/CrossMetricSummaryCard';
 import { WeightIntervalSetting } from '@/components/WeightIntervalSetting';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
@@ -401,6 +402,8 @@ const Dashboard = () => {
         <SleepChart data={sleepChartData} notesMap={notesMap} />
         <GoalsCard />
       </div>
+
+      <CrossMetricSummaryCard />
 
     </div>
   );
