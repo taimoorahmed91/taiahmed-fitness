@@ -114,38 +114,36 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
               aria-label="Filter by date"
             />
           </div>
-          <div className={`${showFilters ? 'block' : 'hidden'} sm:block space-y-3`}>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <MealNutrientFilter label="Calories" unit="cal" value={calorieFilter} onChange={setCalorieFilter} />
-              <MealNutrientFilter label="Protein" unit="g" value={proteinFilter} onChange={setProteinFilter} />
-              <MealNutrientFilter label="Carbs" unit="g" value={carbFilter} onChange={setCarbFilter} />
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {caloriesRemainingToday !== undefined && (() => {
-                const limit = String(Math.max(0, Math.floor(caloriesRemainingToday)));
-                const active = calorieFilter.mode === 'range' && calorieFilter.min === '0' && calorieFilter.max === limit;
-                return (
-                  <Button
-                    variant={active ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      setCalorieFilter(active ? emptyNutrientFilter() : { mode: 'range', min: '0', max: limit });
-                    }}
-                    className="h-8 text-xs"
-                  >
-                    Fits today's budget (≤ {limit} cal)
-                  </Button>
-                );
-              })()}
-              <Button
-                variant={excludeBeforeNoon ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setExcludeBeforeNoon((v) => !v)}
-                className="h-8 text-xs"
-              >
-                Exclude meals before noon
-              </Button>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <MealNutrientFilter label="Calories" unit="cal" value={calorieFilter} onChange={setCalorieFilter} />
+            <MealNutrientFilter label="Protein" unit="g" value={proteinFilter} onChange={setProteinFilter} />
+            <MealNutrientFilter label="Carbs" unit="g" value={carbFilter} onChange={setCarbFilter} />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {caloriesRemainingToday !== undefined && (() => {
+              const limit = String(Math.max(0, Math.floor(caloriesRemainingToday)));
+              const active = calorieFilter.mode === 'range' && calorieFilter.min === '0' && calorieFilter.max === limit;
+              return (
+                <Button
+                  variant={active ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setCalorieFilter(active ? emptyNutrientFilter() : { mode: 'range', min: '0', max: limit });
+                  }}
+                  className="h-8 text-xs"
+                >
+                  Fits today's budget (≤ {limit} cal)
+                </Button>
+              );
+            })()}
+            <Button
+              variant={excludeBeforeNoon ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setExcludeBeforeNoon((v) => !v)}
+              className="h-8 text-xs"
+            >
+              Exclude meals before noon
+            </Button>
           </div>
         </div>
       </CardHeader>
