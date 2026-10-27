@@ -3,6 +3,7 @@ import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TargetRangeBar } from '@/components/TargetRangeBar';
 import { Range, resolveCalorieRange, macroRange, rangeStatus, formatRange } from '@/lib/targets';
+import { TargetAdherenceGrid } from '@/components/TargetAdherenceGrid';
 import { PaginationControls } from '@/components/PaginationControls';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -206,6 +207,8 @@ const CalorieHistory = () => {
             </p>
           </div>
         </div>
+
+        <TargetAdherenceGrid rows={rows} />
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="shadow-md">
