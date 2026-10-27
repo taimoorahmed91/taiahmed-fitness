@@ -7,6 +7,7 @@ import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/version';
 import { DemoBanner, DEMO_EMAIL } from './DemoBanner';
+import { OfflineBadge } from './OfflineBadge';
 import {
   Sheet,
   SheetContent,
@@ -98,6 +99,7 @@ export const Navigation = () => {
           </Link>
         </div>
         <div className="flex items-center gap-2">
+          <OfflineBadge />
           {user && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />

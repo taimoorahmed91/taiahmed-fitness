@@ -15,6 +15,7 @@ import { getSessionUser } from '@/lib/authSession';
 import { workoutExerciseOrder } from '@/lib/workoutExerciseOrder';
 import { exerciseVolume, bestWeights, isPersonalRecord, notesVolume, volumeChange } from '@/lib/workoutStats';
 import { ReadinessBadge } from '@/components/ReadinessBadge';
+import { OfflineBadge } from '@/components/OfflineBadge';
 import { Trophy, Volume2, VolumeX } from 'lucide-react';
 
 const REST_ALERT_KEY = 'fittrack-rest-alert-enabled';
@@ -828,6 +829,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
           </div>
         </DialogHeader>
         <ReadinessBadge score={recoveryScore} compact />
+        <OfflineBadge message="Offline · workout is saving on this device" className="self-center" />
 
         {/* Timer Settings Panel */}
         {showSettings && (
