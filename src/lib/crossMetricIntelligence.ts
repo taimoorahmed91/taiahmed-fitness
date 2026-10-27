@@ -183,7 +183,7 @@ const shiftIso = (iso: string, days: number) => {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 };
-const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+const avg1 = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
 const delta = (rows: (Dated & { value: number })[]) => {
   const s = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   return s.length >= 2 ? Math.round((s[s.length - 1].value - s[0].value) * 10) / 10 : null;
@@ -212,12 +212,12 @@ const digestWeek = (input: DigestInput, from: string, to: string): DigestWeek =>
     workouts: gym.length,
     minutes: gym.reduce((t, g) => t + g.duration, 0),
     tonnage: Math.round(gym.reduce((t, g) => t + setVolume(g.notes), 0)),
-    avgCalories: avg(days.map((d) => d.cal)) == null ? null : Math.round(avg(days.map((d) => d.cal))!),
-    avgProtein: avg(days.map((d) => d.protein)) == null ? null : Math.round(avg(days.map((d) => d.protein))!),
+    avgCalories: avg1(days.map((d) => d.cal)) == null ? null : Math.round(avg1(days.map((d) => d.cal))!),
+    avgProtein: avg1(days.map((d) => d.protein)) == null ? null : Math.round(avg1(days.map((d) => d.protein))!),
     weightDelta: delta(inRange(input.weight)),
     waistDelta: delta(inRange(input.waist)),
-    avgSleep: avg(Object.values(sleepByDay)),
-    avgRecovery: avg(inRange(input.recovery).map((r) => r.score).filter((s): s is number => s != null)),
+    avgSleep: avg1(Object.values(sleepByDay)),
+    avgRecovery: avg1(inRange(input.recovery).map((r) => r.score).filter((s): s is number => s != null)),
   };
 };
 
