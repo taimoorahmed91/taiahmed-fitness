@@ -159,3 +159,70 @@ export const RECOMP_LABELS: Record<RecompStatus, { label: string; message: strin
   stable: { label: 'Stable', message: 'Weight and waist are both holding steady.', tone: 'muted' },
   insufficient: { label: 'Not enough data', message: 'Log at least two weigh-ins and two waist measurements in this period.', tone: 'muted' },
 };
+
+// ---- Weekly executive digest -------------------------------------------------
+
+type Dated = { date: string };
+export type DigestInput = {
+  meals: (Dated & { calories: number; protein?: number | null })[];
+  gym: (Dated & { duration: number; notes?: string | null })[];
+  weight: (Dated & { value: number })[];
+  waist: (Dated & { value: number })[];
+  sleep: (Dated & { hours: number })[];
+  recovery: (Dated & { score: number | null })[];
+};
+export type DigestWeek = {
+  workouts: number; minutes: number; tonnage: number;
+  avgCalories: number | null; avgProtein: number | null;
+  weightDelta: number | null; waistDelta: number | null;
+  avgSleep: number | null; avgRecovery: number | null;
+};
+
+const shiftIso = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+const delta = (rows: (Dated & { value: number })[]) => {
+  const s = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+  return s.length >= 2 ? Math.round((s[s.length - 1].value - s[0].value) * 10) / 10 : null;
+};
+const setVolume = (notes?: string | null) => {
+  if (!notes) return 0;
+  let v = 0;
+  const re = /S[1-6]:(\d+)@(\d+(?:[.,]\d+)?)kg/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(notes))) v += parseInt(m[1], 10) * parseFloat(m[2].replace(',', '.'));
+  return v;
+};
+
+const digestWeek = (input: DigestInput, from: string, to: string): DigestWeek => {
+  const inRange = <T extends Dated>(xs: T[]) => xs.filter((x) => x.date >= from && x.date <= to);
+  const gym = inRange(input.gym);
+  const perDay: Record<string, { cal: number; protein: number }> = {};
+  inRange(input.meals).forEach((m) => {
+    const d = (perDay[m.date] ||= { cal: 0, protein: 0 });
+    d.cal += m.calories; d.protein += m.protein || 0;
+  });
+  const days = Object.values(perDay);
+  const sleepByDay: Record<string, number> = {};
+  inRange(input.sleep).forEach((s) => { sleepByDay[s.date] = Math.max(sleepByDay[s.date] || 0, s.hours); });
+  return {
+    workouts: gym.length,
+    minutes: gym.reduce((t, g) => t + g.duration, 0),
+    tonnage: Math.round(gym.reduce((t, g) => t + setVolume(g.notes), 0)),
+    avgCalories: avg(days.map((d) => d.cal)) == null ? null : Math.round(avg(days.map((d) => d.cal))!),
+    avgProtein: avg(days.map((d) => d.protein)) == null ? null : Math.round(avg(days.map((d) => d.protein))!),
+    weightDelta: delta(inRange(input.weight)),
+    waistDelta: delta(inRange(input.waist)),
+    avgSleep: avg(Object.values(sleepByDay)),
+    avgRecovery: avg(inRange(input.recovery).map((r) => r.score).filter((s): s is number => s != null)),
+  };
+};
+
+/** This week = the 7 UTC days ending today; previous = the 7 days before it. */
+export const weeklyDigest = (input: DigestInput, today: string) => ({
+  current: digestWeek(input, shiftIso(today, -6), today),
+  previous: digestWeek(input, shiftIso(today, -13), shiftIso(today, -7)),
+});
