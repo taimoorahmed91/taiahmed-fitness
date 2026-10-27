@@ -817,7 +817,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const restTimerProgress = restTimerTotal > 0 ? ((restTimerTotal - restTimerRemaining) / restTimerTotal) * 100 : 0;
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -1209,8 +1209,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
           <Button variant="outline" onClick={handlePause} className="w-full sm:w-auto">
             Pause & Resume Later
           </Button>
-          <Button onClick={handleComplete} className="w-full sm:w-auto">
-            Complete Workout
+          <Button onClick={handleComplete} disabled={saving} className="w-full sm:w-auto">
+            {saving ? 'Saving workout…' : 'Complete Workout'}
           </Button>
         </DialogFooter>
       </DialogContent>
