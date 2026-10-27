@@ -3,7 +3,7 @@ import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Clock, Calendar, Pencil, Search, X, Copy } from 'lucide-react';
+import { Trash2, Clock, Calendar, Pencil, Search, X, Copy, SlidersHorizontal } from 'lucide-react';
 import { SortControl } from '@/components/SortControl';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
@@ -26,6 +26,7 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
   const [carbFilter, setCarbFilter] = useState(emptyNutrientFilter);
   const [excludeBeforeNoon, setExcludeBeforeNoon] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const sortedMeals = useMemo(() => {
     let sorted = [...meals];
