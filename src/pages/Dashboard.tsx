@@ -30,8 +30,7 @@ import { usePersonalData } from '@/hooks/usePersonalData';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
-import { Clock, Flame, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Clock, Flame } from 'lucide-react';
 import { resolveCalorieRange, macroRange } from '@/lib/targets';
 const shiftISODateByDays = (isoDate: string, days: number) => {
   const date = new Date(`${isoDate}T00:00:00Z`);
@@ -175,8 +174,8 @@ const Dashboard = () => {
     return { calories, protein, carbs };
   }, [meals, weightEntries, gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
 
-  // Refresh every 30 minutes while visible; manual refresh uses the same single-flight guard.
-  const { refetchAll, isRefreshing } = useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
+  // Refresh every 30 minutes while visible. The header refresh button next to logout handles manual refreshes.
+  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
 
   const notesMap = useMemo(() => getNotesMap(), [getNotesMap]);
 
@@ -285,12 +284,7 @@ const Dashboard = () => {
           <p className="text-muted-foreground mt-1">Track your nutrition and fitness progress</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center justify-end gap-2">
-            <ResetCountdown />
-            <Button variant="ghost" size="icon" aria-label="Refresh dashboard" title="Refresh dashboard" disabled={isRefreshing} onClick={() => void refetchAll()}>
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} />
-            </Button>
-          </div>
+          <ResetCountdown />
           <div className="text-sm text-muted-foreground">
             <span title="Last successful meals fetch.">
               Last fetched: {lastFetchedAt ? <time dateTime={lastFetchedAt.toISOString()} className="font-mono text-foreground">{lastFetchedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</time> : 'Not yet'}
