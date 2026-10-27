@@ -185,10 +185,19 @@ const MealItem = ({
   onCopy?: (meal: Meal) => void;
   showDate?: boolean;
 }) => (
-  <div className="flex items-start justify-between p-3 rounded-lg bg-card border gap-3">
-    <div className="flex-1 min-w-0">
-      <p className="font-medium break-words whitespace-pre-wrap">{meal.food}</p>
-      <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
+  <div className="p-3 rounded-lg bg-card border">
+    <p className="font-medium break-words whitespace-pre-wrap">{meal.food}</p>
+    <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-1">
+      <span className="font-semibold text-primary text-sm">{meal.calories} cal</span>
+      {meal.protein != null && (
+        <span className="text-xs text-muted-foreground">{meal.protein} g protein</span>
+      )}
+      {meal.carbs != null && (
+        <span className="text-xs text-muted-foreground">{meal.carbs} g carbs</span>
+      )}
+    </div>
+    <div className="flex items-center justify-between gap-3 mt-1">
+      <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap min-w-0">
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           {meal.time}
@@ -200,28 +209,19 @@ const MealItem = ({
           </span>
         )}
       </div>
-    </div>
-    <div className="flex items-center gap-2 shrink-0">
-      <div className="text-right">
-        <span className="block font-semibold text-primary text-sm">{meal.calories} cal</span>
-        {meal.protein != null && (
-          <span className="block text-xs text-muted-foreground">{meal.protein} g protein</span>
+      <div className="flex items-center gap-1 shrink-0 -mr-1 -mb-1">
+        {onCopy && (
+          <Button variant="ghost" size="icon" onClick={() => onCopy(meal)} className="h-8 w-8" title="Copy to form">
+            <Copy className="h-4 w-4 text-muted-foreground" />
+          </Button>
         )}
-        {meal.carbs != null && (
-          <span className="block text-xs text-muted-foreground">{meal.carbs} g carbs</span>
-        )}
-      </div>
-      {onCopy && (
-        <Button variant="ghost" size="icon" onClick={() => onCopy(meal)} className="h-8 w-8" title="Copy to form">
-          <Copy className="h-4 w-4 text-muted-foreground" />
+        <Button variant="ghost" size="icon" onClick={() => onEdit(meal)} className="h-8 w-8">
+          <Pencil className="h-4 w-4 text-muted-foreground" />
         </Button>
-      )}
-      <Button variant="ghost" size="icon" onClick={() => onEdit(meal)} className="h-8 w-8">
-        <Pencil className="h-4 w-4 text-muted-foreground" />
-      </Button>
-      <Button variant="ghost" size="icon" onClick={() => onDelete(meal.id)} className="h-8 w-8">
-        <Trash2 className="h-4 w-4 text-destructive" />
-      </Button>
+        <Button variant="ghost" size="icon" onClick={() => onDelete(meal.id)} className="h-8 w-8">
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
     </div>
   </div>
 );
