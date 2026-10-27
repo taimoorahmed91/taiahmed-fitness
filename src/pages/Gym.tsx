@@ -12,6 +12,8 @@ import { EditWorkoutSessionModal } from '@/components/EditWorkoutSessionModal';
 import { PersonalRecordsList } from '@/components/PersonalRecordsList';
 import { GymOverviewCard } from '@/components/GymOverviewCard';
 import { usePersonalData } from '@/hooks/usePersonalData';
+import { useWhoopData } from '@/hooks/useWhoopData';
+import { ReadinessBadge } from '@/components/ReadinessBadge';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -289,6 +291,8 @@ const Gym = () => {
         );
       })()}
 
+      <div className="mb-4"><ReadinessBadge score={todayRecovery} /></div>
+
       <Tabs defaultValue="log" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="log" className="flex items-center gap-2">
@@ -364,6 +368,7 @@ const Gym = () => {
         onFinish={handleFinishWorkout}
         getLastSession={getLastSessionByTemplateName}
         historySessions={sessions}
+        recoveryScore={todayRecovery}
       />
 
       {/* Edit Template Modal */}
