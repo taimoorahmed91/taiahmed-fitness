@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { GymSession } from '@/types';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
 import { personalRecords } from '@/lib/workoutStats';
+import { ExerciseHistoryDialog } from '@/components/ExerciseHistoryDialog';
 
 interface Props {
   sessions: GymSession[];
@@ -27,6 +28,7 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
   const [aliases, setAliases] = useState<Record<string, string>>(loadAliases);
   const [merging, setMerging] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  const [opened, setOpened] = useState<string | null>(null);
   const records = useMemo(() => personalRecords(sessions, aliases), [sessions, aliases]);
 
   const persist = (next: Record<string, string>) => {
@@ -121,8 +123,8 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
               return (
                 <div
                   key={r.exercise}
-                  onClick={merging ? () => togglePick(r.exercise) : undefined}
-                  className={`rounded-lg border p-4 space-y-2 ${merging ? 'cursor-pointer' : ''} ${picked.includes(r.exercise) ? 'border-primary ring-2 ring-primary/40' : 'border-border'}`}
+                  onClick={() => (merging ? togglePick(r.exercise) : setOpened(r.exercise))}
+                  className={`rounded-lg border p-4 space-y-2 cursor-pointer hover:border-primary/50 transition-colors ${picked.includes(r.exercise) ? 'border-primary ring-2 ring-primary/40' : 'border-border'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold leading-tight">{r.exercise}</p>
@@ -147,6 +149,7 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
                   <p className="text-xs text-muted-foreground">
                     Set on {r.date} ({daysAgo(r.date)}) · {r.sessions} session{r.sessions === 1 ? '' : 's'} logged
                   </p>
+                  {!merging && <p className="text-xs text-primary">View history →</p>}
                   <div className="flex flex-wrap gap-1">
                     {(tpls.length ? tpls : [r.template]).map((n) => (
                       <Badge key={n} variant="outline" className="text-xs">{n}</Badge>
@@ -158,6 +161,7 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
           </div>
         )}
       </CardContent>
+      <ExerciseHistoryDialog exercise={opened} sessions={sessions} aliases={aliases} onClose={() => setOpened(null)} />
     </Card>
   );
 };

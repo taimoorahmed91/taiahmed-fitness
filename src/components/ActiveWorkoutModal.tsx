@@ -13,7 +13,8 @@ import { logActivity } from '@/hooks/useActivityLog';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser } from '@/lib/authSession';
 import { workoutExerciseOrder } from '@/lib/workoutExerciseOrder';
-import { exerciseVolume, bestWeights, isPersonalRecord } from '@/lib/workoutStats';
+import { exerciseVolume, bestWeights, isPersonalRecord, notesVolume, volumeChange } from '@/lib/workoutStats';
+import { ReadinessBadge } from '@/components/ReadinessBadge';
 import { Trophy, Volume2, VolumeX } from 'lucide-react';
 
 const REST_ALERT_KEY = 'fittrack-rest-alert-enabled';
@@ -117,6 +118,7 @@ interface ActiveWorkoutModalProps {
   onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string; end_time?: string }) => Promise<boolean>;
   getLastSession?: (templateName: string) => Promise<GymSession | null>;
   historySessions?: GymSession[];
+  recoveryScore?: number | null;
 }
 
 // Extract the leading numeric weight value from an exercise name (e.g. "60kg Bench Press" -> "60")
@@ -244,7 +246,8 @@ const clearActiveWorkout = () => {
   localStorage.removeItem(ACTIVE_WORKOUT_KEY);
 };
 
-export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession, historySessions = [] }: ActiveWorkoutModalProps) => {
+export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession, historySessions = [], recoveryScore = null }: ActiveWorkoutModalProps) => {
+  const [debrief, setDebrief] = useState<{ name: string; duration: number; volume: number; change: { diff: number; pct: number } | null; prs: string[]; completed: number; total: number } | null>(null);
   const [restAlertOn, setRestAlertOn] = useState(() => localStorage.getItem(REST_ALERT_KEY) !== 'off');
   const toggleRestAlert = () => setRestAlertOn((v) => {
     localStorage.setItem(REST_ALERT_KEY, v ? 'off' : 'on');
@@ -695,6 +698,19 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     }
     const durationMinutes = Math.max(1, Math.round((endAnchor.getTime() - startTime.getTime()) / 60000));
 
+    const previous = [...historySessions]
+      .filter((h) => h.exercise === template.name && notesVolume(h.notes) > 0)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const summary = {
+      name: template.name,
+      duration: durationMinutes,
+      volume: totalVolume,
+      change: volumeChange(totalVolume, previous ? notesVolume(previous.notes) : null),
+      prs: allExercises.filter((ex, i) => isPR(i, ex)),
+      completed: completedCount,
+      total: allExercises.length,
+    };
+
     const success = await onFinish({
       exercise: template.name,
       duration: durationMinutes,
@@ -708,7 +724,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     if (success) {
       logActivity({ action: 'finish_workout', category: 'gym', details: { template_name: template.name, duration: durationMinutes, notes } });
       clearActiveWorkout();
-      onClose();
+      setDebrief(summary);
     } else {
       logActivity({ action: 'finish_workout', category: 'gym', status: 'error', error_message: 'Save failed, retaining data', details: { template_name: template.name } });
     }
@@ -743,6 +759,38 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     isPersonalRecord(exerciseSets[i] as unknown as Record<string, string | undefined>, allTimeBest[ex]);
 
   const completedCount = allExercises.filter((_, i) => isExerciseComplete(i)).length;
+
+  if (debrief) {
+    const close = () => { setDebrief(null); onClose(); };
+    return (
+      <Dialog open={open} onOpenChange={(o) => !o && close()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Trophy className="h-5 w-5 text-primary" />Workout complete!</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-muted-foreground">{debrief.name} · {debrief.completed}/{debrief.total} exercises</p>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Duration</p><p className="text-xl font-bold">{debrief.duration} min</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Volume</p><p className="text-xl font-bold text-primary">{Math.round(debrief.volume).toLocaleString()} kg</p></div>
+            </div>
+            <p className="text-sm text-center">
+              {debrief.change
+                ? <><span className={debrief.change.diff >= 0 ? 'text-[hsl(var(--chart-min))] font-semibold' : 'text-destructive font-semibold'}>{debrief.change.diff >= 0 ? '+' : ''}{Math.round(debrief.change.diff).toLocaleString()} kg ({debrief.change.pct >= 0 ? '+' : ''}{debrief.change.pct}%)</span> vs last {debrief.name}</>
+                : <span className="text-muted-foreground">No previous {debrief.name} volume to compare yet.</span>}
+            </p>
+            {debrief.prs.length > 0 && (
+              <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-1">
+                <p className="text-sm font-semibold flex items-center gap-1"><Trophy className="h-4 w-4 text-primary" />New personal records</p>
+                {debrief.prs.map((p) => <p key={p} className="text-sm">{p}</p>)}
+              </div>
+            )}
+          </div>
+          <DialogFooter><Button className="w-full" onClick={close}>Done</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (!template) return null;
 
@@ -779,6 +827,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             </div>
           </div>
         </DialogHeader>
+        <ReadinessBadge score={recoveryScore} compact />
 
         {/* Timer Settings Panel */}
         {showSettings && (

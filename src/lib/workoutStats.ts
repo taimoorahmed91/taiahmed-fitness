@@ -86,3 +86,57 @@ export const personalRecords = (sessions: SessionLike[], aliases: Record<string,
   });
   return Object.values(map).sort((a, b) => a.exercise.localeCompare(b.exercise));
 };
+
+export type HistorySet = { reps: number; weight: number };
+export type ExerciseHistoryEntry = { date: string; template: string; sets: HistorySet[]; topWeight: number; volume: number };
+
+const parseNoteParts = (notes: string, aliases: Record<string, string>) => {
+  const out: { name: string; sets: HistorySet[] }[] = [];
+  notes.split(' | ').forEach((part) => {
+    const cleaned = part.replace(/^\d+\./, '');
+    const colon = cleaned.indexOf(':');
+    if (colon === -1) return;
+    const raw = cleaned.substring(0, colon).trim();
+    if (!raw || /^Start$/i.test(raw)) return;
+    const sets: HistorySet[] = [];
+    const re = /S[1-6]:(\d+)@(\d+(?:[.,]\d+)?)kg/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(cleaned.substring(colon + 1)))) {
+      const reps = parseInt(m[1], 10);
+      const weight = parseFloat(m[2].replace(',', '.'));
+      if (reps > 0 && weight > 0) sets.push({ reps, weight });
+    }
+    out.push({ name: aliases[raw] || raw, sets });
+  });
+  return out;
+};
+
+/** Oldest-first session timeline for one exercise (aliases merged), working sets only. */
+export const exerciseHistory = (sessions: SessionLike[], exercise: string, aliases: Record<string, string> = {}): ExerciseHistoryEntry[] =>
+  [...sessions]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .flatMap((s) => {
+      if (!s.notes) return [];
+      const sets = parseNoteParts(s.notes, aliases).filter((p) => p.name === exercise).flatMap((p) => p.sets);
+      if (!sets.length) return [];
+      return [{
+        date: s.date,
+        template: s.exercise,
+        sets,
+        topWeight: Math.max(...sets.map((x) => x.weight)),
+        volume: sets.reduce((t, x) => t + x.reps * x.weight, 0),
+      }];
+    });
+
+/** Total working-set volume (reps × kg) recorded in one saved session's notes. */
+export const notesVolume = (notes: string | undefined): number =>
+  notes ? parseNoteParts(notes, {}).reduce((t, p) => t + p.sets.reduce((u, x) => u + x.reps * x.weight, 0), 0) : 0;
+
+/** Volume change vs the previous session; null when there is no prior volume to compare. */
+export const volumeChange = (current: number, previous: number | null | undefined) =>
+  previous && previous > 0 ? { diff: current - previous, pct: Math.round(((current - previous) / previous) * 1000) / 10 } : null;
+
+export type Readiness = 'high' | 'medium' | 'low';
+/** WHOOP bands: high ≥ 67, medium 34–66, low ≤ 33. */
+export const readinessLevel = (score: number | null | undefined): Readiness | null =>
+  score == null || !Number.isFinite(score) ? null : score >= 67 ? 'high' : score >= 34 ? 'medium' : 'low';
