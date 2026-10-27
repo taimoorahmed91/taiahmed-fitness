@@ -4,11 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser } from "@/contexts/UserContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Welcome = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signInWithGoogle } = useUser();
   const { toast } = useToast();
+
+  const [demoLoading, setDemoLoading] = useState(false);
+  const handleLocalLogin = async () => {
+    setDemoLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("demo-login");
+      if (error || !data?.access_token) throw error ?? new Error("No session");
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (sessionError) throw sessionError;
+      window.location.assign("/");
+    } catch {
+      toast({ title: "Local login failed", description: "Couldn't open the demo account. Please try again.", variant: "destructive" });
+      setDemoLoading(false);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -79,6 +98,12 @@ const Welcome = () => {
               </svg>
               {isLoading ? "Signing in..." : "Sign in with Google"}
             </Button>
+            <Button onClick={handleLocalLogin} variant="outline" className="w-full mt-3" disabled={demoLoading}>
+              {demoLoading ? "Loading sample data..." : "Local login"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Try a demo account with 30 days of sample data.
+            </p>
           </CardContent>
         </Card>
       </div>
