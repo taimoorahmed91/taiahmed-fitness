@@ -137,21 +137,19 @@ Deno.serve(async (req) => {
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
     const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { auth: { persistSession: false } });
 
-    let signIn = await anon.auth.signInWithPassword({ email: DEMO_EMAIL, password });
-    if (signIn.error) {
+    // Email/password sign-in is off for this project, so mint a one-time
+    // magic-link token server-side and exchange it for a session.
+    const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    if (!list?.users.some((u) => u.email === DEMO_EMAIL)) {
       const { error } = await admin.auth.admin.createUser({
         email: DEMO_EMAIL, password, email_confirm: true, user_metadata: { full_name: "Demo User" },
       });
-      if (error) {
-        // Account exists but the password changed: reset it.
-        const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000 });
-        const existing = list?.users.find((u) => u.email === DEMO_EMAIL);
-        if (!existing) throw error;
-        await admin.auth.admin.updateUserById(existing.id, { password });
-      }
-      signIn = await anon.auth.signInWithPassword({ email: DEMO_EMAIL, password });
-      if (signIn.error) throw signIn.error;
+      if (error) throw error;
     }
+    const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email: DEMO_EMAIL });
+    if (linkError) throw linkError;
+    const signIn = await anon.auth.verifyOtp({ type: "magiclink", token_hash: link.properties.hashed_token });
+    if (signIn.error || !signIn.data.session) throw signIn.error ?? new Error("No session");
     const uid = signIn.data.user!.id;
 
     // Approved, never owner. Profiles only allow admins to change approval,
