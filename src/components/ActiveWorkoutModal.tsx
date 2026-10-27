@@ -692,10 +692,15 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     if (bestMin >= 0) {
       const candidate = new Date(startTime);
       candidate.setHours(Math.floor(bestMin / 60), bestMin % 60, 0, 0);
-      if (candidate.getTime() < startTime.getTime()) {
+      const behind = startTime.getTime() - candidate.getTime();
+      if (behind > 60 * 60000) {
         candidate.setDate(candidate.getDate() + 1); // crossed midnight
+        endAnchor = candidate;
+      } else if (behind <= 0) {
+        endAnchor = candidate;
       }
-      endAnchor = candidate;
+      // A set stamped in the same minute the workout started (HH:MM has no
+      // seconds) is not a midnight crossing; keep the real completion time.
     }
     const durationMinutes = Math.max(1, Math.round((endAnchor.getTime() - startTime.getTime()) / 60000));
 
