@@ -86,25 +86,10 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
           <CardTitle className="text-lg">Recent Meals</CardTitle>
           <div className="flex items-center gap-2">
             <SortControl label="Calories" sortOrder={sortOrder} onSortChange={setSortOrder} />
-            <Button
-              variant={showFilters || advancedFilterCount > 0 ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setShowFilters((v) => !v)}
-              aria-expanded={showFilters}
-              className="h-8 text-xs"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 mr-1" />
-              Filters
-              {advancedFilterCount > 0 && (
-                <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 text-[10px] font-semibold leading-4">
-                  {advancedFilterCount}
-                </span>
-              )}
-            </Button>
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
                 <X className="h-3 w-3 mr-1" />
-                Clear
+                Clear filters
               </Button>
             )}
           </div>
