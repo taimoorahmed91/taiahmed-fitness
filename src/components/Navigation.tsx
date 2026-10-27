@@ -6,6 +6,7 @@ import { ImportExportButton } from './ImportExportButton';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/version';
+import { DemoBanner, DEMO_EMAIL } from './DemoBanner';
 import {
   Sheet,
   SheetContent,
@@ -113,6 +114,7 @@ export const Navigation = () => {
           </Button>
         </div>
       </div>
+      {user?.email === DEMO_EMAIL && <DemoBanner />}
     </header>
   );
 };
