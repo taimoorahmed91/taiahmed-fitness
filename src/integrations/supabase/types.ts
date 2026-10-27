@@ -1486,6 +1486,7 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_demo_user: { Args: never; Returns: boolean }
       is_expense_admin: { Args: never; Returns: boolean }
       list_static_users: {
         Args: never
