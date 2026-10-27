@@ -52,6 +52,11 @@ const Gym = () => {
   const { sessions, addSession, deleteSession, updateSession, getThisWeekSessions, getLastSessionByTemplateName } = useGymSessions();
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useWorkoutTemplates();
   const { data: personalData } = usePersonalData();
+  const { entries: whoopEntries } = useWhoopData();
+  const todayRecovery = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return whoopEntries.find((e) => e.date === today && e.recovery_score != null)?.recovery_score ?? null;
+  }, [whoopEntries]);
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
