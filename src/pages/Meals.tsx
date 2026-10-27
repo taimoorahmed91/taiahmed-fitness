@@ -95,12 +95,12 @@ const Meals = () => {
   }, [meals, todayStr]);
 
   return (
-    <div className="container py-8 space-y-6">
+    <div className="container py-4 sm:py-8 space-y-4 sm:space-y-6">
       <div className="flex items-center gap-3">
-        <Utensils className="h-8 w-8 text-primary" />
+        <Utensils className="h-8 w-8 text-primary shrink-0" />
         <div>
-          <h1 className="text-3xl font-bold">Meal Tracking</h1>
-          <p className="text-muted-foreground mt-1">Log your meals and track your calories</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Meal Tracking</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Log your meals and track your calories</p>
         </div>
       </div>
 
