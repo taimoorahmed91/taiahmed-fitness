@@ -168,6 +168,6 @@ Deno.serve(async (req) => {
     return json({ access_token: s.access_token, refresh_token: s.refresh_token });
   } catch (e) {
     console.error("demo-login", e);
-    return json({ error: "Could not start the demo", detail: e instanceof Error ? e.message : String(e) }, 500);
+    return json({ error: "Could not start the demo" }, 500);
   }
 });
