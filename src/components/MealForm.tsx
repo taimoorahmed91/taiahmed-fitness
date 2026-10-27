@@ -120,11 +120,11 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] 
       </CardHeader>
       <CardContent>
         {quickMeals.length > 0 && (
-          <div className="mb-3 sm:mb-4 space-y-2">
+          <div className="mb-4 space-y-2">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Quick add</Label>
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:thin]">
+            <div className="flex flex-wrap gap-2">
               {quickMeals.map(({ key, meal, fav }) => (
-                <div key={key} className={`flex items-center shrink-0 rounded-full border text-sm ${fav ? 'border-primary/50 bg-primary/10' : 'bg-muted/30'}`}>
+                <div key={key} className={`flex items-center rounded-full border text-sm ${fav ? 'border-primary/50 bg-primary/10' : 'bg-muted/30'}`}>
                   <button type="button" onClick={() => quickFill(meal)} className="max-w-[12rem] truncate py-1 pl-3 pr-1" title={`${meal.food} · ${meal.calories} cal`}>
                     {meal.food} <span className="text-muted-foreground">· {meal.calories}</span>
                   </button>
@@ -136,7 +136,7 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] 
             </div>
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="food">What did you eat?</Label>
             <Input
