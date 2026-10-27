@@ -222,7 +222,7 @@ const MealItem = ({
         )}
       </div>
     </div>
-    <div className="flex items-center gap-2 shrink-0">
+    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
       <div className="text-right">
         <span className="block font-semibold text-primary text-sm">{meal.calories} cal</span>
         {meal.protein != null && (
