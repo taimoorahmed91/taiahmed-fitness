@@ -249,6 +249,7 @@ const clearActiveWorkout = () => {
 
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession, historySessions = [], recoveryScore = null }: ActiveWorkoutModalProps) => {
   const [debrief, setDebrief] = useState<{ name: string; duration: number; volume: number; change: { diff: number; pct: number } | null; prs: string[]; completed: number; total: number } | null>(null);
+  const [saving, setSaving] = useState(false);
   const [restAlertOn, setRestAlertOn] = useState(() => localStorage.getItem(REST_ALERT_KEY) !== 'off');
   const toggleRestAlert = () => setRestAlertOn((v) => {
     localStorage.setItem(REST_ALERT_KEY, v ? 'off' : 'on');
@@ -717,16 +718,21 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       total: allExercises.length,
     };
 
-    const success = await onFinish({
-      exercise: template.name,
-      duration: durationMinutes,
-      date: new Date().toISOString().split('T')[0],
-      notes: notes || undefined,
-      start_time: formattedStartTime,
-      end_time: endAnchor.toISOString(),
-    });
+    setSaving(true);
+    let success = false;
+    try {
+      success = await onFinish({
+        exercise: template.name,
+        duration: durationMinutes,
+        date: new Date().toISOString().split('T')[0],
+        notes: notes || undefined,
+        start_time: formattedStartTime,
+        end_time: endAnchor.toISOString(),
+      });
+    } finally {
+      setSaving(false);
+    }
 
-    
     if (success) {
       logActivity({ action: 'finish_workout', category: 'gym', details: { template_name: template.name, duration: durationMinutes, notes } });
       clearActiveWorkout();
@@ -768,9 +774,15 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   if (debrief) {
     const close = () => { setDebrief(null); onClose(); };
+    // Mobile: the trailing touch from "Complete Workout" lands outside this smaller
+    // dialog; ignore outside taps so it only closes via Done / X / Escape.
     return (
       <Dialog open={open} onOpenChange={(o) => !o && close()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Trophy className="h-5 w-5 text-primary" />Workout complete!</DialogTitle>
           </DialogHeader>
@@ -785,11 +797,13 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                 ? <><span className={debrief.change.diff >= 0 ? 'text-[hsl(var(--chart-min))] font-semibold' : 'text-destructive font-semibold'}>{debrief.change.diff >= 0 ? '+' : ''}{Math.round(debrief.change.diff).toLocaleString()} kg ({debrief.change.pct >= 0 ? '+' : ''}{debrief.change.pct}%)</span> vs last {debrief.name}</>
                 : <span className="text-muted-foreground">No previous {debrief.name} volume to compare yet.</span>}
             </p>
-            {debrief.prs.length > 0 && (
+            {debrief.prs.length > 0 ? (
               <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-1">
                 <p className="text-sm font-semibold flex items-center gap-1"><Trophy className="h-4 w-4 text-primary" />New personal records</p>
                 {debrief.prs.map((p) => <p key={p} className="text-sm">{p}</p>)}
               </div>
+            ) : (
+              <p className="text-sm text-center text-muted-foreground">Solid effort — no new PRs this session.</p>
             )}
           </div>
           <DialogFooter><Button className="w-full" onClick={close}>Done</Button></DialogFooter>
@@ -803,7 +817,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   const restTimerProgress = restTimerTotal > 0 ? ((restTimerTotal - restTimerRemaining) / restTimerTotal) * 100 : 0;
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -1195,8 +1209,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
           <Button variant="outline" onClick={handlePause} className="w-full sm:w-auto">
             Pause & Resume Later
           </Button>
-          <Button onClick={handleComplete} className="w-full sm:w-auto">
-            Complete Workout
+          <Button onClick={handleComplete} disabled={saving} className="w-full sm:w-auto">
+            {saving ? 'Saving workout…' : 'Complete Workout'}
           </Button>
         </DialogFooter>
       </DialogContent>

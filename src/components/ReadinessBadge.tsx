@@ -9,14 +9,14 @@ const COPY = {
 };
 
 /** Today's WHOOP recovery as a training-readiness hint; renders nothing without a score. */
-export const ReadinessBadge = ({ score, compact = false }: { score: number | null | undefined; compact?: boolean }) => {
+export const ReadinessBadge = ({ score, compact = false, dateLabel }: { score: number | null | undefined; compact?: boolean; dateLabel?: string }) => {
   const level = readinessLevel(score);
   if (!level) return null;
   const c = COPY[level];
   return (
     <div className={cn('flex items-center gap-2 rounded-lg border px-3 py-2 text-sm', c.cls, compact && 'py-1 text-xs')}>
       <HeartPulse className="h-4 w-4 shrink-0" />
-      <span className="font-semibold">Recovery {Math.round(score as number)}%</span>
+      <span className="font-semibold">Recovery {Math.round(score as number)}%{dateLabel ? ` (${dateLabel})` : ''}</span>
       <span className="text-muted-foreground">· {c.label}{compact ? '' : ` — ${c.hint}`}</span>
     </div>
   );

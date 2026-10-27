@@ -54,10 +54,20 @@ const Gym = () => {
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useWorkoutTemplates();
   const { data: personalData } = usePersonalData();
   const { entries: whoopEntries } = useWhoopData();
-  const todayRecovery = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return whoopEntries.find((e) => e.date === today && e.recovery_score != null)?.recovery_score ?? null;
+  // WHOOP syncs lag a day, so use the most recent recovery within the last 2 days.
+  const latestRecovery = useMemo(() => {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const cutoff = new Date(now.getTime() - 2 * 86400000).toISOString().slice(0, 10);
+    const latest = [...whoopEntries]
+      .filter((e) => e.recovery_score != null && e.date <= today && e.date >= cutoff)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    if (!latest) return { score: null as number | null, label: undefined as string | undefined };
+    const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+    const label = latest.date === today ? undefined : latest.date === yesterday ? 'yesterday' : latest.date;
+    return { score: latest.recovery_score as number, label };
   }, [whoopEntries]);
+  const todayRecovery = latestRecovery.score;
   const [editingSession, setEditingSession] = useState<GymSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<WorkoutTemplate | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
@@ -303,7 +313,7 @@ const Gym = () => {
         );
       })()}
 
-      <div className="mb-4"><ReadinessBadge score={todayRecovery} /></div>
+      <div className="mb-4"><ReadinessBadge score={todayRecovery} dateLabel={latestRecovery.label} /></div>
 
       <Tabs defaultValue="log" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
