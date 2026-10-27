@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { daysSinceTemplate, isRecentlyDone } from '@/lib/recentTemplate';
 import { GymForm } from '@/components/GymForm';
 import { GymList } from '@/components/GymList';
 import { DataFilter } from '@/components/DataFilter';
@@ -275,21 +276,27 @@ const Gym = () => {
         const doneToday = sessions.some(
           (s) => s.date === todayStr && s.exercise?.trim().toLowerCase() === tpl.name.trim().toLowerCase()
         );
+        const daysAgo = daysSinceTemplate(sessions, tpl.name, todayStr);
+        const recent = !doneToday && isRecentlyDone(daysAgo);
         return (
-          <Card className="border-primary/40">
+          <Card className={recent ? 'border-accent-foreground/50' : 'border-primary/40'}>
             <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
               <div className="flex items-center gap-3 min-w-0">
-                <CalendarCheck className="h-5 w-5 text-primary shrink-0" />
+                <CalendarCheck className={`h-5 w-5 shrink-0 ${recent ? 'text-accent-foreground' : 'text-primary'}`} />
                 <div className="min-w-0">
                   <p className="font-medium truncate">Today: {tpl.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {doneToday ? 'Already done today — nice work.' : `${tpl.exercises.length} exercise${tpl.exercises.length !== 1 ? 's' : ''} planned`}
+                    {doneToday
+                      ? 'Already done today — nice work.'
+                      : recent
+                        ? `Done ${daysAgo === 1 ? 'yesterday' : '2 days ago'} — less than 48 hours since this routine. Try something different today.`
+                        : `${tpl.exercises.length} exercise${tpl.exercises.length !== 1 ? 's' : ''} planned`}
                   </p>
                 </div>
               </div>
-              <Button variant={doneToday ? 'outline' : 'default'} onClick={() => handleStartWorkout(tpl)}>
+              <Button variant={doneToday || recent ? 'outline' : 'default'} size={recent ? 'sm' : 'default'} onClick={() => handleStartWorkout(tpl)}>
                 <Play className="h-4 w-4 mr-1" />
-                {doneToday ? 'Start again' : 'Start workout'}
+                {doneToday ? 'Start again' : recent ? 'Start anyway' : 'Start workout'}
               </Button>
             </CardContent>
           </Card>
