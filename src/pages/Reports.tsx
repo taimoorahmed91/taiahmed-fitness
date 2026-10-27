@@ -8,6 +8,10 @@ import { ShareableSummary } from '@/components/ShareableSummary';
 import { InsightCard } from '@/components/InsightCard';
 import { ReportCharts } from '@/components/ReportCharts';
 import { useReportData } from '@/hooks/useReportData';
+import { useCrossMetricInsights } from '@/hooks/useCrossMetricInsights';
+import { BodyRecompositionCard } from '@/components/BodyRecompositionCard';
+import { useWeight } from '@/hooks/useWeight';
+import { useWaist } from '@/hooks/useWaist';
 import { useUser } from '@/contexts/UserContext';
 import { Download, Share2, Flame, Dumbbell, Moon, Scale, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,6 +37,10 @@ const Reports = () => {
 
   const dateRange = getDateRange();
   const { stats, chartData, correlationInsights } = useReportData(dateRange);
+  const crossInsights = useCrossMetricInsights(dateRange.from.toISOString().slice(0, 10));
+  const { entries: weightEntries } = useWeight();
+  const { entries: waistEntries } = useWaist();
+  const allInsights = [...crossInsights, ...correlationInsights];
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || undefined;
 
   const handleDownload = async () => {
@@ -95,10 +103,12 @@ const Reports = () => {
 
         <ReportCharts data={chartData} />
 
-        {correlationInsights.length > 0 && (
+        <BodyRecompositionCard weight={weightEntries.map(w => ({ date: w.date, value: w.weight }))} waist={waistEntries.map(w => ({ date: w.date, value: w.waist }))} />
+
+        {allInsights.length > 0 && (
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Lightbulb className="h-5 w-5 text-primary" />Insights</CardTitle></CardHeader>
-            <CardContent><div className="grid sm:grid-cols-2 gap-4">{correlationInsights.map((insight, i) => <InsightCard key={i} insight={insight} />)}</div></CardContent>
+            <CardContent><div className="grid sm:grid-cols-2 gap-4">{allInsights.map((insight, i) => <InsightCard key={i} insight={insight} />)}</div></CardContent>
           </Card>
         )}
 
