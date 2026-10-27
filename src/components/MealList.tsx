@@ -90,10 +90,25 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
           <CardTitle className="text-lg">Recent Meals</CardTitle>
           <div className="flex items-center gap-2">
             <SortControl label="Calories" sortOrder={sortOrder} onSortChange={setSortOrder} />
+            <Button
+              variant={showFilters || advancedFilterCount > 0 ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowFilters((v) => !v)}
+              aria-expanded={showFilters}
+              className="h-8 text-xs"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 mr-1" />
+              Filters
+              {advancedFilterCount > 0 && (
+                <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 text-[10px] font-semibold leading-4">
+                  {advancedFilterCount}
+                </span>
+              )}
+            </Button>
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
                 <X className="h-3 w-3 mr-1" />
-                Clear filters
+                Clear
               </Button>
             )}
           </div>
@@ -118,36 +133,38 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
               aria-label="Filter by date"
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <MealNutrientFilter label="Calories" unit="cal" value={calorieFilter} onChange={setCalorieFilter} />
-            <MealNutrientFilter label="Protein" unit="g" value={proteinFilter} onChange={setProteinFilter} />
-            <MealNutrientFilter label="Carbs" unit="g" value={carbFilter} onChange={setCarbFilter} />
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {caloriesRemainingToday !== undefined && (() => {
-              const limit = String(Math.max(0, Math.floor(caloriesRemainingToday)));
-              const active = calorieFilter.mode === 'range' && calorieFilter.min === '0' && calorieFilter.max === limit;
-              return (
-                <Button
-                  variant={active ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setCalorieFilter(active ? emptyNutrientFilter() : { mode: 'range', min: '0', max: limit });
-                  }}
-                  className="h-8 text-xs"
-                >
-                  Fits today's budget (≤ {limit} cal)
-                </Button>
-              );
-            })()}
-            <Button
-              variant={excludeBeforeNoon ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setExcludeBeforeNoon((v) => !v)}
-              className="h-8 text-xs"
-            >
-              Exclude meals before noon
-            </Button>
+          <div className={`${showFilters ? 'block' : 'hidden'} sm:block space-y-3`}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <MealNutrientFilter label="Calories" unit="cal" value={calorieFilter} onChange={setCalorieFilter} />
+              <MealNutrientFilter label="Protein" unit="g" value={proteinFilter} onChange={setProteinFilter} />
+              <MealNutrientFilter label="Carbs" unit="g" value={carbFilter} onChange={setCarbFilter} />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {caloriesRemainingToday !== undefined && (() => {
+                const limit = String(Math.max(0, Math.floor(caloriesRemainingToday)));
+                const active = calorieFilter.mode === 'range' && calorieFilter.min === '0' && calorieFilter.max === limit;
+                return (
+                  <Button
+                    variant={active ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setCalorieFilter(active ? emptyNutrientFilter() : { mode: 'range', min: '0', max: limit });
+                    }}
+                    className="h-8 text-xs"
+                  >
+                    Fits today's budget (≤ {limit} cal)
+                  </Button>
+                );
+              })()}
+              <Button
+                variant={excludeBeforeNoon ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setExcludeBeforeNoon((v) => !v)}
+                className="h-8 text-xs"
+              >
+                Exclude meals before noon
+              </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
