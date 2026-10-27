@@ -10,7 +10,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Trash2, Play, ClipboardList, Pencil, Plus, Search, Trophy, History, Clock, Repeat } from 'lucide-react';
+import { Trash2, Play, ClipboardList, Pencil, Plus, Search, Trophy, History, Clock, Repeat, Pin } from 'lucide-react';
 import { WorkoutTemplateForm } from '@/components/WorkoutTemplateForm';
 
 interface WorkoutTemplateListProps {
@@ -21,6 +21,8 @@ interface WorkoutTemplateListProps {
   onStart: (template: WorkoutTemplate) => void;
   onEdit: (template: WorkoutTemplate) => void;
 }
+
+const PIN_KEY = 'fittrack-pinned-templates';
 
 type Stats = { count: number; avg: number; last: string | null };
 
@@ -37,6 +39,14 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<WorkoutTemplate | null>(null);
+  const [pinned, setPinned] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(PIN_KEY) || '[]'); } catch { return []; }
+  });
+  const togglePin = (id: string) => setPinned((prev) => {
+    const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+    try { localStorage.setItem(PIN_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+    return next;
+  });
 
   const stats = useMemo(() => {
     const map = new Map<string, Stats>();
@@ -73,8 +83,13 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
     const list = q
       ? templates.filter((t) => t.name.toLowerCase().includes(q) || t.exercises.some((e) => e.toLowerCase().includes(q)))
       : templates;
-    return [...list].sort((a, b) => (stats.get(b.id)?.last || '').localeCompare(stats.get(a.id)?.last || ''));
-  }, [templates, query, stats]);
+    // Pinned templates first, in pin order; the rest by most recently run.
+    return [...list].sort((a, b) => {
+      const pa = pinned.indexOf(a.id), pb = pinned.indexOf(b.id);
+      if (pa !== -1 || pb !== -1) return (pa === -1 ? Infinity : pa) - (pb === -1 ? Infinity : pb);
+      return (stats.get(b.id)?.last || '').localeCompare(stats.get(a.id)?.last || '');
+    });
+  }, [templates, query, stats, pinned]);
 
   const toggle = (id: string) =>
     setExpanded((prev) => {
@@ -134,7 +149,14 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
                 <CardContent className="flex flex-col flex-1 gap-3 pt-5">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold text-lg leading-tight">{t.name}</p>
-                    <Badge variant="secondary">{t.exercises.length} ex</Badge>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant="secondary">{t.exercises.length} ex</Badge>
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => togglePin(t.id)}
+                        aria-label={pinned.includes(t.id) ? `Unpin ${t.name}` : `Pin ${t.name}`} aria-pressed={pinned.includes(t.id)}
+                        title={pinned.includes(t.id) ? 'Unpin' : 'Pin to top'}>
+                        <Pin className={pinned.includes(t.id) ? 'h-4 w-4 text-primary fill-current' : 'h-4 w-4 text-muted-foreground'} />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1"><Repeat className="h-3 w-3" />{s.count}× done</span>

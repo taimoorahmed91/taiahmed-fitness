@@ -9,6 +9,7 @@ import { InsightCard } from '@/components/InsightCard';
 import { ReportCharts } from '@/components/ReportCharts';
 import { useReportData } from '@/hooks/useReportData';
 import { useCrossMetricInsights } from '@/hooks/useCrossMetricInsights';
+import { WeeklyDigestCard } from '@/components/WeeklyDigestCard';
 import { BodyRecompositionCard } from '@/components/BodyRecompositionCard';
 import { useWeight } from '@/hooks/useWeight';
 import { useWaist } from '@/hooks/useWaist';
@@ -86,6 +87,8 @@ const Reports = () => {
           <h1 className="text-3xl font-bold">Reports & Insights</h1>
           <p className="text-muted-foreground mt-1">Analyze your fitness trends</p>
         </div>
+
+        <WeeklyDigestCard />
 
         <Tabs value={periodType} onValueChange={(v) => setPeriodType(v as PeriodType)}>
           <TabsList className="grid w-full max-w-xs grid-cols-2">

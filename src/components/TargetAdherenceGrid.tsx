@@ -14,7 +14,7 @@ interface Row {
 const STATUS_CLASS: Record<string, string> = {
   within: 'bg-[hsl(var(--chart-min))]',
   over: 'bg-[hsl(var(--chart-max))]',
-  under: 'bg-primary/50',
+  under: 'bg-[hsl(var(--accent-foreground))]',
   none: 'bg-muted',
 };
 const LABEL: Record<string, string> = { within: 'On target', over: 'Over max', under: 'Under min', none: 'Not logged' };

@@ -80,7 +80,7 @@ async function seedData(admin: ReturnType<typeof createClient>, uid: string) {
     const hourNow = new Date().getUTCHours();
     picks.forEach((m) => {
       if (offset === 0 && parseInt(m.time) > hourNow) return;
-      const f = between(0.85, 1.15);
+      const f = between(0.95, 1.3);
       meals.push({ user_id: uid, date, time: m.time, food: m.food, calories: round(m.cal * f), protein: round(m.p * f), carbs: round(m.c * f) });
     });
 
