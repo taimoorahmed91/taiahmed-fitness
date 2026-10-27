@@ -19,9 +19,10 @@ interface TrendChartProps {
   cap?: number;
   summary?: (rows: Row[]) => React.ReactNode;
   empty: string;
+  extendedRanges?: boolean;
 }
 
-export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, notesMap, cap, summary, empty }: TrendChartProps) => {
+export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, notesMap, cap, summary, empty, extendedRanges }: TrendChartProps) => {
   const view = useChartView(id, defaultStyle);
   const shown = useMemo(() => recentChartData(data, view.range), [data, view.range]);
   const values = shown.flatMap(row => series.map(s => row[s.key]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)));
@@ -40,7 +41,7 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
           <CardTitle className="flex items-center gap-2 text-lg">{icon}{title}</CardTitle>
           {summary?.(shown)}
         </div>
-        <ChartViewControls {...view} />
+        <ChartViewControls {...view} extended={extendedRanges} />
       </CardHeader>
       <CardContent>
         {shown.length === 0 ? <p className="text-muted-foreground text-center py-12">{empty}</p> : (
