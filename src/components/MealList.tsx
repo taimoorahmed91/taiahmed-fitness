@@ -80,6 +80,9 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
   const hasActiveFilters = searchTerm || dateFilter || excludeBeforeNoon ||
     [calorieFilter, proteinFilter, carbFilter].some(f => f.min !== '' || (f.mode === 'range' && f.max !== ''));
 
+  const advancedFilterCount = (dateFilter ? 1 : 0) + (excludeBeforeNoon ? 1 : 0) +
+    [calorieFilter, proteinFilter, carbFilter].filter(f => f.min !== '' || (f.mode === 'range' && f.max !== '')).length;
+
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-4">
