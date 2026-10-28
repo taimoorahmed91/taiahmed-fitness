@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState } from 'react';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -227,14 +228,14 @@ export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymLis
                   >
                     <Pencil className="h-4 w-4 text-muted-foreground" />
                   </Button>
-                  <Button
+                  <ConfirmDeleteButton
                     variant="ghost"
                     size="icon"
-                    onClick={() => onDelete(session.id)}
+                    onConfirm={() => onDelete(session.id)} confirmationTitle="Delete workout?" confirmationDescription={`Are you sure you want to delete “${session.exercise}” from ${session.date}? Its recorded sets, weights, times and notes will be removed. This cannot be undone.`}
                     className="h-8 w-8"
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  </ConfirmDeleteButton>
                 </div>
               </div>
             ))}

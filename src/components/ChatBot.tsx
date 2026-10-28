@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageCircle, X, Send, Loader2, Utensils, Dumbbell, Scale, Moon, Zap, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -288,9 +289,9 @@ const ChatBot = () => {
                 {messageCount}/{MAX_MESSAGES_PER_HOUR}
               </Badge>
               {selectedCategory && messages.length > 0 && (
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearChat} title="Clear chat">
+                <ConfirmDeleteButton variant="ghost" size="icon" className="h-6 w-6" onConfirm={handleClearChat} confirmationTitle="Clear chat?" confirmationDescription="Are you sure you want to clear the messages in this conversation? Your meal and workout records will stay." confirmLabel="Yes, clear chat" title="Clear chat">
                   <Trash2 className="h-4 w-4" />
-                </Button>
+                </ConfirmDeleteButton>
               )}
             </CardTitle>
           </CardHeader>

@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState, useMemo } from 'react';
 import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -218,9 +219,9 @@ const MealItem = ({
         <Button variant="ghost" size="icon" onClick={() => onEdit(meal)} className="h-8 w-8">
           <Pencil className="h-4 w-4 text-muted-foreground" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => onDelete(meal.id)} className="h-8 w-8">
+        <ConfirmDeleteButton variant="ghost" size="icon" onConfirm={() => onDelete(meal.id)} confirmationTitle="Delete meal?" confirmationDescription={`Are you sure you want to delete “${meal.food}” from ${meal.date} at ${meal.time}? This cannot be undone.`} className="h-8 w-8">
           <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
+        </ConfirmDeleteButton>
       </div>
     </div>
   </div>

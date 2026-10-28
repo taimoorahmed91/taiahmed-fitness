@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState, useMemo } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Activity, Trash2, Pencil, X, Flame, Search } from 'lucide-react';
@@ -339,9 +340,9 @@ const ExtraActivities = () => {
                       <Button size="icon" variant="ghost" onClick={() => handleEdit(a)} aria-label="Edit activity">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => deleteActivity(a.id)} aria-label="Delete activity">
+                      <ConfirmDeleteButton size="icon" variant="ghost" onConfirm={() => deleteActivity(a.id)} confirmationTitle="Delete activity?" confirmationDescription={`Are you sure you want to delete “${a.activity}” from ${a.date}, including its notes? This cannot be undone.`} aria-label="Delete activity">
                         <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </ConfirmDeleteButton>
                     </div>
                   </div>
                 ))}

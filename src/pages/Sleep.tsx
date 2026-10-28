@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Navigation } from '@/components/Navigation';
@@ -281,9 +282,9 @@ const Sleep = () => {
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
                             <Edit2 className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteEntry(entry.id)}>
+                          <ConfirmDeleteButton variant="ghost" size="icon" onConfirm={() => deleteEntry(entry.id)} confirmationTitle="Delete sleep entry?" confirmationDescription={`Are you sure you want to delete ${entry.hours} hours recorded on ${entry.date}, including its notes? This cannot be undone.`}>
                             <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          </ConfirmDeleteButton>
                         </div>
                       </div>
                     );

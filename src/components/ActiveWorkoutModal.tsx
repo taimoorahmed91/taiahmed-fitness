@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
@@ -1217,12 +1218,15 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                           >
                             Copy previous
                           </Button>
-                          <Button
+                          <ConfirmDeleteButton
                             type="button"
                             size="sm"
                             variant="ghost"
                             className="h-6 text-[10px] px-2 text-muted-foreground"
-                            onClick={() => {
+                            confirmationTitle="Clear exercise notes?"
+                            confirmationDescription={`Clear the current notes and carried-forward suggestion for “${exercise}”? Previously saved workouts will stay unchanged.`}
+                            confirmLabel="Yes, clear notes"
+                            onConfirm={() => {
                               setExerciseNotes((p) => {
                                 const next = { ...p };
                                 delete next[index];
@@ -1236,7 +1240,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                             }}
                           >
                             Clear
-                          </Button>
+                          </ConfirmDeleteButton>
                         </div>
                       </div>
                       <Textarea
@@ -1308,9 +1312,9 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
-          <Button variant="ghost" onClick={handleCancel} className="w-full sm:w-auto text-destructive hover:text-destructive">
+          <ConfirmDeleteButton variant="ghost" onConfirm={handleCancel} disabled={saving} confirmationTitle="Discard workout?" confirmationDescription="Are you sure you want to discard this workout? All unsaved sets, weights, times and comments will be lost. Choose No, keep it to continue, or Pause & Resume Later to keep your progress." confirmLabel="Yes, discard workout" className="w-full sm:w-auto text-destructive hover:text-destructive">
             Cancel Workout
-          </Button>
+          </ConfirmDeleteButton>
           <Button variant="outline" onClick={handlePause} className="w-full sm:w-auto">
             Pause & Resume Later
           </Button>

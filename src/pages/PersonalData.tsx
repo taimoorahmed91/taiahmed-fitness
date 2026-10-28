@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useEffect, useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -602,9 +603,9 @@ const ApiTokenCard = () => {
                     <Button variant="outline" size="sm" onClick={handleGenerate} disabled={busy} className="gap-2">
                       <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> Refresh
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={handleRevoke} disabled={busy} className="gap-2 text-destructive hover:text-destructive">
+                    <ConfirmDeleteButton variant="ghost" size="sm" onConfirm={handleRevoke} confirmationTitle="Revoke token?" confirmationDescription="Are you sure you want to revoke this access token? Connected services using it will lose access until you provide a new token." confirmLabel="Yes, revoke" disabled={busy} className="gap-2 text-destructive hover:text-destructive">
                       <Trash2 className="h-4 w-4" /> Revoke
-                    </Button>
+                    </ConfirmDeleteButton>
                   </div>
                 </div>
 

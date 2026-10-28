@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -126,15 +127,15 @@ export const EditTemplateModal = ({ template, open, onClose, onSave }: EditTempl
                               maxLength={200}
                               className="flex-1"
                             />
-                            <Button
+                            <ConfirmDeleteButton
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleRemoveExercise(index)}
+                              onConfirm={() => handleRemoveExercise(index)} confirmationTitle="Remove exercise?" confirmationDescription={`Remove “${exercise || `Exercise ${index + 1}`}” from this template? This change takes effect when you save the template.`} confirmLabel="Yes, remove"
                               className="shrink-0"
                             >
                               <X className="h-4 w-4" />
-                            </Button>
+                            </ConfirmDeleteButton>
                           </div>
                         )}
                       </Draggable>
