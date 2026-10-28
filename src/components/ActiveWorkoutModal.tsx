@@ -852,6 +852,25 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   const completedCount = allExercises.filter((_, i) => isExerciseComplete(i)).length;
 
+  const copyDetails = async () => {
+    if (!debrief?.copyText) return;
+    try {
+      await navigator.clipboard.writeText(debrief.copyText);
+    } catch {
+      // Clipboard API can be blocked (e.g. older mobile browsers); fall back.
+      const ta = document.createElement('textarea');
+      ta.value = debrief.copyText;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopiedDetails(true);
+    setTimeout(() => setCopiedDetails(false), 2000);
+  };
+
   if (debrief) {
     const close = () => { setDebrief(null); onClose(); };
     // Mobile: the trailing touch from "Complete Workout" lands outside this smaller
