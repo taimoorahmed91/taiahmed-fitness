@@ -687,22 +687,14 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     if (!template || !startTime) return '';
     const endTimeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
     const startTimeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    
-    // Collect exercises that have data, sorted by sequence
-    const entries: { exercise: string; index: number; seq: number }[] = [];
-    allExercises.forEach((exercise, index) => {
-      const sets = exerciseSets[index];
-      if (sets && (sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6)) {
-        entries.push({ exercise, index, seq: exerciseSequence[index] ?? 999 });
-      }
-    });
-    entries.sort((a, b) => a.seq - b.seq);
+
+    const entries = collectWorkoutEntries(allExercises, exerciseSets, exerciseSequence, exerciseTimestamps, exerciseNotes, exerciseSetCount);
 
     const lines: string[] = [`Start:${startTimeStr} End:${endTimeStr}`];
     entries.forEach((entry) => {
-      const sets = exerciseSets[entry.index];
-      const ts = exerciseTimestamps[entry.index];
-      const setCount = exerciseSetCount[entry.index] || 3;
+      const sets = entry.sets!;
+      const ts = entry.ts;
+      const setCount = entry.setCount;
       const buildWarmup = () => {
         const reps = sets.warmup;
         if (!reps) return null;
