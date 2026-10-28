@@ -6,10 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Trash2, Play, ClipboardList, Pencil, Plus, Search, Trophy, History, Clock, Repeat, Pin } from 'lucide-react';
 import { WorkoutTemplateForm } from '@/components/WorkoutTemplateForm';
 
@@ -38,7 +35,6 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<WorkoutTemplate | null>(null);
   const [pinned, setPinned] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(PIN_KEY) || '[]'); } catch { return []; }
   });
@@ -178,9 +174,9 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
                     <Button variant="ghost" size="icon" onClick={() => onEdit(t)} aria-label="Edit template">
                       <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setPendingDelete(t)} aria-label="Delete template">
+                    <ConfirmDeleteButton variant="ghost" size="icon" onConfirm={() => onDelete(t.id)} confirmationTitle="Delete template?" confirmationDescription={`Are you sure you want to delete “${t.name}”? Your logged workouts stay; only the template is removed.`} aria-label="Delete template">
                       <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </ConfirmDeleteButton>
                   </div>
                 </CardContent>
               </Card>
@@ -199,18 +195,7 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{pendingDelete?.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>Your logged workouts stay; only the template is removed.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (pendingDelete) onDelete(pendingDelete.id); setPendingDelete(null); }}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </div>
   );
 };

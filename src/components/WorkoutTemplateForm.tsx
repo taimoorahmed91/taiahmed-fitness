@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,9 +69,9 @@ export const WorkoutTemplateForm = ({ onSubmit, onDone }: WorkoutTemplateFormPro
                 onChange={(e) => handleExerciseChange(index, e.target.value)}
                 maxLength={200}
               />
-              <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveExercise(index)} className="shrink-0">
+              <ConfirmDeleteButton type="button" variant="ghost" size="icon" onConfirm={() => handleRemoveExercise(index)} confirmationTitle="Remove exercise?" confirmationDescription={`Remove “${exercise || `Exercise ${index + 1}`}” from this new template? The other exercises will stay.`} confirmLabel="Yes, remove" className="shrink-0">
                 <X className="h-4 w-4" />
-              </Button>
+              </ConfirmDeleteButton>
             </div>
           ))}
         </div>

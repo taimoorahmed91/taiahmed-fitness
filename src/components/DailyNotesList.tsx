@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -109,15 +110,15 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
+                      <ConfirmDeleteButton
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => onDelete(note.id)}
+                        onConfirm={() => onDelete(note.id)} confirmationTitle="Delete note?" confirmationDescription={`Are you sure you want to delete the note and tags for ${note.date}? This cannot be undone.`}
                         aria-label="Delete note"
                       >
                         <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </ConfirmDeleteButton>
                     </div>
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -727,16 +728,16 @@ export const EditWorkoutSessionModal = ({
                       </div>
 
                       <div className="flex justify-end">
-                        <Button
+                        <ConfirmDeleteButton
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeExercise(index)}
+                          onConfirm={() => removeExercise(index)} confirmationTitle="Remove exercise?" confirmationDescription={`Remove “${ex.name}” and all its sets, weights, timestamps and comments from this workout? This change takes effect when you save.`} confirmLabel="Yes, remove"
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Remove
-                        </Button>
+                        </ConfirmDeleteButton>
                       </div>
                     </CollapsibleContent>
                   </div>

@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useEffect, useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { useWhoopData } from '@/hooks/useWhoopData';
@@ -255,9 +256,9 @@ const WhoopData = () => {
                           <TableRow key={entry.id}>
                             <TableCell className="font-medium whitespace-nowrap">
                               <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => deleteEntry(entry.id)}>
+                                <ConfirmDeleteButton variant="ghost" size="icon" className="h-7 w-7 shrink-0" onConfirm={() => deleteEntry(entry.id)} confirmationTitle="Delete WHOOP entry?" confirmationDescription={`Are you sure you want to delete all WHOOP measurements for ${entry.date}? This removes the saved entry from Fittrack, not from WHOOP.`}>
                                   <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                </ConfirmDeleteButton>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleEdit(entry)}>
                                   <Pencil className="h-4 w-4 text-muted-foreground" />
                                 </Button>

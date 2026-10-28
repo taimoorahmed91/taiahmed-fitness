@@ -1,3 +1,4 @@
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -210,14 +211,14 @@ export const GoalsCard = () => {
                         {isWeekly ? 'Weekly' : 'Monthly'} {categoryLabels[gp.goal.category as keyof typeof categoryLabels]}
                       </span>
                     </div>
-                    <Button
+                    <ConfirmDeleteButton
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteGoal(gp.goal.id)}
+                      onConfirm={() => deleteGoal(gp.goal.id)} confirmationTitle="Delete goal?" confirmationDescription={`Are you sure you want to delete this ${gp.goal.goal_type} ${categoryLabels[gp.goal.category as keyof typeof categoryLabels]} goal? Your logged activities will stay.`}
                     >
                       <Trash2 className="h-3 w-3" />
-                    </Button>
+                    </ConfirmDeleteButton>
                   </div>
                   
                   {/* Weekly day tracker */}
