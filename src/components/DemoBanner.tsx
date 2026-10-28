@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Shuffle, Lock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -26,10 +26,10 @@ export const DemoBanner = () => {
           <Lock className="h-4 w-4 text-primary" />
           Demo account — view only. Changes won't be saved.
         </span>
-        <Button size="sm" onClick={regenerate} disabled={busy}>
+        <ConfirmDeleteButton size="sm" onConfirm={regenerate} disabled={busy} confirmationTitle="Replace demo data?" confirmationDescription="Are you sure you want to replace the current sample meals, workouts, templates and measurements with newly generated data? This affects the shared demo account only, not your personal account." confirmLabel="Yes, replace data">
           <Shuffle className="h-4 w-4 mr-1" />
           {busy ? 'Generating...' : 'Generate random data'}
-        </Button>
+        </ConfirmDeleteButton>
       </div>
     </div>
   );
