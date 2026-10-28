@@ -905,7 +905,13 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
               <p className="text-sm text-center text-muted-foreground">Solid effort — no new PRs this session.</p>
             )}
           </div>
-          <DialogFooter><Button className="w-full" onClick={close}>Done</Button></DialogFooter>
+          <DialogFooter className="flex-row gap-2">
+            <Button variant="outline" className="flex-1" onClick={copyDetails}>
+              {copiedDetails ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+              {copiedDetails ? 'Copied!' : 'Copy details'}
+            </Button>
+            <Button className="flex-1" onClick={close}>Done</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     );
