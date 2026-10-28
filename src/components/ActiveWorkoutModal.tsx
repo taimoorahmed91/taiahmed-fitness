@@ -16,7 +16,7 @@ import { workoutExerciseOrder } from '@/lib/workoutExerciseOrder';
 import { exerciseVolume, bestWeights, isPersonalRecord, notesVolume, volumeChange } from '@/lib/workoutStats';
 import { ReadinessBadge } from '@/components/ReadinessBadge';
 import { OfflineBadge } from '@/components/OfflineBadge';
-import { Trophy, Volume2, VolumeX } from 'lucide-react';
+import { Trophy, Volume2, VolumeX, Copy, Check } from 'lucide-react';
 
 const REST_ALERT_KEY = 'fittrack-rest-alert-enabled';
 
@@ -126,6 +126,65 @@ interface ActiveWorkoutModalProps {
 const extractWeightFromExerciseName = (name: string): string => {
   const match = name.match(/(\d+(?:\.\d+)?)/);
   return match ? match[1] : '';
+};
+
+interface WorkoutEntry {
+  exercise: string;
+  index: number;
+  seq: number;
+  sets?: ExerciseSets;
+  ts?: ExerciseTimestamps;
+  setCount: number;
+  note?: string;
+}
+
+// Exercises with recorded data, sorted by sequence number (original indexes kept).
+const collectWorkoutEntries = (
+  allExercises: string[],
+  exerciseSets: Record<number, ExerciseSets>,
+  exerciseSequence: ExerciseSequence,
+  exerciseTimestamps: Record<number, ExerciseTimestamps>,
+  exerciseNotes: Record<number, string>,
+  exerciseSetCount: Record<number, number>,
+): WorkoutEntry[] => {
+  const entries: WorkoutEntry[] = [];
+  allExercises.forEach((exercise, index) => {
+    const sets = exerciseSets[index];
+    if (sets && (sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6)) {
+      entries.push({
+        exercise,
+        index,
+        seq: exerciseSequence[index] ?? 999,
+        sets,
+        ts: exerciseTimestamps[index],
+        setCount: exerciseSetCount[index] || 3,
+        note: exerciseNotes[index]?.trim() || undefined,
+      });
+    }
+  });
+  entries.sort((a, b) => a.seq - b.seq);
+  return entries;
+};
+
+// Readable multi-line set details for the "Copy details" button on the debrief.
+const formatSetLines = (entry: WorkoutEntry): string[] => {
+  const sets = entry.sets;
+  const ts = entry.ts;
+  if (!sets) return [];
+  const lines: string[] = [];
+  const push = (label: string, reps?: string, weight?: string, time?: string) => {
+    if (!reps) return;
+    const bits = [`${reps} reps`];
+    if (weight) bits.push(`@ ${weight} kg`);
+    if (time) bits.push(`at ${time}`);
+    lines.push(`   ${label}: ${bits.join(' ')}`);
+  };
+  push('Warm-up', sets.warmup, sets.warmupWeight, ts?.warmupTime);
+  const setMap = sets as unknown as Record<string, string | undefined>;
+  for (let n = 1; n <= entry.setCount; n++) {
+    push(`Set ${n}`, setMap[`set${n}`], setMap[`set${n}Weight`], ts?.[`set${n}Time` as keyof ExerciseTimestamps]);
+  }
+  return lines;
 };
 
 const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number>; setCounts: Record<string, number> } => {
@@ -248,7 +307,8 @@ const clearActiveWorkout = () => {
 };
 
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession, historySessions = [], recoveryScore = null }: ActiveWorkoutModalProps) => {
-  const [debrief, setDebrief] = useState<{ name: string; duration: number; volume: number; change: { diff: number; pct: number } | null; prs: string[]; completed: number; total: number } | null>(null);
+  const [debrief, setDebrief] = useState<{ name: string; duration: number; volume: number; change: { diff: number; pct: number } | null; prs: string[]; completed: number; total: number; copyText: string } | null>(null);
+  const [copiedDetails, setCopiedDetails] = useState(false);
   const [saving, setSaving] = useState(false);
   const [restAlertOn, setRestAlertOn] = useState(() => localStorage.getItem(REST_ALERT_KEY) !== 'off');
   const toggleRestAlert = () => setRestAlertOn((v) => {
@@ -628,22 +688,14 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     if (!template || !startTime) return '';
     const endTimeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
     const startTimeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    
-    // Collect exercises that have data, sorted by sequence
-    const entries: { exercise: string; index: number; seq: number }[] = [];
-    allExercises.forEach((exercise, index) => {
-      const sets = exerciseSets[index];
-      if (sets && (sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6)) {
-        entries.push({ exercise, index, seq: exerciseSequence[index] ?? 999 });
-      }
-    });
-    entries.sort((a, b) => a.seq - b.seq);
+
+    const entries = collectWorkoutEntries(allExercises, exerciseSets, exerciseSequence, exerciseTimestamps, exerciseNotes, exerciseSetCount);
 
     const lines: string[] = [`Start:${startTimeStr} End:${endTimeStr}`];
     entries.forEach((entry) => {
-      const sets = exerciseSets[entry.index];
-      const ts = exerciseTimestamps[entry.index];
-      const setCount = exerciseSetCount[entry.index] || 3;
+      const sets = entry.sets!;
+      const ts = entry.ts;
+      const setCount = entry.setCount;
       const buildWarmup = () => {
         const reps = sets.warmup;
         if (!reps) return null;
@@ -669,6 +721,32 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       lines.push(`${entry.seq}.${entry.exercise}: ${setsText}${noteSuffix}`);
     });
     return lines.join(' | ');
+  };
+
+  // Readable text for the debrief "Copy details" button: times, every set
+  // (reps @ weight, stamped time), per-exercise notes and new PRs.
+  const buildCopyText = (prs: string[], durationMinutes: number, volume: number, endAnchor: Date) => {
+    if (!template || !startTime) return '';
+    const startTimeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const endTimeStr = endAnchor.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const lines: string[] = [
+      `Workout: ${template.name}`,
+      `Date: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`,
+      `Start: ${startTimeStr} · End: ${endTimeStr} · Duration: ${durationMinutes} min`,
+      `Total volume: ${Math.round(volume).toLocaleString()} kg`,
+    ];
+    collectWorkoutEntries(allExercises, exerciseSets, exerciseSequence, exerciseTimestamps, exerciseNotes, exerciseSetCount).forEach((entry) => {
+      lines.push('');
+      lines.push(`${entry.seq}. ${entry.exercise}`);
+      formatSetLines(entry).forEach((l) => lines.push(l));
+      if (entry.note) lines.push(`   Note: ${entry.note}`);
+    });
+    if (prs.length > 0) {
+      lines.push('');
+      lines.push('New personal records:');
+      prs.forEach((p) => lines.push(`- ${p}`));
+    }
+    return lines.join('\n');
   };
 
   const handleComplete = async () => {
@@ -708,14 +786,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const previous = [...historySessions]
       .filter((h) => h.exercise === template.name && notesVolume(h.notes) > 0)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const prs = allExercises.filter((ex, i) => isPR(i, ex));
     const summary = {
       name: template.name,
       duration: durationMinutes,
       volume: totalVolume,
       change: volumeChange(totalVolume, previous ? notesVolume(previous.notes) : null),
-      prs: allExercises.filter((ex, i) => isPR(i, ex)),
+      prs,
       completed: completedCount,
       total: allExercises.length,
+      copyText: buildCopyText(prs, durationMinutes, totalVolume, endAnchor),
     };
 
     setSaving(true);
@@ -772,6 +852,25 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   const completedCount = allExercises.filter((_, i) => isExerciseComplete(i)).length;
 
+  const copyDetails = async () => {
+    if (!debrief?.copyText) return;
+    try {
+      await navigator.clipboard.writeText(debrief.copyText);
+    } catch {
+      // Clipboard API can be blocked (e.g. older mobile browsers); fall back.
+      const ta = document.createElement('textarea');
+      ta.value = debrief.copyText;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopiedDetails(true);
+    setTimeout(() => setCopiedDetails(false), 2000);
+  };
+
   if (debrief) {
     const close = () => { setDebrief(null); onClose(); };
     // Mobile: the trailing touch from "Complete Workout" lands outside this smaller
@@ -806,7 +905,13 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
               <p className="text-sm text-center text-muted-foreground">Solid effort — no new PRs this session.</p>
             )}
           </div>
-          <DialogFooter><Button className="w-full" onClick={close}>Done</Button></DialogFooter>
+          <DialogFooter className="flex-row gap-2">
+            <Button variant="outline" className="flex-1" onClick={copyDetails}>
+              {copiedDetails ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+              {copiedDetails ? 'Copied!' : 'Copy details'}
+            </Button>
+            <Button className="flex-1" onClick={close}>Done</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     );
