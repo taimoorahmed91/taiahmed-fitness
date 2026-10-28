@@ -307,7 +307,8 @@ const clearActiveWorkout = () => {
 };
 
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession, historySessions = [], recoveryScore = null }: ActiveWorkoutModalProps) => {
-  const [debrief, setDebrief] = useState<{ name: string; duration: number; volume: number; change: { diff: number; pct: number } | null; prs: string[]; completed: number; total: number } | null>(null);
+  const [debrief, setDebrief] = useState<{ name: string; duration: number; volume: number; change: { diff: number; pct: number } | null; prs: string[]; completed: number; total: number; copyText: string } | null>(null);
+  const [copiedDetails, setCopiedDetails] = useState(false);
   const [saving, setSaving] = useState(false);
   const [restAlertOn, setRestAlertOn] = useState(() => localStorage.getItem(REST_ALERT_KEY) !== 'off');
   const toggleRestAlert = () => setRestAlertOn((v) => {
