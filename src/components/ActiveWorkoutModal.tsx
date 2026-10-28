@@ -759,14 +759,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const previous = [...historySessions]
       .filter((h) => h.exercise === template.name && notesVolume(h.notes) > 0)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const prs = allExercises.filter((ex, i) => isPR(i, ex));
     const summary = {
       name: template.name,
       duration: durationMinutes,
       volume: totalVolume,
       change: volumeChange(totalVolume, previous ? notesVolume(previous.notes) : null),
-      prs: allExercises.filter((ex, i) => isPR(i, ex)),
+      prs,
       completed: completedCount,
       total: allExercises.length,
+      copyText: buildCopyText(prs, durationMinutes, totalVolume, endAnchor),
     };
 
     setSaving(true);
