@@ -16,7 +16,7 @@ import { workoutExerciseOrder } from '@/lib/workoutExerciseOrder';
 import { exerciseVolume, bestWeights, isPersonalRecord, notesVolume, volumeChange } from '@/lib/workoutStats';
 import { ReadinessBadge } from '@/components/ReadinessBadge';
 import { OfflineBadge } from '@/components/OfflineBadge';
-import { Trophy, Volume2, VolumeX } from 'lucide-react';
+import { Trophy, Volume2, VolumeX, Copy, Check } from 'lucide-react';
 
 const REST_ALERT_KEY = 'fittrack-rest-alert-enabled';
 
