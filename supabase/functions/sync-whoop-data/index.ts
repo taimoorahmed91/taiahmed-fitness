@@ -7,6 +7,8 @@ const corsHeaders = {
 
 const WHOOP_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwam13cWRpcXNrZ3Z6a3ZwanB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMzk2MDcsImV4cCI6MjA4ODcxNTYwN30.Yjhgz3lhN8b77E7HWI-IZLloxtuwSZqdOsOcAV-4II4';
 
+const WHOOP_API_HOST = 'apjmwqdiqskgvzkvpjpx.supabase.co';
+
 // SSRF protection: only allow https URLs to public hosts; block private/loopback/link-local ranges
 function isUrlSafe(rawUrl: string): boolean {
   let u: URL;
@@ -46,6 +48,7 @@ Deno.serve(async (req) => {
     const expectedCronSecret = Deno.env.get('SYNC_WHOOP_CRON_SECRET') ?? '';
 
     let authorized = false;
+    let callerUserId: string | null = null;
     if (expectedCronSecret && cronSecret && cronSecret === expectedCronSecret) {
       authorized = true;
     } else {
@@ -53,7 +56,7 @@ Deno.serve(async (req) => {
       if (token) {
         const authClient = createClient(supabaseUrl, supabaseAnonKey);
         const { data: { user }, error } = await authClient.auth.getUser(token);
-        if (!error && user) authorized = true;
+        if (!error && user) { authorized = true; callerUserId = user.id; }
       }
     }
 
@@ -74,7 +77,10 @@ Deno.serve(async (req) => {
 
     if (usersError) throw usersError;
 
-    const uniqueUserIds = [...new Set((users || []).map((u: any) => u.user_id))];
+    // Signed-in callers may only sync their own records; the scheduled job syncs everyone.
+    const uniqueUserIds = callerUserId
+      ? [callerUserId]
+      : [...new Set((users || []).map((u: any) => u.user_id))];
 
     if (uniqueUserIds.length === 0) {
       return new Response(JSON.stringify({ message: 'No users with WHOOP data found' }), {
@@ -102,11 +108,12 @@ Deno.serve(async (req) => {
 
       let result: any;
       try {
+        // Only send the WHOOP provider key to the WHOOP provider's own host.
+        const sendKey = new URL(url).hostname.toLowerCase() === WHOOP_API_HOST;
         const response = await fetch(url, {
-          headers: {
-            'apikey': WHOOP_API_KEY,
-            'Authorization': `Bearer ${WHOOP_API_KEY}`,
-          },
+          headers: sendKey
+            ? { 'apikey': WHOOP_API_KEY, 'Authorization': `Bearer ${WHOOP_API_KEY}` }
+            : {},
           redirect: 'manual',
         });
         if (!response.ok) throw new Error(`WHOOP API returned ${response.status}`);
