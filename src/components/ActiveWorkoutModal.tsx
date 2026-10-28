@@ -128,6 +128,65 @@ const extractWeightFromExerciseName = (name: string): string => {
   return match ? match[1] : '';
 };
 
+interface WorkoutEntry {
+  exercise: string;
+  index: number;
+  seq: number;
+  sets?: ExerciseSets;
+  ts?: ExerciseTimestamps;
+  setCount: number;
+  note?: string;
+}
+
+// Exercises with recorded data, sorted by sequence number (original indexes kept).
+const collectWorkoutEntries = (
+  allExercises: string[],
+  exerciseSets: Record<number, ExerciseSets>,
+  exerciseSequence: ExerciseSequence,
+  exerciseTimestamps: Record<number, ExerciseTimestamps>,
+  exerciseNotes: Record<number, string>,
+  exerciseSetCount: Record<number, number>,
+): WorkoutEntry[] => {
+  const entries: WorkoutEntry[] = [];
+  allExercises.forEach((exercise, index) => {
+    const sets = exerciseSets[index];
+    if (sets && (sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6)) {
+      entries.push({
+        exercise,
+        index,
+        seq: exerciseSequence[index] ?? 999,
+        sets,
+        ts: exerciseTimestamps[index],
+        setCount: exerciseSetCount[index] || 3,
+        note: exerciseNotes[index]?.trim() || undefined,
+      });
+    }
+  });
+  entries.sort((a, b) => a.seq - b.seq);
+  return entries;
+};
+
+// Readable multi-line set details for the "Copy details" button on the debrief.
+const formatSetLines = (entry: WorkoutEntry): string[] => {
+  const sets = entry.sets;
+  const ts = entry.ts;
+  if (!sets) return [];
+  const lines: string[] = [];
+  const push = (label: string, reps?: string, weight?: string, time?: string) => {
+    if (!reps) return;
+    const bits = [`${reps} reps`];
+    if (weight) bits.push(`@ ${weight} kg`);
+    if (time) bits.push(`at ${time}`);
+    lines.push(`   ${label}: ${bits.join(' ')}`);
+  };
+  push('Warm-up', sets.warmup, sets.warmupWeight, ts?.warmupTime);
+  const setMap = sets as unknown as Record<string, string | undefined>;
+  for (let n = 1; n <= entry.setCount; n++) {
+    push(`Set ${n}`, setMap[`set${n}`], setMap[`set${n}Weight`], ts?.[`set${n}Time` as keyof ExerciseTimestamps]);
+  }
+  return lines;
+};
+
 const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number>; setCounts: Record<string, number> } => {
   const result: PreviousReps = {};
   const noteMap: Record<string, string> = {};
