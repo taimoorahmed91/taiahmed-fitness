@@ -26,7 +26,7 @@ export const DemoBanner = () => {
           <Lock className="h-4 w-4 text-primary" />
           Demo account — view only. Changes won't be saved.
         </span>
-        <ConfirmDeleteButton size="sm" onConfirm={regenerate} disabled={busy} confirmationTitle="Replace demo data?" confirmationDescription="Are you sure you want to replace the current sample meals, workouts, templates and measurements with newly generated data? This affects the shared demo account only, not your personal account." confirmLabel="Yes, replace data">
+        <ConfirmDeleteButton size="sm" aria-label="Generate random data" onConfirm={regenerate} disabled={busy} confirmationTitle="Replace demo data?" confirmationDescription="Are you sure you want to replace the current sample meals, workouts, templates and measurements with newly generated data? This affects the shared demo account only, not your personal account." confirmLabel="Yes, replace data">
           <Shuffle className="h-4 w-4 mr-1" />
           {busy ? 'Generating...' : 'Generate random data'}
         </ConfirmDeleteButton>
