@@ -722,6 +722,32 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     return lines.join(' | ');
   };
 
+  // Readable text for the debrief "Copy details" button: times, every set
+  // (reps @ weight, stamped time), per-exercise notes and new PRs.
+  const buildCopyText = (prs: string[], durationMinutes: number, volume: number, endAnchor: Date) => {
+    if (!template || !startTime) return '';
+    const startTimeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const endTimeStr = endAnchor.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const lines: string[] = [
+      `Workout: ${template.name}`,
+      `Date: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`,
+      `Start: ${startTimeStr} · End: ${endTimeStr} · Duration: ${durationMinutes} min`,
+      `Total volume: ${Math.round(volume).toLocaleString()} kg`,
+    ];
+    collectWorkoutEntries(allExercises, exerciseSets, exerciseSequence, exerciseTimestamps, exerciseNotes, exerciseSetCount).forEach((entry) => {
+      lines.push('');
+      lines.push(`${entry.seq}. ${entry.exercise}`);
+      formatSetLines(entry).forEach((l) => lines.push(l));
+      if (entry.note) lines.push(`   Note: ${entry.note}`);
+    });
+    if (prs.length > 0) {
+      lines.push('');
+      lines.push('New personal records:');
+      prs.forEach((p) => lines.push(`- ${p}`));
+    }
+    return lines.join('\n');
+  };
+
   const handleComplete = async () => {
     if (!template || !startTime) return;
     const completedAt = new Date();
