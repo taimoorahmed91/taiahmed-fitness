@@ -185,7 +185,7 @@ export const useMeals = () => {
     return days;
   };
 
-  const getMealsByTimeOfDay = (days: 7 | 14 | 30) => {
+  const getMealsByTimeOfDay = (days: 7 | 14 | 30 | 90) => {
     const today = new Date().toISOString().slice(0, 10);
     const start = new Date(`${today}T00:00:00Z`);
     start.setUTCDate(start.getUTCDate() - (days - 1));
