@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { ChartPdfButton } from './ChartPdfButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Clock } from 'lucide-react';
@@ -7,6 +9,7 @@ interface MealTimeChartProps {
   data7: { name: string; calories: number; count: number }[];
   data14: { name: string; calories: number; count: number }[];
   data30: { name: string; calories: number; count: number }[];
+  data90: { name: string; calories: number; count: number }[];
 }
 
 const COLORS: Record<string, string> = {
@@ -18,21 +21,25 @@ const COLORS: Record<string, string> = {
   'Late night': 'hsl(var(--chart-actual))',
 };
 
-export const MealTimeChart = ({ data7, data14, data30 }: MealTimeChartProps) => {
+export const MealTimeChart = ({ data7, data14, data30, data90 }: MealTimeChartProps) => {
   const { range, setRange } = useChartRange('meal_time');
-  const data = range === '7' ? data7 : range === '14' ? data14 : data30;
+  const data = range === '7' ? data7 : range === '14' ? data14 : range === '90' ? data90 : data30;
+  const cardRef = useRef<HTMLDivElement>(null);
   const filteredData = data.filter((d) => d.calories > 0);
   const total = filteredData.reduce((sum, d) => sum + d.calories, 0);
 
   return (
-    <Card className="shadow-md">
+    <Card ref={cardRef} className="shadow-md">
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Clock className="h-5 w-5 text-primary" />
             Calories by Time of Day
           </CardTitle>
-          <ChartRangeControls range={range} setRange={setRange} />
+          <div className="flex items-center gap-2"><ChartRangeControls range={range} setRange={setRange} />
+          <ChartPdfButton targetRef={cardRef} title="Calories by Time of Day" subtitle={`Last ${range} days`}
+            columns={[{ key: 'name', label: 'Period' }, { key: 'calories', label: 'Calories' }, { key: 'count', label: 'Meals' }, { key: 'pct', label: 'Share (%)' }]}
+            rows={data.map(d => ({ ...d, pct: total ? Math.round(d.calories / total * 100) : 0 }))} /></div>
         </div>
       </CardHeader>
       <CardContent>

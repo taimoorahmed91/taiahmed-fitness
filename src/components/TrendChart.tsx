@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { ChartPdfButton } from './ChartPdfButton';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceDot } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DailyNote } from '@/hooks/useDailyNotes';
@@ -24,6 +25,7 @@ interface TrendChartProps {
 
 export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, notesMap, cap, summary, empty, extendedRanges }: TrendChartProps) => {
   const view = useChartView(id, defaultStyle);
+  const cardRef = useRef<HTMLDivElement>(null);
   const shown = useMemo(() => recentChartData(data, view.range), [data, view.range]);
   const values = shown.flatMap(row => series.map(s => row[s.key]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)));
   const min = values.length ? Math.min(...values) : 0;
@@ -35,13 +37,19 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
   const noteDots = shown.filter(row => notesMap?.has(row.date) && typeof row[series[0]?.key] === 'number');
 
   return (
-    <Card className="shadow-md min-w-0">
+    <Card ref={cardRef} className="shadow-md min-w-0">
       <CardHeader className="pb-2 space-y-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">{icon}{title}</CardTitle>
           {summary?.(shown)}
         </div>
-        <ChartViewControls {...view} extended={extendedRanges} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ChartViewControls {...view} extended={extendedRanges} />
+          <ChartPdfButton targetRef={cardRef} title={title}
+            subtitle={`${view.range === 'all' ? 'All time' : `Last ${view.range} days`} · ${view.style} chart`}
+            columns={[{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: `${s.label}${unit ? ` (${unit})` : ''}` }))]}
+            rows={shown} />
+        </div>
       </CardHeader>
       <CardContent>
         {shown.length === 0 ? <p className="text-muted-foreground text-center py-12">{empty}</p> : (

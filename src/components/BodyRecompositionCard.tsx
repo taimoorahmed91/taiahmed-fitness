@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Scale } from 'lucide-react';
 import { ChartRangeControls, chartDateLabel, recentChartData, useChartRange } from './ChartViewControls';
+import { ChartPdfButton } from './ChartPdfButton';
 import { computeBodyRecomposition, RECOMP_LABELS } from '@/lib/crossMetricIntelligence';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +22,7 @@ const fmt = (v: number | null, unit: string) => (v == null ? '--' : `${v > 0 ? '
 
 export const BodyRecompositionCard = ({ weight, waist }: { weight: Entry[]; waist: Entry[] }) => {
   const view = useChartRange('body_recomp');
+  const cardRef = useRef<HTMLDivElement>(null);
   const result = useMemo(() => computeBodyRecomposition(weight, waist, Number(view.range)), [weight, waist, view.range]);
   const info = RECOMP_LABELS[result.status];
 
@@ -39,11 +41,13 @@ export const BodyRecompositionCard = ({ weight, waist }: { weight: Entry[]; wais
   };
 
   return (
-    <Card className="shadow-md min-w-0">
+    <Card ref={cardRef} className="shadow-md min-w-0">
       <CardHeader className="pb-2 space-y-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-lg flex items-center gap-2"><Scale className="h-5 w-5 text-primary" />Body Recomposition Index</CardTitle>
-          <ChartRangeControls {...view} />
+          <div className="flex items-center gap-2"><ChartRangeControls {...view} />
+          <ChartPdfButton targetRef={cardRef} title="Body Recomposition Index" subtitle={`Last ${view.range} days`}
+            columns={[{ key: 'date', label: 'Date' }, { key: 'weight', label: 'Weight (kg)' }, { key: 'waist', label: 'Waist (cm)' }]} rows={data} /></div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className={cn('border', toneClass[info.tone])}>{info.label}</Badge>
