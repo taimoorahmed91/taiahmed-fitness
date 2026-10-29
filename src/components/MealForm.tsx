@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Utensils, Star } from 'lucide-react';
+import { Utensils, Zap } from 'lucide-react';
 
 import { useMealFavorites } from '@/hooks/useMealFavorites';
 import { toast } from 'sonner';
@@ -23,7 +23,7 @@ const getCurrentTime = () => {
 
 export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] }: MealFormProps) => {
   const { favorites, toggleFavorite } = useMealFavorites();
-  // Latest logged version of each meal; favorites first, then most frequent (logged 2+ times).
+  // Latest logged version of each meal; only meals the user marked for quick add.
   const quickMeals = useMemo(() => {
     const byName = new Map<string, { meal: Meal; count: number }>();
     [...meals].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`)).forEach((m) => {
@@ -33,8 +33,8 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] 
     });
     const list = Array.from(byName.entries()).map(([key, v]) => ({ key, ...v, fav: favorites.includes(key) }));
     const favs = list.filter((x) => x.fav);
-    const frequent = list.filter((x) => !x.fav && x.count >= 2).sort((a, b) => b.count - a.count).slice(0, 6);
-    return [...favs, ...frequent];
+
+    return favs;
   }, [meals, favorites]);
   const quickFill = (m: Meal) => {
     setFood(m.food);
@@ -117,8 +117,8 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] 
                   <button type="button" onClick={() => quickFill(meal)} className="max-w-[12rem] truncate py-1 pl-3 pr-1" title={`${meal.food} · ${meal.calories} cal`}>
                     {meal.food} <span className="text-muted-foreground">· {meal.calories}</span>
                   </button>
-                  <button type="button" onClick={() => toggleFavorite(meal.food)} className="py-1 pl-1 pr-2" aria-label={fav ? `Unstar ${meal.food}` : `Star ${meal.food}`}>
-                    <Star className={`h-3.5 w-3.5 ${fav ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                  <button type="button" onClick={() => toggleFavorite(meal.food)} className="py-1 pl-1 pr-2" aria-label={fav ? `Remove ${meal.food} from quick add` : `Add ${meal.food} to quick add`}>
+                    <Zap className={`h-3.5 w-3.5 ${fav ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
                   </button>
                 </div>
               ))}
