@@ -115,7 +115,7 @@ const Dashboard = () => {
   // WHOOP recovery trend for the last 30 days (oldest -> newest)
   const recoveryChartData = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const thirtyDaysAgo = shiftISODateByDays(today, -29);
+    const thirtyDaysAgo = shiftISODateByDays(today, -89);
     return whoopEntries
       .filter((e) => e.recovery_score != null && e.date >= thirtyDaysAgo && e.date <= today)
       .map((e) => ({ date: e.date, recovery: Number(e.recovery_score) }))
@@ -124,13 +124,13 @@ const Dashboard = () => {
 
   const workoutChartData = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    const start = shiftISODateByDays(today, -29);
+    const start = shiftISODateByDays(today, -89);
     const totals = new Map<string, number>();
     gymSessions.forEach(session => {
       if (session.date >= start && session.date <= today)
         totals.set(session.date, (totals.get(session.date) ?? 0) + session.duration);
     });
-    return Array.from({ length: 30 }, (_, index) => {
+    return Array.from({ length: 90 }, (_, index) => {
       const date = shiftISODateByDays(start, index);
       return { date, duration: totals.get(date) ?? 0 };
     });
@@ -139,7 +139,7 @@ const Dashboard = () => {
   // Actual vs target for calories, protein and carbs over the last 30 days (oldest -> newest)
   const macroComparisonData = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const start = shiftISODateByDays(today, -29);
+    const start = shiftISODateByDays(today, -89);
 
     const sortedWeights = [...weightEntries].sort((a, b) => a.date.localeCompare(b.date));
     const weightOn = (date: string) => {
@@ -156,7 +156,7 @@ const Dashboard = () => {
     const protein: Row[] = [];
     const carbs: Row[] = [];
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 90; i++) {
       const date = shiftISODateByDays(start, i);
       const dayMeals = meals.filter((m) => m.date === date);
       const { goal, goalMax } = resolveGoalForDate(date);
@@ -212,7 +212,7 @@ const Dashboard = () => {
   
   const calorieBalanceData = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const thirtyDaysAgo = shiftISODateByDays(today, -29);
+    const thirtyDaysAgo = shiftISODateByDays(today, -89);
 
     const mealsByDate = new Map<string, number>();
     meals.forEach((meal) => {
@@ -373,7 +373,7 @@ const Dashboard = () => {
           goal={yesterdayGoal}
           goalMax={yesterdayGoalMax}
         />
-        <MealTimeChart data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} />
+        <MealTimeChart data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} data90={getMealsByTimeOfDay(90)} />
         <RecoveryChart data={recoveryChartData} />
       </div>
 

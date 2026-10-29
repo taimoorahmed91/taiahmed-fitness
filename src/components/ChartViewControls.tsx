@@ -58,7 +58,7 @@ export const ChartRangeControls = ({ range, setRange }: ReturnType<typeof useCha
       {value}D
     </Button>
   );
-  return <div className="flex shrink-0 overflow-hidden rounded-md border">{item('7', 'Last 7 days')}{item('14', 'Last 14 days')}{item('30', 'Last 30 days')}</div>;
+  return <div className="flex shrink-0 overflow-hidden rounded-md border" data-html2canvas-ignore="true">{item('7', 'Last 7 days')}{item('14', 'Last 14 days')}{item('30', 'Last 30 days')}{item('90', 'Last 90 days')}</div>;
 };
 
 export const ChartViewControls = ({ range, setRange, style, setStyle, extended = false }: ReturnType<typeof useChartView> & { extended?: boolean }) => {
@@ -69,12 +69,12 @@ export const ChartViewControls = ({ range, setRange, style, setStyle, extended =
     </Button>
   );
   return (
-    <div className="flex items-center gap-2 shrink-0">
+    <div className="flex items-center gap-2 shrink-0" data-html2canvas-ignore="true">
       <div className="flex rounded-md border overflow-hidden">
         {item(range === '7', 'Last 7 days', () => setRange('7'), '7D')}
         {item(range === '14', 'Last 14 days', () => setRange('14'), '14D')}
         {item(range === '30', 'Last 30 days', () => setRange('30'), '30D')}
-        {extended && item(range === '90', 'Last 90 days', () => setRange('90'), '90D')}
+        {item(range === '90', 'Last 90 days', () => setRange('90'), '90D')}
         {extended && item(range === 'all', 'All time', () => setRange('all'), 'All')}
       </div>
       <div className="flex rounded-md border overflow-hidden">
