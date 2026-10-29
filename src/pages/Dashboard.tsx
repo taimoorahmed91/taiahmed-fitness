@@ -156,7 +156,7 @@ const Dashboard = () => {
     const protein: Row[] = [];
     const carbs: Row[] = [];
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 90; i++) {
       const date = shiftISODateByDays(start, i);
       const dayMeals = meals.filter((m) => m.date === date);
       const { goal, goalMax } = resolveGoalForDate(date);
