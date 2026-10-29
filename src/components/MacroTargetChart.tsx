@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChartPdfButton } from './ChartPdfButton';
 import {
   ComposedChart,
   Line,
@@ -22,7 +23,7 @@ interface MacroTargetChartProps {
   storageKey?: string;
 }
 
-type Range = '7' | '14' | '30';
+type Range = '7' | '14' | '30' | '90';
 type Style = 'line' | 'bar';
 
 const LABELS: Record<string, string> = { actual: 'Actual intake', min: 'Min target', max: 'Max target' };
@@ -58,7 +59,8 @@ const Seg = ({ active, onClick, children, label }: { active: boolean; onClick: (
 
 export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetChartProps) => {
   const key = `fittrack_macro_chart_${storageKey ?? title}`;
-  const [range, setRange] = useState<Range>(() => readPref<Range>(`${key}_range`, ['7', '14', '30'], '7'));
+  const [range, setRange] = useState<Range>(() => readPref<Range>(`${key}_range`, ['7', '14', '30', '90'], '7'));
+  const cardRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<Style>(() => readPref<Style>(`${key}_style`, ['line', 'bar'], 'line'));
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
     }
   }, [key, range, style]);
 
-  const shown = useMemo(() => (range === '30' ? data : data.slice(-Number(range))), [data, range]);
+  const shown = useMemo(() => data.slice(-Number(range)), [data, range]);
 
   const yDomain = useMemo(() => {
     const values = shown.flatMap((d) => [d.actual, d.min, d.max]).filter((v): v is number => v != null);
@@ -87,17 +89,18 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
   }, [shown, style]);
 
   return (
-    <Card className="shadow-md">
+    <Card ref={cardRef} className="shadow-md">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-lg">{title}</CardTitle>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-md border overflow-hidden">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex rounded-md border overflow-hidden" data-html2canvas-ignore="true">
               <Seg label="Last 7 days" active={range === '7'} onClick={() => setRange('7')}>7D</Seg>
               <Seg label="Last 14 days" active={range === '14'} onClick={() => setRange('14')}>14D</Seg>
               <Seg label="Last 30 days" active={range === '30'} onClick={() => setRange('30')}>30D</Seg>
+              <Seg label="Last 90 days" active={range === '90'} onClick={() => setRange('90')}>90D</Seg>
             </div>
-            <div className="flex rounded-md border overflow-hidden">
+            <div className="flex rounded-md border overflow-hidden" data-html2canvas-ignore="true">
               <Seg label="Line chart" active={style === 'line'} onClick={() => setStyle('line')}>
                 <LineIcon className="h-3.5 w-3.5" />
               </Seg>
@@ -105,6 +108,9 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
                 <BarChart3 className="h-3.5 w-3.5" />
               </Seg>
             </div>
+            <ChartPdfButton targetRef={cardRef} title={title} subtitle={`Last ${range} days · ${style} chart`}
+              columns={[{ key: 'date', label: 'Date' }, { key: 'actual', label: `Actual (${unit})` }, { key: 'min', label: `Min target (${unit})` }, { key: 'max', label: `Max target (${unit})` }]}
+              rows={shown} />
           </div>
         </div>
       </CardHeader>
