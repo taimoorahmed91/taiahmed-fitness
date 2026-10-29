@@ -4,7 +4,8 @@ import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Clock, Calendar, Pencil, Search, X, Copy } from 'lucide-react';
+import { Trash2, Clock, Calendar, Pencil, Search, X, Copy, Star } from 'lucide-react';
+import { useMealFavorites } from '@/hooks/useMealFavorites';
 import { SortControl } from '@/components/SortControl';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
@@ -20,6 +21,7 @@ interface MealListProps {
 }
 
 export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingToday }: MealListProps) => {
+  const { isFavorite, toggleFavorite } = useMealFavorites();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [calorieFilter, setCalorieFilter] = useState(emptyNutrientFilter);
@@ -156,7 +158,7 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
         ) : (
           <div className="space-y-2">
             {paginatedItems.map((meal) => (
-              <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} onCopy={onCopy} showDate />
+              <MealItem key={meal.id} meal={meal} onDelete={onDelete} onEdit={onEdit} onCopy={onCopy} showDate favorite={isFavorite(meal.food)} onToggleFavorite={() => toggleFavorite(meal.food)} />
             ))}
           </div>
         )}
@@ -179,12 +181,16 @@ const MealItem = ({
   onEdit,
   onCopy,
   showDate,
+  favorite,
+  onToggleFavorite,
 }: {
   meal: Meal;
   onDelete: (id: string) => void;
   onEdit: (meal: Meal) => void;
   onCopy?: (meal: Meal) => void;
   showDate?: boolean;
+  favorite: boolean;
+  onToggleFavorite: () => void;
 }) => (
   <div className="p-3 rounded-lg bg-card border">
     <p className="font-medium break-words whitespace-pre-wrap">{meal.food}</p>
@@ -211,6 +217,9 @@ const MealItem = ({
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0 -mr-1 -mb-1">
+        <Button variant="ghost" size="icon" onClick={onToggleFavorite} className="h-8 w-8" title={favorite ? 'Remove from favorites' : 'Add to favorites'} aria-label={favorite ? `Unstar ${meal.food}` : `Star ${meal.food}`} aria-pressed={favorite}>
+          <Star className={`h-4 w-4 ${favorite ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+        </Button>
         {onCopy && (
           <Button variant="ghost" size="icon" onClick={() => onCopy(meal)} className="h-8 w-8" title="Copy to form">
             <Copy className="h-4 w-4 text-muted-foreground" />
