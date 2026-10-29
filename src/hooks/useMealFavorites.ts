@@ -30,7 +30,7 @@ export const useMealFavorites = () => {
       next = current.filter((f) => f !== key);
     } else {
       if (current.length >= MAX_MEAL_FAVORITES) {
-        toast.error(`You can favorite up to ${MAX_MEAL_FAVORITES} meals. Unstar one first.`);
+        toast.error(`You can add up to ${MAX_MEAL_FAVORITES} meals to quick add. Remove one first.`);
         return;
       }
       next = [...current, key];

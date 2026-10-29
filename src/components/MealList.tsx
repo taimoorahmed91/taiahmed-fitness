@@ -4,7 +4,7 @@ import { Meal } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Clock, Calendar, Pencil, Search, X, Copy, Star } from 'lucide-react';
+import { Trash2, Clock, Calendar, Pencil, Search, X, Copy, Zap } from 'lucide-react';
 import { useMealFavorites } from '@/hooks/useMealFavorites';
 import { SortControl } from '@/components/SortControl';
 import { usePagination } from '@/hooks/usePagination';
@@ -217,8 +217,8 @@ const MealItem = ({
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0 -mr-1 -mb-1">
-        <Button variant="ghost" size="icon" onClick={onToggleFavorite} className="h-8 w-8" title={favorite ? 'Remove from favorites' : 'Add to favorites'} aria-label={favorite ? `Unstar ${meal.food}` : `Star ${meal.food}`} aria-pressed={favorite}>
-          <Star className={`h-4 w-4 ${favorite ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+        <Button variant="ghost" size="icon" onClick={onToggleFavorite} className="h-8 w-8" title={favorite ? 'Remove from quick add' : 'Add to quick add'} aria-label={favorite ? `Remove ${meal.food} from quick add` : `Add ${meal.food} to quick add`} aria-pressed={favorite}>
+          <Zap className={`h-4 w-4 ${favorite ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
         </Button>
         {onCopy && (
           <Button variant="ghost" size="icon" onClick={() => onCopy(meal)} className="h-8 w-8" title="Copy to form">
