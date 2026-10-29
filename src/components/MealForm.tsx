@@ -6,10 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Utensils, Star } from 'lucide-react';
 
-const FAVORITES_KEY = 'fittrack-meal-favorites';
-const loadFavorites = (): string[] => {
-  try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { return []; }
-};
+import { useMealFavorites } from '@/hooks/useMealFavorites';
 import { toast } from 'sonner';
 
 interface MealFormProps {
@@ -25,15 +22,7 @@ const getCurrentTime = () => {
 };
 
 export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] }: MealFormProps) => {
-  const [favorites, setFavorites] = useState<string[]>(loadFavorites);
-  const toggleFavorite = (name: string) => {
-    setFavorites((prev) => {
-      const key = name.toLowerCase();
-      const next = prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key];
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
-      return next;
-    });
-  };
+  const { favorites, toggleFavorite } = useMealFavorites();
   // Latest logged version of each meal; favorites first, then most frequent (logged 2+ times).
   const quickMeals = useMemo(() => {
     const byName = new Map<string, { meal: Meal; count: number }>();
