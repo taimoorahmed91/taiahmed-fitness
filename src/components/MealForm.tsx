@@ -114,7 +114,7 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] 
             <div className="flex flex-wrap gap-2">
               {quickMeals.map(({ key, meal, fav }) => (
                 <div key={key} className={`flex items-center rounded-full border text-sm ${fav ? 'border-primary/50 bg-primary/10' : 'bg-muted/30'}`}>
-                  <button type="button" onClick={() => quickFill(meal)} className="max-w-[12rem] truncate py-1 pl-3 pr-1" title={`${meal.food} · ${meal.calories} cal`}>
+                  <button type="button" onClick={() => quickFill(meal)} className="text-left py-1 pl-3 pr-1" title={`${meal.food} · ${meal.calories} cal`}>
                     {meal.food} <span className="text-muted-foreground">· {meal.calories}</span>
                   </button>
                   <button type="button" onClick={() => toggleFavorite(meal.food)} className="py-1 pl-1 pr-2" aria-label={fav ? `Remove ${meal.food} from quick add` : `Add ${meal.food} to quick add`}>
