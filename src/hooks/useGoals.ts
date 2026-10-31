@@ -62,6 +62,8 @@ const getCurrentMonthEnd = (): Date => {
   return new Date(today.getFullYear(), today.getMonth() + 1, 0);
 };
 
+const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const useGoals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsProgress, setGoalsProgress] = useState<GoalProgress[]>([]);
@@ -83,7 +85,7 @@ export const useGoals = () => {
       }
       userId = user.id;
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = localDay(new Date());
       const todayDate = new Date();
       
       const { data, error } = await supabase
@@ -111,15 +113,15 @@ export const useGoals = () => {
         if (goal.goal_type === 'weekly') {
           const weekMonday = getCurrentWeekMonday();
           const weekSunday = getCurrentWeekSunday();
-          queryStartDate = weekMonday.toISOString().split('T')[0];
-          queryEndDate = weekSunday.toISOString().split('T')[0];
+          queryStartDate = localDay(weekMonday);
+          queryEndDate = localDay(weekSunday);
           currentPeriodStart = weekMonday;
           currentPeriodEnd = weekSunday;
         } else if (goal.goal_type === 'monthly') {
           const monthStart = getCurrentMonthStart();
           const monthEnd = getCurrentMonthEnd();
-          queryStartDate = monthStart.toISOString().split('T')[0];
-          queryEndDate = monthEnd.toISOString().split('T')[0];
+          queryStartDate = localDay(monthStart);
+          queryEndDate = localDay(monthEnd);
           currentPeriodStart = monthStart;
           currentPeriodEnd = monthEnd;
         }
@@ -225,8 +227,8 @@ export const useGoals = () => {
         goal_type: goalType,
         category,
         target_value: targetValue,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0]
+        start_date: localDay(startDate),
+        end_date: localDay(endDate)
       });
 
       if (error) throw error;

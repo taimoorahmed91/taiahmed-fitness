@@ -41,6 +41,9 @@ import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
    return d;
  };
  
+ const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+ const parseDay = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+
  export const useGoalAchievements = () => {
    const [stats, setStats] = useState<GoalStats>({
      totalGoalsSet: 0,
@@ -149,8 +152,8 @@ import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
        const processedWeeks = new Set<string>();
  
        for (const goal of goals) {
-         const weekStart = getWeekMonday(new Date(goal.start_date));
-         const weekKey = weekStart.toISOString().split('T')[0];
+         const weekStart = getWeekMonday(parseDay(goal.start_date));
+         const weekKey = localDay(weekStart);
          
          // Skip if we already processed this week for this category
          const uniqueKey = `${weekKey}-${goal.category}`;
@@ -162,7 +165,7 @@ import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
  
          const weekEnd = new Date(weekStart);
          weekEnd.setDate(weekStart.getDate() + 6);
-         const weekEndStr = weekEnd.toISOString().split('T')[0];
+         const weekEndStr = localDay(weekEnd);
  
          let achievedValue = 0;
  
@@ -227,15 +230,15 @@ import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
  
        // Current streak (consecutive weeks from now)
        let currentStreak = 0;
-       const currentWeekStart = getWeekMonday(today).toISOString().split('T')[0];
+       const currentWeekStart = localDay(getWeekMonday(today));
        let checkWeek = currentWeekStart;
        
        for (let i = 0; i < 52; i++) {
          if (weeksMet.has(checkWeek)) {
            currentStreak++;
-           const prevWeek = new Date(checkWeek);
+           const prevWeek = parseDay(checkWeek);
            prevWeek.setDate(prevWeek.getDate() - 7);
-           checkWeek = prevWeek.toISOString().split('T')[0];
+           checkWeek = localDay(prevWeek);
          } else {
            break;
          }
