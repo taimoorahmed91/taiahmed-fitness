@@ -71,7 +71,8 @@ describe('ChartHeader layout contract', () => {
     const src = read('src/components/charts/ChartHeader.tsx');
     assert.match(src, /flex flex-wrap items-start justify-between gap-x-4 gap-y-3/);
     assert.match(src, /min-w-0 flex-auto/);
-    assert.match(src, /data-chart-controls="" data-html2canvas-ignore="true" className="order-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:order-2"/);
+    assert.match(src, /data-chart-controls="" data-html2canvas-ignore="true" className=\{className\}/);
+    assert.match(src, /className="order-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:order-2"/);
     assert.match(src, /data-chart-actions="" className="flex shrink-0 items-center gap-2"/);
     assert.match(src, /order-2 -mt-2 min-w-0 basis-full text-sm text-muted-foreground sm:order-3 sm:mt-0/);
     assert.match(src, /sm:min-h-8 sm:\[@media\(pointer:coarse\)\]:min-h-11/);
@@ -122,7 +123,7 @@ describe('every chart card is migrated to ChartHeader', () => {
     assert.equal(out.includes('chart type'), false);
     assert.ok(out.indexOf('Δ Weight') > out.indexOf('data-chart-controls'));
   });
-  test('fixed-window charts (WeeklyBarChart, DeltaChart, ReportCharts) use the header without controls', () => {
+  test('fixed-window charts (WeeklyBarChart, DeltaChart, ReportCharts) use the header; their only control is the full-screen button', () => {
     const week = Array.from({ length: 7 }, (_, i) => ({ date: `D${i}`, fullDate: `2001-01-0${i + 1}`, calories: 0 }));
     const outs = [
       html(createElement(WeeklyBarChart, { title: 'Weekly Calories', icon: null, data: week, valueKey: 'calories', label: 'Calories', unit: 'kcal', color: '#000' })),
@@ -131,8 +132,10 @@ describe('every chart card is migrated to ChartHeader', () => {
     ];
     for (const out of outs) {
       assert.match(out, /data-chart-header/);
-      assert.equal(out.includes('data-chart-controls'), false);
-      assert.equal(out.includes('Download'), false);
+      assert.match(controlsOf(out), /data-chart-expand/);
+      assert.equal(out.includes('Download'), false, 'no PDF here');
+      assert.equal(out.includes('range"'), false, 'no range switch');
+      assert.equal(out.includes('chart type'), false, 'no line/bar switch');
     }
     assert.match(outs[0], /Avg:/);
   });

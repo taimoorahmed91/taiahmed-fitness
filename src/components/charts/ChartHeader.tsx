@@ -1,7 +1,9 @@
-import type { ReactNode, RefObject } from 'react';
+import { useRef, type ReactNode, type RefObject } from 'react';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartPdfButton, type PdfColumn } from '@/components/ChartPdfButton';
 import { ChartRangeControls, ChartStyleControl, type ChartRange, type ChartStyle } from '@/components/ChartViewControls';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { ChartExpandButton, ChartFullscreenDialog, type ChartViewerSpec } from '@/components/charts/ChartFullscreenDialog';
 import { cn } from '@/lib/utils';
 
 /**
@@ -21,6 +23,9 @@ import { cn } from '@/lib/utils';
  *   with it; sm and up: after the controls).
  * - Inside the controls group the range is one unit and style + actions + PDF are a second, never-split
  *   unit, so the PDF button can only wrap together with the style switch, never alone.
+ * - The pop-out (full screen) button is part of the same actions unit, after PDF, so neither can strand alone.
+ *   Every chart card must decide: `viewer={{ render }}` to offer the full-screen viewer (the same controls and
+ *   state, a bigger chart) or `viewer={false}` to opt out on purpose.
  * - The whole group is data-html2canvas-ignore: exported PDFs show the title, not the buttons.
  * - The title is a CardTitle, so level and size come from the parent Card (`titleSize="chart"`).
  */
@@ -57,42 +62,105 @@ export interface ChartHeaderProps {
   pdf?: ChartHeaderPdf;
   /** Extra buttons that belong with the controls (rare). */
   actions?: ReactNode;
+  /**
+   * Full-screen viewer. `{ render }` draws the chart for it (give the chart `expanded`); the viewer reuses this
+   * header's title, description, view controls, PDF and children, so it always shows the card's own state.
+   * `false` opts out explicitly (only when a bigger chart is not meaningful).
+   */
+  viewer: ChartViewerSpec | false;
   /** Full-width rows under the band: badges, change lines, a status sentence. */
   children?: ReactNode;
   className?: string;
 }
 
-export const ChartHeader = ({ title, icon, description, view, pdf, actions, children, className }: ChartHeaderProps) => {
+interface ControlsGroupProps {
+  title: string;
+  view?: ChartHeaderView;
+  pdf?: ChartHeaderPdf;
+  actions?: ReactNode;
+  /** The pop-out button. Only the card has it; inside the viewer it would open itself. */
+  popOut?: ReactNode;
+  className: string;
+}
+
+/**
+ * Range, then one never-split actions unit: style, extra actions, PDF, pop-out. Used by the card and, with the
+ * card's own setters, by the full-screen viewer, so both always show and change the same state.
+ */
+const ChartControlsGroup = ({ title, view, pdf, actions, popOut, className }: ControlsGroupProps) => {
   const hasStyle = !!view?.style && !!view.setStyle;
-  const hasTrailing = hasStyle || !!pdf || !!actions;
+  const hasTrailing = hasStyle || !!pdf || !!actions || !!popOut;
+  if (!view && !hasTrailing) return null;
   return (
-    <CardHeader className={cn('space-y-2 pb-2', className)} data-chart-header="">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="order-1 min-w-0 flex-auto">
-          {/* Same height as the controls from sm up, so a one-line title lines up with them. */}
-          <div className="flex items-center sm:min-h-8 sm:[@media(pointer:coarse)]:min-h-11">
-            <CardTitle className="flex min-w-0 items-center gap-2 leading-tight">
-              {icon && <span aria-hidden="true" className="contents">{icon}</span>}
-              {title}
-            </CardTitle>
-          </div>
+    <div data-chart-controls="" data-html2canvas-ignore="true" className={className}>
+      {view && <ChartRangeControls range={view.range} setRange={view.setRange} extended={view.extended} label={title} />}
+      {hasTrailing && (
+        <div data-chart-actions="" className="flex shrink-0 items-center gap-2">
+          {hasStyle && <ChartStyleControl style={view!.style!} setStyle={view!.setStyle!} label={title} />}
+          {actions}
+          {pdf && <ChartPdfButton targetRef={pdf.targetRef} title={title} subtitle={pdf.subtitle} columns={pdf.columns} rows={pdf.rows} />}
+          {popOut}
         </div>
-        {(view || hasTrailing) && (
-          <div data-chart-controls="" data-html2canvas-ignore="true" className="order-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:order-2">
-            {view && <ChartRangeControls range={view.range} setRange={view.setRange} extended={view.extended} label={title} />}
-            {hasTrailing && (
-              <div data-chart-actions="" className="flex shrink-0 items-center gap-2">
-                {hasStyle && <ChartStyleControl style={view!.style!} setStyle={view!.setStyle!} label={title} />}
-                {actions}
-                {pdf && <ChartPdfButton targetRef={pdf.targetRef} title={title} subtitle={pdf.subtitle} columns={pdf.columns} rows={pdf.rows} />}
-              </div>
-            )}
+      )}
+    </div>
+  );
+};
+
+export const ChartHeader = ({ title, icon, description, view, pdf, actions, viewer, children, className }: ChartHeaderProps) => {
+  // What the viewer's PDF button captures. The card's PDF button keeps capturing the card (pdf.targetRef).
+  const viewerCaptureRef = useRef<HTMLDivElement>(null);
+  const popOut = viewer ? (
+    <DialogTrigger asChild>
+      <ChartExpandButton title={title} />
+    </DialogTrigger>
+  ) : null;
+  return (
+    // Dialog is state only (it draws nothing itself): the trigger sits in the actions unit, the viewer portals to <body>.
+    <Dialog>
+      <CardHeader className={cn('space-y-2 pb-2', className)} data-chart-header="">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div className="order-1 min-w-0 flex-auto">
+            {/* Same height as the controls from sm up, so a one-line title lines up with them. */}
+            <div className="flex items-center sm:min-h-8 sm:[@media(pointer:coarse)]:min-h-11">
+              <CardTitle className="flex min-w-0 items-center gap-2 leading-tight">
+                {icon && <span aria-hidden="true" className="contents">{icon}</span>}
+                {title}
+              </CardTitle>
+            </div>
           </div>
-        )}
-        {/* Its own full-width row, so it never wraps beside the controls. Phones: right under the title. From sm up: under the controls. */}
-        {description && <div className="order-2 -mt-2 min-w-0 basis-full text-sm text-muted-foreground sm:order-3 sm:mt-0">{description}</div>}
-      </div>
-      {children}
-    </CardHeader>
+          <ChartControlsGroup
+            title={title}
+            view={view}
+            pdf={pdf}
+            actions={actions}
+            popOut={popOut}
+            className="order-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:order-2"
+          />
+          {/* Its own full-width row, so it never wraps beside the controls. Phones: right under the title. From sm up: under the controls. */}
+          {description && <div className="order-2 -mt-2 min-w-0 basis-full text-sm text-muted-foreground sm:order-3 sm:mt-0">{description}</div>}
+        </div>
+        {children}
+      </CardHeader>
+      {viewer && (
+        <ChartFullscreenDialog
+          title={title}
+          icon={icon}
+          description={description}
+          captureRef={viewerCaptureRef}
+          viewer={viewer}
+          controls={
+            <ChartControlsGroup
+              title={title}
+              view={view}
+              pdf={pdf && { ...pdf, targetRef: viewerCaptureRef }}
+              actions={actions}
+              className="flex min-w-0 max-w-full flex-wrap items-center gap-2"
+            />
+          }
+        >
+          {children}
+        </ChartFullscreenDialog>
+      )}
+    </Dialog>
   );
 };

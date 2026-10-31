@@ -5,8 +5,9 @@ import { ChartFigure } from './ChartFigure';
 import { ChartHeader } from './ChartHeader';
 import { ChartEmptyState, NO_DATA, type ChartEmptyAction } from './ChartEmptyState';
 import { ChartTooltipCard } from './ChartTooltipCard';
-import { CHART_COLORS, CHART_MARGIN, UNIT_LABEL, chartGridProps, chartTooltipProps, chartXAxisProps, chartYAxisProps, formatSigned } from '@/lib/chartTheme';
+import { CHART_COLORS, CHART_MARGIN, UNIT_LABEL, chartGridProps, chartTooltipProps, chartYAxisProps, formatSigned } from '@/lib/chartTheme';
 import { DeltaPoint, DeltaSummary, computeDeltaSeries } from '@/lib/deltaSeries';
+import { chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
 import { cn } from '@/lib/utils';
 
 interface DeltaChartProps {
@@ -50,9 +51,48 @@ export const DeltaChart = ({ title, icon, unit, entries, emptyText, emptyAction 
     ? `${title}. ${last ? `Last interval ${summaryText({ change: last.delta, days: last.days, perWeek: last.perWeek }, unit)}. ` : ''}${overall ? `Overall ${summaryText(overall, unit)}. ` : ''}Showing the last ${points.length} intervals.`
     : '';
 
+  const motion = chartMotionProps();
+  // The card and the full-screen viewer draw the same chart from the same data; only `expanded` differs.
+  const body = (expanded: boolean) => (
+    points.length === 0 ? (
+      <ChartEmptyState action={action}>{emptyText}</ChartEmptyState>
+    ) : (
+      <ChartFigure
+        expanded={expanded}
+        title={title}
+        summary={description}
+        height={200}
+        caption={`Change in ${unit} between measurements · bars below zero are drops (green), above are rises (red)`}
+        table={{ columns: [{ key: 'isoDate', label: 'Date' }, { key: 'delta', label: `Change (${unit})` }, { key: 'days', label: 'Days' }, { key: 'perWeek', label: `Per week (${unit})` }], rows: points as unknown as Record<string, unknown>[] }}
+      >
+        <BarChart accessibilityLayer data={points} margin={CHART_MARGIN}>
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="date" {...chartXAxisFor(points.length, expanded)} />
+          <YAxis {...chartYAxisProps} />
+          <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload }) => {
+            if (!active || !payload?.length) return null;
+            const p = payload[0].payload as DeltaPoint;
+            const t = tone(p.delta);
+            return (
+              <ChartTooltipCard title={p.isoDate} rows={[
+                { label: 'Change', value: `${t.glyph} ${formatSigned(p.delta, unit)}`, color: t.fill },
+                { label: 'Days', value: String(p.days) },
+                { label: 'Pace', value: formatSigned(p.perWeek, `${unit}/week`) },
+              ]} />
+            );
+          }} />
+          <ReferenceLine y={0} stroke={CHART_COLORS.grid} strokeWidth={1} />
+          <Bar {...motion} dataKey="delta" name={`Change (${unit})`} radius={[4, 4, 0, 0]}>
+            {points.map((p) => <Cell key={p.isoDate} fill={tone(p.delta).fill} />)}
+          </Bar>
+        </BarChart>
+      </ChartFigure>
+    )
+  );
+
   return (
     <Card titleSize="chart" className="shadow-md min-w-0">
-      <ChartHeader title={title} icon={icon}>
+      <ChartHeader title={title} icon={icon} viewer={{ render: () => body(true) }}>
         {(last || overall) && (
           <div className="space-y-1">
             {last && line('Last', { change: last.delta, days: last.days, perWeek: last.perWeek })}
@@ -60,41 +100,7 @@ export const DeltaChart = ({ title, icon, unit, entries, emptyText, emptyAction 
           </div>
         )}
       </ChartHeader>
-      <CardContent>
-        {points.length === 0 ? (
-          <ChartEmptyState action={action}>{emptyText}</ChartEmptyState>
-        ) : (
-          <ChartFigure
-            title={title}
-            summary={description}
-            height={200}
-            caption={`Change in ${unit} between measurements · bars below zero are drops (green), above are rises (red)`}
-            table={{ columns: [{ key: 'isoDate', label: 'Date' }, { key: 'delta', label: `Change (${unit})` }, { key: 'days', label: 'Days' }, { key: 'perWeek', label: `Per week (${unit})` }], rows: points as unknown as Record<string, unknown>[] }}
-          >
-            <BarChart accessibilityLayer data={points} margin={CHART_MARGIN}>
-              <CartesianGrid {...chartGridProps} />
-              <XAxis dataKey="date" {...chartXAxisProps} />
-              <YAxis {...chartYAxisProps} />
-              <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const p = payload[0].payload as DeltaPoint;
-                const t = tone(p.delta);
-                return (
-                  <ChartTooltipCard title={p.isoDate} rows={[
-                    { label: 'Change', value: `${t.glyph} ${formatSigned(p.delta, unit)}`, color: t.fill },
-                    { label: 'Days', value: String(p.days) },
-                    { label: 'Pace', value: formatSigned(p.perWeek, `${unit}/week`) },
-                  ]} />
-                );
-              }} />
-              <ReferenceLine y={0} stroke={CHART_COLORS.grid} strokeWidth={1} />
-              <Bar dataKey="delta" name={`Change (${unit})`} radius={[4, 4, 0, 0]}>
-                {points.map((p) => <Cell key={p.isoDate} fill={tone(p.delta).fill} />)}
-              </Bar>
-            </BarChart>
-          </ChartFigure>
-        )}
-      </CardContent>
+      <CardContent>{body(false)}</CardContent>
     </Card>
   );
 };

@@ -8,10 +8,11 @@ import { ChartFigure } from '@/components/charts/ChartFigure';
 import { ChartHeader } from '@/components/charts/ChartHeader';
 import { ChartEmptyState, NO_DATA } from '@/components/charts/ChartEmptyState';
 import { ChartTooltipCard } from '@/components/charts/ChartTooltipCard';
-import { CHART_MARGIN, METRIC_COLORS, UNIT_LABEL, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartXAxisProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
+import { CHART_MARGIN, METRIC_COLORS, UNIT_LABEL, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { RANGE_LABELS } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { computeBodyRecomposition, RECOMP_LABELS } from '@/lib/crossMetricIntelligence';
+import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
 import { cn } from '@/lib/utils';
 
 type Entry = { date: string; value: number };
@@ -57,6 +58,37 @@ export const BodyRecompositionCard = ({ weight, waist }: { weight: Entry[]; wais
     { key: 'waist', label: 'Waist', unit: UNIT_LABEL.centimeters },
   ], period)}`;
 
+  const motion = chartMotionProps();
+  // The card and the full-screen viewer draw the same chart from the same state; only `expanded` differs.
+  const body = (expanded: boolean) => (
+    data.length === 0 ? (
+      // Nothing logged at all: point at both pages. Entries outside the range: a wider range is the fix.
+      weight.length === 0 && waist.length === 0
+        ? <ChartEmptyState action={NO_DATA.body.action} secondaryAction={NO_DATA.body.secondaryAction}>{NO_DATA.body.message}</ChartEmptyState>
+        : <ChartEmptyState>No weight or waist entries in this period. Try a wider date range.</ChartEmptyState>
+    ) : (
+      <ChartFigure expanded={expanded} title={title} summary={summary} height={260} caption={`Left axis: weight in ${UNIT_LABEL.kilograms} (solid) · Right axis: waist in ${UNIT_LABEL.centimeters} (dashed) · ${period}`} table={{ columns, rows: data }}>
+        <ComposedChart accessibilityLayer data={data} margin={CHART_MARGIN}>
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisFor(data.length, expanded)} />
+          <YAxis yAxisId="w" domain={domain('weight')} {...chartYAxisProps} tick={{ ...chartYAxisProps.tick, fill: METRIC_COLORS.weight }} />
+          <YAxis yAxisId="v" orientation="right" domain={domain('waist')} {...chartYAxisProps} tick={{ ...chartYAxisProps.tick, fill: METRIC_COLORS.waist }} />
+          <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null;
+            return <ChartTooltipCard title={chartDateLabel(String(label))} rows={payload.filter(p => p.value != null).map(p => ({
+              label: String(p.dataKey) === 'weight' ? 'Weight' : 'Waist',
+              value: formatChartValue(Number(p.value), String(p.dataKey) === 'weight' ? UNIT_LABEL.kilograms : UNIT_LABEL.centimeters),
+              color: String(p.color),
+            }))} />;
+          }} />
+          <Legend {...chartLegendProps} />
+          <Line {...motion} yAxisId="w" type="monotone" dataKey="weight" name={`Weight (${UNIT_LABEL.kilograms})`} stroke={METRIC_COLORS.weight} strokeWidth={3.5} dot={{ r: chartDotRadius(4, data.length, expanded), fill: METRIC_COLORS.weight, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
+          <Line {...motion} yAxisId="v" type="monotone" dataKey="waist" name={`Waist (${UNIT_LABEL.centimeters})`} stroke={METRIC_COLORS.waist} strokeWidth={2.5} strokeDasharray="8 5" dot={{ r: chartDotRadius(3, data.length, expanded), fill: METRIC_COLORS.waist, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
+        </ComposedChart>
+      </ChartFigure>
+    )
+  );
+
   return (
     <Card ref={cardRef} titleSize="chart" className="shadow-md min-w-0">
       <ChartHeader
@@ -64,6 +96,7 @@ export const BodyRecompositionCard = ({ weight, waist }: { weight: Entry[]; wais
         icon={<Scale className="h-5 w-5 text-primary" />}
         view={view}
         pdf={{ targetRef: cardRef, subtitle: period, columns, rows: data }}
+        viewer={{ render: () => body(true) }}
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className={cn('border', toneClass[info.tone])}>{info.label}</Badge>
@@ -72,34 +105,7 @@ export const BodyRecompositionCard = ({ weight, waist }: { weight: Entry[]; wais
         </div>
         <p className="text-sm text-muted-foreground">{info.message}</p>
       </ChartHeader>
-      <CardContent>
-        {data.length === 0 ? (
-          // Nothing logged at all: point at both pages. Entries outside the range: a wider range is the fix.
-          weight.length === 0 && waist.length === 0
-            ? <ChartEmptyState action={NO_DATA.body.action} secondaryAction={NO_DATA.body.secondaryAction}>{NO_DATA.body.message}</ChartEmptyState>
-            : <ChartEmptyState>No weight or waist entries in this period. Try a wider date range.</ChartEmptyState>
-        ) : (
-          <ChartFigure title={title} summary={summary} height={260} caption={`Left axis: weight in ${UNIT_LABEL.kilograms} (solid) · Right axis: waist in ${UNIT_LABEL.centimeters} (dashed) · ${period}`} table={{ columns, rows: data }}>
-            <ComposedChart accessibilityLayer data={data} margin={CHART_MARGIN}>
-              <CartesianGrid {...chartGridProps} />
-              <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisProps} />
-              <YAxis yAxisId="w" domain={domain('weight')} {...chartYAxisProps} tick={{ ...chartYAxisProps.tick, fill: METRIC_COLORS.weight }} />
-              <YAxis yAxisId="v" orientation="right" domain={domain('waist')} {...chartYAxisProps} tick={{ ...chartYAxisProps.tick, fill: METRIC_COLORS.waist }} />
-              <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null;
-                return <ChartTooltipCard title={chartDateLabel(String(label))} rows={payload.filter(p => p.value != null).map(p => ({
-                  label: String(p.dataKey) === 'weight' ? 'Weight' : 'Waist',
-                  value: formatChartValue(Number(p.value), String(p.dataKey) === 'weight' ? UNIT_LABEL.kilograms : UNIT_LABEL.centimeters),
-                  color: String(p.color),
-                }))} />;
-              }} />
-              <Legend {...chartLegendProps} />
-              <Line yAxisId="w" type="monotone" dataKey="weight" name={`Weight (${UNIT_LABEL.kilograms})`} stroke={METRIC_COLORS.weight} strokeWidth={3.5} dot={{ r: 4, fill: METRIC_COLORS.weight, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
-              <Line yAxisId="v" type="monotone" dataKey="waist" name={`Waist (${UNIT_LABEL.centimeters})`} stroke={METRIC_COLORS.waist} strokeWidth={2.5} strokeDasharray="8 5" dot={{ r: 3, fill: METRIC_COLORS.waist, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
-            </ComposedChart>
-          </ChartFigure>
-        )}
-      </CardContent>
+      <CardContent>{body(false)}</CardContent>
     </Card>
   );
 };

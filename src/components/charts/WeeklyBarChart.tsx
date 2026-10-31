@@ -7,8 +7,9 @@ import { ChartHeader } from './ChartHeader';
 import { ChartEmptyState, NO_DATA, type ChartEmptyAction } from './ChartEmptyState';
 import { ChartTooltipCard, TooltipNote } from './ChartTooltipCard';
 import { NoteDiamond } from './NoteDiamond';
-import { CHART_MARGIN, chartGridProps, chartTooltipProps, chartXAxisProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
+import { CHART_MARGIN, chartGridProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { describeSeries } from '@/lib/chartSummary';
+import { chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
 
 export interface WeeklyDay { date: string; fullDate: string; [key: string]: string | number }
 
@@ -42,43 +43,49 @@ export const WeeklyBarChart = ({ title, icon, data, valueKey, label, unit, color
   const rows = data.map((d) => ({ date: d.fullDate, [valueKey]: d[valueKey] }));
   const summary = `${describeSeries(rows, [{ key: valueKey, label, unit, digits: 0 }], 'Last 7 days')}${average ? ` Daily average excluding today: ${formatChartValue(average, unit)}.` : ''}`;
 
+  const motion = chartMotionProps();
+  // The card and the full-screen viewer draw the same chart from the same data; only `expanded` differs.
+  const body = (expanded: boolean) => (
+    !hasData ? (
+      <ChartEmptyState action={action ?? undefined}>No {label.toLowerCase()} logged in the last 7 days.</ChartEmptyState>
+    ) : (
+      <ChartFigure
+        expanded={expanded}
+        title={title}
+        summary={summary}
+        caption={`Values in ${unit} · Last 7 days${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
+        table={{ columns: [{ key: 'fullDate', label: 'Date' }, { key: valueKey, label: `${label} (${unit})` }], rows: data }}
+      >
+        <BarChart accessibilityLayer data={data} margin={{ ...CHART_MARGIN, top: 20 }}>
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="date" {...chartXAxisFor(data.length, expanded)} />
+          <YAxis {...chartYAxisProps} />
+          <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload }) => {
+            if (!active || !payload?.length) return null;
+            const day = payload[0].payload as WeeklyDay;
+            const note = notesMap?.get(day.fullDate);
+            return (
+              <ChartTooltipCard title={`${day.date} (${day.fullDate})`} rows={[{ label, value: formatChartValue(Number(payload[0].value), unit), color }]}>
+                {note && <TooltipNote tags={note.tags} notes={note.notes} />}
+              </ChartTooltipCard>
+            );
+          }} />
+          <Bar {...motion} dataKey={valueKey} name={label} fill={color} radius={[4, 4, 0, 0]} maxBarSize={50} />
+          {noteDays.map((d) => <ReferenceDot key={d.fullDate} x={d.date} y={Number(d[valueKey])} r={7} shape={<NoteDiamond />} />)}
+        </BarChart>
+      </ChartFigure>
+    )
+  );
+
   return (
     <Card titleSize="chart" className="shadow-md min-w-0">
       <ChartHeader
         title={title}
         icon={icon}
         description={<>Avg: <span className="whitespace-nowrap font-semibold text-foreground">{average > 0 ? average.toLocaleString('en-US') : '--'}</span> {unit}/day</>}
+        viewer={{ render: () => body(true) }}
       />
-      <CardContent>
-        {!hasData ? (
-          <ChartEmptyState action={action ?? undefined}>No {label.toLowerCase()} logged in the last 7 days.</ChartEmptyState>
-        ) : (
-          <ChartFigure
-            title={title}
-            summary={summary}
-            caption={`Values in ${unit} · Last 7 days${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
-            table={{ columns: [{ key: 'fullDate', label: 'Date' }, { key: valueKey, label: `${label} (${unit})` }], rows: data }}
-          >
-            <BarChart accessibilityLayer data={data} margin={{ ...CHART_MARGIN, top: 20 }}>
-              <CartesianGrid {...chartGridProps} />
-              <XAxis dataKey="date" {...chartXAxisProps} />
-              <YAxis {...chartYAxisProps} />
-              <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const day = payload[0].payload as WeeklyDay;
-                const note = notesMap?.get(day.fullDate);
-                return (
-                  <ChartTooltipCard title={`${day.date} (${day.fullDate})`} rows={[{ label, value: formatChartValue(Number(payload[0].value), unit), color }]}>
-                    {note && <TooltipNote tags={note.tags} notes={note.notes} />}
-                  </ChartTooltipCard>
-                );
-              }} />
-              <Bar dataKey={valueKey} name={label} fill={color} radius={[4, 4, 0, 0]} maxBarSize={50} />
-              {noteDays.map((d) => <ReferenceDot key={d.fullDate} x={d.date} y={Number(d[valueKey])} r={7} shape={<NoteDiamond />} />)}
-            </BarChart>
-          </ChartFigure>
-        )}
-      </CardContent>
+      <CardContent>{body(false)}</CardContent>
     </Card>
   );
 };

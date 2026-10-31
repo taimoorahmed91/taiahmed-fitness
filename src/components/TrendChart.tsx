@@ -8,9 +8,10 @@ import { ChartHeader } from '@/components/charts/ChartHeader';
 import { ChartEmptyState, TREND_NO_DATA, type ChartNoDataEmpty } from '@/components/charts/ChartEmptyState';
 import { ChartTooltipCard, TooltipNote } from '@/components/charts/ChartTooltipCard';
 import { NoteDiamond } from '@/components/charts/NoteDiamond';
-import { CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartXAxisProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
+import { CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { CHART_RANGES, RANGE_LABELS } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
+import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
 
 type Series = { key: string; label: string; color: string; dashed?: boolean };
 type Row = { date: string; [key: string]: string | number | null | undefined };
@@ -56,6 +57,45 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
 
   const pdfColumns = [{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: `${s.label}${unit ? ` (${unit})` : ''}` }))];
 
+  const motion = chartMotionProps();
+  // The card and the full-screen viewer draw the same chart from the same state; only `expanded` differs.
+  const body = (expanded: boolean) => (
+    shown.length === 0 ? (
+      emptyNoData
+        ? <ChartEmptyState action={emptyNoData.action} secondaryAction={emptyNoData.secondaryAction}>{emptyNoData.message}</ChartEmptyState>
+        : <ChartEmptyState>{empty}</ChartEmptyState>
+    ) : (
+      <ChartFigure
+        expanded={expanded}
+        title={title}
+        summary={summaryText}
+        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
+        table={{ columns: pdfColumns, rows: shown }}
+      >
+        <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisFor(shown.length, expanded)} />
+          <YAxis domain={domain} {...chartYAxisProps} />
+          <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null;
+            const note = notesMap?.get(String(label));
+            return <ChartTooltipCard
+              title={String(label)}
+              rows={payload.filter(p => p.value != null).map(p => ({ label: String(p.name), value: formatChartValue(Number(p.value), unit), color: String(p.color ?? p.fill) }))}>
+              {note && <TooltipNote tags={note.tags} notes={note.notes} />}
+            </ChartTooltipCard>;
+          }} />
+          {series.length > 1 && <Legend {...chartLegendProps} />}
+          {series.map(s => view.style === 'bar' ?
+            <Bar {...motion} key={s.key} dataKey={s.key} name={s.label} fill={s.color} maxBarSize={40} radius={[3, 3, 0, 0]} /> :
+            <Line {...motion} key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? false : { r: chartDotRadius(3, shown.length, expanded), fill: s.color, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls />
+          )}
+          {noteDots.map(row => <ReferenceDot key={row.date} x={row.date} y={Number(row[series[0].key])} r={7} shape={<NoteDiamond />} />)}
+        </ComposedChart>
+      </ChartFigure>
+    )
+  );
+
   return (
     <Card ref={cardRef} titleSize="chart" className="shadow-md min-w-0">
       <ChartHeader
@@ -64,42 +104,9 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
         description={summary?.(shown)}
         view={{ ...view, extended: extendedRanges }}
         pdf={{ targetRef: cardRef, subtitle: `${period} · ${view.style} chart`, columns: pdfColumns, rows: shown }}
+        viewer={{ render: () => body(true) }}
       />
-      <CardContent>
-        {shown.length === 0 ? (
-          emptyNoData
-            ? <ChartEmptyState action={emptyNoData.action} secondaryAction={emptyNoData.secondaryAction}>{emptyNoData.message}</ChartEmptyState>
-            : <ChartEmptyState>{empty}</ChartEmptyState>
-        ) : (
-          <ChartFigure
-            title={title}
-            summary={summaryText}
-            caption={`${unit ? `Values in ${unit} · ` : ''}${period}${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
-            table={{ columns: pdfColumns, rows: shown }}
-          >
-            <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
-              <CartesianGrid {...chartGridProps} />
-              <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisProps} />
-              <YAxis domain={domain} {...chartYAxisProps} />
-              <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null;
-                const note = notesMap?.get(String(label));
-                return <ChartTooltipCard
-                  title={String(label)}
-                  rows={payload.filter(p => p.value != null).map(p => ({ label: String(p.name), value: formatChartValue(Number(p.value), unit), color: String(p.color ?? p.fill) }))}>
-                  {note && <TooltipNote tags={note.tags} notes={note.notes} />}
-                </ChartTooltipCard>;
-              }} />
-              {series.length > 1 && <Legend {...chartLegendProps} />}
-              {series.map(s => view.style === 'bar' ?
-                <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} maxBarSize={40} radius={[3, 3, 0, 0]} /> :
-                <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? false : { r: 3, fill: s.color, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls />
-              )}
-              {noteDots.map(row => <ReferenceDot key={row.date} x={row.date} y={Number(row[series[0].key])} r={7} shape={<NoteDiamond />} />)}
-            </ComposedChart>
-          </ChartFigure>
-        )}
-      </CardContent>
+      <CardContent>{body(false)}</CardContent>
     </Card>
   );
 };

@@ -6,9 +6,10 @@ import { ChartFigure } from '@/components/charts/ChartFigure';
 import { ChartHeader } from '@/components/charts/ChartHeader';
 import { ChartEmptyState, NO_DATA } from '@/components/charts/ChartEmptyState';
 import { ChartTooltipCard } from '@/components/charts/ChartTooltipCard';
-import { CHART_COLORS, CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartXAxisProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
+import { CHART_COLORS, CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { RANGE_LABELS, formatChartDate, windowChartRows } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
+import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
 
 interface MacroTargetChartProps {
   /**
@@ -57,49 +58,58 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
   );
   const columns = [{ key: 'date', label: 'Date' }, { key: 'actual', label: `Actual (${unit})` }, { key: 'min', label: `Min target (${unit})` }, { key: 'max', label: `Max target (${unit})` }];
 
+  const motion = chartMotionProps();
+  // The card and the full-screen viewer draw the same chart from the same state; only `expanded` differs.
+  const body = (expanded: boolean) => (
+    shown.length === 0 ? (
+      // No rows at all: logging a meal is the fix. Rows outside the range: a wider range is.
+      data.length === 0
+        ? <ChartEmptyState action={NO_DATA.meals.action}>{NO_DATA.meals.message}</ChartEmptyState>
+        : <ChartEmptyState>No intake data in this period. Try a wider date range.</ChartEmptyState>
+    ) : (
+      <ChartFigure expanded={expanded} title={title} summary={summary} caption={`Values in ${unit} · ${period}`} table={{ columns, rows: shown }}>
+        <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="date" tickFormatter={formatChartDate} {...chartXAxisFor(shown.length, expanded)} />
+          <YAxis domain={yDomain} {...chartYAxisProps} />
+          <Tooltip
+            cursor={chartTooltipProps.cursor}
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null;
+              return (
+                <ChartTooltipCard
+                  title={formatChartDate(String(label))}
+                  rows={payload.filter((p) => p.value != null).map((p) => ({
+                    label: LABELS[String(p.dataKey)] ?? String(p.name),
+                    value: formatChartValue(Number(p.value), unit, 0),
+                    color: String(p.color ?? p.fill),
+                  }))}
+                />
+              );
+            }}
+          />
+          <Legend {...chartLegendProps} formatter={(value) => LABELS[value] ?? value} />
+          {style === 'bar' ? (
+            <Bar {...motion} dataKey="actual" fill={CHART_COLORS.actual} radius={[4, 4, 0, 0]} name="actual" />
+          ) : (
+            <Line {...motion} type="monotone" dataKey="actual" stroke={CHART_COLORS.actual} strokeWidth={3.5} dot={{ r: chartDotRadius(4, shown.length, expanded), fill: CHART_COLORS.actual, stroke: chartDotStroke, strokeWidth: 1.5 }} activeDot={{ r: 6 }} name="actual" connectNulls />
+          )}
+          <Line {...motion} type="monotone" dataKey="min" stroke={CHART_COLORS.min} strokeWidth={2} strokeDasharray="8 5" dot={false} name="min" connectNulls />
+          <Line {...motion} type="monotone" dataKey="max" stroke={CHART_COLORS.max} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} name="max" connectNulls />
+        </ComposedChart>
+      </ChartFigure>
+    )
+  );
+
   return (
     <Card ref={cardRef} titleSize="chart" className="shadow-md min-w-0">
-      <ChartHeader title={title} view={view} pdf={{ targetRef: cardRef, subtitle: `${period} · ${style} chart`, columns, rows: shown }} />
-      <CardContent>
-        {shown.length === 0 ? (
-          // No rows at all: logging a meal is the fix. Rows outside the range: a wider range is.
-          data.length === 0
-            ? <ChartEmptyState action={NO_DATA.meals.action}>{NO_DATA.meals.message}</ChartEmptyState>
-            : <ChartEmptyState>No intake data in this period. Try a wider date range.</ChartEmptyState>
-        ) : (
-          <ChartFigure title={title} summary={summary} caption={`Values in ${unit} · ${period}`} table={{ columns, rows: shown }}>
-            <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
-              <CartesianGrid {...chartGridProps} />
-              <XAxis dataKey="date" tickFormatter={formatChartDate} {...chartXAxisProps} />
-              <YAxis domain={yDomain} {...chartYAxisProps} />
-              <Tooltip
-                cursor={chartTooltipProps.cursor}
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null;
-                  return (
-                    <ChartTooltipCard
-                      title={formatChartDate(String(label))}
-                      rows={payload.filter((p) => p.value != null).map((p) => ({
-                        label: LABELS[String(p.dataKey)] ?? String(p.name),
-                        value: formatChartValue(Number(p.value), unit, 0),
-                        color: String(p.color ?? p.fill),
-                      }))}
-                    />
-                  );
-                }}
-              />
-              <Legend {...chartLegendProps} formatter={(value) => LABELS[value] ?? value} />
-              {style === 'bar' ? (
-                <Bar dataKey="actual" fill={CHART_COLORS.actual} radius={[4, 4, 0, 0]} name="actual" />
-              ) : (
-                <Line type="monotone" dataKey="actual" stroke={CHART_COLORS.actual} strokeWidth={3.5} dot={{ r: 4, fill: CHART_COLORS.actual, stroke: chartDotStroke, strokeWidth: 1.5 }} activeDot={{ r: 6 }} name="actual" connectNulls />
-              )}
-              <Line type="monotone" dataKey="min" stroke={CHART_COLORS.min} strokeWidth={2} strokeDasharray="8 5" dot={false} name="min" connectNulls />
-              <Line type="monotone" dataKey="max" stroke={CHART_COLORS.max} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} name="max" connectNulls />
-            </ComposedChart>
-          </ChartFigure>
-        )}
-      </CardContent>
+      <ChartHeader
+        title={title}
+        view={view}
+        pdf={{ targetRef: cardRef, subtitle: `${period} · ${style} chart`, columns, rows: shown }}
+        viewer={{ render: () => body(true) }}
+      />
+      <CardContent>{body(false)}</CardContent>
     </Card>
   );
 };
