@@ -22,6 +22,9 @@ interface MacroTargetChartProps {
   storageKey?: string;
 }
 
+// Side-by-side bars per date (Recharts groups bars that share no stackId), thin enough for a 90 day window.
+const BAR_GROUP = { maxBarSize: 28 } as const;
+
 const LABELS: Record<string, string> = { actual: 'Actual intake', min: 'Min target', max: 'Max target' };
 
 export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetChartProps) => {
@@ -89,13 +92,23 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
             }}
           />
           <Legend {...chartLegendProps} formatter={(value) => LABELS[value] ?? value} />
+          {/* The chart style applies to the whole chart: three lines, or three bars grouped side by side for each date (not stacked).
+              A day without a target has null there, so that bar / line point is simply absent, never a zero. */}
           {style === 'bar' ? (
-            <Bar {...motion} dataKey="actual" fill={CHART_COLORS.actual} radius={[4, 4, 0, 0]} name="actual" />
+            <>
+              <Bar {...motion} {...BAR_GROUP} dataKey="actual" fill={CHART_COLORS.actual} radius={[4, 4, 0, 0]} name="actual" />
+              {/* Targets are lighter, outlined bars (min solid outline, max dashed), so they read as limits and differ
+                  from Actual by more than hue. */}
+              <Bar {...motion} {...BAR_GROUP} dataKey="min" fill={CHART_COLORS.min} fillOpacity={0.4} stroke={CHART_COLORS.min} strokeWidth={1.5} radius={[4, 4, 0, 0]} name="min" />
+              <Bar {...motion} {...BAR_GROUP} dataKey="max" fill={CHART_COLORS.max} fillOpacity={0.4} stroke={CHART_COLORS.max} strokeWidth={1.5} strokeDasharray="4 3" radius={[4, 4, 0, 0]} name="max" />
+            </>
           ) : (
-            <Line {...motion} type="monotone" dataKey="actual" stroke={CHART_COLORS.actual} strokeWidth={3.5} dot={{ r: chartDotRadius(4, shown.length, expanded), fill: CHART_COLORS.actual, stroke: chartDotStroke, strokeWidth: 1.5 }} activeDot={{ r: 6 }} name="actual" connectNulls />
+            <>
+              <Line {...motion} type="monotone" dataKey="actual" stroke={CHART_COLORS.actual} strokeWidth={3.5} dot={{ r: chartDotRadius(4, shown.length, expanded), fill: CHART_COLORS.actual, stroke: chartDotStroke, strokeWidth: 1.5 }} activeDot={{ r: 6 }} name="actual" connectNulls />
+              <Line {...motion} type="monotone" dataKey="min" stroke={CHART_COLORS.min} strokeWidth={2} strokeDasharray="8 5" dot={false} name="min" connectNulls />
+              <Line {...motion} type="monotone" dataKey="max" stroke={CHART_COLORS.max} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} name="max" connectNulls />
+            </>
           )}
-          <Line {...motion} type="monotone" dataKey="min" stroke={CHART_COLORS.min} strokeWidth={2} strokeDasharray="8 5" dot={false} name="min" connectNulls />
-          <Line {...motion} type="monotone" dataKey="max" stroke={CHART_COLORS.max} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} name="max" connectNulls />
         </ComposedChart>
       </ChartFigure>
     )

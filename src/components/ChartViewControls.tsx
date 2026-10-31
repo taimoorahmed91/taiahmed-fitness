@@ -75,8 +75,8 @@ export const ChartRangeControls = ({ range, setRange, extended = false, label }:
     <div className="min-w-0 max-w-full" data-html2canvas-ignore="true">
       <SegmentedControl<ChartRange>
         size="sm"
-        // Compact buttons everywhere (so range + style + PDF fit one row in a one-third-width card),
-        // and wrap inside the card instead of pushing the page wider.
+        // Compact buttons, and wrap inside the card instead of pushing the page wider. The range always sits on its
+        // own row in ChartHeader (the first control row), so it never competes with the actions for width.
         className="max-w-full flex-wrap [&>button]:px-2"
         ariaLabel={label ? `${label} range` : 'Chart range'}
         value={range}
@@ -94,7 +94,7 @@ interface StyleProps {
   label?: string;
 }
 
-/** Line / bar switch on its own, so ChartHeader can keep it next to the PDF action on narrow cards. */
+/** Line / bar switch on its own: ChartHeader puts it first in the actions row, before PDF and full screen. */
 export const ChartStyleControl = ({ style, setStyle, label }: StyleProps) => (
   <div className="min-w-0 max-w-full" data-html2canvas-ignore="true">
     <SegmentedControl<ChartStyle>
@@ -108,16 +108,5 @@ export const ChartStyleControl = ({ style, setStyle, label }: StyleProps) => (
         { value: 'bar', ariaLabel: 'Bar chart', label: <BarChart3 aria-hidden="true" /> },
       ]}
     />
-  </div>
-);
-
-/**
- * Date range plus line/bar, as one wrapping group. Charts do not render this themselves any more:
- * ChartHeader (components/charts/ChartHeader.tsx) places range, style and PDF together.
- */
-export const ChartViewControls = ({ range, setRange, style, setStyle, extended = false, label }: ReturnType<typeof useChartView> & Omit<RangeProps, 'range' | 'setRange'>) => (
-  <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2" data-html2canvas-ignore="true">
-    <ChartRangeControls range={range} setRange={setRange} extended={extended} label={label} />
-    <ChartStyleControl style={style} setStyle={setStyle} label={label} />
   </div>
 );

@@ -90,7 +90,9 @@ test('the shell answers the app refresh event and every sender uses the shell ow
   assert.match(layout, /APP_REFRESH_EVENT/);
   assert.match(layout, /GlobalRefreshContext\.Provider/);
   const menu = read('src/components/layout/AccountMenu.tsx');
-  assert.match(menu, /describeManualRefresh\(/);
+  // The words come from describeAppRefresh, which builds on describeManualRefresh for the data half.
+  assert.match(menu, /describeAppRefresh\(/);
+  assert.match(read('src/components/pwa/appRefreshCopy.ts'), /describeManualRefresh\(/);
   assert.match(menu, /globalRefresh\.run\(\)/);
   assert.equal(/will update|updates by itself/i.test(menu), false, 'no promise about a later update');
   assert.equal(/location\.reload|window\.location|reload\(\)/.test(menu), false);

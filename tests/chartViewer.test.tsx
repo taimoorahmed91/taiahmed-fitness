@@ -44,7 +44,7 @@ describe('pop-out button in ChartHeader', () => {
   });
   test('a chart with no controls at all still gets its pop-out inside a controls group', () => {
     const out = card(createElement(ChartHeader, { title: 'Weekly Calories', viewer }));
-    assert.match(out, /data-chart-controls="" data-html2canvas-ignore="true"/);
+    assert.match(out, /data-chart-controls="" data-chart-layout="card" data-html2canvas-ignore="true"/);
     assert.match(actionsOf(out), /Open Weekly Calories in full screen/);
     assert.equal(out.includes('Download'), false);
   });
@@ -216,5 +216,39 @@ describe('every eligible chart uses the shared viewer contract', () => {
       const headers = src.match(/<ChartHeader\b/g)?.length ?? 0;
       if (headers) assert.equal(src.match(/\bviewer=/g)?.length ?? 0, headers, f);
     }
+  });
+});
+
+describe('MacroTargetChart: the chart style applies to the whole chart (source)', () => {
+  const src = read('src/components/MacroTargetChart.tsx');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const from = code.indexOf("style === 'bar' ? (");
+  const split = code.indexOf(') : (', from);
+  const bar = code.slice(from, split);
+  const line = code.slice(split, code.indexOf('</ComposedChart>'));
+  test('bar mode draws exactly three Bar series and no Line; line mode exactly three Line series and no Bar', () => {
+    assert.deepEqual([...bar.matchAll(/<Bar\b[^>]*dataKey="(\w+)"/g)].map((m) => m[1]), ['actual', 'min', 'max']);
+    assert.equal(/<Line\b/.test(bar), false);
+    assert.deepEqual([...line.matchAll(/<Line\b[^>]*dataKey="(\w+)"/g)].map((m) => m[1]), ['actual', 'min', 'max']);
+    assert.equal(/<Bar\b/.test(line), false);
+  });
+  test('series are only ever drawn inside the two style branches (nothing is always a line)', () => {
+    assert.equal((code.match(/<Line\b/g) ?? []).length, 3);
+    assert.equal((code.match(/<Bar\b/g) ?? []).length, 3);
+  });
+  test('bars are grouped (no stackId), use semantic chart colours only, and targets carry a non-colour cue', () => {
+    assert.equal(/stackId/.test(code), false);
+    assert.equal(/#[0-9a-fA-F]{3,6}\b|rgb\(|hsl\(\d/.test(code), false);
+    assert.match(bar, /dataKey="min"[^>]*fillOpacity=\{0\.4\}[^>]*strokeWidth=\{1\.5\}/);
+    assert.match(bar, /dataKey="max"[^>]*strokeDasharray="4 3"/);
+  });
+  test('line styling is unchanged: actual thick and solid, min dashed, max dotted', () => {
+    assert.match(line, /dataKey="actual"[^>]*strokeWidth=\{3\.5\}/);
+    assert.match(line, /dataKey="min"[^>]*strokeDasharray="8 5"/);
+    assert.match(line, /dataKey="max"[^>]*strokeDasharray="2 5"/);
+  });
+  test('y domain: bar mode starts at 0 and the values include all three series', () => {
+    assert.match(src, /shown\.flatMap\(\(d\) => \[d\.actual, d\.min, d\.max\]\)/);
+    assert.match(src, /if \(style === 'bar'\) min = 0;/);
   });
 });

@@ -64,18 +64,31 @@ describe('ChartHeader layout contract', () => {
   });
   test('the controls group is excluded from PDF capture, and the PDF button keeps its label and tooltip', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop }, pdf }));
-    assert.match(out, /data-chart-controls="" data-html2canvas-ignore="true"/);
+    assert.match(out, /data-chart-controls="" data-chart-layout="card" data-html2canvas-ignore="true"/);
     assert.match(out, /aria-label="Download T as PDF" title="Download PDF" data-html2canvas-ignore="true"/);
   });
-  test('responsive classes: title block grows, controls wrap as range + [style PDF], actions never split', () => {
+  test('one responsive contract: block rows, nothing beside the title, no width-dependent ordering', () => {
     const src = read('src/components/charts/ChartHeader.tsx');
-    assert.match(src, /flex flex-wrap items-start justify-between gap-x-4 gap-y-3/);
-    assert.match(src, /min-w-0 flex-auto/);
-    assert.match(src, /data-chart-controls="" data-html2canvas-ignore="true" className=\{className\}/);
-    assert.match(src, /className="order-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:order-2"/);
-    assert.match(src, /data-chart-actions="" className="flex shrink-0 items-center gap-2"/);
-    assert.match(src, /order-2 -mt-2 min-w-0 basis-full text-sm text-muted-foreground sm:order-3 sm:mt-0/);
-    assert.match(src, /sm:min-h-8 sm:\[@media\(pointer:coarse\)\]:min-h-11/);
+    // The title block (title + description) is its own block above the controls, at every width.
+    assert.match(src, /<div data-chart-text="" className="min-w-0 space-y-1">/);
+    assert.match(src, /data-chart-description="" className="min-w-0 text-sm text-muted-foreground"/);
+    // Card controls: a column of two rows at every width. No wrap / order / justify tricks.
+    assert.match(src, /card: 'flex min-w-0 max-w-full flex-col items-start gap-2'/);
+    // Row 2 is a never-wrapping, never-shrinking unit; row 1 may shrink inside the card.
+    assert.match(src, /data-chart-controls-row="actions" data-chart-actions="" className="flex shrink-0 items-center gap-2"/);
+    assert.match(src, /data-chart-controls-row="range" className="min-w-0 max-w-full"/);
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.equal(/\border-\d|\bsm:order|justify-between|basis-full|sm:min-h|sm:\[@media/.test(code), false, 'no ad hoc reordering or desktop one-liner');
+    const card = /card: '([^']+)'/.exec(src)![1];
+    assert.equal(/\bwrap\b|flex-wrap|\b(sm|md|lg|xl):/.test(card), false, 'the card layout has no breakpoint or wrap variants');
+    // Exactly two group instances: the card and the viewer.
+    assert.equal(code.match(/<ChartControlsGroup\b/g)?.length, 2);
+    assert.match(code, /layout="card"/);
+    assert.match(code, /layout="viewer"/);
+  });
+  test('the viewer layout is the same two rows, side by side only from md up', () => {
+    const src = read('src/components/charts/ChartHeader.tsx');
+    assert.match(src, /viewer: 'flex min-w-0 max-w-full flex-col items-start gap-2 md:flex-row md:flex-wrap md:items-center md:gap-x-3'/);
   });
 });
 
@@ -141,6 +154,83 @@ describe('every chart card is migrated to ChartHeader', () => {
   });
 });
 
+/** The header as an ordered list of its parts, read from the markup, so order and grouping are exact. */
+const outline = (out: string) =>
+  [...out.matchAll(/<h3\b|data-chart-description=""|data-chart-controls-row="(range|actions)"|aria-label="[^"]*chart type"|aria-label="Download [^"]*PDF"|aria-label="Open [^"]*in full screen"/g)].map((m) => {
+    const t = m[0];
+    if (t === '<h3') return 'title';
+    if (t.startsWith('data-chart-description')) return 'description';
+    if (t.startsWith('data-chart-controls-row')) return `row:${m[1]}`;
+    if (t.includes('chart type')) return 'style';
+    if (t.includes('Download')) return 'pdf';
+    return 'expand';
+  });
+
+describe('header structure and order (exact)', () => {
+  const viewer = { render: () => createElement('p') };
+  test('range + line/bar chart: title, description, range row alone, then [style, PDF, full screen]', () => {
+    const out = card(createElement(ChartHeader, { title: 'Weight', description: 'Latest', view: { range: '30', setRange: noop, style: 'line', setStyle: noop }, pdf, viewer }));
+    assert.deepEqual(outline(out), ['title', 'description', 'row:range', 'row:actions', 'style', 'pdf', 'expand']);
+  });
+  test('range-only chart: title, description, range row alone, then [PDF, full screen]', () => {
+    const out = card(createElement(ChartHeader, { title: 'Meals', description: 'Share', view: { range: '30', setRange: noop }, pdf, viewer }));
+    assert.deepEqual(outline(out), ['title', 'description', 'row:range', 'row:actions', 'pdf', 'expand']);
+  });
+  test('the range is never in the same row as the actions', () => {
+    const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop, style: 'bar', setStyle: noop }, pdf, viewer }));
+    const rangeRow = out.slice(out.indexOf('data-chart-controls-row="range"'), out.indexOf('data-chart-controls-row="actions"'));
+    assert.match(rangeRow, /T range/);
+    assert.equal(/chart type|Download|in full screen/.test(rangeRow), false);
+  });
+  test('fixed-window chart: title, description, then one actions row with only full screen', () => {
+    const out = card(createElement(ChartHeader, { title: 'Weekly', description: 'Avg', viewer }));
+    assert.deepEqual(outline(out), ['title', 'description', 'row:actions', 'expand']);
+  });
+  test('title and description come before every control, and extra rows (badges) come after them', () => {
+    const out = card(createElement(ChartHeader, { title: 'T', description: 'D', view: { range: '7', setRange: noop }, pdf, viewer }, createElement('p', null, 'BADGES')));
+    assert.ok(out.indexOf('>D<') < out.indexOf('data-chart-controls'));
+    assert.ok(out.indexOf('data-chart-controls') < out.indexOf('BADGES'));
+  });
+  test('Calories by Time of Day (range-only) has exactly the same shape as a line/bar chart minus the style switch', () => {
+    const d = [{ name: 'Morning', calories: 1, count: 1 }];
+    const meal = outline(html(createElement(MealTimeChart, { data7: d, data14: d, data30: d, data90: d })));
+    const trend = outline(html(createElement(TrendChart, { id: 'x', title: 'X', icon: null, unit: 'u', empty: 'e', series: [{ key: 'v', label: 'V', color: '#000' }], data: [{ date: new Date().toISOString().slice(0, 10), v: 1 }], summary: () => 'S' })));
+    assert.deepEqual(meal, ['title', 'row:range', 'row:actions', 'pdf', 'expand']);
+    assert.deepEqual(trend.filter((p) => p !== 'style' && p !== 'description'), meal);
+    assert.equal(meal.includes('style'), false);
+  });
+  test('every real chart card follows the contract (title < description < range row < actions row; style, PDF, expand in that order)', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const d = [{ name: 'Morning', calories: 1, count: 1 }];
+    const week = Array.from({ length: 7 }, (_, i) => ({ date: `D${i}`, fullDate: `2001-01-0${i + 1}`, calories: 0 }));
+    const trend = { id: 'x', title: 'X', icon: null, unit: 'u', empty: 'e', series: [{ key: 'v', label: 'V', color: '#000' }], data: [{ date: today, v: 1 }] };
+    const cards: [string, string][] = [
+      ['trend', html(createElement(TrendChart, trend))],
+      ['trend + description', html(createElement(TrendChart, { ...trend, summary: () => 'S' }))],
+      ['macro', html(createElement(MacroTargetChart, { title: 'M', unit: 'g', data: [{ date: today, actual: 1, min: null, max: null }] }))],
+      ['meal time', html(createElement(MealTimeChart, { data7: d, data14: d, data30: d, data90: d }))],
+      ['body recomposition', html(createElement(BodyRecompositionCard, { weight: [{ date: today, value: 80 }], waist: [] }))],
+      ['weekly', html(createElement(WeeklyBarChart, { title: 'W', icon: null, data: week, valueKey: 'calories', label: 'C', unit: 'u', color: '#000' }))],
+      ['delta', html(createElement(DeltaChart, { title: 'D', icon: null, unit: 'kg', entries: [], emptyText: 'x' }))],
+    ];
+    const rank: Record<string, number> = { title: 0, description: 1, 'row:range': 2, 'row:actions': 3, style: 4, pdf: 5, expand: 6 };
+    for (const [name, out] of cards) {
+      const parts = outline(out);
+      const ranks = parts.map((p) => rank[p]);
+      assert.deepEqual(ranks, [...ranks].sort((a, b) => a - b), `${name}: ${parts.join(' > ')}`);
+      assert.equal(parts.at(-1), 'expand', name);
+      assert.equal(new Set(parts).size, parts.length, `${name}: no part twice`);
+      assert.equal(parts.includes('row:range') ? parts.indexOf('row:range') < parts.indexOf('row:actions') : true, true, name);
+    }
+  });
+  test('the viewer shows the same two rows in the same order, and no second full-screen button (source)', () => {
+    const src = read('src/components/charts/ChartHeader.tsx');
+    const viewerUse = src.slice(src.indexOf('<ChartFullscreenDialog'));
+    assert.match(viewerUse, /<ChartControlsGroup title=\{title\} view=\{view\} pdf=\{pdf && \{ \.\.\.pdf, targetRef: viewerCaptureRef \}\} actions=\{actions\} layout="viewer" \/>/);
+    assert.equal(/popOut=/.test(viewerUse), false, 'the viewer never gets popOut');
+  });
+});
+
 describe('source guard: nothing lays out its own chart header', () => {
   const dir = (path: string) => readdirSync(new URL(`../${path}`, import.meta.url));
   const chartFiles = [
@@ -163,6 +253,11 @@ describe('source guard: nothing lays out its own chart header', () => {
       if (/<ChartHeader\b/.test(src)) assert.match(src, /<Card [^>]*titleSize="chart"/, 'title size comes from the Card role');
     });
   }
+  test('no chart lays out or reorders control rows itself: the data-chart-* layout hooks belong to ChartHeader and the viewer only', () => {
+    const all = [...dir('src/components').filter((f) => f.endsWith('.tsx')).map((f) => `src/components/${f}`), ...dir('src/components/charts').filter((f) => f.endsWith('.tsx')).map((f) => `src/components/charts/${f}`)];
+    const users = all.filter((f) => /data-chart-(controls|actions|text)/.test(read(f)));
+    assert.deepEqual(users, ['src/components/charts/ChartHeader.tsx']);
+  });
   test('ChartHeader is the only place that mounts the PDF button and the range / style controls', () => {
     const all = [...dir('src/components').filter((f) => f.endsWith('.tsx')).map((f) => `src/components/${f}`), ...dir('src/components/charts').map((f) => `src/components/charts/${f}`)];
     const users = all.filter((f) => /<ChartPdfButton|<ChartRangeControls|<ChartStyleControl/.test(read(f)));

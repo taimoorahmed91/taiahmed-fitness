@@ -5,6 +5,7 @@ import { defaultStorage } from '../lib/workoutOfflineCache';
 import { getPwaController } from './pwaController';
 import { resolveKillSwitch, shouldRegister, SW_DISABLED_KEY } from './swPolicy';
 import { startThemeColorSync } from './themeColor';
+import { checkRegistrationForUpdate } from './updateCheck';
 
 const CHECK_EVERY_MS = 60 * 60 * 1000; // hourly
 const MIN_CHECK_GAP_MS = 5 * 60 * 1000; // never check more than every 5 minutes
@@ -64,12 +65,23 @@ const start = () => {
   let lastCheck = 0;
   let registration: ServiceWorkerRegistration | undefined;
 
-  const checkForUpdate = () => {
-    if (!registration || !navigator.onLine || Date.now() - lastCheck < MIN_CHECK_GAP_MS) return;
+  // The one way this page looks for a new version. Looking never applies it: the prompt strategy keeps a
+  // found version waiting, and applyUpdate() (active-workout gated) is the only thing that activates it.
+  // Automatic checks keep the 5 minute gap and stay quiet offline; an explicit one (the account menu's
+  // "Refresh app & data") skips the gap and reports a real failure instead of silently doing nothing.
+  // It only calls registration.update(): nothing is unregistered and no cache is touched.
+  controller.setChecker(async ({ force }) => {
+    if (!registration) throw new Error('No service worker is registered yet.');
+    if (!navigator.onLine) {
+      if (force) throw new Error('Offline');
+      return 'skipped';
+    }
+    if (!force && Date.now() - lastCheck < MIN_CHECK_GAP_MS) return 'skipped';
     lastCheck = Date.now();
-    // Looking for a new version never applies it: the prompt strategy keeps it waiting.
-    registration.update().then(() => controller.markChecked()).catch(() => { /* offline or server hiccup */ });
-  };
+    await checkRegistrationForUpdate(registration, { onWaiting: () => controller.markNeedRefresh(true) });
+    return 'checked';
+  });
+  const checkForUpdate = () => { void controller.checkForUpdate(); };
 
   const begin = () => {
     const updateSW = registerSW({

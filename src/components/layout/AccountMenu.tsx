@@ -1,3 +1,4 @@
+import { useMemo, useRef, useState } from 'react';
 import { Laptop, LogOut, Moon, RefreshCw, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
@@ -15,13 +16,24 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/contexts/UserContext';
 import { requestAppRefresh } from '@/app/refresh';
-import { describeManualRefresh } from '@/app/globalRefresh';
 import { useGlobalRefresh, useGlobalRefreshSnapshot } from '@/app/globalRefreshContext';
+import { createAppRefresh, type DataRefreshOutcome } from '@/pwa/appRefresh';
+import { getPwaController } from '@/pwa/pwaController';
+import {
+  REFRESH_ACTION_LABEL, REFRESH_BUSY_LABEL, REFRESH_LOADING_TOAST, REFRESH_UNEXPECTED_ERROR,
+  describeAppRefresh, describeUpdateStarting,
+} from '@/components/pwa/appRefreshCopy';
 import { DEMO_EMAIL } from '@/components/DemoBanner';
 
 /**
  * Secondary header actions (theme, refresh, sign out) in one menu so the
  * header never overflows on a phone. Import/export stays in the header.
+ *
+ * "Refresh app & data" is one action for both halves of "make sure I'm looking at the latest":
+ *  - the data on screen, through the shell's single-flight owner (src/app/globalRefresh.ts), and
+ *  - the app itself: it asks the service worker to check for a new version right now and, if one is
+ *    waiting and no workout is in progress, installs it through the same gated applyUpdate() as the banner.
+ * It never clears caches or unregisters the worker. Recovery for a browser stuck on an old worker stays `?sw=off`.
  */
 export const AccountMenu = () => {
   const { user, logout } = useUser();
@@ -34,20 +46,50 @@ export const AccountMenu = () => {
   const globalRefresh = useGlobalRefresh();
   const { refreshing } = useGlobalRefreshSnapshot(globalRefresh);
 
+  const [running, setRunning] = useState(false);
+  const runningRef = useRef(false);
+
+  const busy = running || refreshing;
+
+  const appRefresh = useMemo(
+    () =>
+      createAppRefresh({
+        controller: getPwaController(),
+        // No full-page reload for data. The shell owns refreshing: it reloads every data source the current
+        // page is showing, once, and tells us how it really went.
+        refreshData: async (): Promise<DataRefreshOutcome> => {
+          if (globalRefresh) return { kind: 'result', result: await globalRefresh.run() };
+          // Outside the shell: fall back to the event contract and only claim what is known.
+          return requestAppRefresh() ? { kind: 'requested' } : { kind: 'none' };
+        },
+      }),
+    [globalRefresh],
+  );
+
   const handleRefresh = async () => {
-    // No full-page reload. The shell owns refreshing (src/app/globalRefresh.ts): it reloads every
-    // data source the current page is showing, once, and tells us how it really went.
-    if (!globalRefresh) {
-      // Outside the shell: fall back to the event contract and only claim what is known.
-      if (!requestAppRefresh()) toast.info('Nothing to refresh on this page.');
-      return;
-    }
-    const toastId = toast.loading('Refreshing your data…');
+    if (runningRef.current) return; // repeat taps: the run in progress is the only one
+    runningRef.current = true;
+    setRunning(true);
+    const toastId = toast.loading(REFRESH_LOADING_TOAST);
     try {
-      const { kind, message, description } = describeManualRefresh(await globalRefresh.run());
-      toast[kind](message, { id: toastId, description });
+      let startingShown = false;
+      const result = await appRefresh.run({
+        // Applying may reload the page, so say so first.
+        beforeApply: ({ data }) => {
+          startingShown = true;
+          const { message, description } = describeUpdateStarting(data);
+          toast.info(message, { id: toastId, description, duration: 10_000 });
+        },
+      });
+      if (!(startingShown && result.update === 'applied')) {
+        const { kind, message, description } = describeAppRefresh(result);
+        toast[kind](message, { id: toastId, description });
+      }
     } catch {
-      toast.error("Couldn't refresh your data.", { id: toastId, description: 'Please try again.' });
+      toast.error(REFRESH_UNEXPECTED_ERROR.message, { id: toastId, description: REFRESH_UNEXPECTED_ERROR.description });
+    } finally {
+      runningRef.current = false;
+      setRunning(false);
     }
   };
 
@@ -94,9 +136,9 @@ export const AccountMenu = () => {
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="min-h-10" onSelect={() => void handleRefresh()}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-          {refreshing ? 'Refreshing…' : 'Refresh data'}
+        <DropdownMenuItem className="min-h-10" disabled={busy} aria-busy={busy} onSelect={() => void handleRefresh()}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${busy ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+          {busy ? REFRESH_BUSY_LABEL : REFRESH_ACTION_LABEL}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="min-h-10 text-destructive focus:text-destructive"

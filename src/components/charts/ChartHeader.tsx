@@ -8,25 +8,30 @@ import { cn } from '@/lib/utils';
 
 /**
  * The one header every chart card uses. Nothing else should lay out a chart's title, range / style
- * switches or PDF button (a source guard in tests/chartHeaderContract.test.tsx enforces it).
+ * switches, PDF or full-screen button (source guards in tests/chartHeaderContract.test.tsx enforce it).
  *
- *   wide:    [ icon  Title                              ][ range ][ style ][ PDF ]
- *            [ one-line description                     ]
- *   narrow:  [ icon  Title                              ]
- *            [ one-line description                     ]
- *            [ range                                    ]
- *            [ style  PDF                               ]   <- style and PDF always travel together
+ * ONE layout, at every width, for every chart (a third-width, half-width or full-width card all look alike):
  *
- * - The title block is as wide as the title itself and takes any spare width; the controls group keeps its
- *   natural width, so it sits on the right when title + controls fit and drops UNDER the title, left aligned,
- *   when they do not. The description is its own full-width row (phones: right under the title, so it reads
- *   with it; sm and up: after the controls).
- * - Inside the controls group the range is one unit and style + actions + PDF are a second, never-split
- *   unit, so the PDF button can only wrap together with the style switch, never alone.
- * - The pop-out (full screen) button is part of the same actions unit, after PDF, so neither can strand alone.
- *   Every chart card must decide: `viewer={{ render }}` to offer the full-screen viewer (the same controls and
- *   state, a bigger chart) or `viewer={false}` to opt out on purpose.
- * - The whole group is data-html2canvas-ignore: exported PDFs show the title, not the buttons.
+ *   [ icon  Title                          ]   1. title
+ *   [ one-line description                 ]   2. description (optional)
+ *   [ 7D  14D  30D  90D  All               ]   3. control row 1: the date range, always alone
+ *   [ line/bar ]  [ PDF ]  [ full screen ]     4. control row 2: line/bar (if the chart has it), then PDF
+ *                                                 and full screen, always together
+ *   [ badges / change lines (optional)     ]   5. extra full-width rows
+ *
+ * - Range-only charts (no line/bar): row 2 is PDF + full screen. Fixed-window charts (no range): row 1 is
+ *   absent and row 2 is just full screen (+ PDF if the chart has one).
+ * - Nothing is ever placed beside the title: no desktop one-liner, no wrapping surprises. Rows 3 and 4 are
+ *   block rows, so the result does not depend on how wide the card happens to be. Row 2 is a never-wrapping
+ *   unit (about 240px at 320px wide), so PDF and full screen can never strand alone.
+ * - Every control is 44px on touch screens (the shared controls carry that), and the rows may shrink and
+ *   wrap inside the card, so nothing widens the page.
+ * - The full-screen viewer (ChartFullscreenDialog) shows the SAME two rows in the SAME order, built from the
+ *   same pieces with the same setters. From md up it lays row 1 and row 2 out side by side to save height;
+ *   the order and grouping do not change, and it has no second full-screen button.
+ * - Every chart card must decide: `viewer={{ render }}` offers the viewer (a bigger chart with the same state),
+ *   `viewer={false}` opts out on purpose.
+ * - The controls are data-html2canvas-ignore: exported PDFs show the title, not the buttons.
  * - The title is a CardTitle, so level and size come from the parent Card (`titleSize="chart"`).
  */
 
@@ -80,22 +85,32 @@ interface ControlsGroupProps {
   actions?: ReactNode;
   /** The pop-out button. Only the card has it; inside the viewer it would open itself. */
   popOut?: ReactNode;
-  className: string;
+  /** 'card': two stacked rows at every width. 'viewer': the same two rows, side by side from md up. */
+  layout: 'card' | 'viewer';
 }
 
+const GROUP_CLASS: Record<ControlsGroupProps['layout'], string> = {
+  card: 'flex min-w-0 max-w-full flex-col items-start gap-2',
+  viewer: 'flex min-w-0 max-w-full flex-col items-start gap-2 md:flex-row md:flex-wrap md:items-center md:gap-x-3',
+};
+
 /**
- * Range, then one never-split actions unit: style, extra actions, PDF, pop-out. Used by the card and, with the
- * card's own setters, by the full-screen viewer, so both always show and change the same state.
+ * Row 1: the range. Row 2 (a never-split unit): style, extra actions, PDF, full screen.
+ * The card and the full-screen viewer both render this, so they always show and change the same state.
  */
-const ChartControlsGroup = ({ title, view, pdf, actions, popOut, className }: ControlsGroupProps) => {
+const ChartControlsGroup = ({ title, view, pdf, actions, popOut, layout }: ControlsGroupProps) => {
   const hasStyle = !!view?.style && !!view.setStyle;
   const hasTrailing = hasStyle || !!pdf || !!actions || !!popOut;
   if (!view && !hasTrailing) return null;
   return (
-    <div data-chart-controls="" data-html2canvas-ignore="true" className={className}>
-      {view && <ChartRangeControls range={view.range} setRange={view.setRange} extended={view.extended} label={title} />}
+    <div data-chart-controls="" data-chart-layout={layout} data-html2canvas-ignore="true" className={GROUP_CLASS[layout]}>
+      {view && (
+        <div data-chart-controls-row="range" className="min-w-0 max-w-full">
+          <ChartRangeControls range={view.range} setRange={view.setRange} extended={view.extended} label={title} />
+        </div>
+      )}
       {hasTrailing && (
-        <div data-chart-actions="" className="flex shrink-0 items-center gap-2">
+        <div data-chart-controls-row="actions" data-chart-actions="" className="flex shrink-0 items-center gap-2">
           {hasStyle && <ChartStyleControl style={view!.style!} setStyle={view!.setStyle!} label={title} />}
           {actions}
           {pdf && <ChartPdfButton targetRef={pdf.targetRef} title={title} subtitle={pdf.subtitle} columns={pdf.columns} rows={pdf.rows} />}
@@ -115,30 +130,19 @@ export const ChartHeader = ({ title, icon, description, view, pdf, actions, view
     </DialogTrigger>
   ) : null;
   return (
-    // Dialog is state only (it draws nothing itself): the trigger sits in the actions unit, the viewer portals to <body>.
+    // Dialog is state only (it draws nothing itself): the trigger sits in the actions row, the viewer portals to <body>.
     <Dialog>
-      <CardHeader className={cn('space-y-2 pb-2', className)} data-chart-header="">
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-          <div className="order-1 min-w-0 flex-auto">
-            {/* Same height as the controls from sm up, so a one-line title lines up with them. */}
-            <div className="flex items-center sm:min-h-8 sm:[@media(pointer:coarse)]:min-h-11">
-              <CardTitle className="flex min-w-0 items-center gap-2 leading-tight">
-                {icon && <span aria-hidden="true" className="contents">{icon}</span>}
-                {title}
-              </CardTitle>
-            </div>
+      <CardHeader className={cn('space-y-3 pb-2', className)} data-chart-header="">
+        <div data-chart-text="" className="min-w-0 space-y-1">
+          <div className="flex items-center">
+            <CardTitle className="flex min-w-0 items-center gap-2 leading-tight">
+              {icon && <span aria-hidden="true" className="contents">{icon}</span>}
+              {title}
+            </CardTitle>
           </div>
-          <ChartControlsGroup
-            title={title}
-            view={view}
-            pdf={pdf}
-            actions={actions}
-            popOut={popOut}
-            className="order-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:order-2"
-          />
-          {/* Its own full-width row, so it never wraps beside the controls. Phones: right under the title. From sm up: under the controls. */}
-          {description && <div className="order-2 -mt-2 min-w-0 basis-full text-sm text-muted-foreground sm:order-3 sm:mt-0">{description}</div>}
+          {description && <div data-chart-description="" className="min-w-0 text-sm text-muted-foreground">{description}</div>}
         </div>
+        <ChartControlsGroup title={title} view={view} pdf={pdf} actions={actions} popOut={popOut} layout="card" />
         {children}
       </CardHeader>
       {viewer && (
@@ -148,15 +152,7 @@ export const ChartHeader = ({ title, icon, description, view, pdf, actions, view
           description={description}
           captureRef={viewerCaptureRef}
           viewer={viewer}
-          controls={
-            <ChartControlsGroup
-              title={title}
-              view={view}
-              pdf={pdf && { ...pdf, targetRef: viewerCaptureRef }}
-              actions={actions}
-              className="flex min-w-0 max-w-full flex-wrap items-center gap-2"
-            />
-          }
+          controls={<ChartControlsGroup title={title} view={view} pdf={pdf && { ...pdf, targetRef: viewerCaptureRef }} actions={actions} layout="viewer" />}
         >
           {children}
         </ChartFullscreenDialog>

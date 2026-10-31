@@ -8,7 +8,11 @@
 //                                             (applyUpdate({ allowDuringWorkout: true }) exists for an
 //                                             explicit "update anyway" choice; the workout is kept and restored.)
 //  - Nothing in this file ever reloads on its own. Only applyUpdate() can, and only after decideApply().
+//  - checkForUpdate({ force: true }) is the explicit "look now" used by the account menu's "Refresh app & data".
+//    It only asks the browser to fetch the worker file (see updateCheck.ts). It never applies, unregisters or
+//    clears anything; a waiting version shows up in state.needRefresh and goes through the same gate as always.
 import { decideApply, hasActiveWorkout, updateStatus, type ApplyOptions, type UpdateStatus } from './swPolicy';
+import { CHECK_TIMEOUT_MS, defaultSchedule, type Schedule } from './updateCheck';
 
 export interface PwaState {
   /** This browser can run service workers. */
@@ -30,18 +34,41 @@ export interface PwaState {
 
 export type ApplyResult = 'applied' | 'blocked' | 'nothing-to-apply';
 
+/**
+ * How a look for a new version ended:
+ *  - checked:     the browser really asked the server (a waiting version, if any, is in state.needRefresh)
+ *  - skipped:     the automatic check was not due yet, or the device is offline (nothing was asked)
+ *  - failed:      the check threw or took too long
+ *  - unavailable: no worker is registered here (dev build, ?sw=off, unsupported browser)
+ */
+export type CheckResult = 'checked' | 'skipped' | 'failed' | 'unavailable';
+
+export interface CheckOptions {
+  /** An explicit user action: skip the normal minimum gap between checks. */
+  force?: boolean;
+}
+
 type StorageReader = { getItem(key: string): string | null } | null;
 type Updater = (reloadPage?: boolean) => Promise<void> | void;
+/** Does the actual look (register.ts wires it to registration.update()). Resolves 'skipped' when it chose not to ask. */
+export type Checker = (options: { force: boolean }) => Promise<'checked' | 'skipped'>;
 
 export interface UpdateControllerDeps {
   storage: StorageReader;
   now?: () => number;
+  /** Timer used for the overall time limit of a check. Injected so tests are deterministic. */
+  schedule?: Schedule;
+  checkTimeoutMs?: number;
 }
 
 export const createUpdateController = (deps: UpdateControllerDeps) => {
   const now = deps.now ?? Date.now;
   const listeners = new Set<() => void>();
   let updater: Updater | null = null;
+  let checker: Checker | null = null;
+  let inflightCheck: Promise<CheckResult> | null = null;
+  const schedule = deps.schedule ?? defaultSchedule;
+  const checkTimeoutMs = deps.checkTimeoutMs ?? CHECK_TIMEOUT_MS;
   let base = { supported: false, registered: false, disabled: false, offlineReady: false, needRefresh: false, lastCheckedAt: null as number | null, error: null as string | null };
   let state: PwaState = derive();
 
@@ -85,6 +112,43 @@ export const createUpdateController = (deps: UpdateControllerDeps) => {
     /** Provide the function that activates the waiting worker (from virtual:pwa-register). */
     setUpdater: (fn: Updater | null) => {
       updater = fn;
+    },
+    /** Provide the function that looks for a new version (from register.ts). Null when no worker is registered. */
+    setChecker: (fn: Checker | null) => {
+      checker = fn;
+    },
+    /**
+     * Look for a new version. Single flight: callers that arrive while a check runs share it (a forced call
+     * that joins an automatic one gets that same check, which is already as fresh as it can be). Never
+     * rejects and never applies anything: a waiting version only shows up in getState().needRefresh.
+     * Takes at most `checkTimeoutMs`, so an explicit action can never hang on a stalled network.
+     */
+    checkForUpdate: (options: CheckOptions = {}): Promise<CheckResult> => {
+      if (!checker) return Promise.resolve('unavailable');
+      if (inflightCheck) return inflightCheck;
+      const run = checker;
+      const attempt = new Promise<CheckResult>((resolve) => {
+        let done = false;
+        let cancel: () => void = () => {};
+        const settle = (result: CheckResult) => {
+          if (done) return;
+          done = true;
+          cancel();
+          resolve(result);
+        };
+        cancel = schedule(() => settle('failed'), checkTimeoutMs);
+        Promise.resolve()
+          .then(() => run({ force: !!options.force }))
+          .then((outcome) => {
+            if (outcome === 'checked') patch({ lastCheckedAt: now() });
+            settle(outcome);
+          })
+          .catch(() => settle('failed'));
+      }).finally(() => {
+        inflightCheck = null;
+      });
+      inflightCheck = attempt;
+      return attempt;
     },
     /** Hide the "ready to work offline" notice. */
     dismissOfflineReady: () => patch({ offlineReady: false }),

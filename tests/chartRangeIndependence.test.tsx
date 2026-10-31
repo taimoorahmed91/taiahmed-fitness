@@ -192,7 +192,8 @@ describe('chart controls never widen the page', () => {
   test('wrappers can shrink and wrap inside the card', () => {
     assert.equal(/shrink-0/.test(src), false);
     assert.match(src, /<div className="min-w-0 max-w-full" data-html2canvas-ignore="true">/);
-    assert.match(src, /className="flex min-w-0 max-w-full flex-wrap items-center gap-2"/);
+    // The old one-row "range + style" group is gone: ChartHeader owns the two-row layout.
+    assert.equal(/export const ChartViewControls\b/.test(src), false);
     assert.match(src, /className="max-w-full flex-wrap \[&>button\]:px-2"/);
   });
   test('touch targets are still 44px (the shared control keeps its coarse-pointer sizes)', () => {

@@ -177,6 +177,32 @@ describe('mounted: full-screen chart viewer', () => {
     assert.equal(d.querySelector('[aria-label="Close full screen view"]')?.getAttribute('data-html2canvas-ignore'), 'true');
   });
 
+  /** Ordered parts of a controls group, read from the live DOM. */
+  const order = (root: ParentNode) => [...root.querySelectorAll('[data-chart-controls-row], [aria-label$="chart type"], [aria-label^="Download"], [data-chart-expand]')].map((e) =>
+    e.hasAttribute('data-chart-controls-row') ? `row:${e.getAttribute('data-chart-controls-row')}` : e.hasAttribute('data-chart-expand') ? 'expand' : (e.getAttribute('aria-label') ?? '').startsWith('Download') ? 'pdf' : 'style');
+
+  test('control rows: every card is [range row] then [style?, PDF, full screen]; the viewer keeps the same order without a second full-screen button', async () => {
+    const host = await charts();
+    const headers = [...host.querySelectorAll('[data-chart-header]')];
+    assert.equal(headers.length, 4);
+    const expectCard = { 'Weight Trend': ['row:range', 'row:actions', 'style', 'pdf', 'expand'], Sleep: ['row:range', 'row:actions', 'style', 'pdf', 'expand'], 'Calories by Time of Day': ['row:range', 'row:actions', 'pdf', 'expand'], 'Protein: Actual vs Target': ['row:range', 'row:actions', 'style', 'pdf', 'expand'] } as Record<string, string[]>;
+    for (const h of headers) {
+      const title = h.querySelector('h3')!.textContent!;
+      assert.deepEqual(order(h), expectCard[title], title);
+      // Range row and actions row are siblings: the range is alone in its row, at every width.
+      const rows = [...h.querySelectorAll('[data-chart-controls-row]')];
+      assert.equal(rows[0].querySelectorAll('button, [role="radio"]').length, 4, `${title}: only the four range options in row 1`);
+      assert.equal(rows[0].querySelector('[data-chart-actions]'), null);
+    }
+    for (const title of ['Weight Trend', 'Calories by Time of Day']) {
+      const d = await open(title);
+      assert.equal(d.querySelector('[data-chart-controls]')?.getAttribute('data-chart-layout'), 'viewer');
+      assert.deepEqual(order(d.querySelector('[data-chart-controls]')!), expectCard[title].filter((p) => p !== 'expand'), `${title} viewer`);
+      await act(async () => click(env.window, d.querySelector('[aria-label="Close full screen view"]')!));
+      await flush(30);
+    }
+  });
+
   test('Escape closes the viewer and focus returns to the pop-out button', async () => {
     await charts();
     const trigger = expandButton('Weight Trend');
