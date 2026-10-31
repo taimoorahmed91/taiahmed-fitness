@@ -178,13 +178,13 @@ import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
              .lte('date', weekEndStr);
            achievedValue = (meals || []).reduce((sum, m) => sum + m.calories, 0);
          } else if (goal.category === 'workouts') {
-           const { count } = await supabase
+           const { data: gymDays } = await supabase
              .from('fittrack_gym_sessions')
-             .select('*', { count: 'exact', head: true })
+             .select('date')
              .eq('user_id', user.id)
              .gte('date', weekKey)
              .lte('date', weekEndStr);
-           achievedValue = count || 0;
+           achievedValue = new Set((gymDays || []).map((g) => g.date)).size;
          } else if (goal.category === 'sleep') {
            const { data: sleepData } = await supabase
              .from('fittrack_sleep')

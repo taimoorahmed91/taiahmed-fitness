@@ -131,9 +131,9 @@ export const useGoals = () => {
           if (mealsError) throw mealsError;
           currentValue = (meals || []).reduce((sum, m) => sum + m.calories, 0);
         } else if (goal.category === 'workouts') {
-          const { count, error: countError } = await supabase.from('fittrack_gym_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
+          const { data: gymDays, error: countError } = await supabase.from('fittrack_gym_sessions').select('date').eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
           if (countError) throw countError;
-          currentValue = count || 0;
+          currentValue = new Set((gymDays || []).map((g) => g.date)).size;
         } else if (goal.category === 'sleep') {
           const { data: sleepData, error: sleepError } = await supabase.from('fittrack_sleep').select('hours').eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
           if (sleepError) throw sleepError;
