@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -40,17 +41,18 @@ export const DataFilter = ({
     <div className="flex flex-col gap-3">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
             maxLength={100}
+            aria-label={searchPlaceholder}
           />
         </div>
         <Select value={timeFilter} onValueChange={onTimeFilterChange}>
-          <SelectTrigger className="w-full sm:w-[180px] bg-card">
+          <SelectTrigger className="w-full sm:w-[180px] bg-card" aria-label="Filter by time">
             <SelectValue placeholder="Filter by time" />
           </SelectTrigger>
           <SelectContent className="bg-popover z-50">
@@ -118,9 +120,9 @@ export const DataFilter = ({
             </PopoverContent>
           </Popover>
           {hasCustomRange && (
-            <Button variant="ghost" size="icon" onClick={clearDateRange} title="Clear date range">
-              <X className="h-4 w-4" />
-            </Button>
+            <IconButton label="Clear date range" tooltip onClick={clearDateRange}>
+              <X />
+            </IconButton>
           )}
         </div>
       )}

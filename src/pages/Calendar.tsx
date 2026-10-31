@@ -1,355 +1,206 @@
-import { useState, useMemo } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns';
-import { Navigation } from '@/components/Navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCallback, useMemo, useState } from 'react';
+import { ArrowDown, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/layout/Page';
+import { IconButton } from '@/components/ui/icon-button';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { DataLoadError } from '@/components/feedback/DataLoadError';
+import { PartialDataNotice } from '@/components/feedback/PartialDataNotice';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Utensils, Dumbbell, Scale, Moon, Ruler, FileText } from 'lucide-react';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useWeight } from '@/hooks/useWeight';
 import { useSleep } from '@/hooks/useSleep';
 import { useWaist } from '@/hooks/useWaist';
-import { useDailyNotes, DailyNote } from '@/hooks/useDailyNotes';
-import { cn } from '@/lib/utils';
+import { useDailyNotes } from '@/hooks/useDailyNotes';
+import { useSharedTableState } from '@/lib/sharedTable';
+import { DayDetail, CALENDAR_DAY_ID } from '@/components/calendar/DayDetail';
+import { MonthGrid } from '@/components/calendar/MonthGrid';
+import { MonthStats } from '@/components/calendar/MonthStats';
+import {
+  CALENDAR_TABLES,
+  FILTER_OPTIONS,
+  TABLE_LABEL,
+  formatBriefDay,
+  formatMonthLabel,
+  groupEntriesByDate,
+  joinTableLabels,
+  monthOf,
+  monthStats,
+  monthSubtitle,
+  resolveCalendarAvailability,
+  shiftMonth,
+  stepDay,
+  summarizeDay,
+  todayIso,
+  type CalendarTable,
+  type DisplayFilter,
+} from '@/components/calendar/calendarModel';
 
-type DisplayFilter = 'all' | 'meals' | 'gym' | 'weight' | 'sleep' | 'waist' | 'notes';
-
-interface DayEntry {
-  type: 'meal' | 'gym' | 'weight' | 'sleep' | 'waist' | 'note';
-  data: any;
-}
-
+/**
+ * Calendar: the month on one side, the selected day's agenda on the other (stacked below on phones).
+ * All dates are plain "YYYY-MM-DD" days and "today" is the UTC day, like every other page.
+ */
 const Calendar = () => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const today = todayIso();
+  const [month, setMonth] = useState(() => monthOf(today));
   const [displayFilter, setDisplayFilter] = useState<DisplayFilter>('all');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // Start on today so the detail panel is never an empty "pick a date" box.
+  const [selected, setSelected] = useState<string>(today);
 
-  const { meals } = useMeals();
-  const { sessions } = useGymSessions();
-  const { entries: weightEntries } = useWeight();
-  const { entries: sleepEntries } = useSleep();
-  const { entries: waistEntries } = useWaist();
-  const { notes } = useDailyNotes();
+  const { meals, refetch: refetchMeals } = useMeals();
+  const { sessions, refetch: refetchGym } = useGymSessions();
+  const { entries: weightEntries, refetch: refetchWeight } = useWeight();
+  const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
+  const { entries: waistEntries, refetch: refetchWaist } = useWaist();
+  const { notes, refetch: refetchNotes } = useDailyNotes();
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  // Get the first day of the month to know where to start in the grid
-  const startDayOfWeek = monthStart.getDay();
-  const paddingDays = Array(startDayOfWeek).fill(null);
-
-  // Combine all entries by date
-  const entriesByDate = useMemo(() => {
-    const map = new Map<string, DayEntry[]>();
-
-    if (displayFilter === 'all' || displayFilter === 'meals') {
-      meals.forEach((meal) => {
-        const dateKey = meal.date;
-        const existing = map.get(dateKey) || [];
-        existing.push({ type: 'meal', data: meal });
-        map.set(dateKey, existing);
-      });
-    }
-
-    if (displayFilter === 'all' || displayFilter === 'gym') {
-      sessions.forEach((session) => {
-        const dateKey = session.date;
-        const existing = map.get(dateKey) || [];
-        existing.push({ type: 'gym', data: session });
-        map.set(dateKey, existing);
-      });
-    }
-
-    if (displayFilter === 'all' || displayFilter === 'weight') {
-      weightEntries.forEach((entry) => {
-        const dateKey = entry.date;
-        const existing = map.get(dateKey) || [];
-        existing.push({ type: 'weight', data: entry });
-        map.set(dateKey, existing);
-      });
-    }
-
-    if (displayFilter === 'all' || displayFilter === 'sleep') {
-      sleepEntries.forEach((entry) => {
-        const dateKey = entry.date;
-        const existing = map.get(dateKey) || [];
-        existing.push({ type: 'sleep', data: entry });
-        map.set(dateKey, existing);
-      });
-    }
-
-    if (displayFilter === 'all' || displayFilter === 'waist') {
-      waistEntries.forEach((entry) => {
-        const dateKey = entry.date;
-        const existing = map.get(dateKey) || [];
-        existing.push({ type: 'waist', data: entry });
-        map.set(dateKey, existing);
-      });
-    }
-
-    if (displayFilter === 'all' || displayFilter === 'notes') {
-      notes.forEach((note) => {
-        const dateKey = note.date;
-        const existing = map.get(dateKey) || [];
-        existing.push({ type: 'note', data: note });
-        map.set(dateKey, existing);
-      });
-    }
-
-    return map;
-  }, [meals, sessions, weightEntries, sleepEntries, waistEntries, notes, displayFilter]);
-
-  const getEntriesForDate = (date: Date) => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    return entriesByDate.get(dateKey) || [];
+  // Where each table really is. Counts, "nothing logged" and empty days only mean something once the tables the
+  // current view needs have loaded: a failed first load means UNKNOWN, never zero.
+  const availability = resolveCalendarAvailability(displayFilter, {
+    meals: useSharedTableState('meals'),
+    gym_sessions: useSharedTableState('gym_sessions'),
+    weight: useSharedTableState('weight'),
+    waist: useSharedTableState('waist'),
+    sleep: useSharedTableState('sleep'),
+    daily_notes: useSharedTableState('daily_notes'),
+  });
+  const { mode } = availability;
+  const loading = mode === 'loading';
+  const unavailable = mode === 'unavailable';
+  const retryers: Record<CalendarTable, () => Promise<void>> = {
+    meals: refetchMeals,
+    gym_sessions: refetchGym,
+    weight: refetchWeight,
+    waist: refetchWaist,
+    sleep: refetchSleep,
+    daily_notes: refetchNotes,
+  };
+  // Reload only what failed or went stale. Joins any fetch already running and never rejects.
+  const retryMissing = async () => {
+    await Promise.all([...availability.failed, ...availability.stale].map((t) => retryers[t]()));
   };
 
-  const getEntryIcon = (type: string) => {
-    switch (type) {
-      case 'meal':
-        return <Utensils className="h-3 w-3 text-primary" />;
-      case 'gym':
-        return <Dumbbell className="h-3 w-3 text-chart-2" />;
-      case 'weight':
-        return <Scale className="h-3 w-3 text-chart-min" />;
-      case 'sleep':
-        return <Moon className="h-3 w-3 text-chart-5" />;
-      case 'waist':
-        return <Ruler className="h-3 w-3 text-chart-3" />;
-      case 'note':
-        return <FileText className="h-3 w-3 text-destructive" />;
-      default:
-        return null;
-    }
+  const sources = useMemo(
+    () => ({ meals, sessions, weight: weightEntries, sleep: sleepEntries, waist: waistEntries, notes }),
+    [meals, sessions, weightEntries, sleepEntries, waistEntries, notes],
+  );
+  const entriesByDate = useMemo(() => groupEntriesByDate(sources, displayFilter), [sources, displayFilter]);
+  const stats = useMemo(() => monthStats(month, sources), [month, sources]);
+
+  const selectedEntries = entriesByDate.get(selected) ?? [];
+  const selectedSummary = summarizeDay(selectedEntries);
+
+  const goToToday = () => {
+    setMonth(monthOf(today));
+    setSelected(today);
+  };
+  // Stepping a day can cross into another month; the grid follows so the selected day is always on screen.
+  const stepSelected = (delta: -1 | 1) => {
+    const next = stepDay(selected, delta);
+    setSelected(next);
+    setMonth(monthOf(next));
   };
 
-  const selectedDateEntries = selectedDate ? getEntriesForDate(selectedDate) : [];
-
-  const renderEntryDetails = (entry: DayEntry) => {
-    switch (entry.type) {
-      case 'meal':
-        return (
-          <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Utensils className="h-4 w-4 text-primary" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">{entry.data.food}</p>
-              <p className="text-xs text-muted-foreground">{entry.data.calories} cal at {entry.data.time}</p>
-            </div>
-          </div>
-        );
-      case 'gym':
-        return (
-          <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Dumbbell className="h-4 w-4 text-chart-2" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">{entry.data.exercise}</p>
-              <p className="text-xs text-muted-foreground">{entry.data.duration} minutes</p>
-            </div>
-          </div>
-        );
-      case 'weight':
-        return (
-          <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Scale className="h-4 w-4 text-chart-min" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">{entry.data.weight} kg</p>
-              {entry.data.notes && <p className="text-xs text-muted-foreground">{entry.data.notes}</p>}
-            </div>
-          </div>
-        );
-      case 'sleep':
-        return (
-          <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Moon className="h-4 w-4 text-chart-5" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">{entry.data.hours} hours</p>
-              {entry.data.notes && <p className="text-xs text-muted-foreground">{entry.data.notes}</p>}
-            </div>
-          </div>
-        );
-      case 'waist':
-        return (
-          <div className="flex items-center gap-2 p-2 rounded bg-muted/50">
-            <Ruler className="h-4 w-4 text-chart-3" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">{entry.data.waist} cm</p>
-              {entry.data.notes && <p className="text-xs text-muted-foreground">{entry.data.notes}</p>}
-            </div>
-          </div>
-        );
-      case 'note':
-        const note = entry.data as DailyNote;
-        return (
-          <div className="flex items-start gap-2 p-2 rounded bg-destructive/10 border border-destructive/20">
-            <FileText className="h-4 w-4 text-destructive mt-0.5" />
-            <div className="flex-1">
-              <div className="flex flex-wrap gap-1 mb-1">
-                {note.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs py-0">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-              {note.severity && (
-                <p className="text-xs text-muted-foreground">Severity: {note.severity}/5</p>
-              )}
-              {note.notes && <p className="text-xs text-muted-foreground">{note.notes}</p>}
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
+  // Phones: the agenda sits below the grid. Move there and focus its heading so everyone arrives.
+  const jumpToDay = useCallback(() => {
+    const section = document.getElementById(CALENDAR_DAY_ID);
+    if (!section) return;
+    const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    section.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    section.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-8">
-          <CalendarIcon className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Calendar View</h1>
-        </div>
+    <PageContainer>
+      <PageHeader icon={CalendarIcon} title="Calendar View" description="See everything you logged, day by day" />
 
-        {(() => {
-          const prefix = format(currentMonth, 'yyyy-MM');
-          const inMonth = (d: string) => d.startsWith(prefix);
-          const tiles = [
-            { icon: Utensils, label: 'Days with meals', value: new Set(meals.filter((m) => inMonth(m.date)).map((m) => m.date)).size, tone: 'text-primary' },
-            { icon: Dumbbell, label: 'Workouts', value: sessions.filter((s) => inMonth(s.date)).length, tone: 'text-chart-2' },
-            { icon: Scale, label: 'Weigh-ins', value: weightEntries.filter((e) => inMonth(e.date)).length, tone: 'text-chart-min' },
-            { icon: Moon, label: 'Sleep logs', value: sleepEntries.filter((e) => inMonth(e.date)).length, tone: 'text-chart-5' },
-            { icon: Ruler, label: 'Waist logs', value: waistEntries.filter((e) => inMonth(e.date)).length, tone: 'text-chart-3' },
-            { icon: FileText, label: 'Notes', value: notes.filter((n) => inMonth(n.date)).length, tone: 'text-destructive' },
-          ];
-          return (
-            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {tiles.map((t) => (
-                <Card key={t.label}>
-                  <CardContent className="p-3">
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <t.icon className={cn('h-3.5 w-3.5', t.tone)} /> {t.label}
-                    </p>
-                    <p className="mt-1 text-xl font-bold">{t.value}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          );
-        })()}
+      {/* A persistent notice (not a toast) when only SOME areas failed or went stale. The total-failure state explains itself in the calendar. */}
+      {!unavailable && (
+        <PartialDataNotice
+          failed={availability.failed.map((t) => TABLE_LABEL[t])}
+          stale={availability.stale.map((t) => TABLE_LABEL[t])}
+          onRetry={retryMissing}
+        />
+      )}
 
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Calendar Grid */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <CardTitle>{format(currentMonth, 'MMMM yyyy')}</CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <Select value={displayFilter} onValueChange={(v: DisplayFilter) => setDisplayFilter(v)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Entries</SelectItem>
-                  <SelectItem value="meals">Meals Only</SelectItem>
-                  <SelectItem value="gym">Gym Only</SelectItem>
-                  <SelectItem value="weight">Weight Only</SelectItem>
-                  <SelectItem value="sleep">Sleep Only</SelectItem>
-                  <SelectItem value="waist">Waist Only</SelectItem>
-                  <SelectItem value="notes">Notes Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardHeader>
-            <CardContent>
-              {/* Day headers */}
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              {/* Calendar grid */}
-              <div className="grid grid-cols-7 gap-1">
-                {paddingDays.map((_, i) => (
-                  <div key={`padding-${i}`} className="aspect-square" />
-                ))}
-                {daysInMonth.map((day) => {
-                  const entries = getEntriesForDate(day);
-                  const isToday = isSameDay(day, new Date());
-                  const isSelected = selectedDate && isSameDay(day, selectedDate);
-                  const uniqueTypes = [...new Set(entries.map((e) => e.type))];
-                  const hasNote = uniqueTypes.includes('note');
-
-                  return (
-                    <button
-                      key={day.toISOString()}
-                      onClick={() => setSelectedDate(day)}
-                      className={cn(
-                        'aspect-square p-1 rounded-lg border transition-colors flex flex-col items-center justify-start gap-1',
-                        isToday && 'border-primary',
-                        isSelected && 'bg-primary/10 border-primary',
-                        hasNote && 'bg-destructive/5',
-                        !isToday && !isSelected && 'border-transparent hover:bg-muted/50'
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'text-sm font-medium',
-                          isToday && 'text-primary',
-                          !isSameMonth(day, currentMonth) && 'text-muted-foreground'
-                        )}
-                      >
-                        {format(day, 'd')}
-                      </span>
-                      {uniqueTypes.length > 0 && (
-                        <div className="flex gap-0.5 flex-wrap justify-center">
-                          {uniqueTypes.slice(0, 4).map((type) => (
-                            <span key={type}>{getEntryIcon(type)}</span>
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Selected Day Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {selectedDate ? format(selectedDate, 'EEEE, MMM d, yyyy') : 'Select a Date'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!selectedDate ? (
-                <p className="text-muted-foreground text-sm">Click on a date to see entries</p>
-              ) : selectedDateEntries.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No entries for this date</p>
-              ) : (
-                <div className="space-y-2">
-                  {selectedDateEntries.map((entry, idx) => (
-                    <div key={idx}>{renderEntryDetails(entry)}</div>
-                  ))}
+      <section aria-labelledby="calendar-month-heading" className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)] lg:items-start">
+        {/* On phones the card runs edge to edge (cancelling the page gutter) so seven columns can each be 44px wide at 320px. */}
+        <Card className="-mx-4 min-w-0 rounded-none border-x-0 sm:mx-0 sm:rounded-lg sm:border-x">
+          <CardContent className="space-y-3 px-0 pb-3 pt-3 sm:p-[var(--card-pad)]">
+            <div className="flex flex-col gap-2 px-3 sm:flex-row sm:items-center sm:justify-between sm:px-0">
+              <div className="flex items-center justify-between gap-1 sm:justify-start">
+                <IconButton label="Previous month" tooltip onClick={() => setMonth(shiftMonth(month, -1))}>
+                  <ChevronLeft />
+                </IconButton>
+                <div className="min-w-0 flex-1 text-center sm:min-w-[11rem] sm:flex-none">
+                  <h2 id="calendar-month-heading" aria-live="polite" className="text-lg font-semibold leading-tight tracking-tight">
+                    {formatMonthLabel(month)}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">{monthSubtitle(availability, stats.daysLogged)}</p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+                <IconButton label="Next month" tooltip onClick={() => setMonth(shiftMonth(month, 1))}>
+                  <ChevronRight />
+                </IconButton>
+              </div>
+              <div className="flex min-w-0 items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={goToToday}>
+                  Today
+                </Button>
+                <Select value={displayFilter} onValueChange={(v: DisplayFilter) => setDisplayFilter(v)}>
+                  <SelectTrigger className="min-w-0 flex-1 sm:w-[10.5rem] sm:flex-none" aria-label="Filter calendar entries">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FILTER_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {unavailable ? (
+              <div className="mx-3 sm:mx-0">
+                <DataLoadError
+                  title="We couldn't load your entries"
+                  description={`Your ${joinTableLabels(availability.failed)} didn't load, so the month, its totals and the day's agenda are paused. Nothing was lost.`}
+                  onRetry={retryMissing}
+                  minHeightClassName="min-h-[16rem]"
+                  className="border-dashed shadow-none"
+                />
+              </div>
+            ) : (
+              <>
+                <MonthGrid month={month} entriesByDate={entriesByDate} selected={selected} today={today} loading={loading} missing={availability.missing} onSelect={setSelected} />
+
+                {/* Phones and tablets: a one-line reminder of the selected day with a jump to its agenda. */}
+                <div className="mx-3 flex items-center justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2 sm:mx-0 lg:hidden">
+                  <p className="min-w-0 text-sm">
+                    <span className="font-semibold text-foreground">{formatBriefDay(selected)}</span>
+                    <span className="text-muted-foreground">
+                      {' · '}
+                      {loading ? 'loading…' : selectedSummary.total === 0 ? (mode === 'partial' ? 'nothing in loaded data' : 'nothing logged') : selectedSummary.groups.map((g) => g.short).join(' · ')}
+                    </span>
+                  </p>
+                  <Button type="button" size="sm" variant="secondary" className="shrink-0" onClick={jumpToDay}>
+                    Details <ArrowDown aria-hidden="true" />
+                  </Button>
+                </div>
+
+                <div className="mx-3 sm:mx-0">
+                  <MonthStats stats={stats} loading={loading} missing={availability.missing} />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <DayDetail iso={selected} entries={selectedEntries} today={today} loading={loading} filter={displayFilter} mode={mode} missing={availability.failed} onStep={stepSelected} />
+      </section>
+    </PageContainer>
   );
 };
 

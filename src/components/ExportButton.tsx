@@ -1,5 +1,5 @@
 import { Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,9 +40,9 @@ export const ExportButton = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" title="Export Data">
-          <Download className="h-4 w-4" />
-        </Button>
+        <IconButton label="Export data">
+          <Download />
+        </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => handleExport('all')}>

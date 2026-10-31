@@ -14,26 +14,39 @@ export default {
   	},
   	extend: {
   		colors: {
+			'chart-1': 'hsl(var(--chart-1))',
+			'chart-2': 'hsl(var(--chart-2))',
+			'chart-3': 'hsl(var(--chart-3))',
+			'chart-4': 'hsl(var(--chart-4))',
+			'chart-5': 'hsl(var(--chart-5))',
+			'chart-actual': 'hsl(var(--chart-actual))',
   			'chart-min': 'hsl(var(--chart-min))',
   			'chart-max': 'hsl(var(--chart-max))',
-  			'chart-actual': 'hsl(var(--chart-actual))',
+			'chart-warn': 'hsl(var(--chart-warn))',
+			'progress-track': 'hsl(var(--progress-track))',
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
-  			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
-  			},
-  			secondary: {
-  				DEFAULT: 'hsl(var(--secondary))',
-  				foreground: 'hsl(var(--secondary-foreground))'
-  			},
-  			destructive: {
-  				DEFAULT: 'hsl(var(--destructive))',
-  				foreground: 'hsl(var(--destructive-foreground))'
-  			},
+			primary: {
+				DEFAULT: 'hsl(var(--primary))',
+				foreground: 'hsl(var(--primary-foreground))',
+				hover: 'hsl(var(--primary-hover))',
+				active: 'hsl(var(--primary-active))'
+			},
+			secondary: {
+				DEFAULT: 'hsl(var(--secondary))',
+				foreground: 'hsl(var(--secondary-foreground))',
+				hover: 'hsl(var(--secondary-hover))',
+				active: 'hsl(var(--secondary-active))'
+			},
+			destructive: {
+				DEFAULT: 'hsl(var(--destructive))',
+				foreground: 'hsl(var(--destructive-foreground))',
+				hover: 'hsl(var(--destructive-hover))',
+				active: 'hsl(var(--destructive-active))'
+			},
   			muted: {
   				DEFAULT: 'hsl(var(--muted))',
   				foreground: 'hsl(var(--muted-foreground))'

@@ -1,57 +1,56 @@
-import { shouldShowFetchError } from '@/lib/fetchErrorToast';
-import { useState, useEffect } from 'react';
 import { GymSession } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
-import { useToast } from '@/hooks/use-toast';
+import type { Tables, TablesUpdate } from '@/integrations/supabase/types';
+import { getSessionUser } from '@/lib/authSession';
+import { toast } from 'sonner';
 import { logActivity } from '@/hooks/useActivityLog';
+import { useSharedTable } from '@/lib/sharedTable';
+import { byDateDesc, upsertSorted, removeById, errorText } from '@/lib/sharedData';
+
+const mapSession = (session: Tables<'fittrack_gym_sessions'>): GymSession => ({
+  id: session.id,
+  exercise: session.exercise,
+  duration: session.duration,
+  date: session.date,
+  notes: session.notes || undefined,
+  start_time: session.start_time || undefined,
+  end_time: session.end_time || undefined,
+});
+
+const fetchAllSessions = async (userId: string): Promise<GymSession[]> => {
+  const { data, error } = await supabase
+    .from('fittrack_gym_sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return (data || []).map(mapSession);
+};
 
 export const useGymSessions = () => {
-  const [sessions, setSessions] = useState<GymSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  // One shared query per signed-in user: Dashboard, Gym, Calendar, reports... all read the same sessions.
+  const { data: sessions, loading, refetch, patch, invalidate } = useSharedTable<GymSession>({
+    table: 'gym_sessions',
+    fetchRows: fetchAllSessions,
+    errorMessage: 'Failed to fetch gym sessions',
+    errorToastKey: 'gym',
+  });
 
-  const fetchSessions = async () => {
-    try {
-      const user = await getSessionUser();
-      if (!user) { setSessions([]); setLoading(false); return; }
-
-      const { data, error } = await supabase
-        .from('fittrack_gym_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-
-      const formattedSessions: GymSession[] = (data || []).map((session) => ({
-        id: session.id,
-        exercise: session.exercise,
-        duration: session.duration,
-        date: session.date,
-        notes: session.notes || undefined,
-        start_time: session.start_time || undefined,
-        end_time: (session as any).end_time || undefined,
-      }));
-
-      setSessions(formattedSessions);
-    } catch (error) {
-      console.error('Error fetching gym sessions:', error);
-      if (shouldShowFetchError('gym')) toast({ title: 'Error', description: 'Failed to fetch gym sessions', variant: 'destructive' });
-    } finally { setLoading(false); }
-  };
-
-  useEffect(() => {
-    fetchSessions();
-    const subscription = onAuthIdentityChange(() => { fetchSessions(); });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const addSession = async (session: Omit<GymSession, 'id'>) => {
+  /**
+   * Saves a finished workout. Rejects on any failure (never resolves quietly).
+   * `expectedUserId`: the account the workout was recorded for. If a different account is signed in by now
+   * (another tab, a switched account) nothing is saved, so one person's workout never lands in another's log.
+   */
+  const addSession = async (session: Omit<GymSession, 'id'>, options: { expectedUserId?: string | null } = {}) => {
     const user = await getSessionUser();
     if (!user) {
-      toast({ title: 'Error', description: 'You must be logged in to add sessions', variant: 'destructive' });
+      toast.error('You must be logged in to add sessions');
       throw new Error('Not logged in');
+    }
+    if (options.expectedUserId && options.expectedUserId !== user.id) {
+      toast.error('A different account is signed in now. Your workout was not saved; it stays on this device for the account that recorded it.');
+      throw new Error('Signed-in account changed');
     }
 
     const { data, error } = await supabase
@@ -69,49 +68,65 @@ export const useGymSessions = () => {
       .single();
 
     if (error) {
-      toast({ title: 'Error', description: 'Failed to add gym session', variant: 'destructive' });
+      toast.error('Failed to add gym session');
       logActivity({ action: 'create', category: 'gym', status: 'error', error_message: error.message, details: { exercise: session.exercise, duration: session.duration, date: session.date } });
       throw error;
     }
 
-    const newSession: GymSession = {
-      id: data.id,
-      exercise: data.exercise,
-      duration: data.duration,
-      date: data.date,
-      notes: data.notes || undefined,
-      start_time: data.start_time || undefined,
-      end_time: data.end_time || undefined,
-    };
-
-    setSessions((prev) => [newSession, ...prev]);
+    const newSession = mapSession(data);
+    patch((prev) => upsertSorted(prev, newSession, byDateDesc), user.id);
     logActivity({ action: 'create', category: 'gym', details: { exercise: session.exercise, duration: session.duration, date: session.date, notes: session.notes, start_time: session.start_time } });
   };
 
-  const updateSession = async (id: string, updates: Partial<Omit<GymSession, 'id'>>) => {
+  /** Resolves `true` only when the server confirmed the change; `false` (never a silent success) otherwise. */
+  const updateSession = async (id: string, updates: Partial<Omit<GymSession, 'id'>>): Promise<boolean> => {
     try {
-      const { error } = await supabase.from('fittrack_gym_sessions').update(updates).eq('id', id);
+      const { data, error } = await supabase
+        .from('fittrack_gym_sessions')
+        .update(updates as TablesUpdate<'fittrack_gym_sessions'>)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
       if (error) throw error;
-      setSessions((prev) => prev.map((session) => (session.id === id ? { ...session, ...updates } : session)));
-      toast({ title: 'Success', description: 'Workout updated successfully' });
+      if (!data) {
+        // No row came back: it no longer exists or this account may not change it (e.g. the read-only demo).
+        // That is not a success. Refresh so the list matches the server.
+        void invalidate();
+        toast.error('Could not update this workout. It may have been removed, or this account cannot change it.');
+        logActivity({ action: 'update', category: 'gym', status: 'error', error_message: 'No row updated', details: { id } });
+        return false;
+      }
+      patch((prev) => upsertSorted(prev, mapSession(data), byDateDesc));
+      toast.success('Workout updated successfully');
       logActivity({ action: 'update', category: 'gym', details: { id, ...updates } });
-    } catch (error: any) {
+      return true;
+    } catch (error) {
       console.error('Error updating gym session:', error);
-      toast({ title: 'Error', description: 'Failed to update gym session', variant: 'destructive' });
-      logActivity({ action: 'update', category: 'gym', status: 'error', error_message: error?.message || 'Failed', details: { id } });
+      toast.error('Failed to update gym session');
+      logActivity({ action: 'update', category: 'gym', status: 'error', error_message: errorText(error, 'Failed'), details: { id } });
+      return false;
     }
   };
 
-  const deleteSession = async (id: string) => {
+  /** Resolves `true` only when a row was really deleted. */
+  const deleteSession = async (id: string): Promise<boolean> => {
     try {
-      const { error } = await supabase.from('fittrack_gym_sessions').delete().eq('id', id);
+      const { data, error } = await supabase.from('fittrack_gym_sessions').delete().eq('id', id).select('id');
       if (error) throw error;
-      setSessions((prev) => prev.filter((session) => session.id !== id));
+      if (!data || data.length === 0) {
+        void invalidate();
+        toast.error('Could not delete this workout. It may already be gone, or this account cannot delete it.');
+        logActivity({ action: 'delete', category: 'gym', status: 'error', error_message: 'No row deleted', details: { id } });
+        return false;
+      }
+      patch((prev) => removeById(prev, id));
       logActivity({ action: 'delete', category: 'gym', details: { id } });
-    } catch (error: any) {
+      return true;
+    } catch (error) {
       console.error('Error deleting gym session:', error);
-      toast({ title: 'Error', description: 'Failed to delete gym session', variant: 'destructive' });
-      logActivity({ action: 'delete', category: 'gym', status: 'error', error_message: error?.message || 'Failed', details: { id } });
+      toast.error('Failed to delete gym session');
+      logActivity({ action: 'delete', category: 'gym', status: 'error', error_message: errorText(error, 'Failed'), details: { id } });
+      return false;
     }
   };
 
@@ -152,20 +167,12 @@ export const useGymSessions = () => {
 
       if (error || !data) return null;
 
-      return {
-        id: data.id,
-        exercise: data.exercise,
-        duration: data.duration,
-        date: data.date,
-        notes: data.notes || undefined,
-        start_time: data.start_time || undefined,
-        end_time: data.end_time || undefined,
-      };
+      return mapSession(data);
     } catch (error) {
       console.error('Error fetching last session:', error);
       return null;
     }
   };
 
-  return { sessions, loading, addSession, updateSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData, getLastSessionByTemplateName, refetch: fetchSessions };
+  return { sessions, loading, addSession, updateSession, deleteSession, getThisWeekSessions, getWeeklyWorkoutData, getLastSessionByTemplateName, refetch };
 };

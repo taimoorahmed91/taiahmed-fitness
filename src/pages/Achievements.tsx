@@ -1,4 +1,4 @@
- import { Navigation } from '@/components/Navigation';
+ import { PageContainer, PageHeader, PageSection, PageLoading } from '@/components/layout/Page';
  import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  import { Badge } from '@/components/ui/badge';
  import { Progress } from '@/components/ui/progress';
@@ -34,14 +34,10 @@
  
    if (loading) {
      return (
-       <div className="min-h-screen bg-background">
-         <Navigation />
-         <main className="container py-6">
-           <div className="flex items-center justify-center py-12">
-             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-           </div>
-         </main>
-       </div>
+       <PageContainer>
+         <PageHeader icon={Trophy} title="Achievements" description="Goals you have met, streaks and badges" />
+         <PageLoading label="Loading achievements" rows={3} stats />
+       </PageContainer>
      );
    }
  
@@ -49,14 +45,10 @@
    const unearnedBadges = stats.badges.filter(b => !b.earned);
  
    return (
-     <div className="min-h-screen bg-background">
-       <Navigation />
-       <main className="container py-6 space-y-6">
-         <div className="flex items-center gap-3">
-           <Trophy className="h-8 w-8 text-primary" />
-           <h1 className="text-3xl font-bold">Achievements</h1>
-         </div>
- 
+     <PageContainer>
+       <PageHeader icon={Trophy} title="Achievements" description="Goals you have met, streaks and badges" />
+
+       <PageSection title="Achievement summary" hideTitle>
          {/* Stats Overview */}
          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
            <Card>
@@ -88,11 +80,13 @@
              </CardContent>
            </Card>
          </div>
- 
+       </PageSection>
+
+       <PageSection title="Badges and goal history" hideTitle>
          {/* Badges */}
          <Card>
            <CardHeader>
-             <CardTitle className="flex items-center gap-2">
+             <CardTitle className="flex items-center gap-2 text-lg">
                <Medal className="h-5 w-5 text-primary" />
                Badges ({earnedBadges.length}/{stats.badges.length})
              </CardTitle>
@@ -109,7 +103,7 @@
              )}
              {earnedBadges.length > 0 && (
                <div className="mb-6">
-                 <h3 className="text-sm font-medium text-muted-foreground mb-3">Earned</h3>
+                 <h4 className="text-sm font-medium text-muted-foreground mb-3">Earned</h4>
                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                    {earnedBadges.map((badge) => {
                      const IconComponent = iconMap[badge.icon] || Trophy;
@@ -132,14 +126,14 @@
  
              {unearnedBadges.length > 0 && (
                <div>
-                 <h3 className="text-sm font-medium text-muted-foreground mb-3">Locked</h3>
+                 <h4 className="text-sm font-medium text-muted-foreground mb-3">Locked</h4>
                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                    {unearnedBadges.map((badge) => {
                      const IconComponent = iconMap[badge.icon] || Trophy;
                      return (
                        <div
                          key={badge.id}
-                         className="flex flex-col items-center p-4 rounded-lg bg-muted/50 border border-border opacity-50"
+                         className="flex flex-col items-center p-4 rounded-lg bg-muted/50 border border-dashed border-border"
                        >
                          <IconComponent className="h-10 w-10 text-muted-foreground mb-2" />
                          <p className="font-medium text-sm text-center">{badge.name}</p>
@@ -164,7 +158,7 @@
          {/* Weekly History */}
          <Card>
            <CardHeader>
-             <CardTitle className="flex items-center gap-2">
+             <CardTitle className="flex items-center gap-2 text-lg">
                <Target className="h-5 w-5 text-primary" />
                Recent Goal History
              </CardTitle>
@@ -213,8 +207,8 @@
              )}
            </CardContent>
          </Card>
-       </main>
-     </div>
+       </PageSection>
+     </PageContainer>
    );
  };
  

@@ -1,14 +1,25 @@
 {
+  "id": "/",
   "name": "FitTrack Fitness",
   "short_name": "FitTrack",
   "description": "Track meals, workouts, weight, sleep and WHOOP recovery in one place.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#111214",
-  "theme_color": "#111214",
+  "theme_color": "#171717",
+  "categories": ["health", "fitness", "lifestyle"],
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Gym", "short_name": "Gym", "url": "/gym", "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Meals", "short_name": "Meals", "url": "/meals", "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
   ]
 }

@@ -13,16 +13,30 @@ export interface DeltaItem {
 const toneFor = (v: number | null) =>
   v === null || v === 0 ? 'text-muted-foreground' : v < 0 ? 'text-chart-min' : 'text-chart-max';
 
+/**
+ * Layout for the small stat tiles under an overview headline. The overview card sits in a half-width column from
+ * 768px up (about 340px wide on a tablet), where four tiles cannot fit in one row, so tiles stay in a 2x2 grid
+ * and only go four-across on wide desktops where the card is wide enough.
+ */
+export const STAT_GRID_CLASS = 'grid grid-cols-2 gap-3 xl:grid-cols-4 [&>*]:min-w-0';
+
+/** One labelled number. The label may wrap between words; the value never splits from its arrow or unit. */
+export const StatTile = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="min-w-0 rounded-lg border bg-muted/30 p-3">
+    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+    <div className="mt-1 text-sm font-semibold tabular-nums">{children}</div>
+  </div>
+);
+
 export const DeltaTile = ({ label, value, unit, decimals = 1 }: DeltaItem & { unit: string; decimals?: number }) => {
   const Icon = value === null || value === 0 ? Minus : value < 0 ? TrendingDown : TrendingUp;
   return (
-    <div className="rounded-lg border bg-muted/30 p-3">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className={cn('mt-1 flex items-center gap-1 text-sm font-semibold', toneFor(value))}>
-        <Icon className="h-3.5 w-3.5" />
+    <StatTile label={label}>
+      <div className={cn('flex items-center gap-1 whitespace-nowrap', toneFor(value))}>
+        <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
         {value === null ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(decimals)} ${unit}`}
       </div>
-    </div>
+    </StatTile>
   );
 };
 
@@ -39,10 +53,10 @@ interface Props {
 }
 
 export const MetricOverviewCard = ({ title, latestLabel, latest, unit, totalEntries, deltas, emptyText, extra }: Props) => (
-  <Card className="h-full">
+  <Card className="h-full" titleSize="chart">
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
-        <Activity className="h-5 w-5 text-primary" />
+        <Activity aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
         {title}
       </CardTitle>
     </CardHeader>
@@ -52,7 +66,7 @@ export const MetricOverviewCard = ({ title, latestLabel, latest, unit, totalEntr
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm text-muted-foreground">{latestLabel}</p>
-              <p className="text-4xl font-bold tracking-tight">
+              <p className="text-4xl font-bold tabular-nums tracking-tight">
                 {latest} <span className="text-lg font-medium text-muted-foreground">{unit}</span>
               </p>
             </div>
@@ -62,7 +76,7 @@ export const MetricOverviewCard = ({ title, latestLabel, latest, unit, totalEntr
             </div>
           </div>
           {extra}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className={STAT_GRID_CLASS}>
             {deltas.map((d) => (
               <DeltaTile key={d.label} {...d} unit={unit} />
             ))}

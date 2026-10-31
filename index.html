@@ -10,10 +10,13 @@
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#111214" />
+    <!-- Browser bar colour follows the light/dark surface (src/pwa/themeColor.ts keeps it in sync with the in-app toggle). -->
+    <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "default" keeps status-bar text readable in both themes; black-translucent made it white on the light header. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="FitTrack" />
 
     <meta property="og:title" content="FitTrack Fitness — Meals, Workouts &amp; Recovery Tracker" />
@@ -22,10 +25,48 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="FitTrack Fitness — Meals, Workouts &amp; Recovery Tracker" />
     <meta name="twitter:description" content="Track meals, macros, gym workouts, weight, sleep and WHOOP recovery against your personal targets." />
+
+    <!--
+      Service-worker kill switch. Runs before any bundle, so it still works if the app JS is broken.
+        /?sw=off  -> remember "no worker", unregister all workers, delete all caches, reload once.
+        /?sw=on   -> forget that choice.
+      Same key as SW_DISABLED_KEY in src/pwa/swPolicy.ts and public/sw-recovery.js. See swPolicy.ts for the full recovery notes.
+    -->
+    <script>
+      (function () {
+        try {
+          var KEY = 'fittrack:v1:sw-disabled';
+          var p = new URLSearchParams(location.search);
+          var ask = p.get('sw');
+          if (ask !== 'off' && ask !== 'on') return;
+          if (ask === 'on') localStorage.removeItem(KEY);
+          else localStorage.setItem(KEY, '1');
+          p.delete('sw');
+          var q = p.toString();
+          history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+          if (ask === 'on') return;
+          var wasControlled = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+          var jobs = [];
+          if (navigator.serviceWorker) {
+            jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }));
+          }
+          if (window.caches) {
+            jobs.push(caches.keys().then(function (ks) {
+              return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+            }));
+          }
+          Promise.all(jobs).then(function () { if (wasControlled) location.reload(); });
+        } catch (e) { /* never block the app */ }
+      })();
+    </script>
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Service-worker registration + update state (separate entry so the app itself needs no changes). -->
+    <script type="module" src="/src/pwa/register.ts"></script>
   </body>
 </html>

@@ -1,468 +1,181 @@
-import { useState, useMemo } from 'react';
-import { ArrowLeftRight, Utensils, Dumbbell, Scale, Moon, Check, X } from 'lucide-react';
-import { Navigation } from '@/components/Navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCallback, useMemo, useState } from 'react';
+import { ArrowLeftRight } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
+import { DataLoadError } from '@/components/feedback/DataLoadError';
+import { PartialDataNotice } from '@/components/feedback/PartialDataNotice';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
 import { useWeight } from '@/hooks/useWeight';
 import { useSleep } from '@/hooks/useSleep';
-import { format } from 'date-fns';
+import { useSharedTableState } from '@/lib/sharedTable';
+import { CategoryPicker } from '@/components/compare/CategoryPicker';
+import { ComparisonResults, ResultsGuidance } from '@/components/compare/ComparisonResults';
+import { RecordPicker } from '@/components/compare/RecordPicker';
+import { StepSection } from '@/components/compare/StepSection';
+import {
+  CATEGORY_INFO,
+  CATEGORY_ORDER,
+  buildEntries,
+  categoryAvailability,
+  noticeCategories,
+  pruneSelection,
+  resultsState,
+  swapSelection,
+  toggleSelection,
+  type Category,
+} from '@/components/compare/compareModel';
 
-type Category = 'meals' | 'gym' | 'weight' | 'sleep' | null;
+const RESULTS_ID = 'compare-results';
 
-interface CompareField {
-  label: string;
-  key: string;
-  format?: (value: any) => string;
-}
-
-interface ParsedSet {
-  label: string;
-  reps?: string;
-  weight?: string;
-  time?: string;
-}
-interface ParsedExercise {
-  name: string;
-  seq?: number;
-  sets: ParsedSet[];
-  note?: string;
-}
-
-const parseGymNotes = (notes: string | undefined): { startTime?: string; endTime?: string; exercises: ParsedExercise[] } => {
-  const result: { startTime?: string; endTime?: string; exercises: ParsedExercise[] } = { exercises: [] };
-  if (!notes) return result;
-  const parts = notes.split(' | ').map((p) => p.trim()).filter(Boolean);
-  for (const part of parts) {
-    if (/^Start:/i.test(part) && !part.includes(': S') && !part.includes(': W')) {
-      const sm = part.match(/Start:\s*(\d{1,2}:\d{2})/i);
-      const em = part.match(/End:\s*(\d{1,2}:\d{2})/i);
-      if (sm) result.startTime = sm[1];
-      if (em) result.endTime = em[1];
-      continue;
-    }
-    let working = part;
-    let noteText = '';
-    const noteMatch = working.match(/\s*\[note:\s*([^\]]*)\]\s*$/i);
-    if (noteMatch) {
-      noteText = noteMatch[1].trim();
-      working = working.slice(0, noteMatch.index).trim();
-    }
-    const colonIdx = working.indexOf(':');
-    if (colonIdx === -1) continue;
-    let header = working.slice(0, colonIdx).trim();
-    const setsText = working.slice(colonIdx + 1).trim();
-    let seq: number | undefined;
-    const seqMatch = header.match(/^(\d+)\.(.*)$/);
-    if (seqMatch) {
-      seq = parseInt(seqMatch[1], 10);
-      header = seqMatch[2].trim();
-    }
-    const sets: ParsedSet[] = [];
-    const wMatch = setsText.match(/(?:^|\s)W:(\d+(?:\.\d+)?)(?:@(\d+(?:\.\d+)?)kg)?(?:@(\d{1,2}:\d{2}))?/);
-    if (wMatch) sets.push({ label: 'Warmup', reps: wMatch[1], weight: wMatch[2], time: wMatch[3] });
-    const setRegex = /S([1-6]):(\d+(?:\.\d+)?)(?:@(\d+(?:\.\d+)?)kg)?(?:@(\d{1,2}:\d{2}))?/g;
-    let m: RegExpExecArray | null;
-    while ((m = setRegex.exec(setsText)) !== null) {
-      sets.push({ label: `Set ${m[1]}`, reps: m[2], weight: m[3], time: m[4] });
-    }
-    result.exercises.push({ name: header, seq, sets, note: noteText || undefined });
-  }
-  result.exercises.sort((a, b) => (a.seq ?? 999) - (b.seq ?? 999));
-  return result;
-};
-
-const GymGranularCompare = ({ a, b }: { a: any; b: any }) => {
-  const pa = parseGymNotes(a?.notes);
-  const pb = parseGymNotes(b?.notes);
-  const names = Array.from(new Set([...pa.exercises.map((e) => e.name), ...pb.exercises.map((e) => e.name)]));
-
-  const fmtSet = (s?: ParsedSet) => {
-    if (!s) return '—';
-    const parts: string[] = [];
-    parts.push(`${s.reps ?? '–'} reps`);
-    if (s.weight) parts.push(`@ ${s.weight}kg`);
-    if (s.time) parts.push(`(${s.time})`);
-    return parts.join(' ');
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-4 pb-2 border-b">
-        <div className="font-medium text-muted-foreground">Field</div>
-        <div className="font-medium text-center text-sm">
-          {format(new Date(a.date), 'MMM dd')}
-        </div>
-        <div className="font-medium text-center text-sm">
-          {format(new Date(b.date), 'MMM dd')}
-        </div>
-        <div className="font-medium text-center text-sm text-muted-foreground">Difference</div>
-      </div>
-
-      <div className="grid grid-cols-4 gap-4 py-2 border-b border-border/50 text-sm">
-        <div className="font-medium">Duration</div>
-        <div className="text-center">{a.duration} min</div>
-        <div className="text-center">{b.duration} min</div>
-        <div className="text-center">
-          {a.duration !== b.duration && (
-            <span className={`text-xs ${b.duration - a.duration > 0 ? 'text-chart-min' : 'text-chart-max'}`}>
-              ({b.duration - a.duration > 0 ? '+' : ''}{b.duration - a.duration})
-            </span>
-          )}
-        </div>
-      </div>
-
-      {(pa.startTime || pb.startTime || pa.endTime || pb.endTime) && (
-        <div className="grid grid-cols-4 gap-4 py-2 border-b border-border/50 text-sm">
-          <div className="font-medium">Start / End</div>
-          <div className="text-center">{pa.startTime || '–'} / {pa.endTime || '–'}</div>
-          <div className="text-center">{pb.startTime || '–'} / {pb.endTime || '–'}</div>
-          <div />
-        </div>
-      )}
-
-      {names.length === 0 && (
-        <p className="text-muted-foreground text-sm text-center py-4">
-          No structured exercise data in notes to compare.
-        </p>
-      )}
-
-      {names.map((name) => {
-        const ea = pa.exercises.find((e) => e.name === name);
-        const eb = pb.exercises.find((e) => e.name === name);
-        const setLabels = Array.from(
-          new Set([...(ea?.sets || []).map((s) => s.label), ...(eb?.sets || []).map((s) => s.label)])
-        );
-        const order = ['Warmup', 'Set 1', 'Set 2', 'Set 3', 'Set 4', 'Set 5', 'Set 6'];
-        setLabels.sort((x, y) => order.indexOf(x) - order.indexOf(y));
-
-        return (
-          <div key={name} className="rounded-lg border p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Dumbbell className="h-4 w-4 text-primary" />
-              <h4 className="font-semibold text-foreground">{name}</h4>
-              {ea && eb && (
-                ea.sets.length === eb.sets.length ? (
-                  <Check className="h-4 w-4 text-chart-min" />
-                ) : (
-                  <X className="h-4 w-4 text-primary" />
-                )
-              )}
-            </div>
-            {setLabels.map((lbl) => {
-              const sa = ea?.sets.find((s) => s.label === lbl);
-              const sb = eb?.sets.find((s) => s.label === lbl);
-              const sameReps = sa?.reps === sb?.reps;
-              const sameWeight = (sa?.weight || '') === (sb?.weight || '');
-              const repsDiff =
-                sa?.reps && sb?.reps ? parseFloat(sb.reps) - parseFloat(sa.reps) : null;
-              const wDiff =
-                sa?.weight && sb?.weight
-                  ? parseFloat(sb.weight) - parseFloat(sa.weight)
-                  : null;
-              return (
-                <div key={lbl} className="grid grid-cols-4 gap-4 text-sm py-1 border-t border-border/30">
-                  <div className="font-medium text-muted-foreground flex items-center gap-1">
-                    {lbl}
-                    {sameReps && sameWeight ? (
-                      <Check className="h-3 w-3 text-chart-min" />
-                    ) : (
-                      <X className="h-3 w-3 text-primary" />
-                    )}
-                  </div>
-                  <div className="text-center">{fmtSet(sa)}</div>
-                  <div className="text-center">{fmtSet(sb)}</div>
-                  <div className="text-center">
-                    {(repsDiff !== null && repsDiff !== 0) || (wDiff !== null && wDiff !== 0) ? (
-                      <div className="text-xs space-x-2">
-                        {repsDiff !== null && repsDiff !== 0 && (
-                          <span className={repsDiff > 0 ? 'text-chart-min' : 'text-chart-max'}>
-                            {repsDiff > 0 ? '+' : ''}{repsDiff} reps
-                          </span>
-                        )}
-                        {wDiff !== null && wDiff !== 0 && (
-                          <span className={wDiff > 0 ? 'text-chart-min' : 'text-chart-max'}>
-                            {wDiff > 0 ? '+' : ''}{wDiff}kg
-                          </span>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-            {(ea?.note || eb?.note) && (
-              <div className="grid grid-cols-4 gap-4 text-xs pt-2 border-t border-border/30">
-                <div className="font-medium text-muted-foreground">Note</div>
-                <div className="text-center text-muted-foreground">{ea?.note || '—'}</div>
-                <div className="text-center text-muted-foreground">{eb?.note || '—'}</div>
-                <div />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
+/**
+ * Compare: a three-step workspace.
+ *   1. choose a metric  2. tick two records (A and B)  3. read what changed from A to B
+ * On phones the steps stack; from `lg` the records sit beside the comparison so both stay in view.
+ */
 const Compare = () => {
-  const [selectedCategory, setSelectedCategory] = useState<Category>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const { meals, loading: mealsLoading } = useMeals();
-  const { sessions: gymSessions, loading: gymLoading } = useGymSessions();
-  const { entries: weightEntries, loading: weightLoading } = useWeight();
-  const { entries: sleepEntries, loading: sleepLoading } = useSleep();
+  const { meals, refetch: refetchMeals } = useMeals();
+  const { sessions: gymSessions, refetch: refetchGym } = useGymSessions();
+  const { entries: weightEntries, refetch: refetchWeight } = useWeight();
+  const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
 
-  const categories = [
-    { id: 'meals' as const, label: 'Meals', icon: Utensils, color: 'bg-primary' },
-    { id: 'gym' as const, label: 'Gym', icon: Dumbbell, color: 'bg-chart-2' },
-    { id: 'weight' as const, label: 'Weight', icon: Scale, color: 'bg-chart-min' },
-    { id: 'sleep' as const, label: 'Sleep', icon: Moon, color: 'bg-chart-5' },
-  ];
+  // Where each source really is. A failed first load means the records are UNKNOWN, which must never read
+  // as "none logged"; a failed refresh over loaded rows only means they may be out of date.
+  const availability = categoryAvailability({
+    meals: useSharedTableState('meals'),
+    gym: useSharedTableState('gym_sessions'),
+    weight: useSharedTableState('weight'),
+    sleep: useSharedTableState('sleep'),
+  });
+  const retryers: Record<Category, () => Promise<void>> = { meals: refetchMeals, gym: refetchGym, weight: refetchWeight, sleep: refetchSleep };
 
-  const getEntries = () => {
-    switch (selectedCategory) {
-      case 'meals':
-        return meals.map(m => ({ id: m.id, date: m.date, label: `${m.food} (${m.calories} cal)`, data: m }));
-      case 'gym':
-        return gymSessions.map(s => ({ id: s.id, date: s.date, label: `${s.exercise} (${s.duration} min)`, data: s }));
-      case 'weight':
-        return weightEntries.map(w => ({ id: w.id, date: w.date, label: `${w.weight} kg`, data: w }));
-      case 'sleep':
-        return sleepEntries.map(s => ({ id: s.id, date: s.date, label: `${s.hours} hours`, data: s }));
-      default:
-        return [];
-    }
+  const entries = useMemo(
+    () => buildEntries(selectedCategory, { meals, gym: gymSessions, weight: weightEntries, sleep: sleepEntries }),
+    [selectedCategory, meals, gymSessions, weightEntries, sleepEntries],
+  );
+
+  const view = selectedCategory ? availability[selectedCategory].view : 'ready';
+  // Counts only mean something once that source has loaded.
+  const loaded = { meals: meals.length, gym: gymSessions.length, weight: weightEntries.length, sleep: sleepEntries.length };
+  const counts: Partial<Record<Category, number>> = Object.fromEntries(CATEGORY_ORDER.filter((id) => availability[id].view === 'ready').map((id) => [id, loaded[id]]));
+  const notice = noticeCategories(availability, selectedCategory);
+  // Reload only what failed or went stale. Joins any fetch already running and never rejects.
+  const retryNotice = async () => {
+    await Promise.all([...notice.failed, ...notice.stale].map((id) => retryers[id]()));
   };
 
-  const getCompareFields = (): CompareField[] => {
-    switch (selectedCategory) {
-      case 'meals':
-        return [
-          { label: 'Date', key: 'date', format: (v) => format(new Date(v), 'MMM dd, yyyy') },
-          { label: 'Time', key: 'time' },
-          { label: 'Food', key: 'food' },
-          { label: 'Calories', key: 'calories', format: (v) => `${v} cal` },
-        ];
-      case 'gym':
-        return [
-          { label: 'Date', key: 'date', format: (v) => format(new Date(v), 'MMM dd, yyyy') },
-          { label: 'Exercise', key: 'exercise' },
-          { label: 'Duration', key: 'duration', format: (v) => `${v} minutes` },
-          { label: 'Notes', key: 'notes', format: (v) => v || 'No notes' },
-        ];
-      case 'weight':
-        return [
-          { label: 'Date', key: 'date', format: (v) => format(new Date(v), 'MMM dd, yyyy') },
-          { label: 'Weight', key: 'weight', format: (v) => `${v} kg` },
-          { label: 'Notes', key: 'notes', format: (v) => v || 'No notes' },
-        ];
-      case 'sleep':
-        return [
-          { label: 'Date', key: 'date', format: (v) => format(new Date(v), 'MMM dd, yyyy') },
-          { label: 'Hours', key: 'hours', format: (v) => `${v} hours` },
-          { label: 'Notes', key: 'notes', format: (v) => v || 'No notes' },
-        ];
-      default:
-        return [];
-    }
-  };
+  // A record deleted elsewhere must not leave a ghost pick behind.
+  const activeIds = useMemo(() => pruneSelection(selectedIds, new Set(entries.map((e) => e.id))), [selectedIds, entries]);
+  const picked = useMemo(() => activeIds.map((id) => entries.find((e) => e.id === id)).filter((e): e is NonNullable<typeof e> => !!e), [activeIds, entries]);
 
-  const entries = getEntries();
-  const compareFields = getCompareFields();
-  const isLoading = mealsLoading || gymLoading || weightLoading || sleepLoading;
-
-  const handleToggleEntry = (id: string) => {
-    setSelectedIds(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(i => i !== id);
-      }
-      if (prev.length >= 2) {
-        return [prev[1], id];
-      }
-      return [...prev, id];
-    });
-  };
+  const state = resultsState({ category: selectedCategory, view, recordCount: entries.length, pickedCount: picked.length });
+  const info = selectedCategory ? CATEGORY_INFO[selectedCategory] : null;
 
   const handleCategorySelect = (category: Category) => {
     setSelectedCategory(category);
     setSelectedIds([]);
   };
-
   const handleReset = () => {
     setSelectedCategory(null);
     setSelectedIds([]);
   };
+  const handleToggle = (id: string) => setSelectedIds((prev) => toggleSelection(prev, id));
+  const handleRemove = (id: string) => setSelectedIds((prev) => prev.filter((x) => x !== id));
 
-  const selectedEntries = useMemo(() => {
-    return selectedIds.map(id => entries.find(e => e.id === id)).filter(Boolean);
-  }, [selectedIds, entries]);
-
-  const getValueDifference = (field: CompareField, val1: any, val2: any) => {
-    if (field.key === 'calories' || field.key === 'duration' || field.key === 'weight' || field.key === 'hours') {
-      const diff = val1 - val2;
-      if (diff > 0) return { text: `+${diff}`, color: 'text-chart-min' };
-      if (diff < 0) return { text: `${diff}`, color: 'text-chart-max' };
-      return { text: '0', color: 'text-muted-foreground' };
-    }
-    return null;
-  };
+  // Phones: the comparison is below the list. Move there, and put focus on its heading so keyboard and screen reader users arrive too.
+  const jumpToResults = useCallback(() => {
+    const section = document.getElementById(RESULTS_ID);
+    if (!section) return;
+    const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    section.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    section.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-4 py-6 pb-24">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <ArrowLeftRight className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Compare Entries</h1>
-          </div>
-          {selectedCategory && (
+    <PageContainer>
+      <PageHeader
+        icon={ArrowLeftRight}
+        title="Compare Entries"
+        description="Put two records side by side and see what changed"
+        actions={
+          selectedCategory && (
             <Button variant="outline" onClick={handleReset}>
-              Change Category
+              Start over
             </Button>
+          )
+        }
+      />
+
+      {/* One persistent notice (not a toast) for every OTHER failed or stale source. The open metric explains itself in step 2. */}
+      <PartialDataNotice
+        failed={notice.failed.map((id) => CATEGORY_INFO[id].noun.many)}
+        stale={notice.stale.map((id) => CATEGORY_INFO[id].noun.many)}
+        onRetry={retryNotice}
+      />
+
+      <StepSection
+        step={1}
+        title="Choose a metric"
+        hint={info ? `Comparing ${info.label.toLowerCase()}. Pick another metric any time to start a new comparison.` : 'What do you want to compare?'}
+        done={!!selectedCategory}
+      >
+        <CategoryPicker value={selectedCategory} onChange={handleCategorySelect} counts={counts} availability={availability} />
+      </StepSection>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)] lg:items-start">
+        <StepSection
+          step={2}
+          title="Select two records"
+          hint={selectedCategory && view !== 'error' ? `Tick two ${info!.noun.many}. A is the first pick and B is the second.` : undefined}
+          done={picked.length === 2}
+        >
+          {selectedCategory && view === 'error' ? (
+            <DataLoadError
+              title={`We couldn't load your ${info!.noun.many}`}
+              description="Nothing was lost. Check your connection and try again; the other metrics are unaffected."
+              onRetry={retryers[selectedCategory]}
+              minHeightClassName="min-h-[12rem]"
+              className="border-dashed shadow-none"
+            />
+          ) : selectedCategory ? (
+            <RecordPicker
+              key={selectedCategory}
+              category={selectedCategory}
+              entries={entries}
+              loading={view === 'loading'}
+              selectedIds={activeIds}
+              picked={picked}
+              onToggle={handleToggle}
+              onRemove={handleRemove}
+              onSwap={() => setSelectedIds(swapSelection(activeIds))}
+              onClear={() => setSelectedIds([])}
+              onJumpToResults={jumpToResults}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">Choose a metric in step 1 and its records are listed here.</p>
           )}
-        </div>
+        </StepSection>
 
-        {!selectedCategory ? (
-          <div className="space-y-4">
-            <p className="text-muted-foreground">Select a category to compare entries:</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {categories.map((cat) => (
-                <Card
-                  key={cat.id}
-                  className="cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => handleCategorySelect(cat.id)}
-                >
-                  <CardContent className="flex flex-col items-center justify-center p-6 gap-3">
-                    <div className={`p-3 rounded-full ${cat.color}`}>
-                      <cat.icon className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="font-medium text-foreground">{cat.label}</span>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Entry Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Select 2 Entries to Compare
-                  <Badge variant="secondary">{selectedIds.length}/2 selected</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p className="text-muted-foreground">Loading entries...</p>
-                ) : entries.length === 0 ? (
-                  <p className="text-muted-foreground">No entries found for this category.</p>
-                ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {entries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selectedIds.includes(entry.id)
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                        onClick={() => handleToggleEntry(entry.id)}
-                      >
-                        <Checkbox
-                          checked={selectedIds.includes(entry.id)}
-                          onCheckedChange={() => handleToggleEntry(entry.id)}
-                        />
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{entry.label}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(entry.date), 'MMM dd, yyyy')}
-                          </p>
-                        </div>
-                        {selectedIds.includes(entry.id) && (
-                          <Badge variant="default">
-                            #{selectedIds.indexOf(entry.id) + 1}
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Comparison View */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Comparison</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {selectedIds.length < 2 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <ArrowLeftRight className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">
-                      Select 2 entries from the list to compare them side by side.
-                    </p>
-                  </div>
-                ) : selectedCategory === 'gym' ? (
-                  <GymGranularCompare a={selectedEntries[0]?.data} b={selectedEntries[1]?.data} />
-                ) : (
-                  <div className="space-y-4">
-                    {/* Header */}
-                    <div className="grid grid-cols-3 gap-4 pb-4 border-b">
-                      <div className="font-medium text-muted-foreground">Field</div>
-                      <div className="font-medium text-center">Entry 1</div>
-                      <div className="font-medium text-center">Entry 2</div>
-                    </div>
-
-                    {/* Comparison Rows */}
-                    {compareFields.map((field) => {
-                      const val1 = selectedEntries[0]?.data?.[field.key];
-                      const val2 = selectedEntries[1]?.data?.[field.key];
-                      const formatted1 = field.format ? field.format(val1) : val1;
-                      const formatted2 = field.format ? field.format(val2) : val2;
-                      const diff = getValueDifference(field, val1, val2);
-                      const isSame = val1 === val2;
-
-                      return (
-                        <div key={field.key} className="grid grid-cols-3 gap-4 py-3 border-b border-border/50">
-                          <div className="font-medium text-foreground flex items-center gap-2">
-                            {field.label}
-                            {isSame ? (
-                              <Check className="h-4 w-4 text-chart-min" />
-                            ) : (
-                              <X className="h-4 w-4 text-primary" />
-                            )}
-                          </div>
-                          <div className="text-center">
-                            <span className="text-foreground">{formatted1}</span>
-                          </div>
-                          <div className="text-center">
-                            <span className="text-foreground">{formatted2}</span>
-                            {diff && (
-                              <span className={`ml-2 text-sm ${diff.color}`}>
-                                ({diff.text})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </main>
-    </div>
+        <StepSection
+          id={RESULTS_ID}
+          step={3}
+          title="Inspect the comparison"
+          hint={state.kind === 'ready' ? 'Change is worked out as B minus A.' : undefined}
+          done={state.kind === 'ready'}
+        >
+          {state.kind === 'ready' && selectedCategory ? (
+            <ComparisonResults category={selectedCategory} a={picked[0]} b={picked[1]} />
+          ) : state.kind === 'loading' ? (
+            <p role="status" className="text-sm text-muted-foreground">Loading records…</p>
+          ) : (
+            <ResultsGuidance state={state} pickedSummary={picked[0]?.summary} categoryLabel={info?.label.toLowerCase()} />
+          )}
+        </StepSection>
+      </div>
+    </PageContainer>
   );
 };
 

@@ -66,7 +66,7 @@ export const MealsTodayCard = ({ calories, protein, carbs, calorieRange, protein
           <p className="mb-2 text-sm font-medium">Where today's calories come from</p>
           {total > 0 ? (
             <>
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-secondary">
+              <div aria-hidden="true" className="flex h-3 w-full overflow-hidden rounded-full bg-progress-track">
                 {split.map((s) => s.kcal > 0 && (
                   <div key={s.name} className={s.color} style={{ width: `${(s.kcal / total) * 100}%` }} />
                 ))}

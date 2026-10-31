@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Dumbbell, History, CalendarCheck } from 'lucide-react';
 import { GymSession } from '@/types';
+import { formatDay } from '@/lib/historyDates';
 
 const DAYS = [
   { v: 1, l: 'Mon' }, { v: 2, l: 'Tue' }, { v: 3, l: 'Wed' }, { v: 4, l: 'Thu' },
@@ -78,7 +79,7 @@ export const GymOverviewCard = ({ sessions, workoutDays }: Props) => {
                 <div
                   key={d.v}
                   className={`flex flex-col items-center gap-1 rounded-lg border py-2 text-xs ${styles} ${d.isToday ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
-                  title={`${d.iso}${d.done ? ` · ${d.minutes} min` : d.planned ? ' · planned' : ' · rest day'}`}
+                  title={`${formatDay(d.iso)}${d.done ? ` · ${d.minutes} min` : d.planned ? ' · planned' : ' · rest day'}`}
                 >
                   <span className="font-medium">{d.l}</span>
                   <span className="flex h-5 items-center">
@@ -124,7 +125,7 @@ export const GymOverviewCard = ({ sessions, workoutDays }: Props) => {
             <>
               <p className="font-semibold">{last.exercise}</p>
               <p className="text-sm text-muted-foreground">
-                {last.date}{daysAgo !== null && ` · ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`}`}
+                {formatDay(last.date)}{daysAgo !== null && ` · ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`}`}
                 {` · ${last.duration} min`}
                 {countExercises(last.notes) > 0 && ` · ${countExercises(last.notes)} exercises`}
               </p>

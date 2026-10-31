@@ -1,761 +1,361 @@
-import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
-import { useEffect, useState } from 'react';
-import { Navigation } from '@/components/Navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarDays, Check, CircleDot, Flame, User } from 'lucide-react';
+import { toast } from 'sonner';
+import { PageContainer, PageHeader, PageLoading, PageSection } from '@/components/layout/Page';
+import { DataLoadError } from '@/components/feedback/DataLoadError';
+import { StaleDataNotice } from '@/components/feedback/StaleDataNotice';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePersonalData } from '@/hooks/usePersonalData';
-import { useWorkoutTemplates } from '@/hooks/useWorkoutTemplates';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePersonalDataHistory, PersonalHistoryField } from '@/hooks/usePersonalDataHistory';
+import { usePersonalDataHistory } from '@/hooks/usePersonalDataHistory';
 import { useWeight } from '@/hooks/useWeight';
-import { useUserSettings } from '@/hooks/useUserSettings';
-import { useInsightThresholds } from '@/hooks/useInsightThresholds';
-import { DEFAULT_RECOVERY_CUTOFF, DEFAULT_SLEEP_CUTOFF } from '@/lib/crossMetricIntelligence';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { User, Activity, KeyRound, RefreshCw, Copy, Trash2, AlertTriangle, History, ChevronDown, ChevronUp, Timer, Flame, CalendarDays } from 'lucide-react';
+import { useWorkoutTemplates } from '@/hooks/useWorkoutTemplates';
+import { ApiTokenSection } from '@/components/personal-data/ApiTokenSection';
+import { BmiMeter } from '@/components/personal-data/BmiMeter';
+import { InsightCutoffsSection } from '@/components/personal-data/InsightCutoffsSection';
+import { ProfileSummary } from '@/components/personal-data/ProfileSummary';
+import { RangeField } from '@/components/personal-data/RangeField';
+import { RestTimersSection } from '@/components/personal-data/RestTimersSection';
+import { ScheduleEditor } from '@/components/personal-data/ScheduleEditor';
+import { FieldLabel, SettingsRow } from '@/components/personal-data/SettingsRow';
+import { SettingsSection } from '@/components/personal-data/SettingsSection';
+import { ValueHistory } from '@/components/personal-data/ValueHistory';
+import {
+  buildProfileSummary, buildSavePayload, calcAge, draftFromData, findRangeError, isDraftDirty,
+  parseNumber, rangeHistoryRows, sanitizeNumericInput, singleHistoryRows, type PersonalDraft,
+} from '@/components/personal-data/model';
 
-
-const calcAge = (dob: string | null): number | null => {
-  if (!dob) return null;
-  const d = new Date(dob);
-  if (isNaN(d.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - d.getFullYear();
-  const m = now.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
-  return age >= 0 ? age : null;
-};
-
+/**
+ * Personal Data: one page, read top to bottom.
+ *
+ *   1. Your settings at a glance          what is SAVED now (read only), with Edit links to the sections below
+ *   2. Profile & body                     always open. name, birth date and age, gender, height, target weight (+ history), BMI
+ *   3. Nutrition targets                  always open. gym-day and rest-day calories, protein and carbs, each a Min/Max range (+ history)
+ *   4. Training schedule                  always open. weekday checkboxes with a workout template per day
+ *      Save bar                           ONE Save for sections 2 to 4, and a plain "unsaved changes" status
+ *   5. More settings (separate Saves)     collapsed cards that always show their current value in one line:
+ *        Workout rest timers (account), Insight cutoffs (this device), MCP token (account)
+ *
+ * Load states: a FIRST load that failed shows an error with Try again instead of the summary and form (the values are
+ * unknown, so nothing says "Not set" or "All changes saved"). A failed refresh keeps the form and its unsaved edits and
+ * adds a notice. A true empty profile still shows the setup form.
+ *
+ * Sections 2 to 4 are never collapsed because their current values are the point of the page; only the
+ * occasional settings in 5 fold away. History lives next to the value it belongs to, not in a list of its own.
+ */
 const PersonalDataPage = () => {
-  const { data, loading, save } = usePersonalData();
-  const { latestFor, historyFor, refetch: refetchHistory } = usePersonalDataHistory();
+  const { data, loading, save, refetch, phase, loadFailed, refreshFailed } = usePersonalData();
+  const { historyFor, refetch: refetchHistory } = usePersonalDataHistory();
   const { entries: weightEntries } = useWeight();
   const currentWeight = weightEntries[0]?.weight ?? null;
-
-  const [fullName, setFullName] = useState('');
-  const [dob, setDob] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState('');
-  const [height, setHeight] = useState('');
-  const [targetWeight, setTargetWeight] = useState('');
-  const [gymTarget, setGymTarget] = useState('');
-  const [restTarget, setRestTarget] = useState('');
-  const [proteinMultiplier, setProteinMultiplier] = useState('');
-  const [carbMultiplier, setCarbMultiplier] = useState('');
-  const [gymTargetMax, setGymTargetMax] = useState('');
-  const [restTargetMax, setRestTargetMax] = useState('');
-  const [proteinMultiplierMax, setProteinMultiplierMax] = useState('');
-  const [carbMultiplierMax, setCarbMultiplierMax] = useState('');
-  const [workoutDays, setWorkoutDays] = useState<number[]>([]);
-  const [dayTemplates, setDayTemplates] = useState<Record<string, string>>({});
   const { templates } = useWorkoutTemplates();
+  const templateIds = useMemo(() => templates.map((t) => t.id), [templates]);
+
+  const [draft, setDraft] = useState<PersonalDraft>(() => draftFromData(data));
   const [saving, setSaving] = useState(false);
 
+  // A failed first load wins even while a retry runs, so the error stays on screen until data really arrives.
+  const view: 'loading' | 'error' | 'ready' = loadFailed ? 'error' : loading || phase === 'loading' ? 'loading' : 'ready';
+
+  // When newly loaded data arrives, the form follows it, unless the person has unsaved edits: those are never replaced.
+  const baselineRef = useRef(data);
+  const templateIdsRef = useRef(templateIds);
+  templateIdsRef.current = templateIds;
   useEffect(() => {
-    setFullName(data.full_name || '');
-    setDob(data.dob || '');
-    setAge(data.age?.toString() || (data.dob ? String(calcAge(data.dob) ?? '') : ''));
-    setGender(data.gender || '');
-    setHeight(data.height_cm?.toString() || '');
-    setTargetWeight(data.target_weight_kg?.toString() || '');
-    setGymTarget(data.gym_day_calorie_target?.toString() || '');
-    setRestTarget(data.rest_day_calorie_target?.toString() || '');
-    setProteinMultiplier(data.protein_multiplier?.toString() || '');
-    setCarbMultiplier(data.carb_multiplier?.toString() || '');
-    setGymTargetMax(data.gym_day_calorie_target_max?.toString() || '');
-    setRestTargetMax(data.rest_day_calorie_target_max?.toString() || '');
-    setProteinMultiplierMax(data.protein_multiplier_max?.toString() || '');
-    setCarbMultiplierMax(data.carb_multiplier_max?.toString() || '');
-    setWorkoutDays(data.workout_days || []);
-    setDayTemplates(data.workout_day_templates || {});
+    const previous = baselineRef.current;
+    baselineRef.current = data;
+    setDraft((current) => (isDraftDirty(current, previous, templateIdsRef.current) ? current : draftFromData(data)));
   }, [data]);
 
-  const handleDobChange = (val: string) => {
-    setDob(val);
-    const a = calcAge(val);
-    if (a !== null) setAge(String(a));
+  const patch = (p: Partial<PersonalDraft>) => setDraft((d) => ({ ...d, ...p }));
+  /** Typed number fields accept digits and one dot (a comma turns into a dot); anything else is ignored. */
+  const numeric = (key: keyof PersonalDraft) => (value: string) => {
+    const next = sanitizeNumericInput(value);
+    if (next !== null) patch({ [key]: next } as Partial<PersonalDraft>);
   };
 
-  const handleNumeric = (val: string, setter: (v: string) => void) => {
-    const v = val.replace(',', '.');
-    if (v === '' || /^\d*\.?\d*$/.test(v)) setter(v);
+  const handleDobChange = (dob: string) => {
+    const age = calcAge(dob);
+    patch(age !== null ? { dob, age: String(age) } : { dob });
   };
 
   const handleSave = async () => {
-    const pairs: [string, string, string][] = [
-      ['Gym day calories', gymTarget, gymTargetMax],
-      ['Rest day calories', restTarget, restTargetMax],
-      ['Protein multiplier', proteinMultiplier, proteinMultiplierMax],
-      ['Carb multiplier', carbMultiplier, carbMultiplierMax],
-    ];
-    for (const [label, mn, mx] of pairs) {
-      if (mn && mx && parseFloat(mx) < parseFloat(mn)) {
-        toast.error(`${label}: Max must be greater than or equal to Min`);
-        return;
-      }
+    const rangeError = findRangeError(draft);
+    if (rangeError) {
+      toast.error(rangeError);
+      return;
     }
     setSaving(true);
-    const { error } = await save({
-      full_name: fullName || null,
-      dob: dob || null,
-      age: age ? parseInt(age, 10) : null,
-      gender: gender || null,
-      height_cm: height ? parseFloat(height) : null,
-      target_weight_kg: targetWeight ? parseFloat(targetWeight) : null,
-      gym_day_calorie_target: gymTarget ? parseInt(gymTarget, 10) : null,
-      rest_day_calorie_target: restTarget ? parseInt(restTarget, 10) : null,
-      protein_multiplier: proteinMultiplier ? parseFloat(proteinMultiplier) : null,
-      carb_multiplier: carbMultiplier ? parseFloat(carbMultiplier) : null,
-      gym_day_calorie_target_max: gymTargetMax ? parseInt(gymTargetMax, 10) : gymTarget ? parseInt(gymTarget, 10) : null,
-      rest_day_calorie_target_max: restTargetMax ? parseInt(restTargetMax, 10) : restTarget ? parseInt(restTarget, 10) : null,
-      protein_multiplier_max: proteinMultiplierMax ? parseFloat(proteinMultiplierMax) : proteinMultiplier ? parseFloat(proteinMultiplier) : null,
-      carb_multiplier_max: carbMultiplierMax ? parseFloat(carbMultiplierMax) : carbMultiplier ? parseFloat(carbMultiplier) : null,
-      workout_days: workoutDays,
-      workout_day_templates: Object.fromEntries(
-        Object.entries(dayTemplates).filter(([k, v]) => workoutDays.includes(Number(k)) && templates.some((t) => t.id === v))
-      ),
-    });
+    const payload = buildSavePayload(draft, templateIds);
+    const { error } = await save(payload);
     setSaving(false);
     if (error) toast.error('Failed to save personal data');
     else {
+      // What was saved is now the baseline: show it as saved, even if the reload that follows is still running.
+      setDraft(draftFromData(payload));
       toast.success('Personal data saved');
       refetchHistory();
     }
   };
 
+  const dirty = isDraftDirty(draft, data, templateIds);
+  const summary = useMemo(() => buildProfileSummary(data, currentWeight, templates.length), [data, currentWeight, templates.length]);
+  const targetWeightHistory = singleHistoryRows(historyFor('target_weight_kg'));
+  const gymHistory = rangeHistoryRows(historyFor('gym_day_calorie_target'), historyFor('gym_day_calorie_target_max'));
+  const restHistory = rangeHistoryRows(historyFor('rest_day_calorie_target'), historyFor('rest_day_calorie_target_max'));
+
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container py-6 max-w-6xl space-y-6">
-        <div className="flex items-center gap-2">
-          <User className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Personal Data</h1>
-        </div>
-        {loading ? (
-          <p className="text-muted-foreground text-sm">Loading...</p>
-        ) : (
-          <>
-            <div className="grid lg:grid-cols-2 gap-6 items-start">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><User className="h-5 w-5 text-primary" />Body &amp; profile</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Name</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Full name"
-                  />
-                </div>
+    <PageContainer className="max-w-4xl">
+      <PageHeader
+        icon={User}
+        title="Personal Data"
+        description="Your profile, nutrition targets and training schedule"
+      />
 
-                <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    value={dob}
-                    onChange={(e) => handleDobChange(e.target.value)}
-                  />
-                </div>
+      {view === 'loading' ? (
+        <PageLoading label="Loading personal data" rows={3} />
+      ) : view === 'error' ? (
+        <DataLoadError
+          title="We couldn't load your personal data"
+          description="Your saved profile, targets and schedule are safe and nothing was changed. They will show here once they load."
+          onRetry={refetch}
+          minHeightClassName="min-h-[16rem]"
+        />
+      ) : (
+        <>
+          {/* A refresh failed but everything below is the last good data (and any edits not yet saved). */}
+          {refreshFailed && <StaleDataNotice subject="your personal data" onRetry={refetch} />}
+          <ProfileSummary model={summary} />
 
-                <div className="space-y-2">
-                  <Label htmlFor="age">Age</Label>
-                  <Input
-                    id="age"
-                    inputMode="numeric"
-                    value={age}
-                    onChange={(e) => handleNumeric(e.target.value, setAge)}
-                    placeholder="Auto-calculated from DOB"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Gender</Label>
-                  <RadioGroup
-                    value={gender}
-                    onValueChange={setGender}
-                    className="flex gap-6"
-                  >
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="M" id="g-m" />
-                      <Label htmlFor="g-m" className="cursor-pointer">Male</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="F" id="g-f" />
-                      <Label htmlFor="g-f" className="cursor-pointer">Female</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="height">Height (cm)</Label>
-                  <Input
-                    id="height"
-                    inputMode="decimal"
-                    value={height}
-                    onChange={(e) => handleNumeric(e.target.value, setHeight)}
-                    placeholder="e.g. 175"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="target">Target Weight (kg)</Label>
-                  <Input
-                    id="target"
-                    inputMode="decimal"
-                    value={targetWeight}
-                    onChange={(e) => handleNumeric(e.target.value, setTargetWeight)}
-                    placeholder="e.g. 75.5"
-                  />
-                  <FieldHistory
-                    field="target_weight_kg"
-                    unit="kg"
-                    latest={latestFor('target_weight_kg')}
-                    history={historyFor('target_weight_kg')}
-                  />
-                </div>
-                  <BmiCard heightCm={height ? parseFloat(height) : null} weightKg={currentWeight} />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5 text-primary" />Nutrition targets</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <MinMaxField
-                  label="Gym Day Calorie Target (kcal)"
-                  min={gymTarget} max={gymTargetMax}
-                  onMin={(v) => handleNumeric(v, setGymTarget)} onMax={(v) => handleNumeric(v, setGymTargetMax)}
-                  placeholders={['e.g. 2300', 'e.g. 2600']}
-                  hint="Used as your daily range on days you log a workout."
+          <div className="space-y-6">
+            <SettingsSection
+              id="profile"
+              icon={User}
+              title="Profile & body"
+              description="Who you are and the body measurements your targets are based on."
+            >
+              <SettingsRow label="Name" htmlFor="fullName">
+                <Input
+                  id="fullName"
+                  value={draft.fullName}
+                  onChange={(e) => patch({ fullName: e.target.value })}
+                  placeholder="Full name"
+                  className="md:max-w-md"
                 />
-                <FieldHistory field="gym_day_calorie_target" unit="kcal (min)" latest={latestFor('gym_day_calorie_target')} history={historyFor('gym_day_calorie_target')} />
-                <FieldHistory field="gym_day_calorie_target_max" unit="kcal (max)" latest={latestFor('gym_day_calorie_target_max')} history={historyFor('gym_day_calorie_target_max')} />
+              </SettingsRow>
 
-                <MinMaxField
-                  label="Rest Day Calorie Target (kcal)"
-                  min={restTarget} max={restTargetMax}
-                  onMin={(v) => handleNumeric(v, setRestTarget)} onMax={(v) => handleNumeric(v, setRestTargetMax)}
-                  placeholders={['e.g. 1900', 'e.g. 2200']}
-                  hint="Used as your daily range on days with no workout."
-                />
-                <FieldHistory field="rest_day_calorie_target" unit="kcal (min)" latest={latestFor('rest_day_calorie_target')} history={historyFor('rest_day_calorie_target')} />
-                <FieldHistory field="rest_day_calorie_target_max" unit="kcal (max)" latest={latestFor('rest_day_calorie_target_max')} history={historyFor('rest_day_calorie_target_max')} />
-
-                <MinMaxField
-                  label="Protein Multiplier (g/kg)"
-                  min={proteinMultiplier} max={proteinMultiplierMax}
-                  onMin={(v) => handleNumeric(v, setProteinMultiplier)} onMax={(v) => handleNumeric(v, setProteinMultiplierMax)}
-                  placeholders={['e.g. 1.8', 'e.g. 2.2']}
-                  hint={`Grams of protein per kg of body weight.${currentWeight && proteinMultiplier ? ` Current range: ${Math.round(parseFloat(proteinMultiplier) * currentWeight)}–${Math.round(parseFloat(proteinMultiplierMax || proteinMultiplier) * currentWeight)} g` : ''}`}
-                />
-
-                <MinMaxField
-                  label="Carb Multiplier (g/kg)"
-                  min={carbMultiplier} max={carbMultiplierMax}
-                  onMin={(v) => handleNumeric(v, setCarbMultiplier)} onMax={(v) => handleNumeric(v, setCarbMultiplierMax)}
-                  placeholders={['e.g. 3', 'e.g. 4']}
-                  hint={`Grams of carbs per kg of body weight.${currentWeight && carbMultiplier ? ` Current range: ${Math.round(parseFloat(carbMultiplier) * currentWeight)}–${Math.round(parseFloat(carbMultiplierMax || carbMultiplier) * currentWeight)} g` : ''}`}
-                />
-
-                </CardContent>
-              </Card>
-            </div>
-            <div className="grid lg:grid-cols-2 gap-6 items-start">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-primary" />Training schedule</CardTitle>
-                </CardHeader>
-                <CardContent>
-                <div className="space-y-2">
-                  <Label>Workout Days & templates</Label>
-                  <div className="space-y-2">
-                    {[
-                      { v: 1, l: 'Monday' },
-                      { v: 2, l: 'Tuesday' },
-                      { v: 3, l: 'Wednesday' },
-                      { v: 4, l: 'Thursday' },
-                      { v: 5, l: 'Friday' },
-                      { v: 6, l: 'Saturday' },
-                      { v: 0, l: 'Sunday' },
-                    ].map((d) => {
-                      const on = workoutDays.includes(d.v);
-                      return (
-                        <div key={d.v} className="flex items-center gap-3 min-h-9">
-                          <Checkbox
-                            id={`wd-${d.v}`}
-                            checked={on}
-                            onCheckedChange={(checked) => {
-                              setWorkoutDays((prev) =>
-                                checked
-                                  ? [...prev, d.v].sort((a, b) => a - b)
-                                  : prev.filter((x) => x !== d.v)
-                              );
-                            }}
-                          />
-                          <Label htmlFor={`wd-${d.v}`} className="cursor-pointer w-24 shrink-0">{d.l}</Label>
-                          {on ? (
-                            <Select
-                              value={dayTemplates[String(d.v)] || 'none'}
-                              onValueChange={(val) =>
-                                setDayTemplates((prev) => {
-                                  const next = { ...prev };
-                                  if (val === 'none') delete next[String(d.v)]; else next[String(d.v)] = val;
-                                  return next;
-                                })
-                              }
-                            >
-                              <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="No template" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">No template</SelectItem>
-                                {templates.map((t) => (
-                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">Rest day</span>
-                          )}
-                        </div>
-                      );
-                    })}
+              <SettingsRow
+                label="Date of birth and age"
+                labelId="birth-label"
+                description="Age fills in by itself when you pick a date of birth."
+                descriptionId="age-hint"
+              >
+                <div role="group" aria-labelledby="birth-label" className="grid grid-cols-1 gap-3 sm:max-w-md sm:grid-cols-2 [&>*]:min-w-0">
+                  <div className="space-y-1.5">
+                    <FieldLabel htmlFor="dob">Date of birth</FieldLabel>
+                    <Input id="dob" type="date" value={draft.dob} onChange={(e) => handleDobChange(e.target.value)} />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Used by the dashboard to determine workout vs rest days.{templates.length === 0 && ' Create templates on the Gym page to assign them here.'}
-                  </p>
-                </div>
-
-                </CardContent>
-              </Card>
-              <RestTimerCard />
-            </div>
-            <Button onClick={handleSave} disabled={saving} className="w-full">
-              {saving ? 'Saving...' : 'Save profile, targets & schedule'}
-            </Button>
-          </>
-        )}
-        <InsightThresholdsCard />
-        <ApiTokenCard />
-      </main>
-    </div>
-  );
-};
-
-const MinMaxField = ({
-  label, min, max, onMin, onMax, placeholders, hint,
-}: {
-  label: string; min: string; max: string;
-  onMin: (v: string) => void; onMax: (v: string) => void;
-  placeholders: [string, string]; hint?: string;
-}) => (
-  <div className="space-y-2">
-    <Label>{label}</Label>
-    <div className="grid grid-cols-2 gap-2">
-      <div>
-        <span className="text-xs text-muted-foreground">Min</span>
-        <Input inputMode="decimal" value={min} onChange={(e) => onMin(e.target.value)} placeholder={placeholders[0]} />
-      </div>
-      <div>
-        <span className="text-xs text-muted-foreground">Max</span>
-        <Input inputMode="decimal" value={max} onChange={(e) => onMax(e.target.value)} placeholder={placeholders[1]} />
-      </div>
-    </div>
-    {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-  </div>
-);
-
-const RestTimerCard = () => {
-  const { settings, loading, updateRestTimers } = useUserSettings();
-  const [setRest, setSetRest] = useState('');
-  const [exerciseRest, setExerciseRest] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!loading) {
-      setSetRest(String(settings.set_rest_seconds));
-      setExerciseRest(String(settings.exercise_rest_seconds));
-    }
-  }, [loading, settings.set_rest_seconds, settings.exercise_rest_seconds]);
-
-  const handleSave = async () => {
-    const s = parseInt(setRest, 10);
-    const e = parseInt(exerciseRest, 10);
-    if (!Number.isFinite(s) || !Number.isFinite(e) || s < 5 || e < 5 || s > 900 || e > 900) {
-      toast.error('Enter values between 5 and 900 seconds');
-      return;
-    }
-    setSaving(true);
-    await updateRestTimers(s, e);
-    setSaving(false);
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Timer className="h-5 w-5 text-primary" />
-          Workout rest timers
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          These durations are saved to your account, so the same values apply on every device you log in from.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="set-rest">Rest between sets (seconds)</Label>
-            <Input
-              id="set-rest"
-              type="number"
-              inputMode="numeric"
-              min={5}
-              max={900}
-              value={setRest}
-              onChange={(ev) => setSetRest(ev.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="exercise-rest">Rest between exercises (seconds)</Label>
-            <Input
-              id="exercise-rest"
-              type="number"
-              inputMode="numeric"
-              min={5}
-              max={900}
-              value={exerciseRest}
-              onChange={(ev) => setExerciseRest(ev.target.value)}
-            />
-          </div>
-        </div>
-        <Button onClick={handleSave} disabled={saving || loading}>
-          {saving ? 'Saving...' : 'Save rest timers'}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-};
-
-const InsightThresholdsCard = () => {
-  const { thresholds, save } = useInsightThresholds();
-  const [rec, setRec] = useState(String(thresholds.recoveryCutoff));
-  const [sleep, setSleep] = useState(String(thresholds.sleepCutoff));
-  const handleSave = () => {
-    const r = parseFloat(rec.replace(',', '.'));
-    const s = parseFloat(sleep.replace(',', '.'));
-    if (!(r > 0 && r <= 100) || !(s > 0 && s <= 24)) { toast.error('Recovery must be 1–100% and sleep 1–24 hours'); return; }
-    save({ recoveryCutoff: r, sleepCutoff: s });
-    toast.success('Insight cutoffs saved');
-  };
-  const reset = () => { setRec(String(DEFAULT_RECOVERY_CUTOFF)); setSleep(String(DEFAULT_SLEEP_CUTOFF)); save({ recoveryCutoff: DEFAULT_RECOVERY_CUTOFF, sleepCutoff: DEFAULT_SLEEP_CUTOFF }); };
-  return (
-    <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" />Insight cutoffs</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">Used by the Reports insights and the dashboard summary. Saved on this device.</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2"><Label htmlFor="rec-cut">High recovery cutoff (%)</Label><Input id="rec-cut" inputMode="decimal" value={rec} onChange={(e) => setRec(e.target.value.replace(',', '.'))} /></div>
-          <div className="space-y-2"><Label htmlFor="sleep-cut">Short sleep cutoff (hours)</Label><Input id="sleep-cut" inputMode="decimal" value={sleep} onChange={(e) => setSleep(e.target.value.replace(',', '.'))} /></div>
-        </div>
-        <div className="flex gap-2"><Button onClick={handleSave}>Save cutoffs</Button><Button variant="outline" onClick={reset}>Reset to defaults</Button></div>
-      </CardContent>
-    </Card>
-  );
-};
-
-const ApiTokenCard = () => {
-  const [loading, setLoading] = useState(true);
-  const [exists, setExists] = useState(false);
-  const [plainToken, setPlainToken] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const call = async (action: 'status' | 'generate' | 'revoke') => {
-    const { data, error } = await supabase.functions.invoke('api-token', { body: { action } });
-    if (error) {
-      // Try to surface server-provided error (e.g. 429 rate limit)
-      const ctx = (error as { context?: { error?: string; retry_in_seconds?: number } }).context;
-      if (ctx?.error) throw new Error(ctx.error);
-      throw error;
-    }
-    return data as {
-      token?: string | null;
-      expires_at?: string | null;
-      exists?: boolean;
-    };
-  };
-
-  const refreshStatus = async () => {
-    try {
-      const data = await call('status');
-      setExists(!!data.exists);
-      if (!data.exists) setPlainToken(null);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    refreshStatus();
-  }, []);
-
-  const handleGenerate = async () => {
-    setBusy(true);
-    try {
-      const data = await call('generate');
-      setExists(true);
-      setPlainToken(data.token ?? null);
-      toast.success('New token generated. Copy it now — it will not be shown again.');
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to generate token';
-      toast.error(msg);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleRevoke = async () => {
-    setBusy(true);
-    try {
-      await call('revoke');
-      setExists(false);
-      setPlainToken(null);
-      toast.success('Token revoked');
-    } catch {
-      toast.error('Failed to revoke token');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleCopy = async () => {
-    if (!plainToken) return;
-    await navigator.clipboard.writeText(plainToken);
-    toast.success('Token copied to clipboard');
-  };
-
-  const masked = '•'.repeat(40);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5 text-primary" />
-          MCP Token
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Your personal MCP token for external integrations. Only a SHA-256 hash is stored —
-          the plaintext is shown <strong>once at generation</strong> and cannot be revealed again.
-          The token <strong>does not expire</strong> — it stays valid until you refresh or revoke it.
-        </p>
-
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : (
-          <>
-            {plainToken && (
-              <div className="space-y-2 p-3 border border-primary/40 rounded-md bg-primary/5">
-                <div className="flex items-center gap-2 text-xs font-medium text-primary">
-                  <AlertTriangle className="h-4 w-4" />
-                  Copy now — this token will not be shown again
-                </div>
-                <div className="flex items-stretch gap-2">
-                  <code className="flex-1 px-3 py-2 rounded-md bg-background font-mono text-xs break-all flex items-center min-h-10">
-                    {plainToken}
-                  </code>
-                  <Button variant="outline" size="icon" onClick={handleCopy} title="Copy">
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {!exists ? (
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={handleGenerate} disabled={busy} className="gap-2">
-                  <KeyRound className="h-4 w-4" /> Generate token
-                </Button>
-              </div>
-            ) : (
-              <>
-                {!plainToken && (
-                  <div className="flex items-stretch gap-2">
-                    <code className="flex-1 px-3 py-2 rounded-md bg-muted font-mono text-xs break-all flex items-center min-h-10 text-muted-foreground">
-                      {masked}
-                    </code>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    Active — no expiry; valid until refreshed or revoked
-                  </span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleGenerate} disabled={busy} className="gap-2">
-                      <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> Refresh
-                    </Button>
-                    <ConfirmDeleteButton variant="ghost" size="sm" onConfirm={handleRevoke} confirmationTitle="Revoke token?" confirmationDescription="Are you sure you want to revoke this access token? Connected services using it will lose access until you provide a new token." confirmLabel="Yes, revoke" disabled={busy} className="gap-2 text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" /> Revoke
-                    </ConfirmDeleteButton>
+                  <div className="space-y-1.5">
+                    <FieldLabel htmlFor="age">Age (years)</FieldLabel>
+                    <Input
+                      id="age"
+                      inputMode="numeric"
+                      value={draft.age}
+                      onChange={(e) => numeric('age')(e.target.value)}
+                      aria-describedby="age-hint"
+                    />
                   </div>
                 </div>
+              </SettingsRow>
 
-                <p className="text-xs text-muted-foreground">
-                  Refreshing generates a new token (shown once) and invalidates the previous one.
-                  Generation is rate-limited to once every 30 seconds.
-                </p>
-              </>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-
-interface FieldHistoryProps {
-  field: PersonalHistoryField;
-  unit: string;
-  latest: { value: number; changed_at: string } | null;
-  history: { id: string; value: number; changed_at: string }[];
-}
-
-const FieldHistory = ({ unit, latest, history }: FieldHistoryProps) => {
-  const [open, setOpen] = useState(false);
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-
-  if (!latest) {
-    return (
-      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-        <History className="h-3 w-3" /> No history yet — save to record a value.
-      </p>
-    );
-  }
-
-  const rest = history.slice(1);
-
-  return (
-    <div className="text-[11px] text-muted-foreground">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1">
-          <History className="h-3 w-3" />
-          Current: <strong className="text-foreground">{latest.value}{unit ? ` ${unit}` : ''}</strong> · set {formatDate(latest.changed_at)}
-        </span>
-        {rest.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-          >
-            {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            {open ? 'Hide' : `Show ${rest.length} previous`}
-          </button>
-        )}
-      </div>
-      {open && rest.length > 0 && (
-        <ul className="mt-2 space-y-1 border-l-2 border-muted pl-3">
-          {rest.map((h) => (
-            <li key={h.id} className="flex justify-between gap-2">
-              <span>{h.value}{unit ? ` ${unit}` : ''}</span>
-              <span>{formatDate(h.changed_at)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-};
-
-
-interface BmiCardProps {
-  heightCm: number | null;
-  weightKg: number | null;
-}
-
-const BmiCard = ({ heightCm, weightKg }: BmiCardProps) => {
-  const bmi =
-    heightCm && heightCm > 0 && weightKg && weightKg > 0
-      ? weightKg / Math.pow(heightCm / 100, 2)
-      : null;
-
-  const categories = [
-    { label: 'Underweight', range: '< 18.5', min: 0, max: 18.5, color: 'bg-yellow-500' },
-    { label: 'Normal', range: '18.5 – 24.9', min: 18.5, max: 25, color: 'bg-green-500' },
-    { label: 'Overweight', range: '25 – 29.9', min: 25, max: 30, color: 'bg-orange-500' },
-    { label: 'Obese', range: '30+', min: 30, max: Infinity, color: 'bg-red-500' },
-  ];
-
-  const activeIdx = bmi !== null ? categories.findIndex((c) => bmi >= c.min && bmi < c.max) : -1;
-  const activeCat = activeIdx >= 0 ? categories[activeIdx] : null;
-
-  // Marker position on a 0-100 scale where 15 -> 0% and 35 -> 100%
-  const markerPct =
-    bmi !== null ? Math.max(0, Math.min(100, ((bmi - 15) / (35 - 15)) * 100)) : 0;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Activity className="h-5 w-5 text-primary" />
-          BMI
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {bmi === null ? (
-          <p className="text-sm text-muted-foreground">
-            Enter your height and log a weight entry to see your BMI.
-          </p>
-        ) : (
-          <>
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold">{bmi.toFixed(1)}</span>
-              {activeCat && (
-                <span
-                  className={`text-xs font-semibold px-2 py-1 rounded-full text-white ${activeCat.color}`}
+              <SettingsRow label="Gender" labelId="gender-label">
+                <RadioGroup
+                  value={draft.gender}
+                  onValueChange={(gender) => patch({ gender })}
+                  aria-labelledby="gender-label"
+                  className="flex flex-wrap gap-x-6"
                 >
-                  {activeCat.label}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Based on {weightKg} kg / {heightCm} cm
-            </p>
-
-            {/* Color scale */}
-            <div className="space-y-2">
-              <div className="relative h-3 rounded-full overflow-hidden flex">
-                {categories.map((c) => (
-                  <div key={c.label} className={`flex-1 ${c.color}`} />
-                ))}
-                <div
-                  className="absolute top-[-4px] w-1 h-5 bg-foreground rounded"
-                  style={{ left: `calc(${markerPct}% - 2px)` }}
-                />
-              </div>
-              <div className="grid grid-cols-4 gap-1 text-[10px] text-muted-foreground text-center">
-                {categories.map((c) => (
-                  <div key={c.label}>
-                    <div className="font-medium text-foreground">{c.label}</div>
-                    <div>{c.range}</div>
+                  <div className="flex min-h-11 items-center gap-2">
+                    <RadioGroupItem value="M" id="g-m" />
+                    <Label htmlFor="g-m" className="flex min-h-11 min-w-11 cursor-pointer items-center">Male</Label>
                   </div>
-                ))}
-              </div>
+                  <div className="flex min-h-11 items-center gap-2">
+                    <RadioGroupItem value="F" id="g-f" />
+                    <Label htmlFor="g-f" className="flex min-h-11 min-w-11 cursor-pointer items-center">Female</Label>
+                  </div>
+                </RadioGroup>
+              </SettingsRow>
+
+              <SettingsRow
+                label="Height and target weight"
+                labelId="body-label"
+                description="Changes to your target weight are kept in a history."
+              >
+                <div role="group" aria-labelledby="body-label" className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 sm:max-w-sm [&>*]:min-w-0">
+                    <div className="space-y-1.5">
+                      <FieldLabel htmlFor="height">Height (cm)</FieldLabel>
+                      <Input
+                        id="height"
+                        inputMode="decimal"
+                        value={draft.height}
+                        onChange={(e) => numeric('height')(e.target.value)}
+                        placeholder="e.g. 175"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <FieldLabel htmlFor="target">Target weight (kg)</FieldLabel>
+                      <Input
+                        id="target"
+                        inputMode="decimal"
+                        value={draft.targetWeight}
+                        onChange={(e) => numeric('targetWeight')(e.target.value)}
+                        placeholder="e.g. 75.5"
+                      />
+                    </div>
+                  </div>
+                  <ValueHistory rows={targetWeightHistory} unit="kg" label="Target weight" />
+                </div>
+              </SettingsRow>
+
+              <SettingsRow
+                label="Body mass index"
+                description="Worked out from the height above and your latest logged weight."
+              >
+                <BmiMeter heightCm={parseNumber(draft.height)} weightKg={currentWeight} />
+              </SettingsRow>
+            </SettingsSection>
+
+            <SettingsSection
+              id="targets"
+              icon={Flame}
+              title="Nutrition targets"
+              description="Daily ranges your meals are compared against. Each one is a minimum and a maximum."
+            >
+              <RangeField
+                label="Gym day calories"
+                description="Your daily range on days you log a workout."
+                unit="kcal"
+                min={draft.gymMin}
+                max={draft.gymMax}
+                onMin={numeric('gymMin')}
+                onMax={numeric('gymMax')}
+                placeholders={['e.g. 2300', 'e.g. 2600']}
+                emptyNote="Not set. The rest day target, then your daily calorie goal, is used instead."
+                history={<ValueHistory rows={gymHistory} unit="kcal" label="Gym day calories" />}
+              />
+              <RangeField
+                label="Rest day calories"
+                description="Your daily range on days with no workout."
+                unit="kcal"
+                min={draft.restMin}
+                max={draft.restMax}
+                onMin={numeric('restMin')}
+                onMax={numeric('restMax')}
+                placeholders={['e.g. 1900', 'e.g. 2200']}
+                emptyNote="Not set. The gym day target, then your daily calorie goal, is used instead."
+                history={<ValueHistory rows={restHistory} unit="kcal" label="Rest day calories" />}
+              />
+              <RangeField
+                label="Protein"
+                description="Grams of protein for each kg of body weight."
+                unit="g/kg"
+                min={draft.proteinMin}
+                max={draft.proteinMax}
+                onMin={numeric('proteinMin')}
+                onMax={numeric('proteinMax')}
+                placeholders={['e.g. 1.8', 'e.g. 2.2']}
+                emptyNote="Not set. No protein range is shown."
+                bodyWeightKg={currentWeight}
+              />
+              <RangeField
+                label="Carbs"
+                description="Grams of carbs for each kg of body weight."
+                unit="g/kg"
+                min={draft.carbMin}
+                max={draft.carbMax}
+                onMin={numeric('carbMin')}
+                onMax={numeric('carbMax')}
+                placeholders={['e.g. 3', 'e.g. 4']}
+                emptyNote="Not set. No carb range is shown."
+                bodyWeightKg={currentWeight}
+              />
+            </SettingsSection>
+
+            <SettingsSection
+              id="schedule"
+              icon={CalendarDays}
+              title="Training schedule"
+              description="The dashboard uses these days to tell workout days from rest days."
+            >
+              <SettingsRow
+                label="Workout days and templates"
+                labelId="workout-days-label"
+                description={`${draft.workoutDays.length === 1 ? '1 workout day' : `${draft.workoutDays.length} workout days`} a week. A template is optional.`}
+              >
+                <div role="group" aria-labelledby="workout-days-label" className="space-y-2">
+                  <ScheduleEditor
+                    workoutDays={draft.workoutDays}
+                    dayTemplates={draft.dayTemplates}
+                    templates={templates}
+                    onToggleDay={(day, on) =>
+                      setDraft((d) => ({
+                        ...d,
+                        workoutDays: on ? [...d.workoutDays, day].sort((a, b) => a - b) : d.workoutDays.filter((x) => x !== day),
+                      }))
+                    }
+                    onTemplate={(day, templateId) =>
+                      setDraft((d) => {
+                        const next = { ...d.dayTemplates };
+                        if (templateId === null) delete next[String(day)];
+                        else next[String(day)] = templateId;
+                        return { ...d, dayTemplates: next };
+                      })
+                    }
+                  />
+                  {templates.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Create templates on the Gym page to assign them here.</p>
+                  )}
+                </div>
+              </SettingsRow>
+            </SettingsSection>
+
+            <div className="flex flex-col gap-3 rounded-lg border bg-card p-[var(--card-pad)] shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <p role="status" className="flex items-start gap-2 text-sm">
+                {dirty ? (
+                  <>
+                    <CircleDot aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span><strong className="font-semibold">Unsaved changes.</strong> Save to update the summary at the top.</span>
+                  </>
+                ) : (
+                  <>
+                    <Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-muted-foreground">All changes saved.</span>
+                  </>
+                )}
+              </p>
+              <Button onClick={handleSave} loading={saving} loadingText="Saving…" className="w-full sm:w-auto">
+                Save profile, targets &amp; schedule
+              </Button>
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          </div>
+        </>
+      )}
+
+      <PageSection
+        title="More settings"
+        description="These save on their own, separately from the profile above. Open one to change it."
+        className="space-y-4"
+      >
+        <div className="space-y-4">
+          <RestTimersSection />
+          <InsightCutoffsSection />
+          <ApiTokenSection />
+        </div>
+      </PageSection>
+    </PageContainer>
   );
 };
 

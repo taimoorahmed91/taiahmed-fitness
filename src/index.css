@@ -1,6 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,72 +8,95 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
+    color-scheme: light;
+
+    /* Surfaces */
     --background: 0 0% 96%;
     --foreground: 0 0% 9%;
 
     --card: 0 0% 98%;
     --card-foreground: 0 0% 9%;
 
-    --popover: 0 0% 89%;
+    --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
-    --primary: 20 90% 48%;
-    --primary-foreground: 33 100% 96%;
+    /* Brand action: white-ish text on this orange is >= 4.5:1, and the
+       orange itself is >= 4.5:1 as text on background/card (text-primary). */
+    --primary: 20 92% 38%;
+    --primary-foreground: 33 100% 97%;
+    /* Interaction states are explicit solid colours, never "primary at 90% opacity":
+       opacity lets the page show through and drops text contrast below 4.5:1.
+       Light theme gets darker on hover/press, so the near-white label gains contrast. */
+    --primary-hover: 20 92% 33%;
+    --primary-active: 20 92% 28%;
 
-    --secondary: 0 0% 32%;
-    --secondary-foreground: 0 0% 98%;
+    /* Quiet neutral surface (secondary buttons, badges, chips). */
+    --secondary: 0 0% 88%;
+    --secondary-foreground: 0 0% 12%;
+    --secondary-hover: 0 0% 82%;
+    --secondary-active: 0 0% 76%;
 
-    --muted: 0 0% 63%;
-    --muted-foreground: 0 0% 9%;
+    /* Muted = quiet surface. muted-foreground = clearly softer than
+       foreground but still >= 4.5:1 on background, card, popover and muted. */
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 35%;
 
-    --accent: 47 100% 96%;
-    --accent-foreground: 37 92% 50%;
+    /* Accent = warm hover / selected surface. Pair is >= 4.5:1 and the
+       surface is visibly different from background, card and popover. */
+    --accent: 36 100% 85%;
+    --accent-foreground: 22 90% 20%;
 
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 85% 97%;
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-hover: 0 72% 36%;
+    --destructive-active: 0 72% 31%;
 
     --border: 0 0% 83%;
-    --input: 0 0% 83%;
-    --ring: 20 90% 48%;
+    /* Form-control boundary: >= 3:1 against background, card and popover. */
+    --input: 0 0% 52%;
+    --ring: 20 92% 38%;
+
+    /* Track behind progress bars / range bars. Fills are >= 3:1 on it. */
+    --progress-track: 0 0% 87%;
 
     --radius: 0.75rem;
 
+    /* Shared inner padding. Card sections and dialog/sheet bodies read these,
+       so phones get 16px and sm+ gets 24px. A caller's own p-* class still wins. */
+    --card-pad: 1rem;
+    --overlay-pad: 1rem;
+
+    /* Sidebar mirrors the app tokens so nav hover/active states match
+       the rest of the UI in both themes. */
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 0 0% 9%;
-
-    --sidebar-primary: 20 90% 48%;
-
-    --sidebar-primary-foreground: 33 100% 96%;
-
-    --sidebar-accent: 0 0% 32%;
-
-    --sidebar-accent-foreground: 0 0% 98%;
-
+    --sidebar-primary: 20 92% 38%;
+    --sidebar-primary-foreground: 33 100% 97%;
+    --sidebar-accent: 36 100% 85%;
+    --sidebar-accent-foreground: 22 90% 20%;
     --sidebar-border: 0 0% 83%;
+    --sidebar-ring: 20 92% 38%;
 
-    --sidebar-ring: 20 90% 48%;
-
-    --chart-1: 27 95% 60%;
-
-    --chart-2: 43 96% 56%;
-
-    --chart-3: 47 95% 53%;
-
-    --chart-4: 24 94% 53%;
-
-    --chart-5: 0 0% 45%;
+    /* Chart roles. chart-1..5 = categorical series (orange, blue, purple,
+       teal, magenta). actual/min/max/warn = meaning-bearing series.
+       All are >= 4.5:1 on card and background so they also work as text. */
+    --chart-1: 24 95% 37%;
+    --chart-2: 214 82% 42%;
+    --chart-3: 268 58% 47%;
+    --chart-4: 190 95% 25%;
+    --chart-5: 328 72% 43%;
     --chart-actual: 0 0% 18%;
-    --chart-min: 145 70% 32%;
-    --chart-max: 4 78% 48%;
+    --chart-min: 145 72% 25%;
+    --chart-max: 353 80% 41%;
+    --chart-warn: 40 100% 27%;
 
     --sidebar: 0 0% 98%;
 
-    --font-sans: 'Roboto', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
 
-    --font-serif: 'Libre Caslon Text', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
 
-    --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
 
@@ -100,49 +120,64 @@ All colors MUST be HSL.
   }
 
   .dark {
+    color-scheme: dark;
+
     --background: 0 0% 9%;
     --foreground: 0 0% 98%;
 
     --card: 0 0% 14%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 25%;
+    --popover: 0 0% 18%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 27 95% 60%;
-    --primary-foreground: 12 81% 14%;
+    --primary-foreground: 12 81% 12%;
+    /* Dark theme has a dark label on a light fill, so hover/press get lighter. */
+    --primary-hover: 27 95% 66%;
+    --primary-active: 27 95% 72%;
 
-    --secondary: 0 0% 45%;
+    --secondary: 0 0% 24%;
     --secondary-foreground: 0 0% 98%;
+    --secondary-hover: 0 0% 30%;
+    --secondary-active: 0 0% 36%;
 
-    --muted: 0 0% 45%;
-    --muted-foreground: 0 0% 98%;
+    --muted: 0 0% 21%;
+    --muted-foreground: 0 0% 68%;
 
-    --accent: 20 91% 14%;
-    --accent-foreground: 43 96% 56%;
+    --accent: 22 55% 22%;
+    --accent-foreground: 38 95% 80%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 85% 97%;
+    /* Light red with dark text: works as a button fill AND as text on dark surfaces. */
+    --destructive: 0 84% 65%;
+    --destructive-foreground: 0 70% 12%;
+    --destructive-hover: 0 84% 70%;
+    --destructive-active: 0 84% 75%;
 
     --border: 0 0% 32%;
-    --input: 0 0% 32%;
+    --input: 0 0% 50%;
     --ring: 27 95% 60%;
-    --sidebar-background: 240 5.9% 10%;
+
+    --progress-track: 0 0% 27%;
+
+    --sidebar-background: 0 0% 14%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 27 95% 60%;
-    --sidebar-primary-foreground: 12 81% 14%;
-    --sidebar-accent: 43 96% 56%;
-    --sidebar-accent-foreground: 20 91% 14%;
+    --sidebar-primary-foreground: 12 81% 12%;
+    --sidebar-accent: 22 55% 22%;
+    --sidebar-accent-foreground: 38 95% 80%;
     --sidebar-border: 0 0% 32%;
     --sidebar-ring: 27 95% 60%;
-    --chart-1: 30 97% 72%;
-    --chart-2: 45 96% 64%;
-    --chart-3: 48 96% 76%;
-    --chart-4: 27 95% 60%;
-    --chart-5: 0 0% 45%;
+
+    --chart-1: 27 95% 60%;
+    --chart-2: 212 95% 68%;
+    --chart-3: 268 90% 76%;
+    --chart-4: 180 70% 52%;
+    --chart-5: 330 90% 72%;
     --chart-actual: 0 0% 96%;
-    --chart-min: 145 65% 58%;
-    --chart-max: 5 85% 66%;
+    --chart-min: 145 65% 55%;
+    --chart-max: 5 90% 68%;
+    --chart-warn: 43 96% 56%;
     --sidebar: 0 0% 14%;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -162,5 +197,27 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* sm and up (matches Tailwind's 640px breakpoint): roomier card and overlay padding. */
+@media (min-width: 640px) {
+  :root {
+    --card-pad: 1.5rem;
+    --overlay-pad: 1.5rem;
+  }
+}
+
+/* Safety net for every animation and transition in the app, including third-party
+   ones (Radix presence, sonner, accordion). Components also opt out individually
+   with motion-safe / motion-reduce classes. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react';
 import { StatsCards } from '@/components/StatsCards';
 import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
 import { YesterdayStatus } from '@/components/YesterdayStatus';
+import { yesterdayIso } from '@/lib/dayLabels';
 import { RecoveryChart } from '@/components/RecoveryChart';
 import { MacroTargetChart } from '@/components/MacroTargetChart';
 
@@ -28,10 +29,32 @@ import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { usePersonalData } from '@/hooks/usePersonalData';
 import { useExtraActivities } from '@/hooks/useExtraActivities';
+import { PageContainer, PageHeader, PageSection, PageEmptyState } from '@/components/layout/Page';
+import { CardSkeleton } from '@/components/feedback/CardSkeleton';
+import { DataFreshness } from '@/components/feedback/DataFreshness';
+import { LoadingAnnouncement } from '@/components/feedback/LoadingAnnouncement';
+import { PartialDataNotice } from '@/components/feedback/PartialDataNotice';
+import { SectionUnavailable } from '@/components/feedback/SectionUnavailable';
+import {
+  DASHBOARD_LABELS,
+  dashboardPausedText,
+  resolveDashboardData,
+  type DashboardSection,
+} from '@/components/feedback/dashboardSections';
+import type { TableView } from '@/components/feedback/tableView';
+import { useSharedTableState } from '@/lib/sharedTable';
+import { hookLoadFailed } from '@/lib/loadState';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '@/app/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
 import { resolveCalorieRange, macroRange } from '@/lib/targets';
+import { buildCalorieBalanceRows } from '@/lib/calorieBalance';
+const REFRESH_INTERVAL_MS = 30 * 60 * 1000;
+
 const shiftISODateByDays = (isoDate: string, days: number) => {
   const date = new Date(`${isoDate}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -58,52 +81,53 @@ const ResetCountdown = () => {
       className="flex items-center gap-2 text-sm text-muted-foreground shrink-0"
       title="Daily data resets at 00:00 UTC"
     >
-      <Clock className="h-4 w-4" />
+      <Clock className="h-4 w-4" aria-hidden="true" />
       <span>Resets in <span className="font-mono font-semibold text-foreground">{label}</span></span>
     </div>
   );
 };
 
-const Dashboard = () => {
-  const { meals, lastFetchedAt, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay, refetch: refetchMeals } = useMeals();
-  const { sessions: gymSessions, refetch: refetchGym } = useGymSessions();
-  const { settings, updateWeightInterval, updateWaistInterval, refetch: refetchSettings } = useUserSettings();
-  const { entries: weightEntries, refetch: refetchWeight } = useWeight();
-  const { entries: waistEntries, refetch: refetchWaist } = useWaist();
-  const { entries: sleepEntries, refetch: refetchSleep } = useSleep();
-  const { summary, refetch: refetchSummary } = useDailySummary();
-  const { getNotesMap, refetch: refetchNotes } = useDailyNotes();
-  const { entries: whoopEntries } = useWhoopData();
-  const { data: personalData } = usePersonalData();
-  const { activities: extraActivities, refetch: refetchExtras } = useExtraActivities();
+/** Loading / error / ready for a hook that is not a shared table. It only reports a failure if the hook exposes one. */
+const hookView = (loading: boolean, hook: object): TableView =>
+  loading ? 'loading' : hookLoadFailed(hook) ? 'error' : 'ready';
 
-  // Sum extra-activity calories for a date (added to the day's target)
-  const extraCaloriesForDate = (dateStr: string) =>
-    extraActivities
+const Dashboard = () => {
+  const { meals, loading: mealsLoading, lastFetchedAt, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay } = useMeals();
+  const { sessions: gymSessions } = useGymSessions();
+  const settingsHook = useUserSettings();
+  const { settings, loading: settingsLoading, updateWeightInterval, updateWaistInterval } = settingsHook;
+  const { entries: weightEntries } = useWeight();
+  const { entries: waistEntries } = useWaist();
+  const { entries: sleepEntries } = useSleep();
+  useDailySummary();
+  const { getNotesMap } = useDailyNotes();
+  const { entries: whoopEntries } = useWhoopData();
+  const personalHook = usePersonalData();
+  const { data: personalData, loading: personalLoading } = personalHook;
+  const { activities: extraActivities } = useExtraActivities();
+
+  // Effective calorie min/max for a date: the day's target plus any extra-activity calories,
+  // using the workout range when a gym session was logged that day.
+  const resolveGoalForDate = useCallback((dateStr: string) => {
+    const extraCalories = extraActivities
       .filter((a) => a.date === dateStr)
       .reduce((sum, a) => sum + (a.calories || 0), 0);
-
-  // Resolve effective calorie min/max for a given date based on workout activity that day
-  const resolveGoalForDate = (dateStr: string) => {
     const workedOut = gymSessions.some((s) => s.date === dateStr);
-    const r = resolveCalorieRange(personalData, settings.daily_calorie_goal, workedOut, extraCaloriesForDate(dateStr));
+    const r = resolveCalorieRange(personalData, settings.daily_calorie_goal, workedOut, extraCalories);
     return { goal: r.min, goalMax: r.max, workedOut, auto: r.auto };
-  };
+  }, [gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const yesterdayStr = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
-  })();
+  // The UTC calendar day before today: the same day the meals, goal and label below are all built from.
+  const yesterdayStr = yesterdayIso(todayStr);
 
   const { goal: effectiveGoal, goalMax: effectiveGoalMax, workedOut: isGymDay, auto: autoMode } = useMemo(
     () => resolveGoalForDate(todayStr),
-    [gymSessions, personalData, settings.daily_calorie_goal, todayStr, extraActivities]
+    [resolveGoalForDate, todayStr]
   );
   const { goal: yesterdayGoal, goalMax: yesterdayGoalMax } = useMemo(
     () => resolveGoalForDate(yesterdayStr),
-    [gymSessions, personalData, settings.daily_calorie_goal, yesterdayStr, extraActivities]
+    [resolveGoalForDate, yesterdayStr]
   );
 
   // Latest WHOOP recovery score (most recent entry by date)
@@ -163,8 +187,8 @@ const Dashboard = () => {
       const weight = weightOn(date);
       const pr = macroRange(personalData.protein_multiplier, personalData.protein_multiplier_max, weight);
       const cr = macroRange(personalData.carb_multiplier, personalData.carb_multiplier_max, weight);
-      const [, month, day] = date.split('-');
-      const label = `${month}/${day}`;
+      // ISO dates, so each chart can window by real calendar days (and show MM/DD itself).
+      const label = date;
 
       calories.push({ date: label, actual: dayMeals.reduce((s, m) => s + m.calories, 0), min: goal, max: goalMax });
       protein.push({ date: label, actual: dayMeals.reduce((s, m) => s + (m.protein || 0), 0), min: pr?.min ?? null, max: pr?.max ?? null });
@@ -172,10 +196,13 @@ const Dashboard = () => {
     }
 
     return { calories, protein, carbs };
-  }, [meals, weightEntries, gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
+  }, [meals, weightEntries, personalData, resolveGoalForDate]);
 
-  // Refresh every 30 minutes while visible. The header refresh button next to logout handles manual refreshes.
-  useAutoRefresh([refetchMeals, refetchGym, refetchSettings, refetchWeight, refetchWaist, refetchSleep, refetchSummary, refetchNotes, refetchExtras]);
+  // Refresh every 30 minutes while visible and on tab return. The header's refresh action is answered by
+  // this same hook (same single-flight refetchAll), so a manual refresh never starts a second batch.
+  // Every mounted data hook registers itself with the shell refresh owner. This hook contributes
+  // only the timer/tab-return trigger, so each source is refreshed and counted exactly once.
+  const { refetchAll, isRefreshing, lastStartedAt, lastFinishedAt } = useAutoRefresh([], { intervalMs: REFRESH_INTERVAL_MS });
 
   const notesMap = useMemo(() => getNotesMap(), [getNotesMap]);
 
@@ -210,198 +237,292 @@ const Dashboard = () => {
     return data;
   }, [getWeeklyData]);
   
-  const calorieBalanceData = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const thirtyDaysAgo = shiftISODateByDays(today, -89);
+  // Burn for day D comes from the WHOOP cycle dated D + 1 (see src/lib/calorieBalance.ts); dates are each entry's own `date`.
+  const calorieBalanceData = useMemo(
+    () => buildCalorieBalanceRows(whoopEntries, meals, new Date().toISOString().split('T')[0]),
+    [meals, whoopEntries],
+  );
 
-    const mealsByDate = new Map<string, number>();
-    meals.forEach((meal) => {
-      if (meal.date >= thirtyDaysAgo && meal.date <= today) {
-        mealsByDate.set(meal.date, (mealsByDate.get(meal.date) || 0) + meal.calories);
-      }
-    });
+  // Yesterday's total, using the same UTC day as `yesterdayStr`.
+  const yesterdayCalories = useMemo(
+    () => meals.filter((meal) => meal.date === yesterdayStr).reduce((sum, meal) => sum + meal.calories, 0),
+    [meals, yesterdayStr],
+  );
 
-    return whoopEntries
-      .filter((entry) => {
-        if (entry.kilojoule == null) return false;
-        // Use created_at minus 1 day as reference date
-        const refDate = shiftISODateByDays(entry.created_at.split('T')[0], -1);
-        return refDate >= thirtyDaysAgo && refDate <= today && mealsByDate.has(refDate);
-      })
-      .map((entry) => {
-        const burned = Math.round(Number(entry.kilojoule) / 4.184);
-        const refDate = shiftISODateByDays(entry.created_at.split('T')[0], -1);
-        const consumed = mealsByDate.get(refDate) || 0;
-        const balance = burned - consumed;
-        return {
-          date: refDate,
-          consumed,
-          burned,
-          balance,
-        };
-      })
-      .reverse();
-  }, [meals, whoopEntries]);
+  // Today's meals (UTC day, matching the "Resets at 00:00 UTC" countdown).
+  const todaysMeals = useMemo(() => meals.filter((meal) => meal.date === todayStr), [meals, todayStr]);
 
-  const timeFilter = 'today' as string;
+  // Where each source really is. A block only draws numbers once EVERYTHING it is computed from has loaded
+  // (see dashboardSections.ts). A first-load failure never turns into zero calories, "no meals today", a
+  // default target or a reminder; rows kept after a failed refresh stay on screen with a notice.
+  const data = resolveDashboardData(
+    {
+      meals: useSharedTableState('meals'),
+      gym_sessions: useSharedTableState('gym_sessions'),
+      weight: useSharedTableState('weight'),
+      waist: useSharedTableState('waist'),
+      sleep: useSharedTableState('sleep'),
+      whoop: useSharedTableState('whoop'),
+      extra_activities: useSharedTableState('extra_activities'),
+      daily_notes: useSharedTableState('daily_notes'),
+    },
+    {
+      // Not shared tables. They report a failure only if their hook exposes one (see lib/loadState).
+      settings: hookView(settingsLoading, settingsHook),
+      personal: hookView(personalLoading, personalHook),
+    },
+  );
+  const { sections } = data;
+  const personalFailed = data.failed.includes('personal');
 
-  // Calculate yesterday's calories
-  const yesterdayCalories = useMemo(() => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    return meals
-      .filter((meal) => meal.date === yesterdayStr)
-      .reduce((sum, meal) => sum + meal.calories, 0);
-  }, [meals]);
+  const retryDashboard = useCallback(async () => {
+    // refetchAll is the single-flight batch (shared tables + settings). Personal targets reload only if they failed,
+    // because reloading them while they are fine would flash their cards back to skeletons.
+    await refetchAll();
+  }, [refetchAll]);
 
-  const filteredMeals = useMemo(() => {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const mealsView = sections.mealsToday.view;
+  const pageLoading = data.loading;
 
-    return meals.filter((meal) => {
-      let matchesTime = true;
-      if (timeFilter === 'today') {
-        matchesTime = meal.date === today;
-      } else if (timeFilter === 'week') {
-        matchesTime = new Date(meal.date) >= weekStart;
-      } else if (timeFilter === 'month') {
-        matchesTime = new Date(meal.date) >= monthStart;
-      }
-      
-      return matchesTime;
-    });
-  }, [meals, timeFilter]);
+  /** One block: skeleton while loading, a quiet "paused" card if its data never loaded, otherwise the content. */
+  const gate = (
+    section: DashboardSection,
+    pausedTitle: string,
+    skeleton: ReactNode,
+    ready: () => ReactNode,
+    minHeightClassName = 'min-h-[13rem]',
+  ): ReactNode => {
+    const { view, missing } = sections[section];
+    if (view === 'loading') return skeleton;
+    if (view === 'error') {
+      return (
+        <SectionUnavailable
+          title={pausedTitle}
+          description={dashboardPausedText(missing)}
+          minHeightClassName={minHeightClassName}
+        />
+      );
+    }
+    return ready();
+  };
+
+  // Each reminder tile follows its own data. The workout tile also waits for WHOOP while it is still loading,
+  // so its "recovery" line does not change after the tile appears (a failed WHOOP load just drops that line).
+  const tileStatus = {
+    workout: sections.reminderWorkout.view === 'ready' && sections.recovery.view === 'loading' ? 'loading' : sections.reminderWorkout.view,
+    weight: sections.reminderWeight.view,
+    waist: sections.reminderWaist.view,
+    whoop: sections.reminderWhoop.view,
+  } as const;
 
   return (
-    <div className="container py-8 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Track your nutrition and fitness progress</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <ResetCountdown />
-          <div className="text-sm text-muted-foreground">
-            <span title="Last successful meals fetch.">
-              Last fetched: {lastFetchedAt ? <time dateTime={lastFetchedAt.toISOString()} className="font-mono text-foreground">{lastFetchedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</time> : 'Not yet'}
-            </span>
+    <PageContainer>
+      <PageHeader
+        title="Dashboard"
+        description="Track your nutrition and fitness progress"
+        actions={
+          <div className="flex flex-col gap-2 sm:items-end">
+            <ResetCountdown />
+            <DataFreshness
+              fetchedAt={lastFetchedAt}
+              loading={mealsLoading}
+              refreshing={isRefreshing}
+              lastStartedAt={lastStartedAt}
+              lastFinishedAt={lastFinishedAt}
+              intervalMs={REFRESH_INTERVAL_MS}
+              onRetry={retryDashboard}
+            />
           </div>
-        </div>
-      </div>
+        }
+      />
+      <LoadingAnnouncement loading={pageLoading} label="Loading dashboard" />
 
+      {/* One persistent notice (not a toast): what never loaded (its blocks are paused) and what is showing earlier data. */}
+      <PartialDataNotice
+        failed={data.failed.map((source) => DASHBOARD_LABELS[source])}
+        stale={data.stale.map((table) => DASHBOARD_LABELS[table])}
+        onRetry={retryDashboard}
+      />
 
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Flame className="h-5 w-5 text-primary" />
-            Meals ({filteredMeals.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredMeals.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No meals logged. Start tracking!
-            </p>
+      {/* aria-busy: assistive tech waits for the refresh to finish instead of reading half-updated cards. */}
+      {/* Every chart keeps its own saved date range (and line/bar choice). There is no page-wide range. */}
+      <div aria-busy={pageLoading || isRefreshing} className="space-y-6">
+        <PageSection title="Today" hideTitle className="space-y-6">
+          {/* Order matters: today's targets, then reminders you can act on, then the raw meal list. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {gate('calorieToday', 'Calorie target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
+              <CalorieGoalProgress
+                current={getTodayCalories()}
+                goal={effectiveGoal}
+                goalMax={effectiveGoalMax}
+                autoMode={autoMode}
+                dayType={autoMode ? (isGymDay ? 'gym' : 'rest') : undefined}
+              />
+            ))}
+            {gate('measurementSettings', 'Measurement reminders are paused', <CardSkeleton bodyClassName="h-32" />, () => (
+              <WeightIntervalSetting
+                interval={settings.weight_measurement_interval}
+                onIntervalChange={updateWeightInterval}
+                waistInterval={settings.waist_measurement_interval}
+                onWaistIntervalChange={updateWaistInterval}
+              />
+            ))}
+            {gate('proteinTarget', 'Protein target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
+              <ProteinTargetCard
+                multiplier={personalData.protein_multiplier}
+                multiplierMax={personalData.protein_multiplier_max}
+                currentWeight={weightEntries[0]?.weight ?? null}
+                todayProtein={getTodayProtein()}
+              />
+            ))}
+            {gate('carbTarget', 'Carb target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
+              <CarbTargetCard
+                multiplier={personalData.carb_multiplier}
+                multiplierMax={personalData.carb_multiplier_max}
+                currentWeight={weightEntries[0]?.weight ?? null}
+                todayCarbs={getTodayCarbs()}
+              />
+            ))}
+          </div>
+
+          <StatsCards
+            weightMeasurementInterval={settings.weight_measurement_interval}
+            waistMeasurementInterval={settings.waist_measurement_interval}
+            recoveryScore={latestRecoveryScore}
+            workoutDays={personalData.workout_days}
+            gymSessions={gymSessions}
+            weightEntries={weightEntries}
+            waistEntries={waistEntries}
+            whoopEntries={whoopEntries}
+            tileStatus={tileStatus}
+          />
+
+          {mealsView === 'error' ? (
+            <SectionUnavailable
+              title="Today's meals are unavailable"
+              description={dashboardPausedText(sections.mealsToday.missing)}
+              minHeightClassName="min-h-[9rem]"
+            />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredMeals.map((meal: Meal) => (
-                <div
-                  key={meal.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-background border"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium break-words">{meal.food}</p>
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <span className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {meal.time}
-                      </span>
-                      {(meal.protein != null || meal.carbs != null) && (
-                        <span className="text-xs text-muted-foreground">
-                          {meal.protein != null && `${meal.protein}g protein`}
-                          {meal.protein != null && meal.carbs != null && ' · '}
-                          {meal.carbs != null && `${meal.carbs}g carbs`}
-                        </span>
-                      )}
-                    </div>
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Flame className="h-5 w-5 text-primary" aria-hidden="true" />
+                  Meals{mealsView === 'ready' ? ` (${todaysMeals.length})` : ''}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {mealsView === 'loading' ? (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" aria-hidden="true">
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <Skeleton key={i} className="h-[4.5rem]" />
+                    ))}
                   </div>
-                  <span className="font-semibold text-primary shrink-0 ml-2">{meal.calories} cal</span>
-                </div>
-              ))}
-            </div>
+                ) : todaysMeals.length === 0 ? (
+                  <PageEmptyState
+                    className="min-h-[9rem] justify-center"
+                    title="No meals logged today"
+                    description="Log your first meal to see today's calories and macros here."
+                    action={
+                      <Button asChild>
+                        <Link to={ROUTES.meals}>Log a meal</Link>
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {todaysMeals.map((meal: Meal) => (
+                      <div
+                        key={meal.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-background border"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium break-words">{meal.food}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" aria-hidden="true" />
+                              {meal.time}
+                            </span>
+                            {(meal.protein != null || meal.carbs != null) && (
+                              <span className="text-xs text-muted-foreground">
+                                {meal.protein != null && `${meal.protein}g protein`}
+                                {meal.protein != null && meal.carbs != null && ' · '}
+                                {meal.carbs != null && `${meal.carbs}g carbs`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-semibold text-primary shrink-0 ml-2">{meal.calories} cal</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
 
-      <StatsCards weightMeasurementInterval={settings.weight_measurement_interval} waistMeasurementInterval={settings.waist_measurement_interval} dailySummary={summary} recoveryScore={latestRecoveryScore} />
+          <div className="grid lg:grid-cols-3 gap-6">
+            {gate('yesterday', "Yesterday's summary is paused", <CardSkeleton bodyClassName="h-[190px]" />, () => (
+              <YesterdayStatus
+                yesterdayCalories={yesterdayCalories}
+                goal={yesterdayGoal}
+                goalMax={yesterdayGoalMax}
+                date={yesterdayStr}
+              />
+            ), 'min-h-[16rem]')}
+            {gate('mealTiming', 'Meal timing is paused', <CardSkeleton />, () => (
+              <MealTimeChart data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} data90={getMealsByTimeOfDay(90)} />
+            ), 'min-h-[16rem]')}
+            {gate('recovery', 'Recovery trend is paused', <CardSkeleton />, () => <RecoveryChart data={recoveryChartData} />, 'min-h-[16rem]')}
+          </div>
+        </PageSection>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <CalorieGoalProgress
-          current={getTodayCalories()}
-          goal={effectiveGoal}
-          goalMax={effectiveGoalMax}
-          autoMode={autoMode}
-          dayType={autoMode ? (isGymDay ? 'gym' : 'rest') : undefined}
-        />
-        <WeightIntervalSetting
-          interval={settings.weight_measurement_interval}
-          onIntervalChange={updateWeightInterval}
-          waistInterval={settings.waist_measurement_interval}
-          onWaistIntervalChange={updateWaistInterval}
-        />
-        <ProteinTargetCard
-          multiplier={personalData.protein_multiplier}
-          multiplierMax={personalData.protein_multiplier_max}
-          currentWeight={weightEntries[0]?.weight ?? null}
-          todayProtein={getTodayProtein()}
-        />
-        <CarbTargetCard
-          multiplier={personalData.carb_multiplier}
-          multiplierMax={personalData.carb_multiplier_max}
-          currentWeight={weightEntries[0]?.weight ?? null}
-          todayCarbs={getTodayCarbs()}
-        />
+        <PageSection title="Trends" className="space-y-6">
+          <div className="grid lg:grid-cols-3 gap-6">
+            {sections.macroTrends.view === 'ready' ? (
+              <>
+                <MacroTargetChart data={macroComparisonData.calories} title="Calories: Actual vs Target" unit="cal" />
+                <MacroTargetChart data={macroComparisonData.protein} title="Protein: Actual vs Target" unit="g" />
+                <MacroTargetChart data={macroComparisonData.carbs} title="Carbs: Actual vs Target" unit="g" />
+              </>
+            ) : sections.macroTrends.view === 'error' ? (
+              <SectionUnavailable
+                className="lg:col-span-3"
+                title="Target charts are paused"
+                description={dashboardPausedText(sections.macroTrends.missing)}
+                minHeightClassName="min-h-[16rem]"
+              />
+            ) : (
+              <>
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+              </>
+            )}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {gate('workoutTrend', 'Workout chart is paused', <CardSkeleton />, () => <WorkoutDurationChart data={workoutChartData} />, 'min-h-[20rem]')}
+            {gate('calorieBalance', 'Calorie balance is paused', <CardSkeleton />, () => <CalorieBalanceChart data={calorieBalanceData} />, 'min-h-[20rem]')}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {gate('weightTrend', 'Weight chart is paused', <CardSkeleton />, () => <WeightChart data={weightChartData} notesMap={notesMap} />, 'min-h-[20rem]')}
+            {gate('waistTrend', 'Waist chart is paused', <CardSkeleton />, () => <WaistChart data={waistChartData} notesMap={notesMap} />, 'min-h-[20rem]')}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {gate('sleepTrend', 'Sleep chart is paused', <CardSkeleton />, () => <SleepChart data={sleepChartData} notesMap={notesMap} />, 'min-h-[20rem]')}
+            <GoalsCard />
+          </div>
+        </PageSection>
+
+        <PageSection title="Insights" hideTitle>
+          {/* Cross-metric claims (recovery vs gym, sleep vs food, body recomposition) read six tables. Never draw them from a partial set. */}
+          {gate('insights', 'Insights are paused', <CardSkeleton bodyClassName="h-32" />, () => <CrossMetricSummaryCard />, 'min-h-[10rem]')}
+        </PageSection>
       </div>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        <YesterdayStatus
-          yesterdayCalories={yesterdayCalories}
-          goal={yesterdayGoal}
-          goalMax={yesterdayGoalMax}
-        />
-        <MealTimeChart data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} data90={getMealsByTimeOfDay(90)} />
-        <RecoveryChart data={recoveryChartData} />
-      </div>
-
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        <MacroTargetChart data={macroComparisonData.calories} title="Calories: Actual vs Target" unit="cal" />
-        <MacroTargetChart data={macroComparisonData.protein} title="Protein: Actual vs Target" unit="g" />
-        <MacroTargetChart data={macroComparisonData.carbs} title="Carbs: Actual vs Target" unit="g" />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <WorkoutDurationChart data={workoutChartData} />
-        <CalorieBalanceChart data={calorieBalanceData} />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <WeightChart data={weightChartData} notesMap={notesMap} />
-        <WaistChart data={waistChartData} notesMap={notesMap} />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <SleepChart data={sleepChartData} notesMap={notesMap} />
-        <GoalsCard />
-      </div>
-
-      <CrossMetricSummaryCard />
-
-    </div>
+    </PageContainer>
   );
 };
 

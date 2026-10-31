@@ -1,7 +1,8 @@
-import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState, useMemo } from 'react';
-import { format, subDays, parseISO, differenceInCalendarDays } from 'date-fns';
-import { Navigation } from '@/components/Navigation';
+import { useSingleFlight } from '@/hooks/useSingleFlight';
+import { confirmedSuccess, SAVE_FAILED_MESSAGE } from '@/lib/confirmedMutation';
+import { subDays, parseISO, differenceInCalendarDays } from 'date-fns';
+import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState } from '@/components/layout/Page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,19 +11,36 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataFilter } from '@/components/DataFilter';
 import { SortControl, SortOrder } from '@/components/SortControl';
-import { Ruler, Plus, Trash2, Edit2 } from 'lucide-react';
+import { Ruler, Plus, AlertCircle } from 'lucide-react';
 import { useWaist, WaistEntry } from '@/hooks/useWaist';
 import { useDataFilter } from '@/hooks/useDataFilter';
-import { usePagination } from '@/hooks/usePagination';
-import { PaginationControls } from '@/components/PaginationControls';
+import { MetricHistoryList } from '@/components/history/MetricHistoryList';
+import { fmt, rangeOf } from '@/lib/bodyHistory';
+import { defaultFormDate } from '@/lib/dayLabels';
+import { useSharedTableState } from '@/lib/sharedTable';
+import { tableView } from '@/components/feedback/tableView';
+import { DataLoadError } from '@/components/feedback/DataLoadError';
+import { StaleDataNotice } from '@/components/feedback/StaleDataNotice';
+import { CardSkeleton } from '@/components/feedback/CardSkeleton';
 import { MetricOverviewCard, GoalPanel } from '@/components/MetricOverviewCard';
 import { useUserSettings } from '@/hooks/useUserSettings';
 
+const getWaist = (entry: WaistEntry) => entry.waist;
+
+/** Month heading fact: the lowest and highest reading, only when the month has at least two. Plain numbers, no verdict. */
+const monthFacts = (items: WaistEntry[]) => {
+  const r = rangeOf(items.map(getWaist));
+  return r && r.count >= 2 ? [`Range ${fmt(r.min, 2)}–${fmt(r.max, 2)} cm`] : [];
+};
+
 const Waist = () => {
-  const { entries, loading, addEntry, updateEntry, deleteEntry } = useWaist();
+  const { entries, addEntry, updateEntry, deleteEntry, refetch } = useWaist();
+  // Where the waist query really is. An empty list only means "no entries" once it has loaded.
+  const tableState = useSharedTableState('waist');
+  const view = tableView(tableState);
   const { settings } = useUserSettings();
   const [waist, setWaist] = useState('');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState(() => defaultFormDate());
   const [notes, setNotes] = useState('');
   const [editEntry, setEditEntry] = useState<WaistEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -42,50 +60,72 @@ const Waist = () => {
     dateField: 'date' as keyof WaistEntry,
   });
 
-  const sortedEntries = useMemo(() => {
-    if (sortOrder === null) return filteredEntries;
-    return [...filteredEntries].sort((a, b) => {
-      return sortOrder === 'asc' ? a.waist - b.waist : b.waist - a.waist;
-    });
-  }, [filteredEntries, sortOrder]);
+  // The hooks resolve `true` only when the database confirmed the change. Anything else (false or a rejection)
+  // keeps the draft on screen with an error, so nothing the person typed is lost.
+  const [addError, setAddError] = useState<string | null>(null);
+  const { run: saveNew, pending: adding } = useSingleFlight((draft: Omit<WaistEntry, 'id'>) =>
+    confirmedSuccess(() => addEntry(draft), { requireTrue: true }),
+  );
 
-  const pagination = usePagination(sortedEntries, { pageSize: 20 });
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!waist || !date) return;
     if (notes && notes.length > 2000) {
       return;
     }
 
-    addEntry({
+    setAddError(null);
+    const saved = await saveNew({
       waist: parseFloat(waist),
       date,
       notes: notes?.trim() || undefined,
     });
+    if (!saved) {
+      setAddError(SAVE_FAILED_MESSAGE);
+      return;
+    }
 
     setWaist('');
-    setDate(format(new Date(), 'yyyy-MM-dd'));
+    setDate(defaultFormDate());
     setNotes('');
   };
 
   const handleEdit = (entry: WaistEntry) => {
     setEditEntry(entry);
+    setEditError(null);
     setEditDialogOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const [editError, setEditError] = useState<string | null>(null);
+  const { run: saveEdit, pending: savingEdit } = useSingleFlight((id: string, draft: Omit<WaistEntry, 'id'>) =>
+    confirmedSuccess(() => updateEntry(id, draft), { requireTrue: true }),
+  );
+
+  const handleEditDialogChange = (open: boolean) => {
+    // Cannot be dismissed while the save is running; otherwise the result would land on a closed dialog.
+    if (!open && savingEdit) return;
+    setEditDialogOpen(open);
+    if (!open) setEditError(null);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editEntry) return;
     if (editEntry.notes && editEntry.notes.length > 2000) {
       return;
     }
 
-    updateEntry(editEntry.id, {
+    setEditError(null);
+    const saved = await saveEdit(editEntry.id, {
       waist: editEntry.waist,
       date: editEntry.date,
       notes: editEntry.notes?.trim(),
     });
+    if (!saved) {
+      // Keep the dialog open with everything the person typed.
+      setEditError(SAVE_FAILED_MESSAGE);
+      return;
+    }
 
     setEditDialogOpen(false);
     setEditEntry(null);
@@ -130,17 +170,18 @@ const Waist = () => {
   }, [entries, latestWaist]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-8">
-          <Ruler className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Waist Tracking</h1>
-        </div>
+    <PageContainer>
+      <PageHeader icon={Ruler} title="Waist Tracking" description="Log your measurements and follow your progress" />
 
+      {/* A refresh failed but the rows below are the last good ones: say so and keep them on screen. */}
+      {view === 'ready' && tableState.refreshFailed && (
+        <StaleDataNotice subject="your waist entries" onRetry={refetch} />
+      )}
+
+      <PageSection title="Log and overview" hideTitle>
         <div className="grid gap-6 md:grid-cols-2">
           {/* Add Waist Form */}
-          <Card>
+          <Card titleSize="chart">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
@@ -148,8 +189,8 @@ const Waist = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} onChange={() => setAddError(null)} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
                   <div className="space-y-2">
                     <Label htmlFor="waist">Waist (cm)</Label>
                     <Input
@@ -189,7 +230,13 @@ const Waist = () => {
                     maxLength={2000}
                   />
                 </div>
-                <Button type="submit" className="w-full">
+                {addError && (
+                  <p role="alert" className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{addError}</span>
+                  </p>
+                )}
+                <Button type="submit" className="w-full" loading={adding} loadingText="Adding…">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Entry
                 </Button>
@@ -197,39 +244,53 @@ const Waist = () => {
             </CardContent>
           </Card>
 
-          {/* Stats Card */}
-          <MetricOverviewCard
-            title="Waist Overview"
-            latestLabel="Latest Waist"
-            latest={latestWaist}
-            unit="cm"
-            totalEntries={entries.length}
-            emptyText="No waist entries yet"
-            deltas={[
-              { label: 'vs Previous', value: waistChange },
-              { label: '7 Days', value: periodChanges.day7 },
-              { label: '15 Days', value: periodChanges.day15 },
-              { label: '30 Days', value: periodChanges.day30 },
-            ]}
-            extra={(() => {
-              const last = entries[0]?.date;
-              if (!last) return null;
-              const interval = settings.waist_measurement_interval || 7;
-              const since = differenceInCalendarDays(new Date(), parseISO(last));
-              const left = interval - since;
-              return (
-                <GoalPanel
-                  label={`Measure every ${interval} days`}
-                  detail={since === 0 ? 'Logged today' : left > 0 ? `Next in ${left} day${left === 1 ? '' : 's'}` : `Due ${-left === 0 ? 'today' : `${-left} day${left === -1 ? '' : 's'} ago`}`}
-                  progress={(since / interval) * 100}
-                />
-              );
-            })()}
-          />
+          {/* Stats Card: skeleton while loading, an error (never zeros) if the first load failed. */}
+          {view === 'loading' ? (
+            <CardSkeleton className="h-full" bodyClassName="h-[22rem]" />
+          ) : view === 'error' ? (
+            <DataLoadError
+              className="h-full"
+              title="We couldn't load your waist entries"
+              description="Your waist entries are safe. The overview will show once they load."
+              onRetry={refetch}
+              minHeightClassName="min-h-[22rem]"
+            />
+          ) : (
+            <MetricOverviewCard
+              title="Waist Overview"
+              latestLabel="Latest Waist"
+              latest={latestWaist}
+              unit="cm"
+              totalEntries={entries.length}
+              emptyText="No waist entries yet"
+              deltas={[
+                { label: 'vs Previous', value: waistChange },
+                { label: '7 Days', value: periodChanges.day7 },
+                { label: '15 Days', value: periodChanges.day15 },
+                { label: '30 Days', value: periodChanges.day30 },
+              ]}
+              extra={(() => {
+                const last = entries[0]?.date;
+                if (!last) return null;
+                const interval = settings.waist_measurement_interval || 7;
+                const since = differenceInCalendarDays(new Date(), parseISO(last));
+                const left = interval - since;
+                return (
+                  <GoalPanel
+                    label={`Measure every ${interval} days`}
+                    detail={since === 0 ? 'Logged today' : left > 0 ? `Next in ${left} day${left === 1 ? '' : 's'}` : `Due ${-left === 0 ? 'today' : `${-left} day${left === -1 ? '' : 's'} ago`}`}
+                    progress={(since / interval) * 100}
+                  />
+                );
+              })()}
+            />
+          )}
         </div>
+      </PageSection>
 
+      <PageSection title="Waist history" hideTitle>
         {/* Search and Filter */}
-        <div className="mt-6">
+        <div>
           <DataFilter
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -243,112 +304,106 @@ const Waist = () => {
         </div>
 
         {/* Waist History */}
-        <Card className="mt-6">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <Card titleSize="chart">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
             <CardTitle>Waist History</CardTitle>
             <SortControl label="Waist" sortOrder={sortOrder} onSortChange={setSortOrder} />
           </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-muted-foreground">Loading...</p>
-            ) : filteredEntries.length === 0 ? (
-              <p className="text-muted-foreground">
-                {entries.length === 0 ? 'No waist entries yet' : 'No entries match your filters'}
+          <CardContent className={view === 'ready' && filteredEntries.length > 0 ? 'px-0' : undefined}>
+            {view === 'loading' ? (
+              <PageLoading label="Loading waist entries" />
+            ) : view === 'error' ? (
+              <p className="flex min-h-[13.5rem] items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                Your waist history will show here once your entries load.
               </p>
+            ) : filteredEntries.length === 0 ? (
+              <PageEmptyState
+                icon={Ruler}
+                title={entries.length === 0 ? 'No waist entries yet' : 'No entries match your filters'}
+                description={entries.length === 0 ? 'Log your first measurement above.' : 'Try a different search or time range.'}
+              />
             ) : (
-              <>
-                <div className="space-y-3">
-                  {pagination.paginatedItems.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-card"
-                    >
-                      <div className="flex-1">
-                        <p className="font-semibold">{entry.waist} cm</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(entry.date), 'PPP')}
-                        </p>
-                        {entry.notes && (
-                          <p className="text-sm text-muted-foreground mt-1 break-words">{entry.notes}</p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <ConfirmDeleteButton variant="ghost" size="icon" onConfirm={() => deleteEntry(entry.id)} confirmationTitle="Delete waist entry?" confirmationDescription={`Are you sure you want to delete ${entry.waist} cm recorded on ${entry.date}, including its notes? This cannot be undone.`}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </ConfirmDeleteButton>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <PaginationControls
-                  currentPage={pagination.currentPage}
-                  totalPages={pagination.totalPages}
-                  totalItems={pagination.totalItems}
-                  onPageChange={pagination.goToPage}
-                  hasNextPage={pagination.hasNextPage}
-                  hasPrevPage={pagination.hasPrevPage}
-                />
-              </>
+              <MetricHistoryList
+                entries={filteredEntries}
+                allEntries={entries}
+                sortOrder={sortOrder}
+                sortName="waist"
+                getValue={getWaist}
+                valueLabel="Waist"
+                unit="cm"
+                spokenUnit="centimetres"
+                entryNoun="waist entry"
+                countNoun={{ one: 'entry', many: 'entries' }}
+                showChange
+                monthFacts={monthFacts}
+                deleteTitle="Delete waist entry?"
+                deleteDescription={(entry) => `Are you sure you want to delete ${entry.waist} cm recorded on ${entry.date}, including its notes? This cannot be undone.`}
+                onEdit={handleEdit}
+                onDelete={deleteEntry}
+              />
             )}
           </CardContent>
         </Card>
+      </PageSection>
 
-        {/* Edit Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Waist Entry</DialogTitle>
-            </DialogHeader>
-            {editEntry && (
-              <form onSubmit={handleEditSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-waist">Waist (cm)</Label>
-                    <Input
-                      id="edit-waist"
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9]*\.?[0-9]*"
-                      value={editEntry.waist}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                          setEditEntry({ ...editEntry, waist: parseFloat(value) || 0 });
-                        }
-                      }}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-date">Date</Label>
-                    <Input
-                      id="edit-date"
-                      type="date"
-                      value={editEntry.date}
-                      onChange={(e) => setEditEntry({ ...editEntry, date: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={handleEditDialogChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Waist Entry</DialogTitle>
+          </DialogHeader>
+          {editEntry && (
+            <form onSubmit={handleEditSubmit} onChange={() => setEditError(null)} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-notes">Notes</Label>
-                  <Textarea
-                    id="edit-notes"
-                    value={editEntry.notes || ''}
-                    onChange={(e) => setEditEntry({ ...editEntry, notes: e.target.value })}
-                    maxLength={2000}
+                  <Label htmlFor="edit-waist">Waist (cm)</Label>
+                  <Input
+                    id="edit-waist"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*\.?[0-9]*"
+                    value={editEntry.waist}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setEditEntry({ ...editEntry, waist: parseFloat(value) || 0 });
+                      }
+                    }}
+                    required
                   />
                 </div>
-                <Button type="submit" className="w-full">Save Changes</Button>
-              </form>
-            )}
-          </DialogContent>
-        </Dialog>
-      </main>
-    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-date">Date</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editEntry.date}
+                    onChange={(e) => setEditEntry({ ...editEntry, date: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea
+                  id="edit-notes"
+                  value={editEntry.notes || ''}
+                  onChange={(e) => setEditEntry({ ...editEntry, notes: e.target.value })}
+                  maxLength={2000}
+                />
+              </div>
+              {editError && (
+                <p role="alert" className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{editError}</span>
+                </p>
+              )}
+              <Button type="submit" className="w-full" loading={savingEdit} loadingText="Saving…">Save Changes</Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </PageContainer>
   );
 };
 

@@ -1,8 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { logActivity } from '@/hooks/useActivityLog';
+import {
+  INITIAL_SOURCE_STATUS, LOADED_SOURCE_STATUS, deriveSourceState, type SourceStatus,
+} from '@/app/globalRefresh';
+import { useRefreshSource } from '@/app/globalRefreshContext';
 
 export interface Goal {
   id: string;
@@ -62,12 +66,22 @@ export const useGoals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsProgress, setGoalsProgress] = useState<GoalProgress[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [status, setStatus] = useState<SourceStatus>(INITIAL_SOURCE_STATUS);
+  // Whose goals are on screen, so a failed load for someone else never keeps the previous person's goals.
+  const ownerRef = useRef<string | null>(null);
 
-  const fetchGoals = useCallback(async () => {
+  /** Loads goals and their progress. THROWS when any part failed (after recording it in `status`). */
+  const loadGoals = async ({ isStale }: { isStale: () => boolean }): Promise<void> => {
+    let userId: string | null = null;
     try {
       const user = await getSessionUser();
-      if (!user) { setGoals([]); setGoalsProgress([]); setLoading(false); return; }
+      if (isStale()) return;
+      if (!user) {
+        ownerRef.current = null;
+        setGoals([]); setGoalsProgress([]); setStatus(LOADED_SOURCE_STATUS);
+        return;
+      }
+      userId = user.id;
 
       const todayStr = new Date().toISOString().split('T')[0];
       const todayDate = new Date();
@@ -81,9 +95,9 @@ export const useGoals = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      if (isStale()) return;
 
       const typedGoals = (data || []) as Goal[];
-      setGoals(typedGoals);
 
       const progressList: GoalProgress[] = [];
       
@@ -111,13 +125,16 @@ export const useGoals = () => {
         }
         
         if (goal.category === 'calories') {
-          const { data: meals } = await supabase.from('fittrack_meals').select('calories').eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
+          const { data: meals, error: mealsError } = await supabase.from('fittrack_meals').select('calories').eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
+          if (mealsError) throw mealsError;
           currentValue = (meals || []).reduce((sum, m) => sum + m.calories, 0);
         } else if (goal.category === 'workouts') {
-          const { count } = await supabase.from('fittrack_gym_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
+          const { count, error: countError } = await supabase.from('fittrack_gym_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
+          if (countError) throw countError;
           currentValue = count || 0;
         } else if (goal.category === 'sleep') {
-          const { data: sleepData } = await supabase.from('fittrack_sleep').select('hours').eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
+          const { data: sleepData, error: sleepError } = await supabase.from('fittrack_sleep').select('hours').eq('user_id', user.id).gte('date', queryStartDate).lte('date', queryEndDate);
+          if (sleepError) throw sleepError;
           currentValue = (sleepData || []).reduce((sum, s) => sum + Number(s.hours), 0);
         }
 
@@ -148,11 +165,28 @@ export const useGoals = () => {
         });
       }
 
+      if (isStale()) return;
+      // Goals and their progress are committed together, so a half-loaded answer never shows.
+      ownerRef.current = user.id;
+      setGoals(typedGoals);
       setGoalsProgress(progressList);
+      setStatus(LOADED_SOURCE_STATUS);
     } catch (error) {
       console.error('Error fetching goals:', error);
-    } finally { setLoading(false); }
-  }, []);
+      if (!isStale()) {
+        if (userId && ownerRef.current !== userId) {
+          ownerRef.current = null;
+          setGoals([]); setGoalsProgress([]);
+          setStatus({ loaded: false, failed: true, error });
+        } else {
+          setStatus((prev) => ({ loaded: prev.loaded, failed: true, error }));
+        }
+      }
+      throw error;
+    } finally { if (!isStale()) setLoading(false); }
+  };
+
+  const { refetch, restart } = useRefreshSource(loadGoals);
 
   const addGoal = async (
     goalType: 'weekly' | 'monthly',
@@ -197,12 +231,12 @@ export const useGoals = () => {
 
       if (error) throw error;
 
-      toast({ title: 'Goal Created', description: `Your ${goalType} ${category} goal has been set!` });
+      toast.success('Goal Created', { description: `Your ${goalType} ${category} goal has been set!` });
       logActivity({ action: 'create', category: 'goals', details: { goal_type: goalType, goal_category: category, target_value: targetValue } });
-      fetchGoals();
+      void restart();
     } catch (error: any) {
       console.error('Error adding goal:', error);
-      toast({ title: 'Error', description: 'Failed to create goal', variant: 'destructive' });
+      toast.error('Failed to create goal');
       logActivity({ action: 'create', category: 'goals', status: 'error', error_message: error?.message || 'Failed', details: { goal_type: goalType, goal_category: category, target_value: targetValue } });
     }
   };
@@ -211,21 +245,26 @@ export const useGoals = () => {
     try {
       const { error } = await supabase.from('fittrack_goals').delete().eq('id', goalId);
       if (error) throw error;
-      toast({ title: 'Goal Deleted', description: 'Goal has been removed' });
+      toast.success('Goal Deleted', { description: 'Goal has been removed' });
       logActivity({ action: 'delete', category: 'goals', details: { id: goalId } });
-      fetchGoals();
+      void restart();
     } catch (error: any) {
       console.error('Error deleting goal:', error);
-      toast({ title: 'Error', description: 'Failed to delete goal', variant: 'destructive' });
+      toast.error('Failed to delete goal');
       logActivity({ action: 'delete', category: 'goals', status: 'error', error_message: error?.message || 'Failed', details: { id: goalId } });
     }
   };
 
   useEffect(() => {
-    fetchGoals();
-    const subscription = onAuthIdentityChange(() => { fetchGoals(); });
+    void restart();
+    const subscription = onAuthIdentityChange(() => { void restart(); });
     return () => subscription.unsubscribe();
-  }, [fetchGoals]);
+  }, [restart]);
 
-  return { goals, goalsProgress, loading, addGoal, deleteGoal, refetch: fetchGoals };
+  const state = useMemo(() => deriveSourceState(status), [status]);
+
+  return {
+    goals, goalsProgress, loading, addGoal, deleteGoal, refetch,
+    state, phase: state.phase, loadFailed: state.loadFailed, refreshFailed: state.refreshFailed, error: state.error,
+  };
 };

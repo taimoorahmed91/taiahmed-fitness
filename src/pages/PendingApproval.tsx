@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
@@ -7,13 +7,13 @@ const PendingApproval = () => {
   const { logout } = useUser();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main className="min-h-dvh flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md text-center">
         <CardHeader>
           <div className="flex justify-center mb-4">
-            <Clock className="h-16 w-16 text-muted-foreground" />
+            <Clock className="h-16 w-16 text-muted-foreground" aria-hidden="true" />
           </div>
-          <CardTitle className="text-2xl">Please wait to be allowed</CardTitle>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">Please wait to be allowed</h1>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
@@ -24,7 +24,7 @@ const PendingApproval = () => {
           </Button>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 };
 

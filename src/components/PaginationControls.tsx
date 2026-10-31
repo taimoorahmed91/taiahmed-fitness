@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PaginationControlsProps {
@@ -38,45 +39,55 @@ export const PaginationControls = ({
   };
 
   return (
-    <div className="flex items-center justify-between pt-4">
+    <nav aria-label="Pagination" className="flex flex-col items-center gap-2 pt-4 sm:flex-row sm:justify-between">
       <p className="text-sm text-muted-foreground">
         {totalItems} item{totalItems !== 1 ? 's' : ''}
       </p>
+      {/* Announces page changes to screen readers without moving focus. */}
+      <span role="status" className="sr-only">
+        Page {currentPage} of {totalPages}
+      </span>
       <div className="flex items-center gap-1">
-        <Button
+        <IconButton
+          label="Previous page"
           variant="outline"
-          size="icon"
-          className="h-8 w-8"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={!hasPrevPage}
         >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        {getPageNumbers().map((page, i) =>
-          page === 'ellipsis' ? (
-            <span key={`e-${i}`} className="px-2 text-muted-foreground text-sm">…</span>
-          ) : (
-            <Button
-              key={page}
-              variant={page === currentPage ? 'default' : 'outline'}
-              size="icon"
-              className="h-8 w-8 text-xs"
-              onClick={() => onPageChange(page)}
-            >
-              {page}
-            </Button>
-          )
-        )}
-        <Button
+          <ChevronLeft />
+        </IconButton>
+        {/* Phones: a short "Page 2 of 5" instead of up to 7 page buttons that would not fit. */}
+        <span aria-hidden="true" className="min-w-24 px-2 text-center text-sm tabular-nums text-muted-foreground sm:hidden">
+          Page {currentPage} of {totalPages}
+        </span>
+        <div className="hidden items-center gap-1 sm:flex">
+          {getPageNumbers().map((page, i) =>
+            page === 'ellipsis' ? (
+              <span key={`e-${i}`} aria-hidden="true" className="px-2 text-sm text-muted-foreground">…</span>
+            ) : (
+              <Button
+                key={page}
+                variant={page === currentPage ? 'default' : 'outline'}
+                size="icon"
+                className="text-sm tabular-nums"
+                aria-label={`Page ${page}`}
+                aria-current={page === currentPage ? 'page' : undefined}
+                onClick={() => onPageChange(page)}
+              >
+                {page}
+              </Button>
+            )
+          )}
+        </div>
+        <IconButton
+          label="Next page"
           variant="outline"
-          size="icon"
-          className="h-8 w-8"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={!hasNextPage}
         >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+          <ChevronRight />
+        </IconButton>
       </div>
-    </div>
+    </nav>
   );
 };

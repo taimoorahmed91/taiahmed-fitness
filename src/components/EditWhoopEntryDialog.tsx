@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { WhoopEntry } from '@/hooks/useWhoopData';
+import { whoopDateLabel } from '@/components/history/WhoopHistoryList';
 
 interface EditWhoopEntryDialogProps {
   entry: WhoopEntry | null;
@@ -36,24 +37,24 @@ const fields: { key: keyof WhoopEntry; label: string; type: 'number' | 'text' }[
 ];
 
 export const EditWhoopEntryDialog = ({ entry, open, onOpenChange, onSave }: EditWhoopEntryDialogProps) => {
-  const [form, setForm] = useState<Record<string, any>>({});
+  const [form, setForm] = useState<Record<string, string | number>>({});
   const [saving, setSaving] = useState(false);
 
-  const handleOpen = (isOpen: boolean) => {
-    if (isOpen && entry) {
-      const initial: Record<string, any> = {};
-      fields.forEach(f => {
-        initial[f.key] = entry[f.key] ?? '';
-      });
-      setForm(initial);
-    }
-    onOpenChange(isOpen);
-  };
+  // The page opens this dialog by setting `open` itself, and Radix only calls onOpenChange for the dialog's own
+  // open/close gestures. So the form is filled from the entry here, whenever it opens, not in an open handler.
+  useEffect(() => {
+    if (!open || !entry) return;
+    const initial: Record<string, string | number> = {};
+    fields.forEach(f => {
+      initial[f.key] = entry[f.key] ?? '';
+    });
+    setForm(initial);
+  }, [open, entry]);
 
   const handleSave = async () => {
     if (!entry) return;
     setSaving(true);
-    const updates: Record<string, any> = {};
+    const updates: Record<string, string | number | null> = {};
     fields.forEach(f => {
       const val = form[f.key];
       if (f.type === 'number') {
@@ -62,22 +63,26 @@ export const EditWhoopEntryDialog = ({ entry, open, onOpenChange, onSave }: Edit
         updates[f.key] = val || null;
       }
     });
-    await onSave(entry.id, updates);
+    await onSave(entry.id, updates as Partial<Omit<WhoopEntry, 'id'>>);
     setSaving(false);
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit WHOOP Entry</DialogTitle>
+          <DialogDescription className="sr-only">
+            Change any reading for {entry ? whoopDateLabel(entry.date) : 'this day'}. Empty fields are saved as not recorded.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           {fields.map(f => (
             <div key={f.key} className="space-y-1">
-              <Label className="text-xs">{f.label}</Label>
+              <Label htmlFor={`whoop-edit-${f.key}`} className="text-xs">{f.label}</Label>
               <Input
+                id={`whoop-edit-${f.key}`}
                 type={f.type === 'number' ? 'number' : 'text'}
                 step="any"
                 value={form[f.key] ?? ''}

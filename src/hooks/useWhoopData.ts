@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useUser } from '@/contexts/UserContext';
+import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { logActivity } from '@/hooks/useActivityLog';
+import { useSharedTable } from '@/lib/sharedTable';
+import { byDateDesc, upsertSorted, removeById, errorText, invalidateSharedTable } from '@/lib/sharedData';
 
 export interface WhoopEntry {
   id: string;
@@ -30,68 +32,67 @@ export interface WhoopEntry {
   max_heart_rate: number | null;
 }
 
+// The WHOOP endpoint is a user-configured URL returning untyped JSON, so there is no generated type for it.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type WhoopApiJson = any;
+
 const WHOOP_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwam13cWRpcXNrZ3Z6a3ZwanB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMzk2MDcsImV4cCI6MjA4ODcxNTYwN30.Yjhgz3lhN8b77E7HWI-IZLloxtuwSZqdOsOcAV-4II4';
 
+const mapEntry = (e: Tables<'fittrack_whoop_data'>): WhoopEntry => ({
+  id: e.id,
+  date: e.date,
+  created_at: e.created_at,
+  cycle_end_timestamp: e.cycle_end_timestamp ?? null,
+  recovery_score: e.recovery_score ? Number(e.recovery_score) : null,
+  hrv_rmssd_milli: e.hrv_rmssd_milli ? Number(e.hrv_rmssd_milli) : null,
+  resting_heart_rate: e.resting_heart_rate ? Number(e.resting_heart_rate) : null,
+  spo2_percentage: e.spo2_percentage ? Number(e.spo2_percentage) : null,
+  skin_temp_celsius: e.skin_temp_celsius ? Number(e.skin_temp_celsius) : null,
+  sleep_performance_percentage: e.sleep_performance_percentage ? Number(e.sleep_performance_percentage) : null,
+  sleep_efficiency_percentage: e.sleep_efficiency_percentage ? Number(e.sleep_efficiency_percentage) : null,
+  total_in_bed_hours: e.total_in_bed_hours ? Number(e.total_in_bed_hours) : null,
+  total_rem_sleep_milli: e.total_rem_sleep_milli ? Number(e.total_rem_sleep_milli) : null,
+  total_deep_sleep_milli: e.total_deep_sleep_milli ? Number(e.total_deep_sleep_milli) : null,
+  total_light_sleep_milli: e.total_light_sleep_milli ? Number(e.total_light_sleep_milli) : null,
+  total_awake_time_milli: e.total_awake_time_milli ? Number(e.total_awake_time_milli) : null,
+  respiratory_rate: e.respiratory_rate ? Number(e.respiratory_rate) : null,
+  disturbance_count: e.disturbance_count,
+  sleep_cycle_count: e.sleep_cycle_count,
+  strain: e.strain ? Number(e.strain) : null,
+  kilojoule: e.kilojoule ? Number(e.kilojoule) : null,
+  average_heart_rate: e.average_heart_rate ? Number(e.average_heart_rate) : null,
+  max_heart_rate: e.max_heart_rate ? Number(e.max_heart_rate) : null,
+});
+
+const fetchWhoopEntries = async (userId: string): Promise<WhoopEntry[]> => {
+  const { data, error } = await supabase
+    .from('fittrack_whoop_data')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return (data || []).map(mapEntry);
+};
+
 export const useWhoopData = () => {
-  const [entries, setEntries] = useState<WhoopEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetching, setFetching] = useState(false);
-  const [rawApiResponse, setRawApiResponse] = useState<any>(null);
-  const { user } = useUser();
-
-  const mapEntry = (e: any): WhoopEntry => ({
-    id: e.id,
-    date: e.date,
-    created_at: e.created_at,
-    cycle_end_timestamp: e.cycle_end_timestamp ?? null,
-    recovery_score: e.recovery_score ? Number(e.recovery_score) : null,
-    hrv_rmssd_milli: e.hrv_rmssd_milli ? Number(e.hrv_rmssd_milli) : null,
-    resting_heart_rate: e.resting_heart_rate ? Number(e.resting_heart_rate) : null,
-    spo2_percentage: e.spo2_percentage ? Number(e.spo2_percentage) : null,
-    skin_temp_celsius: e.skin_temp_celsius ? Number(e.skin_temp_celsius) : null,
-    sleep_performance_percentage: e.sleep_performance_percentage ? Number(e.sleep_performance_percentage) : null,
-    sleep_efficiency_percentage: e.sleep_efficiency_percentage ? Number(e.sleep_efficiency_percentage) : null,
-    total_in_bed_hours: e.total_in_bed_hours ? Number(e.total_in_bed_hours) : null,
-    total_rem_sleep_milli: e.total_rem_sleep_milli ? Number(e.total_rem_sleep_milli) : null,
-    total_deep_sleep_milli: e.total_deep_sleep_milli ? Number(e.total_deep_sleep_milli) : null,
-    total_light_sleep_milli: e.total_light_sleep_milli ? Number(e.total_light_sleep_milli) : null,
-    total_awake_time_milli: e.total_awake_time_milli ? Number(e.total_awake_time_milli) : null,
-    respiratory_rate: e.respiratory_rate ? Number(e.respiratory_rate) : null,
-    disturbance_count: e.disturbance_count,
-    sleep_cycle_count: e.sleep_cycle_count,
-    strain: e.strain ? Number(e.strain) : null,
-    kilojoule: e.kilojoule ? Number(e.kilojoule) : null,
-    average_heart_rate: e.average_heart_rate ? Number(e.average_heart_rate) : null,
-    max_heart_rate: e.max_heart_rate ? Number(e.max_heart_rate) : null,
+  // One shared query per signed-in user: every component calling useWhoopData reads the same entries.
+  const { user, userId, client, data: entries, loading, refetch, patch, invalidate } = useSharedTable<WhoopEntry>({
+    table: 'whoop',
+    fetchRows: fetchWhoopEntries,
+    errorMessage: 'Failed to load WHOOP data',
   });
+  // These belong to this screen, not the table, so they are per hook instance.
+  const [fetching, setFetching] = useState(false);
+  const [rawApiResponse, setRawApiResponse] = useState<WhoopApiJson>(null);
 
-  const fetchEntries = async () => {
-    if (!user) {
-      setEntries([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('fittrack_whoop_data')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      setEntries(data?.map(mapEntry) || []);
-    } catch (error) {
-      console.error('Error fetching whoop data:', error);
-      toast.error('Failed to load WHOOP data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // A different user must not see the last user's raw API response. The ref lets an API call that
+  // was started for the previous user notice it is stale when it returns.
+  const activeUserIdRef = useRef<string | null>(userId);
   useEffect(() => {
-    fetchEntries();
-  }, [user]);
+    activeUserIdRef.current = userId;
+    setRawApiResponse(null);
+  }, [userId]);
 
   const fetchFromAPI = async () => {
     if (!user) {
@@ -107,7 +108,7 @@ export const useWhoopData = () => {
         .select('whoop_api_url')
         .eq('user_id', user.id)
         .maybeSingle();
-      const url = ((settingsRow as any)?.whoop_api_url ?? '').trim();
+      const url = (settingsRow?.whoop_api_url ?? '').trim();
       if (!url) {
         toast.error('Please set your WHOOP API URL on the WHOOP page');
         setFetching(false);
@@ -136,21 +137,23 @@ export const useWhoopData = () => {
       if (!response.ok) throw new Error(`API returned ${response.status}`);
       
       const result = await response.json();
+      // The user may have switched accounts while the request was running: drop the result.
+      if (activeUserIdRef.current !== user.id) return;
       setRawApiResponse(result);
       const recovery = result.recovery || {};
       const cycle = result.cycle || {};
 
-      let sleep: Record<string, any> = {};
+      let sleep: Record<string, WhoopApiJson> = {};
       const rawSleep = result.sleep;
       if (Array.isArray(rawSleep) && rawSleep.length > 0) {
         if (rawSleep.length === 1) {
           sleep = rawSleep[0];
         } else {
-          const mainSleep = rawSleep.find((s: any) => s.nap === false) || rawSleep[0];
+          const mainSleep = rawSleep.find((s: WhoopApiJson) => s.nap === false) || rawSleep[0];
           const sumFields = ['total_in_bed_time_milli', 'total_awake_time_milli', 'total_light_sleep_time_milli', 'total_slow_wave_sleep_time_milli', 'total_rem_sleep_time_milli', 'disturbance_count', 'sleep_cycle_count'];
           sleep = { ...mainSleep };
           for (const field of sumFields) {
-            sleep[field] = rawSleep.reduce((sum: number, s: any) => sum + (Number(s[field]) || 0), 0);
+            sleep[field] = rawSleep.reduce((sum: number, s: WhoopApiJson) => sum + (Number(s[field]) || 0), 0);
           }
         }
       } else if (rawSleep && typeof rawSleep === 'object') {
@@ -189,7 +192,7 @@ export const useWhoopData = () => {
         ? Number((sleep.total_in_bed_time_milli / 3600000).toFixed(2))
         : null;
 
-      const entry = {
+      const entry: TablesInsert<'fittrack_whoop_data'> = {
         user_id: user.id,
         date: cycleDate,
         cycle_end_timestamp: cycleEndTimestamp,
@@ -220,7 +223,7 @@ export const useWhoopData = () => {
 
       // Also mirror in-bed hours into fittrack_sleep (source='whoop') so the sleep table has both sources
       if (totalInBedHours) {
-        await supabase.from('fittrack_sleep' as any).upsert({
+        await supabase.from('fittrack_sleep').upsert({
           user_id: user.id,
           date: cycleDate,
           hours: totalInBedHours,
@@ -231,11 +234,13 @@ export const useWhoopData = () => {
 
       toast.success('WHOOP data fetched and saved!');
       logActivity({ action: 'create', category: 'whoop', details: { date: cycleDate, recovery_score: entry.recovery_score, strain: entry.strain } });
-      fetchEntries();
-    } catch (error: any) {
+      // Reload from the server and wait: a new WHOOP row and the mirrored sleep row both change
+      // what other screens show, and this is a one-off action (not a bulk loop).
+      await Promise.all([invalidate(user.id), invalidateSharedTable(client, user.id, 'sleep')]);
+    } catch (error) {
       console.error('Error fetching WHOOP data:', error);
-      toast.error('Failed to fetch WHOOP data: ' + (error?.message || 'Unknown error'));
-      logActivity({ action: 'create', category: 'whoop', status: 'error', error_message: error?.message || 'Failed to fetch WHOOP data' });
+      toast.error('Failed to fetch WHOOP data: ' + (errorText(error, 'Unknown error')));
+      logActivity({ action: 'create', category: 'whoop', status: 'error', error_message: errorText(error, 'Failed to fetch WHOOP data') });
     } finally {
       setFetching(false);
     }
@@ -246,9 +251,9 @@ export const useWhoopData = () => {
       const { error } = await supabase.from('fittrack_whoop_data').delete().eq('id', id);
       if (error) throw error;
       toast.success('WHOOP entry deleted!');
+      patch((prev) => removeById(prev, id));
       logActivity({ action: 'delete', category: 'whoop', details: { id } });
-      fetchEntries();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting whoop entry:', error);
       toast.error('Failed to delete WHOOP entry');
     }
@@ -256,19 +261,26 @@ export const useWhoopData = () => {
 
   const updateEntry = async (id: string, updates: Partial<Omit<WhoopEntry, 'id'>>) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('fittrack_whoop_data')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .maybeSingle();
       if (error) throw error;
+      if (data) {
+        const saved = mapEntry(data);
+        patch((prev) => upsertSorted(prev, saved, byDateDesc));
+      } else {
+        await invalidate();
+      }
       toast.success('WHOOP entry updated!');
       logActivity({ action: 'update', category: 'whoop', details: { id } });
-      fetchEntries();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating whoop entry:', error);
       toast.error('Failed to update WHOOP entry');
     }
   };
 
-  return { entries, loading, fetching, rawApiResponse, fetchFromAPI, deleteEntry, updateEntry, refetch: fetchEntries };
+  return { entries, loading, fetching, rawApiResponse, fetchFromAPI, deleteEntry, updateEntry, refetch };
 };

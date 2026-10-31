@@ -1,13 +1,17 @@
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useState, useEffect, useRef } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Plus, StickyNote, Trash2 } from 'lucide-react';
+import { ChevronDown, Plus, StickyNote, Trash2 } from 'lucide-react';
 import { GymSession } from '@/types';
+import { SetColumnHeader, WorkoutSetRow } from '@/components/workout/WorkoutSetRow';
+import { fieldInputId, fieldOrder, nextInOrder, type AnyExerciseKey } from '@/lib/workoutSession';
+import { cn } from '@/lib/utils';
+import { confirmedSuccess, SAVE_FAILED_MESSAGE } from '@/lib/confirmedMutation';
 
 type SetN = 1 | 2 | 3 | 4 | 5 | 6;
 const SET_NUMS: SetN[] = [1, 2, 3, 4, 5, 6];
@@ -151,7 +155,7 @@ const formatSessionNotes = (data: ParsedSession): string => {
 
     const setsText = tokens.join(' ');
     if (!setsText && !ex.note.trim()) return;
-    const cleanNote = ex.note.trim().replace(/[\[\]|]/g, '');
+    const cleanNote = ex.note.trim().replace(/[[\]|]/g, '');
     const noteSuffix = cleanNote ? ` [note: ${cleanNote}]` : '';
     lines.push(`${seq}.${ex.name}: ${setsText}${noteSuffix}`);
   });
@@ -175,9 +179,6 @@ const nowHHMM = () => {
     .toString()
     .padStart(2, '0')}`;
 };
-
-const greenIf = (hasValue: boolean) =>
-  hasValue ? 'border-green-500 focus-visible:ring-green-500' : '';
 
 // Find the latest HH:MM timestamp across all parsed set entries.
 const getLastSetHHMM = (p: ParsedSession): string | null => {
@@ -225,7 +226,8 @@ interface EditWorkoutSessionModalProps {
   session: GymSession | null;
   open: boolean;
   onClose: () => void;
-  onSave: (id: string, updates: Partial<Omit<GymSession, 'id'>>) => Promise<void> | void;
+  /** Must resolve `true` only when the change was confirmed. `false`, anything else, or a rejection keeps this dialog open. */
+  onSave: (id: string, updates: Partial<Omit<GymSession, 'id'>>) => Promise<boolean> | boolean;
 }
 
 export const EditWorkoutSessionModal = ({
@@ -249,6 +251,9 @@ export const EditWorkoutSessionModal = ({
   const [expanded, setExpanded] = useState<number | null>(0);
   const [newExerciseName, setNewExerciseName] = useState('');
   const [showAddExercise, setShowAddExercise] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const savingRef = useRef(false);
   // Track which fields the user edited in this session — those get the green border
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -289,6 +294,7 @@ export const EditWorkoutSessionModal = ({
       setShowAddExercise(false);
       setNewExerciseName('');
       setTouched({});
+      setSaveFailed(false);
     }
   }, [session, open]);
 
@@ -425,7 +431,7 @@ export const EditWorkoutSessionModal = ({
   };
 
   const handleSave = async () => {
-    if (!session) return;
+    if (!session || savingRef.current) return;
     const updatedNotes = formatSessionNotes({
       ...parsed,
       startTime: parsed.startTime || startTimeField || '',
@@ -450,54 +456,113 @@ export const EditWorkoutSessionModal = ({
       }
     }
 
-    await onSave(session.id, {
-      exercise: exerciseName,
-      duration: finalDuration,
-      date,
-      start_time: startTimeField || undefined,
-      end_time: finalEndIso,
-      notes: updatedNotes || undefined,
-    });
-    onClose();
+    savingRef.current = true;
+    setSaving(true);
+    setSaveFailed(false);
+    let saved = false;
+    try {
+      saved = await confirmedSuccess(
+        () => onSave(session.id, {
+          exercise: exerciseName,
+          duration: finalDuration,
+          date,
+          start_time: startTimeField || undefined,
+          end_time: finalEndIso,
+          notes: updatedNotes || undefined,
+        }),
+        { requireTrue: true },
+      );
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+    // Close only after the change was confirmed. On failure everything typed stays and the error is shown.
+    if (saved) onClose();
+    else setSaveFailed(true);
   };
 
 
   if (!session) return null;
 
+  // Enter moves to the next field of the same exercise, then closes the keyboard after the last.
+  const advance = (index: number, visibleSets: number, key: AnyExerciseKey, input: HTMLInputElement) => {
+    const next = nextInOrder(fieldOrder(visibleSets), key);
+    if (!next) {
+      input.blur();
+      return;
+    }
+    document.getElementById(fieldInputId('ew', index, next))?.focus();
+  };
+
+  const renderSetRow = (ex: ParsedExercise, index: number, n: SetN | 'warmup') => {
+    const repKey = (n === 'warmup' ? 'warmup' : `set${n}`) as SetField;
+    const wKey = (n === 'warmup' ? 'warmupWeight' : `set${n}Weight`) as WeightField;
+    const tKey = (n === 'warmup' ? 'warmupTime' : `set${n}Time`) as TimeField;
+    const reps = ex.sets[repKey] || '';
+    const weight = ex.sets[wKey] || '';
+    const order = fieldOrder(ex.visibleSets);
+    const hint = (k: AnyExerciseKey) => (nextInOrder(order, k) ? 'next' : 'done') as 'next' | 'done';
+    return (
+      <WorkoutSetRow
+        key={repKey}
+        idBase={`ew-${index}-${repKey}`}
+        exerciseName={ex.name || `Exercise ${index + 1}`}
+        setLabel={n === 'warmup' ? 'Warm-up' : `Set ${n}`}
+        shortLabel={n === 'warmup' ? 'Warm' : String(n)}
+        reps={reps}
+        weight={weight}
+        decimalReps
+        repsMaxLength={6}
+        repsHighlight={!!touched[`${index}-${repKey}`] && !!reps}
+        weightHighlight={!!touched[`${index}-${wKey}`] && !!weight}
+        loggedAt={ex.timestamps[tKey]}
+        enterHints={{ reps: hint(repKey), weight: hint(wKey) }}
+        onRepsChange={(v) => updateSet(index, n, 'reps', v)}
+        onWeightChange={(v) => updateSet(index, n, 'weight', v)}
+        onEnter={(field, input) => advance(index, ex.visibleSets, field === 'reps' ? repKey : wKey, input)}
+      />
+    );
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Workout</DialogTitle>
+    <Dialog open={open} onOpenChange={(o) => !o && !saving && onClose()}>
+      <DialogContent
+        layout="mobile-full"
+        closeLabel="Close workout editor"
+        className="flex flex-col gap-0 p-0 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))] max-sm:pt-[max(0.5rem,env(safe-area-inset-top))] sm:max-w-3xl"
+      >
+        <DialogHeader className="shrink-0 border-b px-3 pb-3 pt-1 text-left sm:px-4 sm:pt-4">
+          <DialogTitle className="flex min-h-11 items-center pr-12 sm:min-h-0 sm:pr-8">Edit Workout</DialogTitle>
+          <DialogDescription className="sr-only">
+            Change the workout name, times, and the reps and weight of each set. Nothing is saved until you press Save Changes.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4">
           {/* Top-level fields */}
           <div className="space-y-2">
-            <Label>Workout name</Label>
-            <Input value={exerciseName} onChange={(e) => setExerciseName(e.target.value)} />
+            <Label htmlFor="ew-name">Workout name</Label>
+            <Input id="ew-name" className="h-11" enterKeyHint="next" value={exerciseName} onChange={(e) => setExerciseName(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="space-y-2 col-span-2 md:col-span-1">
-              <Label>Duration (min)</Label>
+          <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:grid-cols-4">
+            <div className="space-y-2 min-[400px]:col-span-2 md:col-span-1">
+              <Label htmlFor="ew-duration">Duration (min)</Label>
               <Input
+                id="ew-duration"
+                className="h-11"
                 inputMode="numeric"
+                enterKeyHint="next"
+                aria-describedby={computedSpanMin != null ? 'ew-duration-hint' : undefined}
                 value={duration}
                 onChange={(e) => setDuration(e.target.value.replace(/[^0-9]/g, ''))}
               />
               {computedSpanMin != null && (
-                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span id="ew-duration-hint">
                     Sets span: {startTimeField} → {lastSetHHMM} ({computedSpanMin} min)
                   </span>
                   {parseInt(duration) !== computedSpanMin && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={handleRecalculate}
-                    >
+                    <Button type="button" variant="outline" size="touch" className="px-3 text-xs" onClick={handleRecalculate}>
                       Recalculate
                     </Button>
                   )}
@@ -505,12 +570,14 @@ export const EditWorkoutSessionModal = ({
               )}
             </div>
             <div className="space-y-2">
-              <Label>Date</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Label htmlFor="ew-date">Date</Label>
+              <Input id="ew-date" className="h-11" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Start time</Label>
+              <Label htmlFor="ew-start">Start time</Label>
               <Input
+                id="ew-start"
+                className="h-11"
                 type="time"
                 value={startTimeField}
                 onChange={(e) => {
@@ -520,8 +587,10 @@ export const EditWorkoutSessionModal = ({
               />
             </div>
             <div className="space-y-2">
-              <Label>End time</Label>
+              <Label htmlFor="ew-end">End time</Label>
               <Input
+                id="ew-end"
+                className="h-11"
                 type="time"
                 value={parsed.endTime}
                 onChange={(e) => setParsed((prev) => ({ ...prev, endTime: e.target.value }))}
@@ -531,22 +600,27 @@ export const EditWorkoutSessionModal = ({
 
           {/* Exercises */}
           <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-base">Exercises</Label>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-base font-medium leading-none">Exercises</h3>
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="touch"
+                aria-expanded={showAddExercise}
                 onClick={() => setShowAddExercise((s) => !s)}
               >
-                <Plus className="h-4 w-4 mr-1" /> Add exercise
+                <Plus aria-hidden="true" /> Add exercise
               </Button>
             </div>
 
             {showAddExercise && (
               <div className="flex gap-2">
                 <Input
+                  aria-label="New exercise name"
+                  className="h-11 min-w-0 flex-1"
                   placeholder="Exercise name"
+                  enterKeyHint="done"
+                  autoFocus
                   value={newExerciseName}
                   onChange={(e) => setNewExerciseName(e.target.value)}
                   onKeyDown={(e) => {
@@ -556,14 +630,14 @@ export const EditWorkoutSessionModal = ({
                     }
                   }}
                 />
-                <Button type="button" onClick={addExercise} disabled={!newExerciseName.trim()}>
+                <Button type="button" size="touch" onClick={addExercise} disabled={!newExerciseName.trim()}>
                   Add
                 </Button>
               </div>
             )}
 
             {parsed.exercises.length === 0 && !showAddExercise && (
-              <p className="text-sm text-muted-foreground py-3 text-center">
+              <p className="py-3 text-center text-sm text-muted-foreground">
                 No structured exercises. Add one to start editing.
               </p>
             )}
@@ -572,39 +646,39 @@ export const EditWorkoutSessionModal = ({
               const openEx = expanded === index;
               const complete = isComplete(ex);
               const visibleNums = SET_NUMS.slice(0, ex.visibleSets);
+              const exName = ex.name || `Exercise ${index + 1}`;
               return (
                 <Collapsible
                   key={index}
                   open={openEx}
                   onOpenChange={(o) => setExpanded(o ? index : null)}
                 >
-                  <div className="border rounded-lg">
+                  <div className="rounded-lg border">
                     <CollapsibleTrigger asChild>
-                      <button
+                      <Button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
+                        variant="ghost"
+                        className="h-auto min-h-12 w-full justify-between gap-2 whitespace-normal rounded-lg p-3 text-left text-base font-normal focus-visible:ring-inset focus-visible:ring-offset-0"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex min-w-0 items-center gap-2">
                           <span
-                            className={`h-2 w-2 rounded-full shrink-0 ${
-                              complete ? 'bg-primary' : 'bg-muted-foreground/40'
-                            }`}
+                            aria-hidden="true"
+                            className={cn('h-2 w-2 shrink-0 rounded-full', complete ? 'bg-primary' : 'bg-muted-foreground/40')}
                           />
-                          <span className="font-medium truncate">
+                          <span className="sr-only">{complete ? 'Has logged sets.' : 'No sets logged.'}</span>
+                          <span className="min-w-0 break-words font-medium">
                             {(ex.seq ?? index + 1)}. {ex.name}
                           </span>
-                        </div>
-                        {openEx ? (
-                          <ChevronUp className="h-4 w-4 shrink-0" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 shrink-0" />
-                        )}
-                      </button>
+                        </span>
+                        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none', openEx && 'rotate-180')} />
+                      </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="p-3 pt-0 space-y-3">
+                    <CollapsibleContent className="space-y-3 p-3 pt-0">
                       <div className="space-y-2">
-                        <Label className="text-xs">Exercise name</Label>
+                        <Label htmlFor={`ew-name-${index}`} className="text-xs">Exercise name</Label>
                         <Input
+                          id={`ew-name-${index}`}
+                          className="h-11"
                           value={ex.name}
                           onChange={(e) =>
                             updateExercise(index, (curr) => ({ ...curr, name: e.target.value }))
@@ -612,115 +686,35 @@ export const EditWorkoutSessionModal = ({
                         />
                       </div>
 
-                      {/* Warmup row */}
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Warmup</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-0.5">
-                            <Input
-                              inputMode="numeric"
-                              placeholder="reps"
-                              value={ex.sets.warmup || ''}
-                              onChange={(e) =>
-                                updateSet(index, 'warmup', 'reps', e.target.value)
-                              }
-                              className={greenIf(!!touched[`${index}-warmup`] && !!ex.sets.warmup)}
-                            />
-                            {ex.timestamps.warmupTime && (
-                              <p className="text-[10px] text-muted-foreground text-center">
-                                @ {ex.timestamps.warmupTime}
-                              </p>
-                            )}
-                          </div>
-                          <Input
-                            inputMode="decimal"
-                            placeholder="kg"
-                            value={ex.sets.warmupWeight || ''}
-                            onChange={(e) =>
-                              updateSet(index, 'warmup', 'weight', e.target.value)
-                            }
-                            className={greenIf(
-                              !!touched[`${index}-warmupWeight`] && !!ex.sets.warmupWeight
-                            )}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Reps row */}
-                      <div className="space-y-1">
-                        <Label className="text-xs">Reps</Label>
-                        <div
-                          className="grid gap-2"
-                          style={{ gridTemplateColumns: `repeat(${visibleNums.length}, minmax(0, 1fr))` }}
-                        >
-                          {visibleNums.map((n) => {
-                            const repKey = `set${n}` as SetField;
-                            const tKey = `set${n}Time` as TimeField;
-                            const tk = `${index}-${repKey}`;
-                            return (
-                              <div key={`reps-${n}`} className="space-y-0.5">
-                                <Input
-                                  inputMode="decimal"
-                                  placeholder={`Set ${n}`}
-                                  value={ex.sets[repKey] || ''}
-                                  onChange={(e) => updateSet(index, n, 'reps', e.target.value)}
-                                  className={greenIf(!!touched[tk] && !!ex.sets[repKey])}
-                                />
-                                {ex.timestamps[tKey] && (
-                                  <p className="text-[10px] text-muted-foreground text-center">
-                                    @ {ex.timestamps[tKey]}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Weight row */}
-                      <div className="space-y-1">
-                        <Label className="text-xs">Weight (kg)</Label>
-                        <div
-                          className="grid gap-2"
-                          style={{ gridTemplateColumns: `repeat(${visibleNums.length}, minmax(0, 1fr))` }}
-                        >
-                          {visibleNums.map((n) => {
-                            const wKey = `set${n}Weight` as WeightField;
-                            const tk = `${index}-${wKey}`;
-                            return (
-                              <Input
-                                key={`w-${n}`}
-                                inputMode="decimal"
-                                placeholder={`Set ${n}`}
-                                value={ex.sets[wKey] || ''}
-                                onChange={(e) => updateSet(index, n, 'weight', e.target.value)}
-                                className={greenIf(!!touched[tk] && !!ex.sets[wKey])}
-                              />
-                            );
-                          })}
-                        </div>
+                      <div role="group" aria-label={`${exName} sets`} className="space-y-2">
+                        <SetColumnHeader withUse={false} />
+                        {renderSetRow(ex, index, 'warmup')}
+                        {visibleNums.map((n) => renderSetRow(ex, index, n))}
                       </div>
 
                       {ex.visibleSets < 6 && (
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
-                          className="w-full border-dashed h-8 text-xs"
+                          size="touch"
+                          className="w-full border-dashed"
+                          aria-label={`Add set (${ex.visibleSets + 1} of 6) for ${exName}`}
                           onClick={() => addSetRow(index)}
                         >
-                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          <Plus aria-hidden="true" />
                           Add set ({ex.visibleSets + 1} of 6)
                         </Button>
                       )}
 
                       {/* Note */}
-                      <div className="space-y-1">
-                        <Label className="text-xs flex items-center gap-1">
-                          <StickyNote className="h-3 w-3" /> Note
+                      <div className="space-y-2">
+                        <Label htmlFor={`ew-note-${index}`} className="flex items-center gap-1 text-xs">
+                          <StickyNote className="h-3 w-3" aria-hidden="true" /> Note<span className="sr-only"> for {exName}</span>
                         </Label>
                         <Textarea
+                          id={`ew-note-${index}`}
                           rows={2}
+                          className="text-base md:text-sm"
                           placeholder="Notes for this exercise"
                           value={ex.note}
                           onChange={(e) => updateNote(index, e.target.value)}
@@ -731,11 +725,12 @@ export const EditWorkoutSessionModal = ({
                         <ConfirmDeleteButton
                           type="button"
                           variant="ghost"
-                          size="sm"
+                          size="touch"
+                          aria-label={`Remove ${exName}`}
                           onConfirm={() => removeExercise(index)} confirmationTitle="Remove exercise?" confirmationDescription={`Remove “${ex.name}” and all its sets, weights, timestamps and comments from this workout? This change takes effect when you save.`} confirmLabel="Yes, remove"
                           className="text-destructive hover:text-destructive"
                         >
-                          <Trash2 className="h-4 w-4 mr-1" />
+                          <Trash2 aria-hidden="true" />
                           Remove
                         </ConfirmDeleteButton>
                       </div>
@@ -747,11 +742,17 @@ export const EditWorkoutSessionModal = ({
           </div>
         </div>
 
-        <DialogFooter className="pt-4">
-          <Button variant="outline" onClick={onClose}>
+        {saveFailed && (
+          <p role="alert" className="shrink-0 border-t border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive sm:px-4">
+            {SAVE_FAILED_MESSAGE}
+          </p>
+        )}
+
+        <DialogFooter className="grid shrink-0 grid-cols-2 gap-2 border-t px-3 pt-2 sm:flex sm:space-x-0 sm:px-4 sm:py-3">
+          <Button variant="outline" size="touch" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button size="touch" onClick={handleSave} loading={saving} loadingText="Saving…">Save Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

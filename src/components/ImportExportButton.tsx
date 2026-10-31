@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { Download, Upload, FileJson } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
+import { useSingleFlight } from '@/hooks/useSingleFlight';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +50,6 @@ export const ImportExportButton = () => {
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importData, setImportData] = useState<ExportedData | null>(null);
-  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const data = {
@@ -101,9 +102,7 @@ export const ImportExportButton = () => {
 
   const handleImport = async () => {
     if (!importData) return;
-    
-    setImporting(true);
-    
+
     try {
       // Import meals
       for (const meal of importData.data.meals) {
@@ -196,10 +195,10 @@ export const ImportExportButton = () => {
       setImportData(null);
     } catch (error) {
       toast.error('Failed to import some data. Please try again.');
-    } finally {
-      setImporting(false);
     }
   };
+  // Import writes many rows one by one; a second tap must never start a second import.
+  const { run: runImport, pending: importing } = useSingleFlight(handleImport);
 
   return (
     <>
@@ -209,13 +208,15 @@ export const ImportExportButton = () => {
         accept=".json"
         onChange={handleFileSelect}
         className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
       />
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" title="Import/Export Data">
-            <Download className="h-4 w-4" />
-          </Button>
+          <IconButton label="Import or export data">
+            <Download />
+          </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuLabel>Export as CSV</DropdownMenuLabel>
@@ -257,8 +258,8 @@ export const ImportExportButton = () => {
         </DropdownMenuContent>
       </DropdownMenu>
       
-      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent>
+      <Dialog open={importDialogOpen} onOpenChange={(open) => { if (!importing) setImportDialogOpen(open); }}>
+        <DialogContent layout="scroll" hideClose={importing}>
           <DialogHeader>
             <DialogTitle>Import Backup Data</DialogTitle>
             <DialogDescription>
@@ -284,11 +285,11 @@ export const ImportExportButton = () => {
           )}
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setImportDialogOpen(false)} disabled={importing}>
               Cancel
             </Button>
-            <Button onClick={handleImport} disabled={importing}>
-              {importing ? 'Importing...' : 'Import Data'}
+            <Button onClick={() => void runImport()} loading={importing} loadingText="Importing…">
+              Import Data
             </Button>
           </DialogFooter>
         </DialogContent>

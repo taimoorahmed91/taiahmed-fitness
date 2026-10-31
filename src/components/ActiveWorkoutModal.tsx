@@ -1,248 +1,60 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
-import { Timer, CheckCircle2, ChevronDown, ChevronUp, Clock, Settings2, Plus, StickyNote } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Textarea } from '@/components/ui/textarea';
+import { Check, Copy, Plus, Settings2, Timer, Trophy, Volume2, VolumeX } from 'lucide-react';
 import { GymSession } from '@/types';
-import { Progress } from '@/components/ui/progress';
 import { logActivity } from '@/hooks/useActivityLog';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser } from '@/lib/authSession';
+import { useUser } from '@/contexts/UserContext';
+import { toast } from 'sonner';
+import {
+  clearDraft, defaultStorage, describePersistFailure, draftExercises, hasWorkoutData, resolveDraft, writeDraft,
+  type PersistFailure,
+} from '@/lib/workoutDraft';
 import { workoutExerciseOrder } from '@/lib/workoutExerciseOrder';
 import { exerciseVolume, bestWeights, isPersonalRecord, notesVolume, volumeChange } from '@/lib/workoutStats';
+import {
+  addExtraExercise, addVisibleSet, applySetUpdate, applyUseLastForSet, applyUseLastWeights, buildActiveWorkoutState,
+  collectWorkoutEntries, extractWeightFromExerciseName, formatHHMM, formatSetLines, formatWorkoutNotes,
+  hasAnySet, initialWorkoutData, parseNotesToPreviousReps, restoreWorkoutData,
+  type ActiveWorkoutState, type AnyExerciseKey, type PreviousReps, type SetKey, type WorkoutData,
+} from '@/lib/workoutSession';
+import {
+  REST_OVER_MESSAGE, restoreRestTimer, serializeRestTimer, shouldChime, startRest, transitionRestOver,
+  type RestState, type RestType,
+} from '@/lib/workoutTiming';
+import { loadRestAlertEnabled, playRestAlert, saveRestAlertEnabled } from '@/lib/workoutRestAlert';
 import { ReadinessBadge } from '@/components/ReadinessBadge';
 import { OfflineBadge } from '@/components/OfflineBadge';
-import { Trophy, Volume2, VolumeX, Copy, Check } from 'lucide-react';
+import { ElapsedClock, RestTimerPanel } from '@/components/workout/WorkoutClocks';
+import { WorkoutExerciseCard } from '@/components/workout/WorkoutExerciseCard';
 
-const REST_ALERT_KEY = 'fittrack-rest-alert-enabled';
-
-// Short synthesized two-tone chime + vibration when a rest timer finishes.
-const playRestAlert = () => {
-  try { navigator.vibrate?.([200, 100, 200]); } catch { /* unsupported */ }
-  try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    [880, 1320].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = freq;
-      const t = ctx.currentTime + i * 0.22;
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.21);
-    });
-    setTimeout(() => ctx.close(), 800);
-  } catch { /* audio blocked */ }
-};
-
-const ACTIVE_WORKOUT_KEY = 'fittrack-active-workout';
+const NO_EXERCISES: string[] = [];
 const REST_TIMER_SETTINGS_KEY = 'fittrack-rest-timer-settings';
-
-interface ExerciseSets {
-  warmup?: string;
-  warmupWeight?: string;
-  set1: string;
-  set2: string;
-  set3: string;
-  set4?: string;
-  set5?: string;
-  set6?: string;
-  set1Weight?: string;
-  set2Weight?: string;
-  set3Weight?: string;
-  set4Weight?: string;
-  set5Weight?: string;
-  set6Weight?: string;
-}
-
-interface ExerciseTimestamps {
-  warmupTime?: string;
-  set1Time?: string;
-  set2Time?: string;
-  set3Time?: string;
-  set4Time?: string;
-  set5Time?: string;
-  set6Time?: string;
-}
-
-type SetKey = 'warmup' | 'set1' | 'set2' | 'set3' | 'set4' | 'set5' | 'set6';
-type WeightKey = 'warmupWeight' | 'set1Weight' | 'set2Weight' | 'set3Weight' | 'set4Weight' | 'set5Weight' | 'set6Weight';
-type AnyExerciseKey = SetKey | WeightKey;
-
-interface ExerciseSequence {
-  [exerciseIndex: number]: number; // sequence number (1-based)
-}
-
-interface PreviousReps {
-  [exerciseName: string]: ExerciseSets;
-}
 
 interface RestTimerSettings {
   setRestSeconds: number;
   exerciseRestSeconds: number;
 }
 
-interface ActiveWorkoutState {
-  templateId: string;
-  templateName: string;
-  exercises: string[];
-  extraExercises: string[];
-  startTime: string;
-  exerciseSets: Record<number, ExerciseSets>;
-  exerciseTimestamps: Record<number, ExerciseTimestamps>;
-  exerciseSequence: ExerciseSequence;
-  previousSequences?: Record<string, number>;
-  exerciseNotes: Record<number, string>;
-  exerciseSetCount?: Record<number, number>;
-  nextSequence: number;
-  expandedExercise: number | null;
-  restTimer?: {
-    remaining: number;
-    total: number;
-    type: 'set' | 'exercise';
-    startedAt: string;
-  } | null;
-}
-
 interface ActiveWorkoutModalProps {
   template: WorkoutTemplate | null;
   open: boolean;
   onClose: () => void;
-  onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string; end_time?: string }) => Promise<boolean>;
+  /** `ownerId` is the account the workout was recorded for; the saver must refuse if someone else is signed in now. */
+  onFinish: (data: { exercise: string; duration: number; date: string; notes?: string; start_time?: string; end_time?: string }, ownerId: string | null) => Promise<boolean>;
   getLastSession?: (templateName: string) => Promise<GymSession | null>;
   historySessions?: GymSession[];
   recoveryScore?: number | null;
 }
-
-// Extract the leading numeric weight value from an exercise name (e.g. "60kg Bench Press" -> "60")
-const extractWeightFromExerciseName = (name: string): string => {
-  const match = name.match(/(\d+(?:\.\d+)?)/);
-  return match ? match[1] : '';
-};
-
-interface WorkoutEntry {
-  exercise: string;
-  index: number;
-  seq: number;
-  sets?: ExerciseSets;
-  ts?: ExerciseTimestamps;
-  setCount: number;
-  note?: string;
-}
-
-// Exercises with recorded data, sorted by sequence number (original indexes kept).
-const collectWorkoutEntries = (
-  allExercises: string[],
-  exerciseSets: Record<number, ExerciseSets>,
-  exerciseSequence: ExerciseSequence,
-  exerciseTimestamps: Record<number, ExerciseTimestamps>,
-  exerciseNotes: Record<number, string>,
-  exerciseSetCount: Record<number, number>,
-): WorkoutEntry[] => {
-  const entries: WorkoutEntry[] = [];
-  allExercises.forEach((exercise, index) => {
-    const sets = exerciseSets[index];
-    if (sets && (sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6)) {
-      entries.push({
-        exercise,
-        index,
-        seq: exerciseSequence[index] ?? 999,
-        sets,
-        ts: exerciseTimestamps[index],
-        setCount: exerciseSetCount[index] || 3,
-        note: exerciseNotes[index]?.trim() || undefined,
-      });
-    }
-  });
-  entries.sort((a, b) => a.seq - b.seq);
-  return entries;
-};
-
-// Readable multi-line set details for the "Copy details" button on the debrief.
-const formatSetLines = (entry: WorkoutEntry): string[] => {
-  const sets = entry.sets;
-  const ts = entry.ts;
-  if (!sets) return [];
-  const lines: string[] = [];
-  const push = (label: string, reps?: string, weight?: string, time?: string) => {
-    if (!reps) return;
-    const bits = [`${reps} reps`];
-    if (weight) bits.push(`@ ${weight} kg`);
-    if (time) bits.push(`at ${time}`);
-    lines.push(`   ${label}: ${bits.join(' ')}`);
-  };
-  push('Warm-up', sets.warmup, sets.warmupWeight, ts?.warmupTime);
-  const setMap = sets as unknown as Record<string, string | undefined>;
-  for (let n = 1; n <= entry.setCount; n++) {
-    push(`Set ${n}`, setMap[`set${n}`], setMap[`set${n}Weight`], ts?.[`set${n}Time` as keyof ExerciseTimestamps]);
-  }
-  return lines;
-};
-
-const parseNotesToPreviousReps = (notes: string | undefined): { reps: PreviousReps; notes: Record<string, string>; sequences: Record<string, number>; setCounts: Record<string, number> } => {
-  const result: PreviousReps = {};
-  const noteMap: Record<string, string> = {};
-  const seqMap: Record<string, number> = {};
-  const setCounts: Record<string, number> = {};
-  if (!notes) return { reps: result, notes: noteMap, sequences: seqMap, setCounts };
-
-  const exerciseParts = notes.split(' | ');
-  for (const part of exerciseParts) {
-    // Capture leading sequence prefix like "1." if present
-    const seqPrefix = part.match(/^(\d+)\./);
-    const cleaned = part.replace(/^\d+\./, '');
-    const colonIndex = cleaned.indexOf(':');
-    if (colonIndex === -1) continue;
-
-    const exerciseName = cleaned.substring(0, colonIndex).trim();
-    if (seqPrefix) seqMap[exerciseName] = parseInt(seqPrefix[1], 10);
-    let setsText = cleaned.substring(colonIndex + 1).trim();
-
-    // Extract trailing note: "[note: ...]"
-    const noteMatch = setsText.match(/\s*\[note:\s*([^\]]*)\]\s*$/);
-    if (noteMatch) {
-      noteMap[exerciseName] = noteMatch[1].trim();
-      setsText = setsText.replace(noteMatch[0], '').trim();
-    }
-
-    const sets: ExerciseSets = { set1: '', set2: '', set3: '' };
-
-    // Match warmup: W:<reps> optionally followed by @<weight>kg
-    const warmupMatch = setsText.match(/(?:^|\s)W:(\d+)(?:@(\d+(?:\.\d+)?)kg)?/);
-    if (warmupMatch) {
-      sets.warmup = warmupMatch[1];
-      if (warmupMatch[2]) sets.warmupWeight = warmupMatch[2];
-    }
-
-    // Match S<n>:<reps> (n = 1..6) optionally followed by @<weight>kg
-    let maxSetNum = 0;
-    const setMatches = setsText.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/g);
-    if (setMatches) {
-      for (const match of setMatches) {
-        const m = match.match(/S(\d):(\d+)(?:@(\d+(?:\.\d+)?)kg)?/);
-        if (!m) continue;
-        const [, setNum, reps, weight] = m;
-        const n = parseInt(setNum, 10);
-        if (n < 1 || n > 6) continue;
-        maxSetNum = Math.max(maxSetNum, n);
-        (sets as unknown as Record<string, string | undefined>)[`set${n}`] = reps;
-        if (weight) (sets as unknown as Record<string, string | undefined>)[`set${n}Weight`] = weight;
-      }
-    }
-    if (maxSetNum > 0) setCounts[exerciseName] = Math.min(6, Math.max(3, maxSetNum));
-    result[exerciseName] = sets;
-  }
-  return { reps: result, notes: noteMap, sequences: seqMap, setCounts };
-};
 
 const DEFAULT_REST_TIMER_SETTINGS: RestTimerSettings = { setRestSeconds: 60, exerciseRestSeconds: 90 };
 
@@ -259,7 +71,11 @@ const loadRestTimerSettings = (): RestTimerSettings => {
 };
 
 const saveRestTimerSettings = (settings: RestTimerSettings) => {
-  localStorage.setItem(REST_TIMER_SETTINGS_KEY, JSON.stringify(settings));
+  try {
+    localStorage.setItem(REST_TIMER_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save rest timer settings on this device:', e);
+  }
 };
 
 const fetchRestTimerSettings = async (): Promise<RestTimerSettings | null> => {
@@ -271,9 +87,10 @@ const fetchRestTimerSettings = async (): Promise<RestTimerSettings | null> => {
     .eq('user_id', user.id)
     .maybeSingle();
   if (!data) return null;
+  const row = data as { set_rest_seconds?: number | null; exercise_rest_seconds?: number | null };
   return {
-    setRestSeconds: (data as any).set_rest_seconds ?? DEFAULT_REST_TIMER_SETTINGS.setRestSeconds,
-    exerciseRestSeconds: (data as any).exercise_rest_seconds ?? DEFAULT_REST_TIMER_SETTINGS.exerciseRestSeconds,
+    setRestSeconds: row.set_rest_seconds ?? DEFAULT_REST_TIMER_SETTINGS.setRestSeconds,
+    exerciseRestSeconds: row.exercise_rest_seconds ?? DEFAULT_REST_TIMER_SETTINGS.exerciseRestSeconds,
   };
 };
 
@@ -285,73 +102,78 @@ const persistRestTimerSettings = async (settings: RestTimerSettings) => {
     .update({
       set_rest_seconds: settings.setRestSeconds,
       exercise_rest_seconds: settings.exerciseRestSeconds,
-    } as any)
+    } as never)
     .eq('user_id', user.id);
 };
 
-const saveActiveWorkout = (state: ActiveWorkoutState) => {
-  localStorage.setItem(ACTIVE_WORKOUT_KEY, JSON.stringify(state));
-};
-
-const loadActiveWorkout = (): ActiveWorkoutState | null => {
-  try {
-    const saved = localStorage.getItem(ACTIVE_WORKOUT_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Failed to load active workout:', e);
-  }
-  return null;
-};
-
-const clearActiveWorkout = () => {
-  localStorage.removeItem(ACTIVE_WORKOUT_KEY);
-};
+type Debrief = { name: string; duration: number; volume: number; change: { diff: number; pct: number } | null; prs: string[]; completed: number; total: number; copyText: string };
 
 export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastSession, historySessions = [], recoveryScore = null }: ActiveWorkoutModalProps) => {
-  const [debrief, setDebrief] = useState<{ name: string; duration: number; volume: number; change: { diff: number; pct: number } | null; prs: string[]; completed: number; total: number; copyText: string } | null>(null);
+  const { user } = useUser();
+  const userIdRef = useRef<string | null>(user?.id ?? null);
+  userIdRef.current = user?.id ?? null;
+  // The account this workout belongs to, fixed when it is opened. Storage writes and the final save use it,
+  // never "whoever is signed in right now".
+  const ownerIdRef = useRef<string | null>(null);
+  // Why saving to this device is failing (null = it is working). Shown as a persistent warning.
+  const [persistFailure, setPersistFailure] = useState<PersistFailure | null>(null);
+  const persistFailureRef = useRef<PersistFailure | null>(null);
+  const latestStateRef = useRef<ActiveWorkoutState | null>(null);
+  // The workout exactly as it was started (name + exercise list). A resumed workout keeps using THIS, never a
+  // template that was edited or reordered meanwhile, because all entered data is keyed by exercise index.
+  const [snapshot, setSnapshot] = useState<{ templateId: string; name: string; exercises: string[] } | null>(null);
+  const [debrief, setDebrief] = useState<Debrief | null>(null);
   const [copiedDetails, setCopiedDetails] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [restAlertOn, setRestAlertOn] = useState(() => localStorage.getItem(REST_ALERT_KEY) !== 'off');
+  const savingRef = useRef(false);
+  const [restAlertOn, setRestAlertOn] = useState(loadRestAlertEnabled);
   const toggleRestAlert = () => setRestAlertOn((v) => {
-    localStorage.setItem(REST_ALERT_KEY, v ? 'off' : 'on');
+    saveRestAlertEnabled(!v);
     return !v;
   });
   const allTimeBest = useMemo(
     () => bestWeights(historySessions.map((s) => parseNotesToPreviousReps(s.notes).reps as unknown as Record<string, Record<string, string | undefined>>)),
     [historySessions],
   );
-  const [extraExercises, setExtraExercises] = useState<string[]>([]);
-  const [exerciseSets, setExerciseSets] = useState<Record<number, ExerciseSets>>({});
-  const [exerciseTimestamps, setExerciseTimestamps] = useState<Record<number, ExerciseTimestamps>>({});
-  const [exerciseSequence, setExerciseSequence] = useState<ExerciseSequence>({});
-  const [nextSequence, setNextSequence] = useState(1);
-  const [exerciseNotes, setExerciseNotes] = useState<Record<number, string>>({});
-  // Visible non-warmup set count per exercise index (3..6). Defaults to 3, bumped
-  // up when previous session history shows more sets were used for that exercise.
-  const [exerciseSetCount, setExerciseSetCount] = useState<Record<number, number>>({});
+
+  // Everything the user has entered. `dataRef` always holds the latest value so
+  // handlers can run several pure updates in a row (Use Last) and stay stable.
+  const [data, setData] = useState<WorkoutData>(() => initialWorkoutData(0));
+  const dataRef = useRef(data);
+  const commitData = useCallback((next: WorkoutData) => {
+    dataRef.current = next;
+    setData(next);
+  }, []);
+
   const [previousReps, setPreviousReps] = useState<PreviousReps>({});
   const [previousNotes, setPreviousNotes] = useState<Record<string, string>>({});
   const [previousSequences, setPreviousSequences] = useState<Record<string, number>>({});
+  const previousRepsRef = useRef(previousReps);
+  previousRepsRef.current = previousReps;
+  const previousNotesRef = useRef(previousNotes);
+  previousNotesRef.current = previousNotes;
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [isRestored, setIsRestored] = useState(false);
-  const [isCancelled, setIsCancelled] = useState(false);
+  // Template id this screen has loaded (or started). Nothing is written to storage until it
+  // matches the open template, so a finished/discarded workout can never leak into the next one.
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
 
   // Add-exercise UI state
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState('');
 
-  // Rest timer state
-  const [restTimerRemaining, setRestTimerRemaining] = useState<number>(0);
-  const [restTimerTotal, setRestTimerTotal] = useState<number>(0);
-  const [restTimerType, setRestTimerType] = useState<'set' | 'exercise'>('set');
-  const [isRestTimerActive, setIsRestTimerActive] = useState(false);
-  const restTimerStartedAt = useRef<Date | null>(null);
-  const restAlertRef = useRef(true);
+  // Rest timer. This holds only start metadata (start time, length, type, running/over).
+  // The ticking digits live inside <RestTimerPanel>, so a second passing re-renders nothing here.
+  const [rest, setRest] = useState<RestState | null>(null);
+  const restRef = useRef<RestState | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+  const restAlertRef = useRef(restAlertOn);
+  restAlertRef.current = restAlertOn;
 
   // Timer settings
   const [timerSettings, setTimerSettings] = useState<RestTimerSettings>(loadRestTimerSettings);
+  const timerSettingsRef = useRef(timerSettings);
+  timerSettingsRef.current = timerSettings;
   const [showSettings, setShowSettings] = useState(false);
 
   // Pull the authoritative durations from the user's account so every device
@@ -368,375 +190,268 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     return () => { cancelled = true; };
   }, [open]);
 
-  // Track previous values to detect when a rep is newly entered
-  const prevExerciseSets = useRef<Record<number, ExerciseSets>>({});
-
   // Keep a stable ref to getLastSession so the open/template effect doesn't
   // re-run every time the parent's sessions list updates (which would wipe
   // in-memory previousReps/previousSequences placeholders mid-workout).
   const getLastSessionRef = useRef(getLastSession);
   useEffect(() => { getLastSessionRef.current = getLastSession; }, [getLastSession]);
 
-  // All exercises = template + extras (added during this session only)
-  const allExercises = template ? [...template.exercises, ...extraExercises] : [];
+  const activeSnapshot = template && snapshot && snapshot.templateId === template.id ? snapshot : null;
+  const baseExercises = activeSnapshot?.exercises ?? template?.exercises ?? NO_EXERCISES;
+  const workoutName = activeSnapshot?.name ?? template?.name ?? '';
 
-  // Save state to localStorage whenever it changes
-  const persistState = useCallback(() => {
-    if (open && template && startTime) {
-      const state: ActiveWorkoutState = {
-        templateId: template.id,
-        templateName: template.name,
-        exercises: template.exercises,
-        extraExercises,
-        startTime: startTime.toISOString(),
-        exerciseSets,
-        exerciseTimestamps,
-        exerciseSequence,
-        previousSequences,
-        exerciseNotes,
-        exerciseSetCount,
-        nextSequence,
-        expandedExercise,
-        restTimer: isRestTimerActive && restTimerStartedAt.current ? {
-          remaining: restTimerRemaining,
-          total: restTimerTotal,
-          type: restTimerType,
-          startedAt: restTimerStartedAt.current.toISOString(),
-        } : null,
-      };
-      saveActiveWorkout(state);
-    }
-  }, [open, template, startTime, extraExercises, exerciseSets, exerciseTimestamps, exerciseSequence, previousSequences, exerciseNotes, exerciseSetCount, nextSequence, expandedExercise, isRestTimerActive, restTimerRemaining, restTimerTotal, restTimerType]);
+  // All exercises = the workout's own list (saved snapshot when resumed) + extras (added during this session only)
+  const allExercises = useMemo(
+    () => (template ? [...baseExercises, ...data.extraExercises] : []),
+    [template, baseExercises, data.extraExercises],
+  );
+  const allExercisesRef = useRef(allExercises);
+  allExercisesRef.current = allExercises;
+
+  const setRestState = useCallback((next: RestState | null) => {
+    restRef.current = next;
+    setRest(next);
+  }, []);
+
+  // Save to this device when the workout data changes. Not on clock ticks: the stored rest timer is
+  // just { startedAt, total, type }, and remaining time is recomputed from it on restore.
+  // The result is never ignored: a failed write raises the visible warning below.
+  const persist = useCallback((state: ActiveWorkoutState): boolean => {
+    latestStateRef.current = state;
+    const result = writeDraft(defaultStorage(), ownerIdRef.current, state);
+    const failure = result.ok === false ? result.reason : null;
+    persistFailureRef.current = failure;
+    setPersistFailure(failure);
+    return result.ok;
+  }, []);
 
   useEffect(() => {
-    if (!isCancelled && (isRestored || (open && startTime))) {
-      persistState();
-    }
-  }, [persistState, isRestored, open, startTime, isCancelled]);
+    if (!open || !template || !startTime || hydratedId !== template.id) return;
+    persist(buildActiveWorkoutState({
+      templateId: template.id,
+      templateName: workoutName,
+      exercises: baseExercises,
+      startTime,
+      data,
+      previousSequences,
+      expandedExercise,
+      restTimer: serializeRestTimer(rest),
+    }));
+  }, [open, template, startTime, hydratedId, data, previousSequences, expandedExercise, rest, workoutName, baseExercises, persist]);
+
+  // While nothing can be stored, leaving the page would lose the workout: ask the browser to confirm first.
+  useEffect(() => {
+    if (!open || !persistFailure) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!hasWorkoutData(dataRef.current)) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [open, persistFailure]);
+
+  const retryPersist = () => {
+    const state = latestStateRef.current;
+    if (state && persist(state)) toast.success('Your progress is saved on this device again.');
+  };
 
   useEffect(() => {
     let cancelled = false;
-    if (open && template) {
-      const savedState = loadActiveWorkout();
-      
-      if (savedState && savedState.templateId === template.id) {
-        setStartTime(new Date(savedState.startTime));
-        setExtraExercises(savedState.extraExercises || []);
-        setExerciseSets(savedState.exerciseSets);
-        setExerciseTimestamps(savedState.exerciseTimestamps || {});
-        setExerciseSequence(savedState.exerciseSequence || {});
-        setNextSequence(savedState.nextSequence || 1);
-        setExerciseNotes(savedState.exerciseNotes || {});
-        setExerciseSetCount(savedState.exerciseSetCount || {});
-        prevExerciseSets.current = JSON.parse(JSON.stringify(savedState.exerciseSets));
-        setExpandedExercise(savedState.expandedExercise);
-        setIsRestored(true);
+    if (!(open && template)) {
+      setHydratedId(null);
+      return;
+    }
+    // Only this account's own saved workout is ever loaded (see lib/workoutDraft.ts).
+    ownerIdRef.current = userIdRef.current;
+    latestStateRef.current = null;
+    const resolution = resolveDraft(defaultStorage(), ownerIdRef.current, {
+      knownTemplateIds: template.id.startsWith('manual-') ? undefined : new Set([template.id]),
+    });
+    const savedState = resolution.draft?.state ?? null;
+    const restoring = !!savedState && savedState.templateId === template.id;
+    // Resume from the saved snapshot so the saved sets still line up with the exercises they were typed for.
+    const baseEx = restoring ? draftExercises(savedState) ?? template.exercises : template.exercises;
+    const baseName = restoring ? savedState.templateName || template.name : template.name;
+    setSnapshot({ templateId: template.id, name: baseName, exercises: baseEx });
 
-        // Restore rest timer if active — recompute from original startedAt
-        if (savedState.restTimer) {
-          const startedAt = new Date(savedState.restTimer.startedAt);
-          const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 1000);
-          const remaining = Math.max(0, savedState.restTimer.total - elapsed);
-          if (remaining > 0) {
-            restTimerStartedAt.current = startedAt;
-            setRestTimerTotal(savedState.restTimer.total);
-            setRestTimerRemaining(remaining);
-            setRestTimerType(savedState.restTimer.type);
-            setIsRestTimerActive(true);
+    if (restoring) {
+      commitData(restoreWorkoutData(savedState, baseEx.length));
+      setStartTime(new Date(savedState.startTime));
+      setExpandedExercise(savedState.expandedExercise ?? null);
+      // Recompute from the original start time; expired timers are dropped.
+      setRestState(restoreRestTimer(savedState.restTimer, Date.now()));
+    } else {
+      commitData(initialWorkoutData(baseEx.length));
+      setStartTime(new Date());
+      setExpandedExercise(0);
+      setRestState(null);
+      logActivity({ action: 'start_workout', category: 'gym', details: { template_name: baseName, exercises: baseEx } });
+    }
+    setAnnouncement('');
+    setHydratedId(template.id);
+
+    setPreviousReps({});
+    setPreviousNotes({});
+    setPreviousSequences(restoring ? savedState.previousSequences || {} : {});
+    setShowAddExercise(false);
+    setNewExerciseName('');
+
+    if (getLastSessionRef.current) {
+      const allEx = [...baseEx];
+      getLastSessionRef.current(baseName).then((lastSession) => {
+        if (cancelled) return;
+        if (lastSession?.notes) {
+          const parsed = parseNotesToPreviousReps(lastSession.notes);
+          setPreviousReps(parsed.reps);
+          setPreviousNotes(parsed.notes);
+          // Keep the saved display order on resume; history only orders a new workout.
+          if (!restoring || !savedState.previousSequences) {
+            setPreviousSequences(parsed.sequences);
           }
+          if (!restoring) {
+            setExpandedExercise((current) => current === 0 ? workoutExerciseOrder(allEx, parsed.sequences)[0]?.index ?? null : current);
+          }
+          // Bump the default visible set count for any exercise whose previous
+          // session logged more than 3 sets (capped at 6). Only raises counts —
+          // never lowers a user's in-progress count.
+          const current = dataRef.current;
+          const counts = { ...current.exerciseSetCount };
+          let changed = false;
+          allEx.forEach((exName, idx) => {
+            const prevCount = parsed.setCounts[exName];
+            if (prevCount && prevCount > (counts[idx] || 3)) {
+              counts[idx] = Math.min(6, prevCount);
+              changed = true;
+            }
+          });
+          if (changed) commitData({ ...current, exerciseSetCount: counts });
+          // Note: previous reps/weights are shown as "last" context only — never pre-filled
+          // into the actual inputs, so exercises don't appear "complete" and timestamps
+          // still get recorded when the user enters their first rep.
         }
-      } else {
-        setStartTime(new Date());
-        setElapsedSeconds(0);
-        setExpandedExercise(0);
-        setIsRestored(false);
-        setIsCancelled(false);
-        setIsRestTimerActive(false);
-        setRestTimerRemaining(0);
-        setExerciseSequence({});
-        setNextSequence(1);
-        setExtraExercises([]);
-        setExerciseNotes({});
-
-        const initialSets: Record<number, ExerciseSets> = {};
-        const initialTimestamps: Record<number, ExerciseTimestamps> = {};
-        const initialSetCount: Record<number, number> = {};
-        template.exercises.forEach((_, index) => {
-          initialSets[index] = { set1: '', set2: '', set3: '' };
-          initialTimestamps[index] = {};
-          initialSetCount[index] = 3;
-        });
-        setExerciseSets(initialSets);
-        setExerciseTimestamps(initialTimestamps);
-        setExerciseSetCount(initialSetCount);
-        prevExerciseSets.current = JSON.parse(JSON.stringify(initialSets));
-        logActivity({ action: 'start_workout', category: 'gym', details: { template_name: template.name, exercises: template.exercises } });
-      }
-      
-      setPreviousReps({});
-      setPreviousNotes({});
-      setPreviousSequences(savedState?.templateId === template.id ? savedState.previousSequences || {} : {});
-      setShowAddExercise(false);
-      setNewExerciseName('');
-
-      if (getLastSessionRef.current) {
-        const tpl = template;
-        const allEx = [...tpl.exercises];
-        getLastSessionRef.current(tpl.name).then((lastSession) => {
-          if (cancelled) return;
-          if (lastSession?.notes) {
-            const parsed = parseNotesToPreviousReps(lastSession.notes);
-            setPreviousReps(parsed.reps);
-            setPreviousNotes(parsed.notes);
-            // Keep the saved display order on resume; history only orders a new workout.
-            const restoring = savedState?.templateId === tpl.id;
-            if (!restoring || !savedState.previousSequences) {
-              setPreviousSequences(parsed.sequences);
-            }
-            if (!restoring) {
-              setExpandedExercise((current) => current === 0 ? workoutExerciseOrder(allEx, parsed.sequences)[0]?.index ?? null : current);
-            }
-            // Bump the default visible set count for any exercise whose previous
-            // session logged more than 3 sets (capped at 6). Only raises counts —
-            // never lowers a user's in-progress count.
-            setExerciseSetCount((prev) => {
-              const next = { ...prev };
-              allEx.forEach((exName, idx) => {
-                const prevCount = parsed.setCounts[exName];
-                if (prevCount && prevCount > (next[idx] || 3)) {
-                  next[idx] = Math.min(6, prevCount);
-                }
-              });
-              return next;
-            });
-            // Note: previous reps/weights are shown as placeholders only — never pre-filled
-            // into the actual inputs, so exercises don't appear "complete" and timestamps
-            // still get recorded when the user enters their first rep.
-          }
-        });
-      }
+      });
     }
     return () => { cancelled = true; };
     // Intentionally exclude getLastSession from deps — it's recreated on every
     // sessions update (auto-refresh / realtime) and would otherwise wipe the
     // in-memory previousReps/previousSequences placeholders mid-workout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, template]);
+  }, [open, template?.id]);
 
-  // Main workout timer
-  useEffect(() => {
-    if (!open || !startTime) return;
-    const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startTime.getTime()) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [open, startTime]);
+  const beginRest = useCallback((type: RestType) => {
+    const s = timerSettingsRef.current;
+    setRestState(startRest(type, type === 'set' ? s.setRestSeconds : s.exerciseRestSeconds, Date.now()));
+    setAnnouncement('');
+  }, [setRestState]);
 
-  // Rest timer countdown — driven by wall-clock timestamps so background tab
-  // throttling (browsers throttle setInterval to ~1/min when hidden) doesn't
-  // cause the timer to drift. We always compute remaining from startedAt+total.
-  useEffect(() => {
-    if (!isRestTimerActive) return;
+  // The rest timer reached zero. Show "Rest over" and announce it once; sound is optional extra.
+  const handleRestElapsed = useCallback((startedAt: number) => {
+    const current = restRef.current;
+    const result = transitionRestOver(current, startedAt);
+    if (!result.announce || !current) return;
+    setRestState(result.rest);
+    setAnnouncement(REST_OVER_MESSAGE);
+    if (restAlertRef.current && shouldChime(current.startedAt, current.total, Date.now())) playRestAlert();
+  }, [setRestState]);
 
-    const tick = () => {
-      const startedAt = restTimerStartedAt.current;
-      if (!startedAt) return;
-      const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 1000);
-      const remaining = Math.max(0, restTimerTotal - elapsed);
-      setRestTimerRemaining(remaining);
-      if (remaining <= 0) {
-        setIsRestTimerActive(false);
-        // Only chime for timers that actually ran out now, not long-expired restores.
-        if (restAlertRef.current && Date.now() - startedAt.getTime() < (restTimerTotal + 5) * 1000) playRestAlert();
-      }
-    };
-
-    tick(); // immediate sync (e.g. when tab becomes visible again)
-    const interval = setInterval(tick, 1000);
-    const onVisibility = () => { if (!document.hidden) tick(); };
-    document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('focus', tick);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('focus', tick);
-    };
-  }, [isRestTimerActive, restTimerTotal]);
-
-  const startRestTimer = (type: 'set' | 'exercise') => {
-    const duration = type === 'set' ? timerSettings.setRestSeconds : timerSettings.exerciseRestSeconds;
-    restTimerStartedAt.current = new Date();
-    setRestTimerTotal(duration);
-    setRestTimerRemaining(duration);
-    setRestTimerType(type);
-    setIsRestTimerActive(true);
-  };
-
-  const skipRestTimer = () => {
-    setIsRestTimerActive(false);
-    setRestTimerRemaining(0);
-  };
+  const dismissRest = useCallback(() => {
+    setRestState(null);
+    setAnnouncement('');
+  }, [setRestState]);
 
   const handleAddExercise = () => {
     const trimmed = newExerciseName.trim();
-    if (!trimmed) return;
-    const newIndex = allExercises.length; // index of this newly-added exercise
-    setExtraExercises((prev) => [...prev, trimmed]);
-    setExerciseSets((prev) => ({
-      ...prev,
-      [newIndex]: { set1: '', set2: '', set3: '' },
-    }));
-    setExerciseTimestamps((prev) => ({ ...prev, [newIndex]: {} }));
-    setExerciseSetCount((prev) => ({ ...prev, [newIndex]: 3 }));
-    prevExerciseSets.current = {
-      ...prevExerciseSets.current,
-      [newIndex]: { set1: '', set2: '', set3: '' },
-    };
-    setExpandedExercise(newIndex);
+    if (!trimmed || !template) return;
+    const result = addExtraExercise(dataRef.current, baseExercises.length, trimmed);
+    commitData(result.data);
+    setExpandedExercise(result.index);
     setNewExerciseName('');
     setShowAddExercise(false);
   };
 
-  const addExtraSet = (exerciseIndex: number) => {
-    setExerciseSetCount((prev) => {
-      const current = prev[exerciseIndex] || 3;
-      if (current >= 6) return prev;
-      return { ...prev, [exerciseIndex]: current + 1 };
+  // --- Stable per-exercise handlers (all take the ORIGINAL exercise index) ---
+  const handleToggle = useCallback((index: number, isOpen: boolean) => setExpandedExercise(isOpen ? index : null), []);
+
+  const handleAddSet = useCallback((index: number) => {
+    const next = addVisibleSet(dataRef.current, index);
+    if (next !== dataRef.current) commitData(next);
+  }, [commitData]);
+
+  const handleUpdateSet = useCallback((index: number, key: AnyExerciseKey, value: string) => {
+    const result = applySetUpdate(dataRef.current, { index, key, value, time: formatHHMM(new Date()) });
+    if (result.data !== dataRef.current) commitData(result.data);
+    if (result.rest) beginRest(result.rest);
+  }, [commitData, beginRest]);
+
+  // Use Last goes through the same update path as typing: a filled rep is stamped with the time
+  // it was tapped, takes the sequence number and starts the right rest timer.
+  const handleUseLastSet = useCallback((index: number, key: SetKey) => {
+    const previous = previousRepsRef.current[allExercisesRef.current[index]];
+    const result = applyUseLastForSet(dataRef.current, previous, index, key, formatHHMM(new Date()));
+    if (result.data !== dataRef.current) commitData(result.data);
+    if (result.rest) beginRest(result.rest);
+  }, [commitData, beginRest]);
+
+  const handleUseLastWeights = useCallback((index: number) => {
+    const previous = previousRepsRef.current[allExercisesRef.current[index]];
+    const visible = dataRef.current.exerciseSetCount[index] || 3;
+    const result = applyUseLastWeights(dataRef.current, previous, index, visible, formatHHMM(new Date()));
+    if (result.data !== dataRef.current) commitData(result.data);
+  }, [commitData]);
+
+  const setNote = useCallback((index: number, value: string | null) => {
+    const current = dataRef.current;
+    const notes = { ...current.exerciseNotes };
+    if (value === null) delete notes[index];
+    else notes[index] = value;
+    commitData({ ...current, exerciseNotes: notes });
+  }, [commitData]);
+
+  const handleNoteChange = useCallback((index: number, value: string) => setNote(index, value), [setNote]);
+
+  const handleCarryNote = useCallback((index: number) => {
+    const prev = previousNotesRef.current[allExercisesRef.current[index]];
+    if (!prev || dataRef.current.exerciseNotes[index]) return;
+    setNote(index, prev);
+  }, [setNote]);
+
+  const handleCopyNote = useCallback((index: number) => {
+    const prev = previousNotesRef.current[allExercisesRef.current[index]];
+    if (prev) setNote(index, prev);
+  }, [setNote]);
+
+  const handleClearNote = useCallback((index: number) => {
+    const name = allExercisesRef.current[index];
+    setNote(index, null);
+    setPreviousNotes((p) => {
+      const next = { ...p };
+      delete next[name];
+      return next;
     });
-  };
-
-  const updateSet = (exerciseIndex: number, setKey: AnyExerciseKey, value: string) => {
-    const isWeightField = setKey.endsWith('Weight');
-    // For weight fields, allow comma as decimal separator and convert to dot
-    if (isWeightField) value = value.replace(',', '.');
-    if (value && !/^\d*\.?\d*$/.test(value)) return;
-
-    const repKey = (isWeightField ? setKey.replace('Weight', '') : setKey) as SetKey;
-    const prevValue = (prevExerciseSets.current[exerciseIndex] as unknown as Record<string, string | undefined> | undefined)?.[setKey] || '';
-
-    setExerciseSets((prev) => {
-      const updated = {
-        ...prev,
-        [exerciseIndex]: {
-          ...prev[exerciseIndex],
-          [setKey]: value,
-        },
-      };
-      return updated;
-    });
-
-    // Record timestamp & sequence & rest timer only when a REP value is newly entered
-    if (!isWeightField && !prevValue && value) {
-      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const tsKey = `${repKey}Time` as keyof ExerciseTimestamps;
-      setExerciseTimestamps((prev) => ({
-        ...prev,
-        [exerciseIndex]: {
-          ...prev[exerciseIndex],
-          [tsKey]: timeStr,
-        },
-      }));
-
-      // Assign sequence number on first set entry for this exercise (warmup or set1)
-      if (repKey === 'warmup' || repKey === 'set1') {
-        setExerciseSequence((prev) => {
-          if (prev[exerciseIndex] !== undefined) return prev;
-          const seq = nextSequence;
-          setNextSequence((n) => n + 1);
-          return { ...prev, [exerciseIndex]: seq };
-        });
-      }
-
-      // Warmup now also starts a rest timer (set rest) before the first
-      // working set. Last working set triggers exercise rest; intermediate
-      // working sets trigger set rest.
-      if (repKey === 'warmup') {
-        startRestTimer('set');
-      } else {
-        const setNum = parseInt(repKey.replace('set', ''), 10);
-        const lastSet = exerciseSetCount[exerciseIndex] || 3;
-        if (setNum >= lastSet) {
-          startRestTimer('exercise');
-        } else {
-          startRestTimer('set');
-        }
-      }
-    }
-
-    // Update prev ref
-    prevExerciseSets.current = {
-      ...prevExerciseSets.current,
-      [exerciseIndex]: {
-        ...prevExerciseSets.current[exerciseIndex],
-        [setKey]: value,
-      },
-    };
-  };
-
-  const isExerciseComplete = (index: number) => {
-    const sets = exerciseSets[index];
-    if (!sets) return false;
-    return !!(sets.warmup || sets.set1 || sets.set2 || sets.set3 || sets.set4 || sets.set5 || sets.set6);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, [setNote]);
 
   const formatSetsForNotes = () => {
     if (!template || !startTime) return '';
-    const endTimeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const startTimeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-    const entries = collectWorkoutEntries(allExercises, exerciseSets, exerciseSequence, exerciseTimestamps, exerciseNotes, exerciseSetCount);
-
-    const lines: string[] = [`Start:${startTimeStr} End:${endTimeStr}`];
-    entries.forEach((entry) => {
-      const sets = entry.sets!;
-      const ts = entry.ts;
-      const setCount = entry.setCount;
-      const buildWarmup = () => {
-        const reps = sets.warmup;
-        if (!reps) return null;
-        const weight = sets.warmupWeight;
-        const time = ts?.warmupTime;
-        return `W:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
-      };
-      const buildSet = (n: number) => {
-        const repKey = `set${n}` as SetKey;
-        const wKey = `set${n}Weight` as WeightKey;
-        const tKey = `set${n}Time` as keyof ExerciseTimestamps;
-        const reps = (sets as unknown as Record<string, string | undefined>)[repKey];
-        if (!reps) return null;
-        const weight = (sets as unknown as Record<string, string | undefined>)[wKey];
-        const time = ts?.[tKey];
-        return `S${n}:${reps}${weight ? `@${weight}kg` : ''}${time ? `@${time}` : ''}`;
-      };
-      const parts: (string | null)[] = [buildWarmup()];
-      for (let n = 1; n <= setCount; n++) parts.push(buildSet(n));
-      const setsText = parts.filter(Boolean).join(' ');
-      const note = exerciseNotes[entry.index]?.trim();
-      const noteSuffix = note ? ` [note: ${note.replace(/[\[\]|]/g, '')}]` : '';
-      lines.push(`${entry.seq}.${entry.exercise}: ${setsText}${noteSuffix}`);
-    });
-    return lines.join(' | ');
+    const endTimeStr = formatHHMM(new Date());
+    const startTimeStr = formatHHMM(startTime);
+    const entries = collectWorkoutEntries(allExercises, data.exerciseSets, data.exerciseSequence, data.exerciseTimestamps, data.exerciseNotes, data.exerciseSetCount);
+    return formatWorkoutNotes(entries, startTimeStr, endTimeStr);
   };
 
   // Readable text for the debrief "Copy details" button: times, every set
   // (reps @ weight, stamped time), per-exercise notes and new PRs.
   const buildCopyText = (prs: string[], durationMinutes: number, volume: number, endAnchor: Date) => {
     if (!template || !startTime) return '';
-    const startTimeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const endTimeStr = endAnchor.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const startTimeStr = formatHHMM(startTime);
+    const endTimeStr = formatHHMM(endAnchor);
     const lines: string[] = [
-      `Workout: ${template.name}`,
+      `Workout: ${workoutName}`,
       `Date: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`,
       `Start: ${startTimeStr} · End: ${endTimeStr} · Duration: ${durationMinutes} min`,
       `Total volume: ${Math.round(volume).toLocaleString()} kg`,
     ];
-    collectWorkoutEntries(allExercises, exerciseSets, exerciseSequence, exerciseTimestamps, exerciseNotes, exerciseSetCount).forEach((entry) => {
+    collectWorkoutEntries(allExercises, data.exerciseSets, data.exerciseSequence, data.exerciseTimestamps, data.exerciseNotes, data.exerciseSetCount).forEach((entry) => {
       lines.push('');
       lines.push(`${entry.seq}. ${entry.exercise}`);
       formatSetLines(entry).forEach((l) => lines.push(l));
@@ -751,7 +466,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
   };
 
   const handleComplete = async () => {
-    if (!template || !startTime) return;
+    if (!template || !startTime || savingRef.current) return;
     const completedAt = new Date();
     const notes = formatSetsForNotes();
     const formattedStartTime = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`;
@@ -760,7 +475,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     // moment the workout finished, independent of when "Complete" was tapped.
     let endAnchor = completedAt;
     let bestMin = -1;
-    Object.values(exerciseTimestamps).forEach((ts) => {
+    Object.values(data.exerciseTimestamps).forEach((ts) => {
       if (!ts) return;
       Object.values(ts).forEach((t) => {
         if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return;
@@ -785,11 +500,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const durationMinutes = Math.max(1, Math.round((endAnchor.getTime() - startTime.getTime()) / 60000));
 
     const previous = [...historySessions]
-      .filter((h) => h.exercise === template.name && notesVolume(h.notes) > 0)
+      .filter((h) => h.exercise === workoutName && notesVolume(h.notes) > 0)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
     const prs = allExercises.filter((ex, i) => isPR(i, ex));
     const summary = {
-      name: template.name,
+      name: workoutName,
       duration: durationMinutes,
       volume: totalVolume,
       change: volumeChange(totalVolume, previous ? notesVolume(previous.notes) : null),
@@ -799,40 +514,72 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       copyText: buildCopyText(prs, durationMinutes, totalVolume, endAnchor),
     };
 
+    // The workout belongs to the account that recorded it. If someone else is signed in by now, do not save it
+    // into their log: it stays on this device for its owner.
+    if (ownerIdRef.current !== userIdRef.current) {
+      toast.error('The signed-in account changed, so this workout was not saved. It stays on this device for the account that recorded it.');
+      return;
+    }
+
+    savingRef.current = true;
     setSaving(true);
     let success = false;
     try {
       success = await onFinish({
-        exercise: template.name,
+        exercise: workoutName,
         duration: durationMinutes,
         date: new Date().toISOString().split('T')[0],
         notes: notes || undefined,
         start_time: formattedStartTime,
         end_time: endAnchor.toISOString(),
-      });
+      }, ownerIdRef.current);
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
 
     if (success) {
-      logActivity({ action: 'finish_workout', category: 'gym', details: { template_name: template.name, duration: durationMinutes, notes } });
-      clearActiveWorkout();
+      logActivity({ action: 'finish_workout', category: 'gym', details: { template_name: workoutName, duration: durationMinutes, notes } });
+      // Stop writing this workout back to storage, then remove the saved copy.
+      setHydratedId(null);
+      if (!clearDraft(defaultStorage(), ownerIdRef.current, template.id) && persistFailureRef.current === null) {
+        toast.warning('Workout saved. The copy kept on this device could not be removed, so it may show up as a paused workout. Discard it from the Gym page.');
+      }
+      setRestState(null);
       setDebrief(summary);
     } else {
-      logActivity({ action: 'finish_workout', category: 'gym', status: 'error', error_message: 'Save failed, retaining data', details: { template_name: template.name } });
+      logActivity({ action: 'finish_workout', category: 'gym', status: 'error', error_message: 'Save failed, retaining data', details: { template_name: workoutName } });
     }
     // If save failed, workout data stays in localStorage so user can retry
   };
 
-  const handlePause = () => {
+  // Closing keeps the workout on this device. If saving to the device is failing, closing would lose it,
+  // so try once more and stay open (with the warning) when that still fails.
+  const requestClose = () => {
+    if (savingRef.current) return;
+    if (persistFailureRef.current !== null && hasWorkoutData(dataRef.current)) {
+      const state = latestStateRef.current;
+      if (!state || !persist(state)) {
+        toast.error("Can't pause: your progress isn't saved on this device. Fix the warning above, or tap Complete Workout to log it now.");
+        return;
+      }
+    }
     onClose();
   };
 
-  const handleCancel = () => {
-    setIsCancelled(true);
-    logActivity({ action: 'cancel_workout', category: 'gym', details: { template_name: template?.name } });
-    clearActiveWorkout();
+  // Returns false when the saved copy could not be removed, so the confirm dialog stays open with its error
+  // instead of closing while the workout would still come back.
+  const handleCancel = (): boolean => {
+    const cleared =
+      clearDraft(defaultStorage(), ownerIdRef.current, template?.id ?? '') ||
+      // Nothing could be stored in these cases, so there is nothing to remove.
+      persistFailureRef.current === 'unavailable' ||
+      persistFailureRef.current === 'no-identity';
+    if (!cleared) return false;
+    setHydratedId(null);
+    logActivity({ action: 'cancel_workout', category: 'gym', details: { template_name: workoutName } });
     onClose();
+    return true;
   };
 
   const handleSaveSettings = (setRest: number, exerciseRest: number) => {
@@ -843,15 +590,20 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     setShowSettings(false);
   };
 
-  restAlertRef.current = restAlertOn;
-  const totalVolume = allExercises.reduce(
-    (sum, ex, i) => sum + exerciseVolume(exerciseSets[i] as unknown as Record<string, string | undefined>, extractWeightFromExerciseName(ex)),
-    0,
+  const totalVolume = useMemo(
+    () => allExercises.reduce(
+      (sum, ex, i) => sum + exerciseVolume(data.exerciseSets[i] as unknown as Record<string, string | undefined>, extractWeightFromExerciseName(ex)),
+      0,
+    ),
+    [allExercises, data.exerciseSets],
   );
   const isPR = (i: number, ex: string) =>
-    isPersonalRecord(exerciseSets[i] as unknown as Record<string, string | undefined>, allTimeBest[ex]);
+    isPersonalRecord(data.exerciseSets[i] as unknown as Record<string, string | undefined>, allTimeBest[ex]);
 
-  const completedCount = allExercises.filter((_, i) => isExerciseComplete(i)).length;
+  const completedCount = allExercises.filter((_, i) => hasAnySet(data.exerciseSets[i])).length;
+
+  // Display order only. Every card still reads and writes by its original index.
+  const displayOrder = useMemo(() => workoutExerciseOrder(allExercises, previousSequences), [allExercises, previousSequences]);
 
   const copyDetails = async () => {
     if (!debrief?.copyText) return;
@@ -879,15 +631,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     return (
       <Dialog open={open} onOpenChange={(o) => !o && close()}>
         <DialogContent
+          layout="scroll"
           className="sm:max-w-md"
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Trophy className="h-5 w-5 text-primary" />Workout complete!</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Trophy className="h-5 w-5 text-primary" aria-hidden="true" />Workout complete!</DialogTitle>
+            <DialogDescription>{debrief.name} · {debrief.completed}/{debrief.total} exercises</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-muted-foreground">{debrief.name} · {debrief.completed}/{debrief.total} exercises</p>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Duration</p><p className="text-xl font-bold">{debrief.duration} min</p></div>
               <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Volume</p><p className="text-xl font-bold text-primary">{Math.round(debrief.volume).toLocaleString()} kg</p></div>
@@ -899,20 +652,21 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             </p>
             {debrief.prs.length > 0 ? (
               <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-1">
-                <p className="text-sm font-semibold flex items-center gap-1"><Trophy className="h-4 w-4 text-primary" />New personal records</p>
+                <p className="text-sm font-semibold flex items-center gap-1"><Trophy className="h-4 w-4 text-primary" aria-hidden="true" />New personal records</p>
                 {debrief.prs.map((p) => <p key={p} className="text-sm">{p}</p>)}
               </div>
             ) : (
               <p className="text-sm text-center text-muted-foreground">Solid effort — no new PRs this session.</p>
             )}
           </div>
-          <DialogFooter className="flex-row gap-2">
-            <Button variant="outline" className="flex-1" onClick={copyDetails}>
-              {copiedDetails ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:space-x-0">
+            <Button variant="outline" size="touch" onClick={copyDetails}>
+              {copiedDetails ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
               {copiedDetails ? 'Copied!' : 'Copy details'}
             </Button>
-            <Button className="flex-1" onClick={close}>Done</Button>
+            <Button size="touch" onClick={close}>Done</Button>
           </DialogFooter>
+          <p role="status" className="sr-only">{copiedDetails ? 'Workout details copied to the clipboard.' : ''}</p>
         </DialogContent>
       </Dialog>
     );
@@ -920,358 +674,121 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
 
   if (!template) return null;
 
-  const restTimerProgress = restTimerTotal > 0 ? ((restTimerTotal - restTimerRemaining) / restTimerTotal) * 100 : 0;
+  const ready = hydratedId === template.id;
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <Timer className="h-5 w-5 text-primary" />
-              {template.name}
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && requestClose()}>
+      <DialogContent
+        layout="mobile-full"
+        closeLabel="Pause workout and close"
+        className="flex flex-col gap-0 p-0 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))] max-sm:pt-[max(0.5rem,env(safe-area-inset-top))] sm:max-w-2xl"
+      >
+        {/* Fixed top: title, clock and rest timer stay in view while the exercises scroll. */}
+        <DialogHeader className="shrink-0 space-y-2 border-b px-3 pb-3 pt-1 text-left sm:px-4 sm:pt-4">
+          <div className="flex items-center gap-1 pr-12 sm:pr-10">
+            <DialogTitle className="flex min-w-0 flex-1 items-center gap-2 pr-0">
+              <Timer className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <span className="min-w-0 break-words leading-tight">{workoutName}</span>
             </DialogTitle>
-            <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+            <IconButton
+              label={restAlertOn ? 'Mute rest timer alert' : 'Unmute rest timer alert'}
+              className="h-11 w-11 shrink-0"
               onClick={toggleRestAlert}
-              aria-label={restAlertOn ? 'Mute rest timer alert' : 'Unmute rest timer alert'}
-              title={restAlertOn ? 'Rest alert: sound + vibration on' : 'Rest alert off'}
             >
-              {restAlertOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setShowSettings(!showSettings)}
+              {restAlertOn ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" className="text-muted-foreground" />}
+            </IconButton>
+            <IconButton
+              label="Rest timer settings"
+              aria-expanded={showSettings}
+              className="h-11 w-11 shrink-0"
+              onClick={() => setShowSettings((s) => !s)}
             >
-              <Settings2 className="h-4 w-4" />
-            </Button>
-            </div>
+              <Settings2 aria-hidden="true" />
+            </IconButton>
           </div>
+          <DialogDescription className="sr-only">
+            {persistFailure
+              ? 'Log reps and weight for each set. Warning: your progress is not being saved on this device. Read the warning below the title.'
+              : 'Log reps and weight for each set. Your progress is saved on this device while you train.'}
+          </DialogDescription>
+
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            {ready && startTime && <ElapsedClock startMs={startTime.getTime()} className="text-2xl text-primary" />}
+            <p className="text-sm text-muted-foreground">
+              {completedCount}/{allExercises.length} exercises
+              {' · '}<span className="font-semibold text-foreground">{Math.round(totalVolume).toLocaleString()} kg</span> volume
+            </p>
+          </div>
+
+          {rest && <RestTimerPanel rest={rest} onElapsed={handleRestElapsed} onDismiss={dismissRest} />}
         </DialogHeader>
-        <ReadinessBadge score={recoveryScore} compact />
-        <OfflineBadge message="Offline · workout is saving on this device" className="self-center" />
 
-        {/* Timer Settings Panel */}
-        {showSettings && (
-          <TimerSettingsPanel
-            settings={timerSettings}
-            onSave={handleSaveSettings}
-            onClose={() => setShowSettings(false)}
-          />
-        )}
-
-        {/* Rest Timer Overlay */}
-        {isRestTimerActive && restTimerRemaining > 0 && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">
-                  {restTimerType === 'set' ? 'Set Rest' : 'Exercise Rest'}
-                </span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={skipRestTimer} className="h-7 text-xs">
-                Skip
-              </Button>
-            </div>
-            <div className="text-3xl font-mono font-bold text-center text-primary">
-              {formatTime(restTimerRemaining)}
-            </div>
-            <Progress value={restTimerProgress} className="h-2" />
+        {/* Never claim "saving" while it is failing: say so, say why, and offer a retry. */}
+        {persistFailure && (
+          <div role="alert" className="mx-3 mt-3 shrink-0 space-y-2 rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm sm:mx-4">
+            <p className="font-medium text-destructive">{describePersistFailure(persistFailure).title}</p>
+            <p className="text-muted-foreground">{describePersistFailure(persistFailure).body}</p>
+            <Button type="button" size="touch" variant="outline" onClick={retryPersist}>Try saving again</Button>
           </div>
         )}
 
-        <div className="flex items-center justify-center py-3">
-          <div className="text-4xl font-mono font-bold text-primary">
-            {formatTime(elapsedSeconds)}
-          </div>
-        </div>
+        {/* One polite announcement per finished rest, independent of sound and vibration. */}
+        <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</p>
 
-        <div className="text-sm text-muted-foreground text-center mb-2">
-          {completedCount}/{allExercises.length} exercises completed
-          {' · '}Volume <span className="font-semibold text-foreground">{Math.round(totalVolume).toLocaleString()} kg</span>
-        </div>
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-          {workoutExerciseOrder(allExercises, previousSequences).map(({ exercise, index }) => {
-            const isExtra = index >= template.exercises.length;
-            const defaultWeight = extractWeightFromExerciseName(exercise);
-            return (
-            <Collapsible
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4">
+          <ReadinessBadge score={recoveryScore} compact />
+          {/* Not shown while saving is failing: that badge's wording promises a save that is not happening. */}
+          {!persistFailure && <OfflineBadge message="Offline · workout is saving on this device" className="self-center" />}
+
+          {showSettings && (
+            <TimerSettingsPanel
+              settings={timerSettings}
+              onSave={handleSaveSettings}
+              onClose={() => setShowSettings(false)}
+            />
+          )}
+
+          {ready && displayOrder.map(({ exercise, index }) => (
+            <WorkoutExerciseCard
               key={index}
-              open={expandedExercise === index}
-              onOpenChange={(isOpen) => {
-                setExpandedExercise(isOpen ? index : null);
-              }}
-            >
-              <div
-                className={`rounded-lg border transition-colors ${
-                  isExerciseComplete(index) ? 'bg-primary/10 border-primary/30' : 'bg-card'
-                }`}
-              >
-                <CollapsibleTrigger asChild>
-                  <button className="w-full flex items-center justify-between p-3 text-left">
-                    <div className="flex items-center gap-2">
-                      {isExerciseComplete(index) && (
-                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                      )}
-                      <div>
-                        <span className={`font-medium ${isExerciseComplete(index) ? 'text-primary' : ''}`}>
-                          {exerciseSequence[index] !== undefined ? (
-                            <span className="text-xs text-muted-foreground mr-1">{exerciseSequence[index]}.</span>
-                          ) : previousSequences[exercise] !== undefined ? (
-                            <span className="text-xs text-muted-foreground/60 mr-1 italic">prev #{previousSequences[exercise]}</span>
-                          ) : null}
-                          {exercise}
-                          {isExtra && (
-                            <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">added</span>
-                          )}
-                          {isPR(index, exercise) && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                              <Trophy className="h-3 w-3" /> PR
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    {expandedExercise === index ? (
-                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-3 pb-3 pt-1 space-y-3">
-                    {(() => {
-                      const setCount = exerciseSetCount[index] || 3;
-                      const setNums = Array.from({ length: setCount }, (_, i) => i + 1);
-                      const gridStyle = { gridTemplateColumns: `80px repeat(${setCount}, minmax(0, 1fr))` };
-                      const prevSet = previousReps[exercise];
-                      const setsObj = exerciseSets[index] as unknown as Record<string, string | undefined> | undefined;
-                      const tsObj = exerciseTimestamps[index] as unknown as Record<string, string | undefined> | undefined;
-                      const prevSetObj = prevSet as unknown as Record<string, string | undefined> | undefined;
-                      const hasAnyTimestamp = setNums.some((n) => tsObj?.[`set${n}Time`]);
-                      return (
-                        <>
-                          {/* Warmup row (single input, optional) */}
-                          <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '80px minmax(0, 1fr) minmax(0, 1fr)' }}>
-                            <Label className="text-xs font-medium text-muted-foreground">Warmup</Label>
-                            <Input
-                              id={`warmup-reps-${index}`}
-                              type="text"
-                              inputMode="numeric"
-                              placeholder={prevSet?.warmup || 'reps'}
-                              value={setsObj?.warmup || ''}
-                              onChange={(e) => updateSet(index, 'warmup', e.target.value)}
-                              className={`h-9 text-center ${setsObj?.warmup ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
-                              maxLength={3}
-                            />
-                            <Input
-                              id={`warmup-weight-${index}`}
-                              type="text"
-                              inputMode="decimal"
-                              placeholder={prevSet?.warmupWeight || defaultWeight || 'kg'}
-                              value={setsObj?.warmupWeight || ''}
-                              onChange={(e) => updateSet(index, 'warmupWeight', e.target.value)}
-                              className={`h-9 text-center ${setsObj?.warmupWeight ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
-                              maxLength={6}
-                            />
-                          </div>
-                          {tsObj?.warmupTime && (
-                            <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '80px minmax(0, 1fr) minmax(0, 1fr)' }}>
-                              <span className="text-[10px] text-muted-foreground">Logged at</span>
-                              <p className="text-[10px] text-primary text-center">⏱ {tsObj.warmupTime}</p>
-                              <span />
-                            </div>
-                          )}
-
-                          {/* Set number headers */}
-                          <div className="grid gap-2 items-center" style={gridStyle}>
-                            <div />
-                            {setNums.map((n) => (
-                              <Label key={n} className="text-[11px] text-muted-foreground text-center">
-                                Set {n}
-                              </Label>
-                            ))}
-                          </div>
-
-                          {/* Reps row */}
-                          <div className="grid gap-2 items-center" style={gridStyle}>
-                            <Label className="text-xs font-medium">Reps</Label>
-                            {setNums.map((n) => {
-                              const setKey = `set${n}` as SetKey;
-                              const prevReps = prevSetObj?.[setKey] || '';
-                              const hasValue = !!setsObj?.[setKey];
-                              return (
-                                <Input
-                                  key={setKey}
-                                  id={`${setKey}-${index}`}
-                                  type="text"
-                                  inputMode="numeric"
-                                  placeholder={prevReps || '0'}
-                                  value={setsObj?.[setKey] || ''}
-                                  onChange={(e) => updateSet(index, setKey, e.target.value)}
-                                  className={`h-9 text-center ${hasValue ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
-                                  maxLength={3}
-                                />
-                              );
-                            })}
-                          </div>
-
-                          {/* Weight row */}
-                          <div className="grid gap-2 items-center" style={gridStyle}>
-                            <Label className="text-xs font-medium">Weight (kg)</Label>
-                            {setNums.map((n) => {
-                              const weightKey = `set${n}Weight` as WeightKey;
-                              const prevWeight = prevSetObj?.[weightKey] || defaultWeight || '';
-                              const hasValue = !!setsObj?.[weightKey];
-                              return (
-                                <Input
-                                  key={weightKey}
-                                  id={`${weightKey}-${index}`}
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder={prevWeight || 'kg'}
-                                  value={setsObj?.[weightKey] || ''}
-                                  onChange={(e) => updateSet(index, weightKey, e.target.value)}
-                                  className={`h-9 text-center ${hasValue ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
-                                  maxLength={6}
-                                />
-                              );
-                            })}
-                          </div>
-
-                          {/* Timestamps row */}
-                          {hasAnyTimestamp && (
-                            <div className="grid gap-2 items-center" style={gridStyle}>
-                              <span className="text-[10px] text-muted-foreground">Logged at</span>
-                              {setNums.map((n) => {
-                                const tKey = `set${n}Time`;
-                                const v = tsObj?.[tKey];
-                                return (
-                                  <p key={tKey} className="text-[10px] text-primary text-center">
-                                    {v ? `⏱ ${v}` : '—'}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {/* Add set button (up to 6 sets) */}
-                          {setCount < 6 && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="w-full border-dashed h-8 text-xs"
-                              onClick={() => addExtraSet(index)}
-                            >
-                              <Plus className="h-3.5 w-3.5 mr-1" />
-                              Add set ({setCount + 1} of 6)
-                            </Button>
-                          )}
-                        </>
-                      );
-                    })()}
-
-                    {/* Per-exercise note */}
-                    <div className="space-y-1 pt-1">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <Label htmlFor={`note-${index}`} className="text-xs font-medium flex items-center gap-1">
-                          <StickyNote className="h-3 w-3" />
-                          Notes
-                        </Label>
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-6 text-[10px] px-2"
-                            disabled={!previousNotes[exercise]}
-                            onClick={() => {
-                              const prev = previousNotes[exercise];
-                              if (!prev) return;
-                              setExerciseNotes((p) => {
-                                if (p[index]) return p;
-                                return { ...p, [index]: prev };
-                              });
-                            }}
-                          >
-                            Carry forward
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-6 text-[10px] px-2"
-                            disabled={!previousNotes[exercise]}
-                            onClick={() => {
-                              const prev = previousNotes[exercise];
-                              if (!prev) return;
-                              setExerciseNotes((p) => ({ ...p, [index]: prev }));
-                            }}
-                          >
-                            Copy previous
-                          </Button>
-                          <ConfirmDeleteButton
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 text-[10px] px-2 text-muted-foreground"
-                            confirmationTitle="Clear exercise notes?"
-                            confirmationDescription={`Clear the current notes and carried-forward suggestion for “${exercise}”? Previously saved workouts will stay unchanged.`}
-                            confirmLabel="Yes, clear notes"
-                            onConfirm={() => {
-                              setExerciseNotes((p) => {
-                                const next = { ...p };
-                                delete next[index];
-                                return next;
-                              });
-                              setPreviousNotes((p) => {
-                                const next = { ...p };
-                                delete next[exercise];
-                                return next;
-                              });
-                            }}
-                          >
-                            Clear
-                          </ConfirmDeleteButton>
-                        </div>
-                      </div>
-                      <Textarea
-                        id={`note-${index}`}
-                        placeholder={previousNotes[exercise] || 'Form cues, how it felt, adjustments...'}
-                        value={exerciseNotes[index] || ''}
-                        onChange={(e) =>
-                          setExerciseNotes((prev) => ({ ...prev, [index]: e.target.value }))
-                        }
-                        rows={2}
-                        maxLength={300}
-                        className="text-sm min-h-[56px] resize-none"
-                      />
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-            );
-          })}
+              index={index}
+              exercise={exercise}
+              isExtra={index >= baseExercises.length}
+              seq={data.exerciseSequence[index]}
+              previousSeq={previousSequences[exercise]}
+              sets={data.exerciseSets[index]}
+              timestamps={data.exerciseTimestamps[index]}
+              setCount={data.exerciseSetCount[index] || 3}
+              note={data.exerciseNotes[index] || ''}
+              previousSets={previousReps[exercise]}
+              previousNote={previousNotes[exercise]}
+              isPR={isPR(index, exercise)}
+              complete={hasAnySet(data.exerciseSets[index])}
+              expanded={expandedExercise === index}
+              onToggle={handleToggle}
+              onUpdateSet={handleUpdateSet}
+              onUseLastSet={handleUseLastSet}
+              onUseLastWeights={handleUseLastWeights}
+              onAddSet={handleAddSet}
+              onNoteChange={handleNoteChange}
+              onCarryNote={handleCarryNote}
+              onCopyNote={handleCopyNote}
+              onClearNote={handleClearNote}
+            />
+          ))}
 
           {/* Add exercise (session-only) */}
           {showAddExercise ? (
-            <div className="rounded-lg border border-dashed p-3 space-y-2">
-              <Label className="text-xs text-muted-foreground">
+            <div className="space-y-2 rounded-lg border border-dashed p-3">
+              <Label htmlFor="wk-add-exercise" className="text-xs text-muted-foreground">
                 Add an exercise to this session (won't be saved to template)
               </Label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Input
+                  id="wk-add-exercise"
                   autoFocus
                   placeholder="e.g., 20kg Dumbbell Curl"
+                  enterKeyHint="done"
                   value={newExerciseName}
                   onChange={(e) => setNewExerciseName(e.target.value)}
                   onKeyDown={(e) => {
@@ -1280,15 +797,16 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
                       handleAddExercise();
                     }
                   }}
-                  className="h-9"
+                  className="h-11 min-w-0 flex-1 basis-full"
                   maxLength={500}
                 />
-                <Button size="sm" onClick={handleAddExercise} disabled={!newExerciseName.trim()}>
+                <Button size="touch" className="flex-1" onClick={handleAddExercise} disabled={!newExerciseName.trim()}>
                   Add
                 </Button>
                 <Button
-                  size="sm"
+                  size="touch"
                   variant="ghost"
+                  className="flex-1"
                   onClick={() => {
                     setShowAddExercise(false);
                     setNewExerciseName('');
@@ -1299,27 +817,31 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
               </div>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full border-dashed"
-              onClick={() => setShowAddExercise(true)}
-            >
-              <Plus className="h-4 w-4" />
+            <Button variant="outline" size="touch" className="w-full border-dashed" onClick={() => setShowAddExercise(true)}>
+              <Plus aria-hidden="true" />
               Add exercise (session only)
             </Button>
           )}
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
-          <ConfirmDeleteButton variant="ghost" onConfirm={handleCancel} disabled={saving} confirmationTitle="Discard workout?" confirmationDescription="Are you sure you want to discard this workout? All unsaved sets, weights, times and comments will be lost. Choose No, keep it to continue, or Pause & Resume Later to keep your progress." confirmLabel="Yes, discard workout" className="w-full sm:w-auto text-destructive hover:text-destructive">
+        <DialogFooter className="grid shrink-0 grid-cols-2 gap-2 border-t px-3 pt-2 sm:flex sm:space-x-0 sm:px-4 sm:py-3">
+          <ConfirmDeleteButton
+            size="touch"
+            variant="ghost"
+            onConfirm={handleCancel}
+            disabled={saving}
+            confirmationTitle="Discard workout?"
+            confirmationDescription="Are you sure you want to discard this workout? All unsaved sets, weights, times and comments will be lost. Choose No, keep it to continue, or Pause & Resume Later to keep your progress."
+            confirmLabel="Yes, discard workout"
+            className="px-2 text-destructive hover:text-destructive"
+          >
             Cancel Workout
           </ConfirmDeleteButton>
-          <Button variant="outline" onClick={handlePause} className="w-full sm:w-auto">
+          <Button variant="outline" size="touch" onClick={requestClose} className="h-auto min-h-11 whitespace-normal px-2 py-1 leading-tight">
             Pause & Resume Later
           </Button>
-          <Button onClick={handleComplete} disabled={saving} className="w-full sm:w-auto">
-            {saving ? 'Saving workout…' : 'Complete Workout'}
+          <Button size="touch" onClick={handleComplete} loading={saving} loadingText="Saving workout…" className="col-span-2">
+            Complete Workout
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1339,41 +861,45 @@ const TimerSettingsPanel = ({
 }) => {
   const [setRest, setSetRest] = useState(settings.setRestSeconds.toString());
   const [exerciseRest, setExerciseRest] = useState(settings.exerciseRestSeconds.toString());
+  const save = () => onSave(parseInt(setRest) || 60, parseInt(exerciseRest) || 90);
 
   return (
-    <div className="rounded-lg border bg-muted/50 p-3 space-y-3">
-      <p className="text-sm font-medium">Rest Timer Settings</p>
+    <div role="group" aria-labelledby="wk-timer-settings-title" className="space-y-3 rounded-lg border bg-muted/50 p-3">
+      <p id="wk-timer-settings-title" className="text-sm font-medium">Rest Timer Settings</p>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label className="text-xs">Between Sets (sec)</Label>
+          <Label htmlFor="wk-set-rest" className="text-xs">Between sets (sec)</Label>
           <Input
+            id="wk-set-rest"
             type="number"
             inputMode="numeric"
+            enterKeyHint="next"
+            min={5}
             value={setRest}
             onChange={(e) => setSetRest(e.target.value)}
-            className="h-8"
+            className="h-11"
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Between Exercises (sec)</Label>
+          <Label htmlFor="wk-exercise-rest" className="text-xs">Between exercises (sec)</Label>
           <Input
+            id="wk-exercise-rest"
             type="number"
             inputMode="numeric"
+            enterKeyHint="done"
+            min={5}
             value={exerciseRest}
             onChange={(e) => setExerciseRest(e.target.value)}
-            className="h-8"
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } }}
+            className="h-11"
           />
         </div>
       </div>
-      <div className="flex gap-2 justify-end">
-        <Button variant="ghost" size="sm" onClick={onClose} className="h-7 text-xs">
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="touch" onClick={onClose}>
           Cancel
         </Button>
-        <Button
-          size="sm"
-          className="h-7 text-xs"
-          onClick={() => onSave(parseInt(setRest) || 60, parseInt(exerciseRest) || 90)}
-        >
+        <Button size="touch" onClick={save}>
           Save
         </Button>
       </div>

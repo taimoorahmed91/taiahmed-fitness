@@ -1,7 +1,8 @@
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
-import { useState, useMemo } from 'react';
-import { Navigation } from '@/components/Navigation';
-import { Activity, Trash2, Pencil, X, Flame, Search } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState, ICON_TOUCH_CLASS } from '@/components/layout/Page';
+import { IconButton } from '@/components/ui/icon-button';
+import { Activity, AlertCircle, Trash2, Pencil, X, Flame, Search } from 'lucide-react';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
 import { Button } from '@/components/ui/button';
@@ -27,24 +28,52 @@ const INTENSITY_LABELS: Record<number, string> = {
   5: 'Very Hard',
 };
 
+/**
+ * Intensity is one scale, so it uses one colour (the brand role) in five strengths,
+ * plus a number, a word and a 5-segment meter. Nothing depends on telling hues apart.
+ * Class names are written out in full so Tailwind can see them.
+ */
 const INTENSITY_BAR: Record<number, string> = {
-  1: 'bg-emerald-500',
-  2: 'bg-lime-500',
-  3: 'bg-yellow-500',
-  4: 'bg-orange-500',
-  5: 'bg-red-500',
+  1: 'bg-primary/25',
+  2: 'bg-primary/40',
+  3: 'bg-primary/60',
+  4: 'bg-primary/80',
+  5: 'bg-primary',
 };
+
+/**
+ * "+N cal" chip: accent-foreground on the accent surface (9.2:1 light, 8.5:1 dark), with a brand border.
+ * The old text-primary on a primary tint measured 4.2:1. The "+" and "cal" stay in the text.
+ */
+const CALORIE_CHIP_CLASS = 'border-primary bg-accent text-accent-foreground';
 
 const intensityColor = (n: number) => {
   switch (n) {
-    case 1: return 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30';
-    case 2: return 'bg-lime-500/15 text-lime-500 border-lime-500/30';
-    case 3: return 'bg-yellow-500/15 text-yellow-500 border-yellow-500/30';
-    case 4: return 'bg-orange-500/15 text-orange-500 border-orange-500/30';
-    case 5: return 'bg-red-500/15 text-red-500 border-red-500/30';
+    case 1: return 'border-primary/20 bg-primary/5 text-foreground';
+    case 2: return 'border-primary/30 bg-primary/10 text-foreground';
+    case 3: return 'border-primary/40 bg-primary/15 text-foreground';
+    case 4: return 'border-primary/50 bg-primary/20 text-foreground';
+    case 5: return 'border-primary/60 bg-primary/30 text-foreground';
     default: return '';
   }
 };
+
+/** Five small segments; filled ones show the level without relying on colour. Decorative: the text beside it carries the meaning. */
+const IntensityMeter = ({ level }: { level: number }) => (
+  <span aria-hidden="true" className="inline-flex items-center gap-0.5">
+    {[1, 2, 3, 4, 5].map((n) => (
+      <span key={n} className={`h-2.5 w-1 rounded-sm ${n <= level ? 'bg-primary' : 'bg-progress-track'}`} />
+    ))}
+  </span>
+);
+
+const FieldError = ({ id, message }: { id: string; message?: string }) =>
+  message ? (
+    <p id={id} className="flex items-start gap-1.5 text-sm text-destructive">
+      <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>{message}</span>
+    </p>
+  ) : null;
 
 const ExtraActivities = () => {
   const { activities, addActivity, updateActivity, deleteActivity, loading } = useExtraActivities();
@@ -62,6 +91,9 @@ const ExtraActivities = () => {
   const [calories, setCalories] = useState('');
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
+  const [errors, setErrors] = useState<{ date?: string; activity?: string }>({});
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const resetForm = () => {
     setEditingId(null);
@@ -72,6 +104,7 @@ const ExtraActivities = () => {
     setIntensity('3');
     setDate(today);
     setTime(currentTime());
+    setErrors({});
   };
 
   const handleEdit = (a: typeof activities[number]) => {
@@ -88,7 +121,16 @@ const ExtraActivities = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activity.trim()) return;
+    if (savingRef.current) return;
+    const nextErrors: { date?: string; activity?: string } = {};
+    if (!date) nextErrors.date = 'Choose a date.';
+    if (!activity.trim()) nextErrors.activity = 'Enter what you did, for example "5 km walk".';
+    if (nextErrors.date || nextErrors.activity) {
+      setErrors(nextErrors);
+      document.getElementById(nextErrors.date ? 'date' : 'activity')?.focus();
+      return;
+    }
+    setErrors({});
     const payload = {
       date,
       time: time || null,
@@ -98,12 +140,19 @@ const ExtraActivities = () => {
       duration_minutes: duration ? parseInt(duration, 10) : null,
       notes: notes.trim() || null,
     };
-    if (editingId) {
-      await updateActivity(editingId, payload);
-    } else {
-      await addActivity(payload);
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updateActivity(editingId, payload);
+      } else {
+        await addActivity(payload);
+      }
+      resetForm();
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
-    resetForm();
   };
 
   const [search, setSearch] = useState('');
@@ -152,37 +201,45 @@ const ExtraActivities = () => {
     usePagination(filtered, { pageSize: 20 });
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-8">
-          <Activity className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">Extra Activity</h1>
-            <p className="text-muted-foreground">
-              Log non-gym activities that still count — walks, hikes, sports, chores, etc.
-            </p>
-          </div>
-        </div>
+    <PageContainer>
+      <PageHeader
+        icon={Activity}
+        title="Extra Activity"
+        description="Log non-gym activities that still count — walks, hikes, sports, chores, etc."
+      />
 
+      <PageSection title="Log and impact" hideTitle>
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between gap-2 text-lg">
                 <span>{editingId ? 'Edit Activity' : 'Log Activity'}</span>
                 {editingId && (
-                  <Button type="button" size="sm" variant="ghost" onClick={resetForm}>
-                    <X className="h-4 w-4 mr-1" /> Cancel
+                  <Button type="button" variant="ghost" onClick={resetForm}>
+                    <X aria-hidden="true" /> Cancel
                   </Button>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  <span aria-hidden="true" className="text-destructive">*</span> Required. Duration, calories and notes are optional.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                    <Label htmlFor="date">Date<span aria-hidden="true" className="text-destructive"> *</span></Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => { setDate(e.target.value); setErrors((p) => ({ ...p, date: undefined })); }}
+                      aria-required="true"
+                      aria-invalid={errors.date ? true : undefined}
+                      aria-describedby={errors.date ? 'date-error' : undefined}
+                      className={errors.date ? 'border-destructive' : undefined}
+                    />
+                    <FieldError id="date-error" message={errors.date} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="time">Time</Label>
@@ -191,18 +248,29 @@ const ExtraActivities = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (min)</Label>
-                    <Input id="duration" type="number" min="0" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Optional" />
+                    <Label htmlFor="duration">Duration (min) <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                    <Input id="duration" type="number" inputMode="numeric" min="0" value={duration} onChange={(e) => setDuration(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="calories">Calories burned</Label>
-                    <Input id="calories" type="number" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} placeholder="Added to daily goal" />
+                    <Label htmlFor="calories">Calories burned <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                    <Input id="calories" type="number" inputMode="numeric" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} aria-describedby="calories-hint" />
+                    <p id="calories-hint" className="text-xs text-muted-foreground">Added to your daily calorie budget.</p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="activity">Activity</Label>
-                  <Input id="activity" value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="e.g. 5km walk, soccer, cleaning..." required />
+                  <Label htmlFor="activity">Activity<span aria-hidden="true" className="text-destructive"> *</span></Label>
+                  <Input
+                    id="activity"
+                    value={activity}
+                    onChange={(e) => { setActivity(e.target.value); setErrors((p) => ({ ...p, activity: undefined })); }}
+                    placeholder="e.g. 5km walk, soccer, cleaning..."
+                    aria-required="true"
+                    aria-invalid={errors.activity ? true : undefined}
+                    aria-describedby={errors.activity ? 'activity-error' : undefined}
+                    className={errors.activity ? 'border-destructive' : undefined}
+                  />
+                  <FieldError id="activity-error" message={errors.activity} />
                 </div>
 
                 <div className="space-y-2">
@@ -222,86 +290,94 @@ const ExtraActivities = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
+                  <Label htmlFor="notes">Notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
                   <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional details..." rows={3} />
                 </div>
 
-                <Button type="submit" className="w-full">{editingId ? 'Save Changes' : 'Add Activity'}</Button>
+                <Button type="submit" className="w-full" loading={saving} loadingText="Saving…">{editingId ? 'Save Changes' : 'Add Activity'}</Button>
               </form>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <Flame className="h-5 w-5 text-primary" /> Activity impact
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Flame className="h-5 w-5 text-primary" aria-hidden="true" /> Activity impact
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
-                <p className="text-sm text-muted-foreground">Added to today's calorie budget</p>
-                <p className="text-3xl font-bold text-primary">+{stats.todayCal} cal</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stats.todayCount} {stats.todayCount === 1 ? 'activity' : 'activities'} today · {stats.todayMin} min
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Last 7 days</p>
-                  <p className="text-xl font-semibold">{stats.weekCal} cal</p>
+            {loading ? (
+              <CardContent>
+                <PageLoading label="Loading activity impact" rows={2} />
+              </CardContent>
+            ) : (
+              <CardContent className="space-y-5">
+                <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
+                  <p className="text-sm text-muted-foreground">Added to today's calorie budget</p>
+                  <p className="text-3xl font-bold text-primary">+{stats.todayCal} cal</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats.todayCount} {stats.todayCount === 1 ? 'activity' : 'activities'} today · {stats.todayMin} min
+                  </p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Active time</p>
-                  <p className="text-xl font-semibold">{stats.weekMin} min</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Sessions</p>
-                  <p className="text-xl font-semibold">{stats.weekCount}</p>
-                </div>
-              </div>
-              <div className="border-t pt-4">
-                <p className="mb-2 text-sm font-medium">Intensity mix (last 30 days)</p>
-                {stats.monthCount === 0 ? (
-                  <p className="text-xs text-muted-foreground">No activities in the last 30 days.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {[1, 2, 3, 4, 5].map((n) => {
-                      const c = stats.intensity[n];
-                      const pct = Math.round((c / stats.monthCount) * 100);
-                      return (
-                        <div key={n} className="flex items-center gap-2 text-xs">
-                          <span className="w-20 shrink-0 text-muted-foreground">{INTENSITY_LABELS[n]}</span>
-                          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                            <div className={`h-full ${INTENSITY_BAR[n]}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="w-12 text-right tabular-nums font-semibold">{c} · {pct}%</span>
-                        </div>
-                      );
-                    })}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Last 7 days</p>
+                    <p className="text-xl font-semibold">{stats.weekCal} cal</p>
                   </div>
-                )}
-              </div>
-              <div className="flex justify-between border-t pt-3 text-sm text-muted-foreground">
-                <span>All time: <span className="font-semibold text-foreground">{activities.length}</span> activities</span>
-                <span><span className="font-semibold text-foreground">{stats.allCal.toLocaleString()}</span> cal burned</span>
-              </div>
-            </CardContent>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Active time</p>
+                    <p className="text-xl font-semibold">{stats.weekMin} min</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Sessions</p>
+                    <p className="text-xl font-semibold">{stats.weekCount}</p>
+                  </div>
+                </div>
+                <div className="border-t pt-4">
+                  <p className="mb-2 text-sm font-medium">Intensity mix (last 30 days)</p>
+                  {stats.monthCount === 0 ? (
+                    <p className="text-xs text-muted-foreground">No activities in the last 30 days.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {[1, 2, 3, 4, 5].map((n) => {
+                        const c = stats.intensity[n];
+                        const pct = Math.round((c / stats.monthCount) * 100);
+                        return (
+                          <div key={n} className="flex items-center gap-2 text-xs">
+                            <span className="w-20 shrink-0 text-muted-foreground">{n} · {INTENSITY_LABELS[n]}</span>
+                            <div aria-hidden="true" className="h-2.5 flex-1 overflow-hidden rounded-full bg-progress-track">
+                              <div className={`h-full ${INTENSITY_BAR[n]}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="w-16 text-right tabular-nums font-semibold">{c} · {pct}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-between border-t pt-3 text-sm text-muted-foreground">
+                  <span>All time: <span className="font-semibold text-foreground">{activities.length}</span> activities</span>
+                  <span><span className="font-semibold text-foreground">{stats.allCal.toLocaleString()}</span> cal burned</span>
+                </div>
+              </CardContent>
+            )}
           </Card>
         </div>
+      </PageSection>
 
-        <Card className="mt-6">
+      <PageSection title="Activity history" hideTitle>
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle>History</CardTitle>
+            <CardTitle className="text-lg">History</CardTitle>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Search activities or notes..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input placeholder="Search activities or notes..." aria-label="Search activities or notes" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
               </div>
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="sm:w-44" aria-label="From date" />
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="sm:w-44" aria-label="To date" />
               {(search || from || to) && (
-                <Button variant="ghost" size="sm" onClick={() => { setSearch(''); setFrom(''); setTo(''); }} className="h-10">
-                  <X className="h-4 w-4 mr-1" /> Clear
+                <Button type="button" variant="ghost" onClick={() => { setSearch(''); setFrom(''); setTo(''); }}>
+                  <X aria-hidden="true" /> Clear filters
                 </Button>
               )}
             </div>
@@ -309,11 +385,13 @@ const ExtraActivities = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-muted-foreground text-sm">Loading...</p>
+              <PageLoading label="Loading activities" rows={3} />
             ) : filtered.length === 0 ? (
-              <p className="text-muted-foreground text-sm py-6 text-center">
-                {activities.length === 0 ? 'No extra activities logged yet.' : 'No activities match your filters.'}
-              </p>
+              <PageEmptyState
+                icon={Activity}
+                title={activities.length === 0 ? 'No extra activities logged yet' : 'No activities match your filters'}
+                description={activities.length === 0 ? 'Log your first activity above.' : 'Try a different search or date range.'}
+              />
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
                 {paginatedItems.map((a) => (
@@ -322,13 +400,14 @@ const ExtraActivities = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{a.activity}</span>
                         <Badge variant="outline" className={intensityColor(a.intensity)}>
-                          Intensity {a.intensity} · {INTENSITY_LABELS[a.intensity]}
+                          <IntensityMeter level={a.intensity} />
+                          <span className="ml-1.5">Intensity {a.intensity} of 5 · {INTENSITY_LABELS[a.intensity]}</span>
                         </Badge>
                         {a.duration_minutes != null && (
                           <Badge variant="outline">{a.duration_minutes} min</Badge>
                         )}
                         {a.calories > 0 && (
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">+{a.calories} cal</Badge>
+                          <Badge variant="outline" className={CALORIE_CHIP_CLASS}>+{a.calories} cal</Badge>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
@@ -337,29 +416,31 @@ const ExtraActivities = () => {
                       {a.notes && <p className="text-sm mt-2 whitespace-pre-wrap">{a.notes}</p>}
                     </div>
                     <div className="flex flex-col gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => handleEdit(a)} aria-label="Edit activity">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <ConfirmDeleteButton size="icon" variant="ghost" onConfirm={() => deleteActivity(a.id)} confirmationTitle="Delete activity?" confirmationDescription={`Are you sure you want to delete “${a.activity}” from ${a.date}, including its notes? This cannot be undone.`} aria-label="Delete activity">
-                        <Trash2 className="h-4 w-4" />
+                      <IconButton label={`Edit activity ${a.activity}`} tooltip onClick={() => handleEdit(a)}>
+                        <Pencil />
+                      </IconButton>
+                      <ConfirmDeleteButton size="icon" variant="ghost" className={ICON_TOUCH_CLASS} onConfirm={() => deleteActivity(a.id)} confirmationTitle="Delete activity?" confirmationDescription={`Are you sure you want to delete “${a.activity}” from ${a.date}, including its notes? This cannot be undone.`} aria-label={`Delete activity ${a.activity}`}>
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </ConfirmDeleteButton>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              onPageChange={goToPage}
-              hasNextPage={hasNextPage}
-              hasPrevPage={hasPrevPage}
-            />
+            {!loading && (
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                onPageChange={goToPage}
+                hasNextPage={hasNextPage}
+                hasPrevPage={hasPrevPage}
+              />
+            )}
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </PageSection>
+    </PageContainer>
   );
 };
 

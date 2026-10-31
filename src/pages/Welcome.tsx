@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { Dumbbell, Utensils, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { useUser } from "@/contexts/UserContext";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 
 const Welcome = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signInWithGoogle } = useUser();
-  const { toast } = useToast();
 
   const [demoLoading, setDemoLoading] = useState(false);
-  const handleLocalLogin = async () => {
+  const handleDemoLogin = async () => {
     setDemoLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("demo-login");
@@ -24,7 +23,7 @@ const Welcome = () => {
       if (sessionError) throw sessionError;
       window.location.assign("/");
     } catch {
-      toast({ title: "Local login failed", description: "Couldn't open the demo account. Please try again.", variant: "destructive" });
+      toast.error("Demo login failed", { description: "Couldn't open the demo account. Please try again." });
       setDemoLoading(false);
     }
   };
@@ -34,28 +33,24 @@ const Welcome = () => {
     try {
       await signInWithGoogle();
     } catch (error) {
-      toast({
-        title: "Sign in failed",
-        description: "Unable to sign in with Google. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Sign in failed", { description: "Unable to sign in with Google. Please try again." });
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-dvh bg-background flex items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
           <div className="flex justify-center gap-4 mb-6">
             <div className="p-3 bg-primary/10 rounded-full">
-              <Dumbbell className="h-8 w-8 text-primary" />
+              <Dumbbell className="h-8 w-8 text-primary" aria-hidden="true" />
             </div>
             <div className="p-3 bg-primary/10 rounded-full">
-              <Utensils className="h-8 w-8 text-primary" />
+              <Utensils className="h-8 w-8 text-primary" aria-hidden="true" />
             </div>
             <div className="p-3 bg-primary/10 rounded-full">
-              <Activity className="h-8 w-8 text-primary" />
+              <Activity className="h-8 w-8 text-primary" aria-hidden="true" />
             </div>
           </div>
           <h1 className="text-3xl font-bold text-foreground">Fittrack Fitness</h1>
@@ -67,7 +62,7 @@ const Welcome = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Get Started</CardTitle>
+            <h2 className="text-2xl font-semibold leading-none tracking-tight">Get Started</h2>
             <CardDescription>
               Sign in with your Google account to start tracking your fitness journey
             </CardDescription>
@@ -78,7 +73,7 @@ const Welcome = () => {
               className="w-full" 
               disabled={isLoading}
             >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="currentColor"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -98,8 +93,8 @@ const Welcome = () => {
               </svg>
               {isLoading ? "Signing in..." : "Sign in with Google"}
             </Button>
-            <Button onClick={handleLocalLogin} variant="outline" className="w-full mt-3" disabled={demoLoading}>
-              {demoLoading ? "Loading sample data..." : "Local login"}
+            <Button onClick={handleDemoLogin} variant="outline" className="w-full mt-3" loading={demoLoading} loadingText="Loading sample data...">
+              Try the demo
             </Button>
             <p className="text-xs text-muted-foreground text-center mt-2">
               Try a demo account with 30 days of sample data.
@@ -107,7 +102,7 @@ const Welcome = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 };
 

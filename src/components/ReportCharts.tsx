@@ -1,5 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend } from 'recharts';
+import { ChartFigure } from '@/components/charts/ChartFigure';
+import { ChartHeader } from '@/components/charts/ChartHeader';
+import { ChartEmptyState } from '@/components/charts/ChartEmptyState';
+import { CHART_MARGIN, METRIC_COLORS, UNIT_LABEL, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartXAxisProps, chartYAxisProps } from '@/lib/chartTheme';
+import { describeSeries } from '@/lib/chartSummary';
 
 interface ReportChartsProps {
   data: Array<{
@@ -10,97 +15,60 @@ interface ReportChartsProps {
   }>;
 }
 
+// No link on purpose: these charts mix meals, workouts and sleep, and the fix is the report period above.
+const EMPTY = 'No data in the selected report period.';
+
 export const ReportCharts = ({ data }: ReportChartsProps) => {
+  const comboColumns = [{ key: 'date', label: 'Date' }, { key: 'calories', label: `Calories (${UNIT_LABEL.calories})` }, { key: 'workout', label: `Workout (${UNIT_LABEL.minutes})` }];
+  const sleepColumns = [{ key: 'date', label: 'Date' }, { key: 'sleep', label: `Sleep (${UNIT_LABEL.hours})` }];
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       {/* Calories & Workout Combined */}
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="text-lg">Calories & Workout Trend</CardTitle>
-        </CardHeader>
+      <Card titleSize="chart" className="shadow-md min-w-0">
+        <ChartHeader title="Calories & Workout Trend" />
         <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
-              />
-              <YAxis 
-                yAxisId="left" 
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
-              />
-              <YAxis 
-                yAxisId="right" 
-                orientation="right" 
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-              />
-              <Legend />
-              <Bar 
-                yAxisId="left" 
-                dataKey="calories" 
-                fill="hsl(var(--primary))" 
-                name="Calories"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar 
-                yAxisId="right" 
-                dataKey="workout" 
-                fill="hsl(var(--chart-2))" 
-                name="Workout (min)"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          {data.length === 0 ? <ChartEmptyState>{EMPTY}</ChartEmptyState> : (
+            <ChartFigure
+              title="Calories and workout trend"
+              summary={describeSeries(data, [{ key: 'calories', label: 'Calories', unit: UNIT_LABEL.calories, digits: 0 }, { key: 'workout', label: 'Workout', unit: UNIT_LABEL.minutes, digits: 0 }])}
+              caption={`Left axis: ${UNIT_LABEL.calories} · Right axis: workout ${UNIT_LABEL.minutes}`}
+              table={{ columns: comboColumns, rows: data }}
+            >
+              <BarChart accessibilityLayer data={data} margin={CHART_MARGIN}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="date" {...chartXAxisProps} />
+                <YAxis yAxisId="left" {...chartYAxisProps} />
+                <YAxis yAxisId="right" orientation="right" {...chartYAxisProps} />
+                <Tooltip {...chartTooltipProps} />
+                <Legend {...chartLegendProps} />
+                <Bar yAxisId="left" dataKey="calories" fill={METRIC_COLORS.calories} name={`Calories (${UNIT_LABEL.calories})`} radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="right" dataKey="workout" fill={METRIC_COLORS.workout} name={`Workout (${UNIT_LABEL.minutes})`} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartFigure>
+          )}
         </CardContent>
       </Card>
 
       {/* Sleep Trend */}
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="text-lg">Sleep Trend</CardTitle>
-        </CardHeader>
+      <Card titleSize="chart" className="shadow-md min-w-0">
+        <ChartHeader title="Sleep Trend" />
         <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
-              />
-              <YAxis 
-                domain={[0, 12]}
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="sleep" 
-                stroke="hsl(var(--chart-4))" 
-                strokeWidth={2}
-                name="Sleep (hours)"
-                dot={{ fill: 'hsl(var(--chart-4))' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {data.length === 0 ? <ChartEmptyState>{EMPTY}</ChartEmptyState> : (
+            <ChartFigure
+              title="Sleep trend"
+              summary={describeSeries(data, [{ key: 'sleep', label: 'Sleep', unit: UNIT_LABEL.hours }])}
+              caption={`Values in ${UNIT_LABEL.hours}`}
+              table={{ columns: sleepColumns, rows: data }}
+            >
+              <LineChart accessibilityLayer data={data} margin={CHART_MARGIN}>
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="date" {...chartXAxisProps} />
+                <YAxis domain={[0, 12]} {...chartYAxisProps} />
+                <Tooltip {...chartTooltipProps} />
+                <Line type="monotone" dataKey="sleep" stroke={METRIC_COLORS.sleep} strokeWidth={3} name={`Sleep (${UNIT_LABEL.hours})`} dot={{ r: 3, fill: METRIC_COLORS.sleep, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={{ r: 5 }} />
+              </LineChart>
+            </ChartFigure>
+          )}
         </CardContent>
       </Card>
     </div>

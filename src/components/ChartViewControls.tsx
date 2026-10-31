@@ -1,86 +1,123 @@
 import { useEffect, useState } from 'react';
 import { BarChart3, LineChart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { CHART_RANGES, ChartRange, ChartStyle, RANGE_LABELS, STANDARD_RANGES, clampRange } from '@/lib/chartRange';
 
-export type ChartRange = '7' | '14' | '30' | '90' | 'all';
-export type ChartStyle = 'line' | 'bar';
+// Range helpers live in @/lib/chartRange (pure, tested). Re-exported so existing imports keep working.
+export { chartDateLabel, recentChartData } from '@/lib/chartRange';
+export type { ChartRange, ChartStyle } from '@/lib/chartRange';
 
-const preference = <T extends string>(key: string, values: T[], fallback: T): T => {
+interface PreferenceOptions {
+  /** Ranges this chart can show. Defaults to 7/14/30/90. */
+  allowed?: readonly ChartRange[];
+  /** Old storage prefix to read once when nothing is saved under the new key. */
+  legacyPrefix?: string;
+}
+
+const readPreference = <T extends string>(keys: string[], values: readonly T[], fallback: T): T => {
   try {
-    const stored = localStorage.getItem(key) as T | null;
-    return stored && values.includes(stored) ? stored : fallback;
-  } catch {
-    return fallback;
-  }
+    for (const key of keys) {
+      const stored = localStorage.getItem(key) as T | null;
+      if (stored && values.includes(stored)) return stored;
+    }
+  } catch { /* Storage may be unavailable. */ }
+  return fallback;
 };
 
-export const useChartRange = (key: string) => {
-  const [range, setRange] = useState<ChartRange>(() => preference<ChartRange>(`fittrack_chart_${key}_range`, ['7', '14', '30', '90', 'all'], '7'));
-
-  useEffect(() => {
-    try { localStorage.setItem(`fittrack_chart_${key}_range`, range); }
-    catch { /* Storage may be unavailable. */ }
-  }, [key, range]);
-
-  return { range, setRange };
+const save = (key: string, value: string) => {
+  try { localStorage.setItem(key, value); }
+  catch { /* Storage may be unavailable. */ }
 };
 
-export const useChartView = (key: string, defaultStyle: ChartStyle = 'line') => {
-  const { range, setRange } = useChartRange(key);
-  const [style, setStyle] = useState<ChartStyle>(() => preference(`fittrack_chart_${key}_style`, ['line', 'bar'], defaultStyle));
+/**
+ * Saved date range for one chart, stored under that chart's own key
+ * (`fittrack_chart_<key>_range`). Charts never share a range: changing it on
+ * one chart changes only that chart, even when many sit on the same page.
+ * If a chart does not offer the saved range (for example "All"), it shows the
+ * widest range it does support.
+ */
+export const useChartRange = (key: string, options: PreferenceOptions = {}) => {
+  const allowed = options.allowed ?? STANDARD_RANGES;
+  const storageKey = `fittrack_chart_${key}_range`;
+  const [ownRange, setRange] = useState<ChartRange>(() =>
+    readPreference<ChartRange>([storageKey, ...(options.legacyPrefix ? [`${options.legacyPrefix}_range`] : [])], CHART_RANGES, '7'));
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(`fittrack_chart_${key}_style`, style);
-    } catch { /* Storage may be unavailable. */ }
-  }, [key, style]);
+  useEffect(() => { save(storageKey, ownRange); }, [storageKey, ownRange]);
+
+  return { range: clampRange(ownRange, allowed), setRange };
+};
+
+export const useChartView = (key: string, defaultStyle: ChartStyle = 'line', options: PreferenceOptions = {}) => {
+  const { range, setRange } = useChartRange(key, options);
+  const [style, setStyle] = useState<ChartStyle>(() =>
+    readPreference<ChartStyle>([`fittrack_chart_${key}_style`, ...(options.legacyPrefix ? [`${options.legacyPrefix}_style`] : [])], ['line', 'bar'], defaultStyle));
+
+  useEffect(() => { save(`fittrack_chart_${key}_style`, style); }, [key, style]);
 
   return { range, setRange, style, setStyle };
 };
 
-export const recentChartData = <T extends { date: string }>(data: T[], range: ChartRange): T[] => {
-  if (range === 'all') return [...data].sort((a, b) => a.date.localeCompare(b.date));
-  const today = new Date().toISOString().slice(0, 10);
-  const start = new Date(`${today}T00:00:00Z`);
-  start.setUTCDate(start.getUTCDate() - (Number(range) - 1));
-  const since = start.toISOString().slice(0, 10);
-  return data.filter(row => row.date >= since && row.date <= today).sort((a, b) => a.date.localeCompare(b.date));
-};
+const RANGE_SHORT: Record<ChartRange, string> = { '7': '7D', '14': '14D', '30': '30D', '90': '90D', all: 'All' };
 
-export const chartDateLabel = (date: string) => date.slice(5).replace('-', '/');
+interface RangeProps {
+  range: ChartRange;
+  setRange: (range: ChartRange) => void;
+  /** Offer "All time" too. */
+  extended?: boolean;
+  /** Chart name, so screen readers hear "Weight Trend range". */
+  label?: string;
+}
 
-export const ChartRangeControls = ({ range, setRange }: ReturnType<typeof useChartRange>) => {
-  const item = (value: ChartRange, label: string) => (
-    <Button type="button" size="sm" variant="ghost" aria-label={label} aria-pressed={range === value} title={label}
-      onClick={() => setRange(value)}
-      className={cn('h-7 rounded-none px-2 text-xs font-medium', range === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}>
-      {value}D
-    </Button>
-  );
-  return <div className="flex shrink-0 overflow-hidden rounded-md border" data-html2canvas-ignore="true">{item('7', 'Last 7 days')}{item('14', 'Last 14 days')}{item('30', 'Last 30 days')}{item('90', 'Last 90 days')}</div>;
-};
-
-export const ChartViewControls = ({ range, setRange, style, setStyle, extended = false }: ReturnType<typeof useChartView> & { extended?: boolean }) => {
-  const item = (active: boolean, label: string, onClick: () => void, child: React.ReactNode) => (
-    <Button type="button" size="sm" variant="ghost" aria-label={label} aria-pressed={active} title={label} onClick={onClick}
-      className={cn('h-7 rounded-none px-2 text-xs font-medium', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}>
-      {child}
-    </Button>
-  );
+/** Date range only. Use for categorical charts (pie, grids) where line/bar does not apply. */
+export const ChartRangeControls = ({ range, setRange, extended = false, label }: RangeProps) => {
+  const ranges = extended ? CHART_RANGES : STANDARD_RANGES;
   return (
-    <div className="flex items-center gap-2 shrink-0" data-html2canvas-ignore="true">
-      <div className="flex rounded-md border overflow-hidden">
-        {item(range === '7', 'Last 7 days', () => setRange('7'), '7D')}
-        {item(range === '14', 'Last 14 days', () => setRange('14'), '14D')}
-        {item(range === '30', 'Last 30 days', () => setRange('30'), '30D')}
-        {item(range === '90', 'Last 90 days', () => setRange('90'), '90D')}
-        {extended && item(range === 'all', 'All time', () => setRange('all'), 'All')}
-      </div>
-      <div className="flex rounded-md border overflow-hidden">
-        {item(style === 'line', 'Line chart', () => setStyle('line'), <LineChart className="h-3.5 w-3.5" />)}
-        {item(style === 'bar', 'Bar chart', () => setStyle('bar'), <BarChart3 className="h-3.5 w-3.5" />)}
-      </div>
+    <div className="min-w-0 max-w-full" data-html2canvas-ignore="true">
+      <SegmentedControl<ChartRange>
+        size="sm"
+        // Compact buttons everywhere (so range + style + PDF fit one row in a one-third-width card),
+        // and wrap inside the card instead of pushing the page wider.
+        className="max-w-full flex-wrap [&>button]:px-2"
+        ariaLabel={label ? `${label} range` : 'Chart range'}
+        value={range}
+        onValueChange={setRange}
+        options={ranges.map((r) => ({ value: r, label: RANGE_SHORT[r], ariaLabel: RANGE_LABELS[r] }))}
+      />
     </div>
   );
 };
+
+interface StyleProps {
+  style: ChartStyle;
+  setStyle: (style: ChartStyle) => void;
+  /** Chart name, so screen readers hear "Weight Trend chart type". */
+  label?: string;
+}
+
+/** Line / bar switch on its own, so ChartHeader can keep it next to the PDF action on narrow cards. */
+export const ChartStyleControl = ({ style, setStyle, label }: StyleProps) => (
+  <div className="min-w-0 max-w-full" data-html2canvas-ignore="true">
+    <SegmentedControl<ChartStyle>
+      size="sm"
+      className="max-w-full [&>button]:px-2"
+      ariaLabel={label ? `${label} chart type` : 'Chart type'}
+      value={style}
+      onValueChange={setStyle}
+      options={[
+        { value: 'line', ariaLabel: 'Line chart', label: <LineChart aria-hidden="true" /> },
+        { value: 'bar', ariaLabel: 'Bar chart', label: <BarChart3 aria-hidden="true" /> },
+      ]}
+    />
+  </div>
+);
+
+/**
+ * Date range plus line/bar, as one wrapping group. Charts do not render this themselves any more:
+ * ChartHeader (components/charts/ChartHeader.tsx) places range, style and PDF together.
+ */
+export const ChartViewControls = ({ range, setRange, style, setStyle, extended = false, label }: ReturnType<typeof useChartView> & Omit<RangeProps, 'range' | 'setRange'>) => (
+  <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2" data-html2canvas-ignore="true">
+    <ChartRangeControls range={range} setRange={setRange} extended={extended} label={label} />
+    <ChartStyleControl style={style} setStyle={setStyle} label={label} />
+  </div>
+);

@@ -37,7 +37,7 @@ export const ShareableSummary = forwardRef<HTMLDivElement, ShareableSummaryProps
         <div className="grid grid-cols-2 gap-3 mb-4">
           <Card className="bg-card/50 border-primary/10">
             <CardContent className="p-3 text-center">
-              <Flame className="h-5 w-5 mx-auto mb-1 text-orange-500" />
+              <Flame className="h-5 w-5 mx-auto mb-1 text-chart-1" aria-hidden="true" />
               <p className="text-lg font-bold">{stats.avgCalories.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Avg Daily Calories</p>
             </CardContent>
@@ -45,7 +45,7 @@ export const ShareableSummary = forwardRef<HTMLDivElement, ShareableSummaryProps
 
           <Card className="bg-card/50 border-primary/10">
             <CardContent className="p-3 text-center">
-              <Dumbbell className="h-5 w-5 mx-auto mb-1 text-primary" />
+              <Dumbbell className="h-5 w-5 mx-auto mb-1 text-chart-2" aria-hidden="true" />
               <p className="text-lg font-bold">{stats.totalWorkouts}</p>
               <p className="text-xs text-muted-foreground">Workouts ({stats.avgWorkoutDuration}min avg)</p>
             </CardContent>
@@ -53,7 +53,7 @@ export const ShareableSummary = forwardRef<HTMLDivElement, ShareableSummaryProps
 
           <Card className="bg-card/50 border-primary/10">
             <CardContent className="p-3 text-center">
-              <Moon className="h-5 w-5 mx-auto mb-1 text-indigo-500" />
+              <Moon className="h-5 w-5 mx-auto mb-1 text-chart-4" aria-hidden="true" />
               <p className="text-lg font-bold">{stats.avgSleepHours}h</p>
               <p className="text-xs text-muted-foreground">Avg Sleep</p>
             </CardContent>
@@ -61,13 +61,14 @@ export const ShareableSummary = forwardRef<HTMLDivElement, ShareableSummaryProps
 
           <Card className="bg-card/50 border-primary/10">
             <CardContent className="p-3 text-center">
-              <Scale className="h-5 w-5 mx-auto mb-1 text-teal-500" />
+              <Scale className="h-5 w-5 mx-auto mb-1 text-chart-5" aria-hidden="true" />
               <div className="flex items-center justify-center gap-1">
                 <p className="text-lg font-bold">{stats.avgWeight > 0 ? `${stats.avgWeight}kg` : '--'}</p>
                 {stats.weightChange !== 0 && (
-                  <span className={`text-xs flex items-center ${stats.weightChange < 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {stats.weightChange < 0 ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
-                    {Math.abs(stats.weightChange)}
+                  <span className={`text-xs flex items-center gap-0.5 font-medium ${stats.weightChange < 0 ? 'text-chart-min' : 'text-chart-max'}`}>
+                    {stats.weightChange < 0 ? <TrendingDown className="h-3 w-3" aria-hidden="true" /> : <TrendingUp className="h-3 w-3" aria-hidden="true" />}
+                    <span className="sr-only">{stats.weightChange < 0 ? 'Down ' : 'Up '}</span>
+                    {Math.abs(stats.weightChange)}kg
                   </span>
                 )}
               </div>
@@ -81,7 +82,7 @@ export const ShareableSummary = forwardRef<HTMLDivElement, ShareableSummaryProps
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
+                <Target className="h-5 w-5 text-primary" aria-hidden="true" />
                 <span className="text-sm font-medium">Goal Days</span>
               </div>
               <div className="text-right">
@@ -89,9 +90,9 @@ export const ShareableSummary = forwardRef<HTMLDivElement, ShareableSummaryProps
                 <span className="text-sm text-muted-foreground">/{stats.totalDays}</span>
               </div>
             </div>
-            <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+            <div className="mt-2 h-2 bg-progress-track rounded-full overflow-hidden" role="progressbar" aria-label="Goal days met" aria-valuemin={0} aria-valuemax={stats.totalDays} aria-valuenow={stats.goalsMetDays}>
               <div 
-                className="h-full bg-primary rounded-full transition-all"
+                className="h-full bg-primary rounded-full transition-all motion-reduce:transition-none"
                 style={{ width: `${stats.totalDays > 0 ? (stats.goalsMetDays / stats.totalDays) * 100 : 0}%` }}
               />
             </div>

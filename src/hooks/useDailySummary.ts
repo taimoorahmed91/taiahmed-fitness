@@ -1,8 +1,12 @@
 import { shouldShowFetchError } from '@/lib/fetchErrorToast';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser, onAuthIdentityChange } from '@/lib/authSession';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import {
+  INITIAL_SOURCE_STATUS, LOADED_SOURCE_STATUS, deriveSourceState, type SourceStatus,
+} from '@/app/globalRefresh';
+import { useRefreshSource } from '@/app/globalRefreshContext';
 
 interface DailySummary {
   id: string;
@@ -17,16 +21,23 @@ interface DailySummary {
 export const useDailySummary = () => {
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [status, setStatus] = useState<SourceStatus>(INITIAL_SOURCE_STATUS);
+  // Whose summary is on screen, so a failed load for someone else never keeps the previous person's numbers.
+  const ownerRef = useRef<string | null>(null);
 
-  const fetchSummary = useCallback(async () => {
+  /** Loads today's summary. THROWS when the load failed (after recording it in `status`). */
+  const loadSummary = async ({ isStale }: { isStale: () => boolean }): Promise<void> => {
+    let userId: string | null = null;
     try {
       const user = await getSessionUser();
+      if (isStale()) return;
       if (!user) {
+        ownerRef.current = null;
         setSummary(null);
-        setLoading(false);
+        setStatus(LOADED_SOURCE_STATUS);
         return;
       }
+      userId = user.id;
 
       // Call the database function to get or create today's summary
       const { data, error } = await supabase.rpc('get_or_create_daily_summary', {
@@ -34,29 +45,45 @@ export const useDailySummary = () => {
       });
 
       if (error) throw error;
+      if (isStale()) return;
 
+      ownerRef.current = user.id;
       setSummary(data as DailySummary);
+      setStatus(LOADED_SOURCE_STATUS);
     } catch (error) {
       console.error('Error fetching daily summary:', error);
-      if (shouldShowFetchError('summary')) toast({
-        title: 'Error',
-        description: 'Failed to fetch daily summary',
-        variant: 'destructive',
-      });
+      if (!isStale()) {
+        if (shouldShowFetchError('summary')) toast.error('Failed to fetch daily summary');
+        if (userId && ownerRef.current !== userId) {
+          ownerRef.current = null;
+          setSummary(null);
+          setStatus({ loaded: false, failed: true, error });
+        } else {
+          setStatus((prev) => ({ loaded: prev.loaded, failed: true, error }));
+        }
+      }
+      throw error;
     } finally {
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     }
-  }, [toast]);
+  };
+
+  const { refetch, restart } = useRefreshSource(loadSummary);
 
   useEffect(() => {
-    fetchSummary();
+    void restart();
 
     const subscription = onAuthIdentityChange(() => {
-      fetchSummary();
+      void restart();
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchSummary]);
+  }, [restart]);
 
-  return { summary, loading, refetch: fetchSummary };
+  const state = useMemo(() => deriveSourceState(status), [status]);
+
+  return {
+    summary, loading, refetch,
+    state, phase: state.phase, loadFailed: state.loadFailed, refreshFailed: state.refreshFailed, error: state.error,
+  };
 };

@@ -1,9 +1,13 @@
 import { useRef } from 'react';
-import { ChartPdfButton } from './ChartPdfButton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Clock } from 'lucide-react';
-import { ChartRangeControls, useChartRange } from './ChartViewControls';
+import { useChartRange } from './ChartViewControls';
+import { ChartFigure } from '@/components/charts/ChartFigure';
+import { ChartHeader } from '@/components/charts/ChartHeader';
+import { ChartEmptyState, NO_DATA } from '@/components/charts/ChartEmptyState';
+import { CATEGORY_COLORS, chartTooltipProps, formatChartValue, UNIT_LABEL } from '@/lib/chartTheme';
+import { RANGE_LABELS } from '@/lib/chartRange';
 
 interface MealTimeChartProps {
   data7: { name: string; calories: number; count: number }[];
@@ -12,81 +16,74 @@ interface MealTimeChartProps {
   data90: { name: string; calories: number; count: number }[];
 }
 
-const COLORS: Record<string, string> = {
-  Overnight: 'hsl(var(--chart-5))',
-  Morning: 'hsl(var(--primary))',
-  Midday: 'hsl(var(--chart-min))',
-  Afternoon: 'hsl(var(--chart-2))',
-  Evening: 'hsl(var(--chart-max))',
-  'Late night': 'hsl(var(--chart-actual))',
-};
+// Time of day has no good/bad meaning, so it uses the neutral categorical hues
+// (never the green/red/amber status colours).
+const PERIODS = ['Overnight', 'Morning', 'Midday', 'Afternoon', 'Evening', 'Late night'];
+const colorFor = (name: string) => CATEGORY_COLORS[Math.max(0, PERIODS.indexOf(name)) % CATEGORY_COLORS.length];
 
 export const MealTimeChart = ({ data7, data14, data30, data90 }: MealTimeChartProps) => {
+  // Categorical chart: date range only (a line/bar switch does not apply to a pie).
   const { range, setRange } = useChartRange('meal_time');
   const data = range === '7' ? data7 : range === '14' ? data14 : range === '90' ? data90 : data30;
   const cardRef = useRef<HTMLDivElement>(null);
   const filteredData = data.filter((d) => d.calories > 0);
+  const hasAnyMeals = data90.some((d) => d.calories > 0);
   const total = filteredData.reduce((sum, d) => sum + d.calories, 0);
+  const share = (calories: number) => (total ? Math.round((calories / total) * 100) : 0);
+  const period = RANGE_LABELS[range];
+  const title = 'Calories by Time of Day';
+  const summary = total
+    ? `${period}. ${formatChartValue(total, UNIT_LABEL.calories)} in total. ${filteredData.map((d) => `${d.name}: ${share(d.calories)}% (${formatChartValue(d.calories, UNIT_LABEL.calories)}, ${d.count} ${d.count === 1 ? 'meal' : 'meals'})`).join('; ')}.`
+    : `No meals in the ${period.toLowerCase()}.`;
 
   return (
-    <Card ref={cardRef} className="shadow-md">
-      <CardHeader className="pb-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Clock className="h-5 w-5 text-primary" />
-            Calories by Time of Day
-          </CardTitle>
-          <div className="flex items-center gap-2"><ChartRangeControls range={range} setRange={setRange} />
-          <ChartPdfButton targetRef={cardRef} title="Calories by Time of Day" subtitle={`Last ${range} days`}
-            columns={[{ key: 'name', label: 'Period' }, { key: 'calories', label: 'Calories' }, { key: 'count', label: 'Meals' }, { key: 'pct', label: 'Share (%)' }]}
-            rows={data.map(d => ({ ...d, pct: total ? Math.round(d.calories / total * 100) : 0 }))} /></div>
-        </div>
-      </CardHeader>
+    <Card ref={cardRef} titleSize="chart" className="shadow-md min-w-0">
+      <ChartHeader
+        title={title}
+        icon={<Clock className="h-5 w-5 text-primary" />}
+        view={{ range, setRange }}
+        pdf={{
+          targetRef: cardRef,
+          subtitle: period,
+          columns: [{ key: 'name', label: 'Period' }, { key: 'calories', label: 'Calories' }, { key: 'count', label: 'Meals' }, { key: 'pct', label: 'Share (%)' }],
+          rows: data.map(d => ({ ...d, pct: share(d.calories) })),
+        }}
+      />
       <CardContent>
-        <div className="h-[190px] w-full">
-          {filteredData.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              No meals in the last {range} days
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={filteredData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={76}
-                  paddingAngle={4}
-                  dataKey="calories"
-                  nameKey="name"
-                >
-                  {filteredData.map((entry) => (
-                    <Cell key={entry.name} fill={COLORS[entry.name]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                  formatter={(value: number, name: string) => [`${value.toLocaleString()} cal · ${Math.round(value / total * 100)}%`, name]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        {filteredData.length === 0 ? (
+          // Nothing in the widest window: logging a meal is the fix. Otherwise a wider range is.
+          hasAnyMeals
+            ? <ChartEmptyState className="min-h-[190px]">No meals in the {period.toLowerCase()}. Try a wider date range.</ChartEmptyState>
+            : <ChartEmptyState className="min-h-[190px]" action={NO_DATA.meals90.action}>{NO_DATA.meals90.message}</ChartEmptyState>
+        ) : (
+          <ChartFigure
+            title={title}
+            summary={summary}
+            height={190}
+            caption={`Share of ${UNIT_LABEL.calories} · ${period}`}
+            table={{ columns: [{ key: 'name', label: 'Period' }, { key: 'calories', label: `Calories (${UNIT_LABEL.calories})` }, { key: 'count', label: 'Meals' }], rows: data }}
+          >
+            <PieChart accessibilityLayer>
+              <Pie data={filteredData} cx="50%" cy="50%" innerRadius={50} outerRadius={76} paddingAngle={4} dataKey="calories" nameKey="name">
+                {filteredData.map((entry) => <Cell key={entry.name} fill={colorFor(entry.name)} />)}
+              </Pie>
+              <Tooltip
+                {...chartTooltipProps}
+                formatter={(value: number, name: string) => [`${formatChartValue(value, UNIT_LABEL.calories)} · ${share(value)}%`, name]}
+              />
+            </PieChart>
+          </ChartFigure>
+        )}
         {total > 0 && (
-          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2" aria-label="Calories by time of day distribution">
+          <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2" aria-label="Share of calories by time of day">
             {data.map((entry) => (
-              <div key={entry.name} className="flex min-w-0 items-center gap-2 text-sm">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: COLORS[entry.name] }} aria-hidden="true" />
+              <li key={entry.name} className="flex min-w-0 items-center gap-2 text-sm">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: colorFor(entry.name) }} aria-hidden="true" />
                 <span className="min-w-0 truncate text-muted-foreground">{entry.name}</span>
-                <span className="ml-auto tabular-nums font-semibold text-foreground">{Math.round(entry.calories / total * 100)}%</span>
-              </div>
+                <span className="ml-auto tabular-nums font-semibold text-foreground">{share(entry.calories)}%</span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </CardContent>
     </Card>

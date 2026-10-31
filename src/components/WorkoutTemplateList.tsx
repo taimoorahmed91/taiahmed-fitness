@@ -3,6 +3,7 @@ import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
 import { GymSession } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -121,8 +122,8 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search templates or exercises..." className="pl-9" />
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search templates or exercises..." aria-label="Search templates or exercises" className="pl-9" />
         </div>
         <Button onClick={() => setCreating(true)}><Plus className="h-4 w-4 mr-1" />Create Template</Button>
       </div>
@@ -147,11 +148,14 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
                     <p className="font-semibold text-lg leading-tight">{t.name}</p>
                     <div className="flex items-center gap-1 shrink-0">
                       <Badge variant="secondary">{t.exercises.length} ex</Badge>
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => togglePin(t.id)}
-                        aria-label={pinned.includes(t.id) ? `Unpin ${t.name}` : `Pin ${t.name}`} aria-pressed={pinned.includes(t.id)}
-                        title={pinned.includes(t.id) ? 'Unpin' : 'Pin to top'}>
-                        <Pin className={pinned.includes(t.id) ? 'h-4 w-4 text-primary fill-current' : 'h-4 w-4 text-muted-foreground'} />
-                      </Button>
+                      <IconButton
+                        label={`Pin ${t.name} to top`}
+                        tooltip={pinned.includes(t.id) ? 'Unpin' : 'Pin to top'}
+                        aria-pressed={pinned.includes(t.id)}
+                        onClick={() => togglePin(t.id)}
+                      >
+                        <Pin className={pinned.includes(t.id) ? 'text-primary fill-current' : 'text-muted-foreground'} />
+                      </IconButton>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -164,17 +168,25 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
                       <span key={i} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">{ex}</span>
                     ))}
                     {t.exercises.length > 4 && (
-                      <button type="button" onClick={() => toggle(t.id)} className="text-xs text-primary px-1 hover:underline">
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => toggle(t.id)}
+                        aria-expanded={isOpen}
+                        aria-label={isOpen ? `Show fewer exercises in ${t.name}` : `Show all ${t.exercises.length} exercises in ${t.name}`}
+                        className="h-auto px-1 py-0 text-xs"
+                      >
                         {isOpen ? 'Show less' : `+${t.exercises.length - 4} more`}
-                      </button>
+                      </Button>
                     )}
                   </div>
                   <div className="flex items-center gap-1 mt-auto pt-2">
                     <Button className="flex-1" onClick={() => onStart(t)}><Play className="h-4 w-4 mr-1" />Start Workout</Button>
-                    <Button variant="ghost" size="icon" onClick={() => onEdit(t)} aria-label="Edit template">
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <ConfirmDeleteButton variant="ghost" size="icon" onConfirm={() => onDelete(t.id)} confirmationTitle="Delete template?" confirmationDescription={`Are you sure you want to delete “${t.name}”? Your logged workouts stay; only the template is removed.`} aria-label="Delete template">
+                    <IconButton label={`Edit template ${t.name}`} tooltip onClick={() => onEdit(t)}>
+                      <Pencil className="text-muted-foreground" />
+                    </IconButton>
+                    <ConfirmDeleteButton variant="ghost" size="icon" onConfirm={() => onDelete(t.id)} confirmationTitle="Delete template?" confirmationDescription={`Are you sure you want to delete “${t.name}”? Your logged workouts stay; only the template is removed.`} aria-label={`Delete template ${t.name}`}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </ConfirmDeleteButton>
                   </div>
@@ -186,7 +198,7 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
       )}
 
       <Dialog open={creating} onOpenChange={setCreating}>
-        <DialogContent>
+        <DialogContent layout="mobile-full">
           <DialogHeader>
             <DialogTitle>Create Template</DialogTitle>
             <DialogDescription>Name your routine and list its exercises.</DialogDescription>

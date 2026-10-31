@@ -1,9 +1,16 @@
 import { useMemo, useRef } from 'react';
-import { ChartPdfButton } from './ChartPdfButton';
-import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceDot } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceDot } from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
 import { DailyNote } from '@/hooks/useDailyNotes';
-import { ChartViewControls, chartDateLabel, recentChartData, useChartView, ChartStyle } from './ChartViewControls';
+import { chartDateLabel, recentChartData, useChartView, ChartStyle } from './ChartViewControls';
+import { ChartFigure } from '@/components/charts/ChartFigure';
+import { ChartHeader } from '@/components/charts/ChartHeader';
+import { ChartEmptyState, TREND_NO_DATA, type ChartNoDataEmpty } from '@/components/charts/ChartEmptyState';
+import { ChartTooltipCard, TooltipNote } from '@/components/charts/ChartTooltipCard';
+import { NoteDiamond } from '@/components/charts/NoteDiamond';
+import { CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartXAxisProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
+import { CHART_RANGES, RANGE_LABELS } from '@/lib/chartRange';
+import { describeSeries } from '@/lib/chartSummary';
 
 type Series = { key: string; label: string; color: string; dashed?: boolean };
 type Row = { date: string; [key: string]: string | number | null | undefined };
@@ -18,13 +25,20 @@ interface TrendChartProps {
   defaultStyle?: ChartStyle;
   notesMap?: Map<string, DailyNote>;
   cap?: number;
+  /** Short headline on the right of the title (latest value, average...). Rendered in muted 14px text. */
   summary?: (rows: Row[]) => React.ReactNode;
+  /** Shown when the chosen date range has no rows (the fix is a wider range, so no link). */
   empty: string;
+  /**
+   * Shown instead of `empty` when there are no rows at all, with a link to where they are logged.
+   * Defaults by chart id (weight, waist, sleep, recovery, workout_duration); pass `null` to opt out.
+   */
+  noData?: ChartNoDataEmpty | null;
   extendedRanges?: boolean;
 }
 
-export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, notesMap, cap, summary, empty, extendedRanges }: TrendChartProps) => {
-  const view = useChartView(id, defaultStyle);
+export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, notesMap, cap, summary, empty, noData, extendedRanges }: TrendChartProps) => {
+  const view = useChartView(id, defaultStyle, { allowed: extendedRanges ? CHART_RANGES : undefined });
   const cardRef = useRef<HTMLDivElement>(null);
   const shown = useMemo(() => recentChartData(data, view.range), [data, view.range]);
   const values = shown.flatMap(row => series.map(s => row[s.key]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)));
@@ -35,52 +49,55 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
     ? [Math.min(0, Math.floor(min - (min < 0 ? pad : 0))), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.max(1, Math.ceil(max + pad))]
     : [min < 0 ? Math.floor(min - pad) : Math.max(0, Math.floor(min - pad)), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.ceil(max + pad)];
   const noteDots = shown.filter(row => notesMap?.has(row.date) && typeof row[series[0]?.key] === 'number');
+  const period = RANGE_LABELS[view.range];
+  // Nothing logged at all (not just nothing in this range): logging is the fix, so offer the link.
+  const emptyNoData = data.length === 0 ? (noData === undefined ? TREND_NO_DATA[id] : noData) : null;
+  const summaryText = useMemo(() => describeSeries(shown, series.map(s => ({ key: s.key, label: s.label, unit })), period), [shown, series, unit, period]);
+
+  const pdfColumns = [{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: `${s.label}${unit ? ` (${unit})` : ''}` }))];
 
   return (
-    <Card ref={cardRef} className="shadow-md min-w-0">
-      <CardHeader className="pb-2 space-y-2">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="flex items-center gap-2 text-lg">{icon}{title}</CardTitle>
-          {summary?.(shown)}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <ChartViewControls {...view} extended={extendedRanges} />
-          <ChartPdfButton targetRef={cardRef} title={title}
-            subtitle={`${view.range === 'all' ? 'All time' : `Last ${view.range} days`} · ${view.style} chart`}
-            columns={[{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: `${s.label}${unit ? ` (${unit})` : ''}` }))]}
-            rows={shown} />
-        </div>
-      </CardHeader>
+    <Card ref={cardRef} titleSize="chart" className="shadow-md min-w-0">
+      <ChartHeader
+        title={title}
+        icon={icon}
+        description={summary?.(shown)}
+        view={{ ...view, extended: extendedRanges }}
+        pdf={{ targetRef: cardRef, subtitle: `${period} · ${view.style} chart`, columns: pdfColumns, rows: shown }}
+      />
       <CardContent>
-        {shown.length === 0 ? <p className="text-muted-foreground text-center py-12">{empty}</p> : (
-          <ResponsiveContainer width="100%" height={250}>
-            <ComposedChart data={shown} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis dataKey="date" tickFormatter={chartDateLabel} minTickGap={20} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-              <YAxis domain={domain} width={44} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-              <Tooltip content={({ active, payload, label }) => {
+        {shown.length === 0 ? (
+          emptyNoData
+            ? <ChartEmptyState action={emptyNoData.action} secondaryAction={emptyNoData.secondaryAction}>{emptyNoData.message}</ChartEmptyState>
+            : <ChartEmptyState>{empty}</ChartEmptyState>
+        ) : (
+          <ChartFigure
+            title={title}
+            summary={summaryText}
+            caption={`${unit ? `Values in ${unit} · ` : ''}${period}${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
+            table={{ columns: pdfColumns, rows: shown }}
+          >
+            <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisProps} />
+              <YAxis domain={domain} {...chartYAxisProps} />
+              <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
                 const note = notesMap?.get(String(label));
-                return <div className="bg-card border border-border rounded-md p-3 shadow-lg text-sm max-w-64">
-                  <p className="font-semibold mb-1">{String(label)}</p>
-                  {payload.filter(p => p.value != null).map(p => <p key={String(p.dataKey)} style={{ color: String(p.color ?? p.fill) }}>
-                    {p.name}: {p.value} {unit}
-                  </p>)}
-                  {note && <div className="border-t mt-2 pt-2 text-muted-foreground">
-                    <p className="font-medium">Note</p>
-                    {note.tags?.length > 0 && <p>{note.tags.join(', ')}</p>}
-                    {note.notes && <p className="break-words">{note.notes}</p>}
-                  </div>}
-                </div>;
+                return <ChartTooltipCard
+                  title={String(label)}
+                  rows={payload.filter(p => p.value != null).map(p => ({ label: String(p.name), value: formatChartValue(Number(p.value), unit), color: String(p.color ?? p.fill) }))}>
+                  {note && <TooltipNote tags={note.tags} notes={note.notes} />}
+                </ChartTooltipCard>;
               }} />
-              {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
+              {series.length > 1 && <Legend {...chartLegendProps} />}
               {series.map(s => view.style === 'bar' ?
                 <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} maxBarSize={40} radius={[3, 3, 0, 0]} /> :
-                <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? false : { r: 3, fill: s.color, stroke: 'hsl(var(--card))', strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls />
+                <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? false : { r: 3, fill: s.color, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls />
               )}
-              {noteDots.map(row => <ReferenceDot key={row.date} x={row.date} y={Number(row[series[0].key])} r={5} fill="hsl(var(--destructive))" stroke="hsl(var(--card))" strokeWidth={2} />)}
+              {noteDots.map(row => <ReferenceDot key={row.date} x={row.date} y={Number(row[series[0].key])} r={7} shape={<NoteDiamond />} />)}
             </ComposedChart>
-          </ResponsiveContainer>
+          </ChartFigure>
         )}
       </CardContent>
     </Card>

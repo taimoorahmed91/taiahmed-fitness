@@ -8,12 +8,19 @@ interface NavLinkCompatProps extends Omit<NavLinkProps, "className"> {
   pendingClassName?: string;
 }
 
+/**
+ * Router NavLink with string class names. The active link gets
+ * aria-current="page" (the router only applies it while the link is active);
+ * it is stated explicitly so the semantics cannot be lost, and callers may
+ * still override it.
+ */
 const NavLink = forwardRef<HTMLAnchorElement, NavLinkCompatProps>(
   ({ className, activeClassName, pendingClassName, to, ...props }, ref) => {
     return (
       <RouterNavLink
         ref={ref}
         to={to}
+        aria-current="page"
         className={({ isActive, isPending }) =>
           cn(className, isActive && activeClassName, isPending && pendingClassName)
         }

@@ -1,78 +1,36 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChartPdfButton } from './ChartPdfButton';
-import {
-  ComposedChart,
-  Line,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
-import { BarChart3, LineChart as LineIcon } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useMemo, useRef } from 'react';
+import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
+import { useChartView } from './ChartViewControls';
+import { ChartFigure } from '@/components/charts/ChartFigure';
+import { ChartHeader } from '@/components/charts/ChartHeader';
+import { ChartEmptyState, NO_DATA } from '@/components/charts/ChartEmptyState';
+import { ChartTooltipCard } from '@/components/charts/ChartTooltipCard';
+import { CHART_COLORS, CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartXAxisProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
+import { RANGE_LABELS, formatChartDate, windowChartRows } from '@/lib/chartRange';
+import { describeSeries } from '@/lib/chartSummary';
 
 interface MacroTargetChartProps {
+  /**
+   * One row per calendar day, oldest first. `date` should be ISO (YYYY-MM-DD);
+   * an "MM/DD" label over a gap-free series ending today is still accepted.
+   */
   data: { date: string; actual: number; min: number | null; max: number | null }[];
   title: string;
   unit: string;
   storageKey?: string;
 }
 
-type Range = '7' | '14' | '30' | '90';
-type Style = 'line' | 'bar';
-
 const LABELS: Record<string, string> = { actual: 'Actual intake', min: 'Min target', max: 'Max target' };
-const ACTUAL_COLOR = 'hsl(var(--chart-actual))';
-const MIN_COLOR = 'hsl(var(--chart-min))';
-const MAX_COLOR = 'hsl(var(--chart-max))';
-
-const readPref = <T extends string>(key: string, allowed: T[], fallback: T): T => {
-  try {
-    const v = localStorage.getItem(key) as T | null;
-    return v && allowed.includes(v) ? v : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const Seg = ({ active, onClick, children, label }: { active: boolean; onClick: () => void; children: React.ReactNode; label: string }) => (
-  <Button
-    type="button"
-    variant="ghost"
-    size="sm"
-    aria-label={label}
-    aria-pressed={active}
-    onClick={onClick}
-    className={cn(
-      'h-7 rounded-none px-2 text-xs font-medium transition-colors flex items-center',
-      active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-    )}
-  >
-    {children}
-  </Button>
-);
 
 export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetChartProps) => {
-  const key = `fittrack_macro_chart_${storageKey ?? title}`;
-  const [range, setRange] = useState<Range>(() => readPref<Range>(`${key}_range`, ['7', '14', '30', '90'], '7'));
+  const id = `macro_${storageKey ?? title}`;
+  // Keeps whatever range/style the old, separate controls had saved.
+  const view = useChartView(id, 'line', { legacyPrefix: `fittrack_macro_chart_${storageKey ?? title}` });
+  const { range, style } = view;
   const cardRef = useRef<HTMLDivElement>(null);
-  const [style, setStyle] = useState<Style>(() => readPref<Style>(`${key}_style`, ['line', 'bar'], 'line'));
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${key}_range`, range);
-      localStorage.setItem(`${key}_style`, style);
-    } catch {
-      /* ignore */
-    }
-  }, [key, range, style]);
-
-  const shown = useMemo(() => data.slice(-Number(range)), [data, range]);
+  const shown = useMemo(() => windowChartRows(data, range), [data, range]);
 
   const yDomain = useMemo(() => {
     const values = shown.flatMap((d) => [d.actual, d.min, d.max]).filter((v): v is number => v != null);
@@ -88,62 +46,58 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
     return [style === 'bar' ? 0 : Math.max(0, Math.floor(min - pad)), Math.ceil(max + pad)];
   }, [shown, style]);
 
+  const period = RANGE_LABELS[range];
+  const summary = useMemo(
+    () => describeSeries(shown, [
+      { key: 'actual', label: LABELS.actual, unit, digits: 0 },
+      { key: 'min', label: LABELS.min, unit, digits: 0 },
+      { key: 'max', label: LABELS.max, unit, digits: 0 },
+    ], period),
+    [shown, unit, period],
+  );
+  const columns = [{ key: 'date', label: 'Date' }, { key: 'actual', label: `Actual (${unit})` }, { key: 'min', label: `Min target (${unit})` }, { key: 'max', label: `Max target (${unit})` }];
+
   return (
-    <Card ref={cardRef} className="shadow-md">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <CardTitle className="text-lg">{title}</CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex rounded-md border overflow-hidden" data-html2canvas-ignore="true">
-              <Seg label="Last 7 days" active={range === '7'} onClick={() => setRange('7')}>7D</Seg>
-              <Seg label="Last 14 days" active={range === '14'} onClick={() => setRange('14')}>14D</Seg>
-              <Seg label="Last 30 days" active={range === '30'} onClick={() => setRange('30')}>30D</Seg>
-              <Seg label="Last 90 days" active={range === '90'} onClick={() => setRange('90')}>90D</Seg>
-            </div>
-            <div className="flex rounded-md border overflow-hidden" data-html2canvas-ignore="true">
-              <Seg label="Line chart" active={style === 'line'} onClick={() => setStyle('line')}>
-                <LineIcon className="h-3.5 w-3.5" />
-              </Seg>
-              <Seg label="Bar chart" active={style === 'bar'} onClick={() => setStyle('bar')}>
-                <BarChart3 className="h-3.5 w-3.5" />
-              </Seg>
-            </div>
-            <ChartPdfButton targetRef={cardRef} title={title} subtitle={`Last ${range} days · ${style} chart`}
-              columns={[{ key: 'date', label: 'Date' }, { key: 'actual', label: `Actual (${unit})` }, { key: 'min', label: `Min target (${unit})` }, { key: 'max', label: `Max target (${unit})` }]}
-              rows={shown} />
-          </div>
-        </div>
-      </CardHeader>
+    <Card ref={cardRef} titleSize="chart" className="shadow-md min-w-0">
+      <ChartHeader title={title} view={view} pdf={{ targetRef: cardRef, subtitle: `${period} · ${style} chart`, columns, rows: shown }} />
       <CardContent>
         {shown.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">No data yet.</p>
+          // No rows at all: logging a meal is the fix. Rows outside the range: a wider range is.
+          data.length === 0
+            ? <ChartEmptyState action={NO_DATA.meals.action}>{NO_DATA.meals.message}</ChartEmptyState>
+            : <ChartEmptyState>No intake data in this period. Try a wider date range.</ChartEmptyState>
         ) : (
-          <ResponsiveContainer width="100%" height={250}>
-            <ComposedChart data={shown} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" width={50} domain={yDomain} />
+          <ChartFigure title={title} summary={summary} caption={`Values in ${unit} · ${period}`} table={{ columns, rows: shown }}>
+            <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="date" tickFormatter={formatChartDate} {...chartXAxisProps} />
+              <YAxis domain={yDomain} {...chartYAxisProps} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
+                cursor={chartTooltipProps.cursor}
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  return (
+                    <ChartTooltipCard
+                      title={formatChartDate(String(label))}
+                      rows={payload.filter((p) => p.value != null).map((p) => ({
+                        label: LABELS[String(p.dataKey)] ?? String(p.name),
+                        value: formatChartValue(Number(p.value), unit, 0),
+                        color: String(p.color ?? p.fill),
+                      }))}
+                    />
+                  );
                 }}
-                formatter={(value: number | undefined, name?: string) => [
-                  `${Math.round(value ?? 0)} ${unit}`,
-                  LABELS[name ?? ''] ?? name,
-                ]}
               />
-              <Legend formatter={(value) => LABELS[value] ?? value} />
+              <Legend {...chartLegendProps} formatter={(value) => LABELS[value] ?? value} />
               {style === 'bar' ? (
-                <Bar dataKey="actual" fill={ACTUAL_COLOR} radius={[4, 4, 0, 0]} name="actual" />
+                <Bar dataKey="actual" fill={CHART_COLORS.actual} radius={[4, 4, 0, 0]} name="actual" />
               ) : (
-                <Line type="monotone" dataKey="actual" stroke={ACTUAL_COLOR} strokeWidth={3.5} dot={{ r: 4, fill: ACTUAL_COLOR, stroke: 'hsl(var(--card))', strokeWidth: 1.5 }} activeDot={{ r: 6 }} name="actual" connectNulls />
+                <Line type="monotone" dataKey="actual" stroke={CHART_COLORS.actual} strokeWidth={3.5} dot={{ r: 4, fill: CHART_COLORS.actual, stroke: chartDotStroke, strokeWidth: 1.5 }} activeDot={{ r: 6 }} name="actual" connectNulls />
               )}
-              <Line type="monotone" dataKey="min" stroke={MIN_COLOR} strokeWidth={2} strokeDasharray="8 5" dot={false} name="min" connectNulls />
-              <Line type="monotone" dataKey="max" stroke={MAX_COLOR} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} name="max" connectNulls />
+              <Line type="monotone" dataKey="min" stroke={CHART_COLORS.min} strokeWidth={2} strokeDasharray="8 5" dot={false} name="min" connectNulls />
+              <Line type="monotone" dataKey="max" stroke={CHART_COLORS.max} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} name="max" connectNulls />
             </ComposedChart>
-          </ResponsiveContainer>
+          </ChartFigure>
         )}
       </CardContent>
     </Card>

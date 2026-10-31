@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -61,11 +60,12 @@ export const GoalsCard = () => {
     setEndDate(newEndDate);
   };
 
-  const getProgressColor = (percentage: number, achieved: boolean) => {
-    if (achieved) return 'bg-green-500';
-    if (percentage >= 75) return 'bg-primary';
-    if (percentage >= 50) return 'bg-yellow-500';
-    return 'bg-orange-500';
+  // Same status colours as the target bars: achieved = chart-min (green),
+  // on the way = primary, behind = chart-warn (amber). The word and glyph repeat it.
+  const getProgressStatus = (percentage: number, achieved: boolean) => {
+    if (achieved) return { label: 'Achieved', glyph: '\u2713', indicator: '[&>div]:bg-chart-min', text: 'text-chart-min' };
+    if (percentage >= 50) return { label: 'On track', glyph: '\u2192', indicator: '[&>div]:bg-primary', text: 'text-primary' };
+    return { label: 'Behind', glyph: '\u2193', indicator: '[&>div]:bg-chart-warn', text: 'text-chart-warn' };
   };
 
   if (loading) {
@@ -88,9 +88,12 @@ export const GoalsCard = () => {
         <Button
           variant="ghost"
           size="sm"
+          aria-label={showForm ? 'Close new goal form' : 'Add goal'}
+          aria-expanded={showForm}
+          className="[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
           onClick={() => setShowForm(!showForm)}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -202,11 +205,12 @@ export const GoalsCard = () => {
             {goalsProgress.map((gp: GoalProgress) => {
               const Icon = categoryIcons[gp.goal.category as keyof typeof categoryIcons];
               const isWeekly = gp.goal.goal_type === 'weekly';
+              const status = getProgressStatus(gp.percentage, gp.achieved);
               return (
                 <div key={gp.goal.id} className="space-y-2 p-3 border rounded-lg">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="font-medium text-sm">
                         {isWeekly ? 'Weekly' : 'Monthly'} {categoryLabels[gp.goal.category as keyof typeof categoryLabels]}
                       </span>
@@ -214,41 +218,41 @@ export const GoalsCard = () => {
                     <ConfirmDeleteButton
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
                       onConfirm={() => deleteGoal(gp.goal.id)} confirmationTitle="Delete goal?" confirmationDescription={`Are you sure you want to delete this ${gp.goal.goal_type} ${categoryLabels[gp.goal.category as keyof typeof categoryLabels]} goal? Your logged activities will stay.`}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </ConfirmDeleteButton>
                   </div>
                   
                   {/* Weekly day tracker */}
                   {isWeekly && (
                     <div className="flex items-center justify-between">
-                      <div className="flex gap-1">
+                      <ul className="flex gap-1.5" aria-label={`Days passed this week: ${gp.days_passed} of 7`}>
                         {weekDays.map((day, index) => {
                           const isPastOrToday = index < gp.days_passed;
                           return (
-                            <div key={day} className="flex flex-col items-center gap-0.5">
-                              <span className="text-[10px] text-muted-foreground">{day}</span>
-                              <Checkbox 
-                                checked={isPastOrToday} 
-                                disabled 
-                                className="h-3 w-3 cursor-default"
-                              />
-                            </div>
+                            <li key={day} className="flex flex-col items-center gap-0.5" aria-label={`${day}: ${isPastOrToday ? 'passed' : 'upcoming'}`}>
+                              <span className="text-xs text-muted-foreground" aria-hidden="true">{day}</span>
+                              <span aria-hidden="true" className={cn('flex h-4 w-4 items-center justify-center rounded-sm border text-xs leading-none', isPastOrToday ? 'border-primary bg-primary text-primary-foreground' : 'border-input')}>{isPastOrToday ? '\u2713' : ''}</span>
+                            </li>
                           );
                         })}
-                      </div>
+                      </ul>
                       <span className="text-xs text-muted-foreground">Days {gp.days_passed}/7</span>
                     </div>
                   )}
                   
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
+                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
                       <span>{gp.current_value} / {gp.goal.target_value} {categoryUnits[gp.goal.category as keyof typeof categoryUnits]}</span>
-                      <span>{gp.percentage}%</span>
+                      <span className="flex items-center gap-1">
+                        <span className={cn('font-medium', status.text)}><span aria-hidden="true">{status.glyph} </span>{status.label}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{gp.percentage}%</span>
+                      </span>
                     </div>
-                    <Progress value={gp.percentage} className={`h-2 ${getProgressColor(gp.percentage, gp.achieved)}`} />
+                    <Progress value={gp.percentage} aria-label={`${categoryLabels[gp.goal.category as keyof typeof categoryLabels]} goal progress`} className={cn('h-2 bg-progress-track', status.indicator)} />
                   </div>
                 </div>
               );

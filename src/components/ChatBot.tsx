@@ -1,13 +1,14 @@
-import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { toast, useSonner } from 'sonner';
 import { MessageCircle, X, Send, Loader2, Utensils, Dumbbell, Scale, Moon, Zap, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
+import { showUndoToast } from '@/components/ui/undo-toast';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/UserContext';
 
 interface Message {
@@ -28,6 +29,36 @@ const categoryConfig = {
   action: { label: 'Action', icon: Zap, message: null },
 };
 
+// Test button and HTTP status badges are for developers only; real users never see them.
+const SHOW_DEV_TOOLS = import.meta.env.DEV;
+
+/**
+ * True when focus is on something that opens the on-screen keyboard or a picker (text-like inputs,
+ * date/time pickers, select, textarea, contenteditable, combobox/listbox/textbox roles, so an open Radix select counts). Buttons, checkboxes,
+ * radios, sliders and file pickers do not count. Takes a minimal element shape so it can be unit tested.
+ */
+const NON_TEXT_INPUT_TYPES = new Set(['button', 'submit', 'reset', 'checkbox', 'radio', 'range', 'file', 'image', 'color', 'hidden']);
+interface FocusTargetLike {
+  tagName?: string;
+  type?: string;
+  isContentEditable?: boolean;
+  getAttribute?: (name: string) => string | null;
+  closest?: (selector: string) => unknown;
+}
+// eslint-disable-next-line react-refresh/only-export-components
+export function isFormEntryElement(el: FocusTargetLike | null | undefined): boolean {
+  if (!el || !el.tagName) return false;
+  const tag = el.tagName.toUpperCase();
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (tag === 'INPUT') return !NON_TEXT_INPUT_TYPES.has((el.type ?? 'text').toLowerCase());
+  if (el.isContentEditable) return true;
+  const role = el.getAttribute?.('role');
+  return role === 'combobox' || role === 'textbox' || role === 'searchbox' || role === 'spinbutton' || role === 'listbox' || role === 'option';
+}
+
+/** The chat's own button and panel manage their own focus; they must never hide the button. */
+const CHAT_OWN_SELECTOR = '[data-chat-assistant]';
+
 const MAX_MESSAGES_PER_HOUR = 5;
 const RATE_LIMIT_KEY = 'chatbot_message_timestamps';
 
@@ -40,7 +71,19 @@ const ChatBot = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [messageCount, setMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const { toasts: sonnerToasts } = useSonner();
+  // True while a form field elsewhere on the page has focus. The button gets out of the way then, so it can
+  // never sit on top of the control being edited (or its calendar/picker icon) on a small screen.
+  const [fieldFocused, setFieldFocused] = useState(false);
+
+  // Toasts appear in the bottom-right corner, right where the button sits. Lift the button above them.
+  const visibleToasts = sonnerToasts.length;
+  const liftRem = visibleToasts > 0 ? Math.min(visibleToasts, 3) * 4.5 : 0;
+  // The bottom offset keeps clear of the phone home bar, and of a bottom navigation bar once one exists
+  // (set --bottom-bar-height on the layout wrapper; it is 0 until then). AppLayout reserves matching space at the
+  // end of every page (CHAT_FAB_CLEARANCE in layout/Page.tsx); keep this edge and the h-14 size in step with it.
+  const fabBottom = `calc(max(1rem, env(safe-area-inset-bottom)) + var(--bottom-bar-height, 0px) + ${liftRem}rem)`;
 
   // Get valid timestamps from localStorage (within the last hour)
   const getValidTimestamps = useCallback((): number[] => {
@@ -85,15 +128,39 @@ const ChatBot = () => {
     setMessageCount(validTimestamps.length);
   };
 
+  // Hide the button while a form field outside the chat has focus. Handled once, here, for every page and
+  // dialog, instead of padding around individual controls. Focus is re-read after the event settles
+  // (setTimeout 0), so moving from one field straight to another never flashes the button back.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const sync = () => {
+      const active = document.activeElement;
+      const own = typeof active?.closest === 'function' && active.closest(CHAT_OWN_SELECTOR);
+      setFieldFocused(!own && isFormEntryElement(active));
+    };
+    const onFocusChange = () => {
+      clearTimeout(timer);
+      timer = setTimeout(sync, 0);
+    };
+    document.addEventListener('focusin', onFocusChange);
+    document.addEventListener('focusout', onFocusChange);
+    sync();
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('focusin', onFocusChange);
+      document.removeEventListener('focusout', onFocusChange);
+    };
+  }, []);
+
   // Only render for authenticated users
   if (!isLoggedIn) return null;
 
+  // An open chat keeps its button: it is the close control, and the panel is already the user's choice.
+  const hideFab = fieldFocused && !isOpen;
+
   const handleCategorySelect = (category: Category) => {
     if (category === 'action') {
-      toast({
-        title: 'Action',
-        description: 'This feature is not available yet',
-      });
+      toast('Action', { description: 'This feature is not available yet' });
       return;
     }
     setSelectedCategory(category);
@@ -101,11 +168,7 @@ const ChatBot = () => {
 
   const handleTestFunction = async () => {
     if (!canSendMessage) {
-      toast({
-        title: 'Rate limit reached',
-        description: 'You can only send 5 messages per hour. Please wait.',
-        variant: 'destructive',
-      });
+      toast.error('Rate limit reached', { description: 'You can only send 5 messages per hour. Please wait.' });
       return;
     }
 
@@ -149,11 +212,7 @@ const ChatBot = () => {
         statusCode: 500,
       };
       setMessages((prev) => [...prev, errorMessage]);
-      toast({
-        title: 'Error',
-        description: 'Failed to call test function.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to call test function.');
     } finally {
       setIsLoading(false);
     }
@@ -163,19 +222,22 @@ const ChatBot = () => {
     setSelectedCategory(null);
   };
 
+  // Chat history is local only, so clearing is immediate with an Undo (no confirmation dialog).
   const handleClearChat = () => {
+    const snapshot = messages;
+    if (snapshot.length === 0) return;
     setMessages([]);
+    showUndoToast({
+      message: 'Chat cleared',
+      onUndo: () => setMessages((current) => [...snapshot, ...current]),
+    });
   };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !selectedCategory) return;
 
     if (!canSendMessage) {
-      toast({
-        title: 'Rate limit reached',
-        description: 'You can only send 5 messages per hour. Please wait.',
-        variant: 'destructive',
-      });
+      toast.error('Rate limit reached', { description: 'You can only send 5 messages per hour. Please wait.' });
       return;
     }
 
@@ -224,18 +286,15 @@ const ChatBot = () => {
         statusCode: 500,
       };
       setMessages((prev) => [...prev, errorMessage]);
-      toast({
-        title: 'Error',
-        description: 'Failed to send message. Please try again.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to send message. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Enter sends, Shift+Enter is ignored by this single-line input; never send mid-IME composition.
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       sendMessage();
     }
@@ -253,31 +312,53 @@ const ChatBot = () => {
     setInput('');
   };
 
+  const closeChat = () => {
+    setIsOpen(false);
+    fabRef.current?.focus();
+  };
+
   return (
     <>
       {/* Floating Button */}
-      <Button
+      <IconButton
+        ref={fabRef}
+        variant="default"
+        label={isOpen ? 'Close chat assistant' : 'Open chat assistant'}
+        aria-expanded={isOpen}
+        aria-controls="chat-assistant-panel"
         onClick={() => {
           setIsOpen(!isOpen);
           if (!isOpen) resetChat();
         }}
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg"
-        size="icon"
+        style={{ bottom: fabBottom }}
+        data-chat-assistant="fab"
+        data-hidden-for-field={hideFab || undefined}
+        tabIndex={hideFab ? -1 : undefined}
+        aria-hidden={hideFab || undefined}
+        className={`fixed right-[max(1rem,env(safe-area-inset-right))] z-50 h-14 w-14 rounded-full shadow-lg transition-[bottom,background-color,transform,opacity,visibility] duration-200 motion-reduce:transition-none sm:right-6 [@media(pointer:coarse)]:h-14 [@media(pointer:coarse)]:w-14 ${hideFab ? 'pointer-events-none invisible translate-y-2 opacity-0' : ''}`}
       >
-        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
-      </Button>
+        {isOpen ? <X className="!h-6 !w-6" /> : <MessageCircle className="!h-6 !w-6" />}
+      </IconButton>
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 shadow-xl">
+        <Card
+          id="chat-assistant-panel"
+          data-chat-assistant="panel"
+          role="region"
+          aria-label="Chat assistant"
+          onKeyDown={(e) => { if (e.key === 'Escape') closeChat(); }}
+          style={{ bottom: `calc(${fabBottom} + 4.5rem)`, maxHeight: `calc(100dvh - 7rem - ${fabBottom})` }}
+          className="fixed right-[max(1rem,env(safe-area-inset-right))] z-50 w-[min(24rem,calc(100vw-2rem))] overflow-y-auto shadow-xl sm:right-6"
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               {selectedCategory && (
-                <Button variant="ghost" size="icon" className="h-6 w-6 mr-1" onClick={handleBack}>
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
+                <IconButton label="Back to topics" size="sm" className="mr-1" onClick={handleBack}>
+                  <ArrowLeft />
+                </IconButton>
               )}
-              <MessageCircle className="h-5 w-5" />
+              <MessageCircle aria-hidden="true" className="h-5 w-5" />
               <span className="flex-1">
                 {selectedCategory === 'test'
                   ? 'Test Function'
@@ -285,13 +366,17 @@ const ChatBot = () => {
                     ? `Chat - ${categoryConfig[selectedCategory].label}` 
                     : 'Chat Assistant'}
               </span>
-              <Badge variant={canSendMessage ? 'secondary' : 'destructive'} className="text-xs">
+              <Badge
+                variant={canSendMessage ? 'secondary' : 'destructive'}
+                className="text-xs"
+                aria-label={`${messageCount} of ${MAX_MESSAGES_PER_HOUR} messages used this hour`}
+              >
                 {messageCount}/{MAX_MESSAGES_PER_HOUR}
               </Badge>
               {selectedCategory && messages.length > 0 && (
-                <ConfirmDeleteButton variant="ghost" size="icon" className="h-6 w-6" onConfirm={handleClearChat} confirmationTitle="Clear chat?" confirmationDescription="Are you sure you want to clear the messages in this conversation? Your meal and workout records will stay." confirmLabel="Yes, clear chat" title="Clear chat">
-                  <Trash2 className="h-4 w-4" />
-                </ConfirmDeleteButton>
+                <IconButton label="Clear chat" tooltip size="sm" onClick={handleClearChat}>
+                  <Trash2 />
+                </IconButton>
               )}
             </CardTitle>
           </CardHeader>
@@ -299,15 +384,17 @@ const ChatBot = () => {
             {!selectedCategory ? (
               // Category Selection
               <div className="p-4 space-y-2">
-                <Button
-                  variant="secondary"
-                  className="w-full justify-start gap-3 mb-4"
-                  onClick={handleTestFunction}
-                  disabled={isLoading}
-                >
-                  <Zap className="h-4 w-4" />
-                  Test Function
-                </Button>
+                {SHOW_DEV_TOOLS && (
+                  <Button
+                    variant="secondary"
+                    className="w-full justify-start gap-3 mb-4"
+                    onClick={handleTestFunction}
+                    disabled={isLoading}
+                  >
+                    <Zap className="h-4 w-4" />
+                    Test Function (dev)
+                  </Button>
+                )}
                 <p className="text-sm text-muted-foreground mb-4">Select a topic to chat about:</p>
                 {(Object.keys(categoryConfig) as Category[]).map((category) => {
                   if (!category) return null;
@@ -329,52 +416,53 @@ const ChatBot = () => {
             ) : (
               // Chat Interface
               <>
-                <ScrollArea className="h-80 px-4">
-                  {messages.length === 0 && !isLoading ? (
-                    <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                      {selectedCategory === 'test' 
-                        ? 'Test function results will appear here...'
-                        : `Ask about your ${categoryConfig[selectedCategory]?.label.toLowerCase()}...`}
-                    </div>
-                  ) : (
-                    <div className="space-y-3 py-4">
-                      {messages.map((msg) => (
+                <ScrollArea className="h-[min(20rem,calc(100dvh-20rem))] min-h-40 px-4">
+                  {/* role="log": new messages are announced politely without moving focus. */}
+                  <div role="log" aria-live="polite" aria-relevant="additions text" aria-label="Chat messages" className="space-y-3 py-4">
+                    {messages.length === 0 && !isLoading && (
+                      <p className="py-24 text-center text-sm text-muted-foreground">
+                        {selectedCategory === 'test'
+                          ? 'Test function results will appear here...'
+                          : `Ask about your ${categoryConfig[selectedCategory]?.label.toLowerCase()}...`}
+                      </p>
+                    )}
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+                      >
+                        <span className="sr-only">{msg.sender === 'user' ? 'You said:' : 'Assistant said:'}</span>
                         <div
-                          key={msg.id}
-                          className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+                          className={`max-w-[80%] break-words rounded-lg px-3 py-2 text-sm ${
+                            msg.sender === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
                         >
-                          <div
-                            className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                              msg.sender === 'user'
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
+                          {msg.content}
+                        </div>
+                        {SHOW_DEV_TOOLS && msg.sender === 'bot' && msg.statusCode && (
+                          <Badge
+                            variant={getStatusBadgeVariant(msg.statusCode)}
+                            className="mt-1 text-xs"
                           >
-                            {msg.content}
-                          </div>
-                          {msg.sender === 'bot' && msg.statusCode && (
-                            <Badge 
-                              variant={getStatusBadgeVariant(msg.statusCode)} 
-                              className="mt-1 text-xs"
-                            >
-                              HTTP {msg.statusCode}
-                            </Badge>
-                          )}
+                            HTTP {msg.statusCode}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                    {isLoading && (
+                      <div className="flex flex-col items-start">
+                        <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-2">
+                          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+                          <span className="text-sm text-muted-foreground motion-safe:animate-pulse">
+                            Agent is typing...
+                          </span>
                         </div>
-                      ))}
-                      {isLoading && (
-                        <div className="flex flex-col items-start">
-                          <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-sm text-muted-foreground animate-pulse">
-                              Agent is typing...
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  )}
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
                 </ScrollArea>
                 {selectedCategory !== 'test' && (
                   <div className="p-4 border-t">
@@ -382,18 +470,22 @@ const ChatBot = () => {
                       <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
+                        onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
+                        aria-label="Message"
+                        enterKeyHint="send"
                         disabled={isLoading}
                         className="flex-1"
                       />
-                      <Button onClick={sendMessage} disabled={isLoading || !input.trim()} size="icon">
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <IconButton
+                        label="Send message"
+                        variant="default"
+                        onClick={sendMessage}
+                        loading={isLoading}
+                        disabled={!input.trim()}
+                      >
+                        <Send />
+                      </IconButton>
                     </div>
                   </div>
                 )}

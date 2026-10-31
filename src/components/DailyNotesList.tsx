@@ -4,7 +4,9 @@ import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { IconButton } from '@/components/ui/icon-button';
+import { ToggleChip } from '@/components/ui/toggle-chip';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FileText, Trash2, AlertCircle, Pencil } from 'lucide-react';
@@ -18,12 +20,18 @@ interface DailyNotesListProps {
   onEdit: (note: { date: string; tags: string[]; severity?: number | null; notes?: string }) => void;
 }
 
+/**
+ * The words "Severity: n/5" always sit on the neutral secondary surface in secondary-foreground text
+ * (>= 10:1 in both themes). The level is shown by the border and the dot (non-text contrast >= 3:1),
+ * never by tinting the text. Class names are written out in full so Tailwind can see them.
+ */
 const getSeverityColor = (severity: number | null) => {
   if (!severity) return '';
-  if (severity <= 2) return 'bg-primary/15 text-primary';
-  if (severity <= 3) return 'bg-chart-max/10 text-chart-max';
-  return 'bg-destructive/20 text-destructive';
+  if (severity <= 2) return 'border-chart-min bg-secondary text-secondary-foreground';
+  if (severity <= 3) return 'border-chart-warn bg-secondary text-secondary-foreground';
+  return 'border-destructive bg-secondary text-secondary-foreground';
 };
+const getSeverityDot = (severity: number) => (severity <= 2 ? 'bg-chart-min' : severity <= 3 ? 'bg-chart-warn' : 'bg-destructive');
 
 export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps) => {
   const pagination = usePagination(notes, { pageSize: 20 });
@@ -59,14 +67,14 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
+          <FileText aria-hidden="true" className="h-5 w-5 text-primary" />
           Your Notes
         </CardTitle>
       </CardHeader>
       <CardContent>
         {notes.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <AlertCircle aria-hidden="true" className="mx-auto mb-2 h-8 w-8 opacity-50" />
             <p>No notes yet</p>
             <p className="text-sm">Add your first daily note above</p>
           </div>
@@ -85,7 +93,8 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
                           {format(new Date(note.date), 'EEE, MMM d, yyyy')}
                         </span>
                         {note.severity && (
-                          <Badge variant="secondary" className={getSeverityColor(note.severity)}>
+                          <Badge variant="secondary" className={`gap-1.5 ${getSeverityColor(note.severity)}`}>
+                            <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${getSeverityDot(note.severity)}`} />
                             Severity: {note.severity}/5
                           </Badge>
                         )}
@@ -102,22 +111,17 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
                       )}
                     </div>
                     <div className="flex flex-col gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(note)}
-                        aria-label="Edit note"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <IconButton label={`Edit note for ${note.date}`} tooltip onClick={() => openEdit(note)}>
+                        <Pencil />
+                      </IconButton>
                       <ConfirmDeleteButton
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive"
                         onConfirm={() => onDelete(note.id)} confirmationTitle="Delete note?" confirmationDescription={`Are you sure you want to delete the note and tags for ${note.date}? This cannot be undone.`}
-                        aria-label="Delete note"
+                        aria-label={`Delete note for ${note.date}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 aria-hidden="true" className="h-4 w-4" />
                       </ConfirmDeleteButton>
                     </div>
                   </div>
@@ -137,40 +141,40 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
       </CardContent>
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent layout="mobile-full">
           <DialogHeader>
             <DialogTitle>
               Edit Note {editing && `— ${format(new Date(editing.date), 'PPP')}`}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Change the tags, severity or text of this note. Nothing is saved until you press Save.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Symptoms / Tags</Label>
-              <div className="flex flex-wrap gap-2">
+              <span id="edit-note-tags-label" className="block text-sm font-medium leading-none">Symptoms / Tags</span>
+              <div role="group" aria-labelledby="edit-note-tags-label" className="flex flex-wrap gap-2">
                 {SYMPTOM_TAGS.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant={editTags.includes(tag) ? 'default' : 'outline'}
-                    className="cursor-pointer transition-colors"
-                    onClick={() => toggleEditTag(tag)}
-                  >
+                  <ToggleChip key={tag} pressed={editTags.includes(tag)} onPressedChange={() => toggleEditTag(tag)}>
                     {tag}
-                  </Badge>
+                  </ToggleChip>
                 ))}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Severity (optional)</Label>
-              <div className="flex gap-2">
+              <span id="edit-note-severity-label" className="block text-sm font-medium leading-none">Severity (optional)</span>
+              <div role="group" aria-labelledby="edit-note-severity-label" className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((level) => (
                   <Button
                     key={level}
                     type="button"
                     variant={editSeverity === level ? 'default' : 'outline'}
-                    size="sm"
-                    className="flex-1"
+                    size="touch"
+                    className="flex-1 px-0"
+                    aria-pressed={editSeverity === level}
+                    aria-label={`Severity ${level} of 5`}
                     onClick={() => setEditSeverity(editSeverity === level ? null : level)}
                   >
                     {level}
@@ -180,19 +184,33 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
             </div>
 
             <div className="space-y-2">
-              <Label>Additional Notes (optional)</Label>
+              <Label htmlFor="edit-note-text">Additional Notes (optional)</Label>
               <Textarea
+                id="edit-note-text"
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
                 maxLength={10000}
                 rows={6}
+                aria-describedby="edit-note-text-hint"
               />
+              <p id="edit-note-text-hint" className="text-xs text-muted-foreground">Up to 10,000 characters.</p>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button onClick={saveEdit} disabled={editTags.length === 0 && !editNotes.trim()}>
+            {editTags.length === 0 && !editNotes.trim() && (
+              <p id="edit-note-save-hint" className="text-sm text-muted-foreground sm:mr-auto sm:self-center">
+                Pick at least one tag or write a note to save.
+              </p>
+            )}
+            <Button type="button" variant="outline" size="touch" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button
+              type="button"
+              size="touch"
+              onClick={saveEdit}
+              aria-disabled={editTags.length === 0 && !editNotes.trim() ? true : undefined}
+              aria-describedby={editTags.length === 0 && !editNotes.trim() ? 'edit-note-save-hint' : undefined}
+            >
               Save
             </Button>
           </DialogFooter>

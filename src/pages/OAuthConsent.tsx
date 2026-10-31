@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { AlertTriangle, ShieldCheck, Loader2 } from "lucide-react";
 
 type AuthzDetails = {
@@ -33,6 +33,11 @@ function safeReturnPath(): string {
   return path.startsWith("/") && !path.startsWith("//") ? path : "/oauth/consent";
 }
 
+/** Card heading that stays an h2 under the page's single (screen-reader) h1. Same look as CardTitle. */
+const CardHeading = ({ children }: { children: React.ReactNode }) => (
+  <h2 className="text-2xl font-semibold leading-none tracking-tight">{children}</h2>
+);
+
 export default function OAuthConsent() {
   const [params] = useSearchParams();
   const authorizationId = params.get("authorization_id") ?? "";
@@ -43,6 +48,9 @@ export default function OAuthConsent() {
   const [details, setDetails] = useState<AuthzDetails | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [decision, setDecision] = useState<"approve" | "deny" | null>(null);
+  // Bumping this re-runs the load below without reloading the whole page.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -100,10 +108,11 @@ export default function OAuthConsent() {
     return () => {
       active = false;
     };
-  }, [authorizationId]);
+  }, [authorizationId, attempt]);
 
   async function decide(approve: boolean) {
     if (!details) return;
+    setDecision(approve ? "approve" : "deny");
     setStatus("deciding");
     setErrorMsg(null);
 
@@ -145,15 +154,28 @@ export default function OAuthConsent() {
   }
 
   const redirectAllowed = details ? true : false; // Actual redirect URI is validated after decision.
+
+  // Retry stays in the app: go back to the request if we already have it, otherwise load it again.
+  const retry = () => {
+    setErrorMsg(null);
+    setDecision(null);
+    if (details) {
+      setStatus("ready");
+    } else {
+      setStatus("loading");
+      setAttempt((n) => n + 1);
+    }
+  };
   const scopes = (details?.scope ?? "").split(/\s+/).filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-dvh bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        <h1 className="sr-only">Connect an application to FitTrack</h1>
         {status === "loading" && (
           <Card>
-            <CardContent className="p-6 flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin" />
+            <CardContent role="status" className="p-6 flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               <span>Loading authorization request…</span>
             </CardContent>
           </Card>
@@ -162,7 +184,7 @@ export default function OAuthConsent() {
         {status === "invalid" && (
           <Card>
             <CardHeader>
-              <CardTitle>Invalid authorization request</CardTitle>
+              <CardHeading>Invalid authorization request</CardHeading>
               <CardDescription>
                 This link is missing required information. Please start the connection again from the
                 requesting application.
@@ -173,8 +195,8 @@ export default function OAuthConsent() {
 
         {status === "unauth" && (
           <Card>
-            <CardContent className="p-6 flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin" />
+            <CardContent role="status" className="p-6 flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               <span>Redirecting to sign in…</span>
             </CardContent>
           </Card>
@@ -183,9 +205,9 @@ export default function OAuthConsent() {
         {status === "blocked" && (
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                <CardTitle>Redirect not allowed</CardTitle>
+              <div role="alert" className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                <CardHeading>Redirect not allowed</CardHeading>
               </div>
               <CardDescription>
                 This authorization request would send you to a location that is not on the allowlist
@@ -198,12 +220,12 @@ export default function OAuthConsent() {
         {status === "error" && (
           <Card>
             <CardHeader>
-              <CardTitle>Something went wrong</CardTitle>
-              <CardDescription>{errorMsg ?? "Please try again."}</CardDescription>
+              <CardHeading>Something went wrong</CardHeading>
+              <CardDescription role="alert">{errorMsg ?? "Please try again."}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" onClick={() => window.location.reload()}>
-                Retry
+              <Button variant="outline" size="touch" onClick={retry}>
+                {details ? "Back to the request" : "Try loading the request again"}
               </Button>
             </CardContent>
           </Card>
@@ -213,8 +235,8 @@ export default function OAuthConsent() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-primary" />
-                <CardTitle>Authorize {details.client?.name ?? "application"}</CardTitle>
+                <ShieldCheck className="h-5 w-5 text-primary" aria-hidden="true" />
+                <CardHeading>Authorize {details.client?.name ?? "application"}</CardHeading>
               </div>
               <CardDescription>
                 {details.client?.name ?? "This application"} is requesting access to your FitTrack
@@ -234,23 +256,33 @@ export default function OAuthConsent() {
                 </div>
               )}
 
-              <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm">
-                Approving grants this application access to your FitTrack data according to your
-                existing permissions. You can revoke access at any time from your account.
+              <div className="flex items-start gap-2 rounded-md border border-chart-warn/40 bg-chart-warn/10 p-3 text-sm">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-chart-warn" aria-hidden="true" />
+                <p>
+                  <strong className="font-semibold">Check before approving.</strong>{" "}
+                  Approving grants this application access to your FitTrack data according to your
+                  existing permissions. You can revoke access at any time from your account.
+                </p>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
+                  size="touch"
                   className="flex-1"
-                  disabled={!redirectAllowed || status === "deciding"}
+                  aria-disabled={!redirectAllowed || status === "deciding" ? true : undefined}
+                  loading={status === "deciding" && decision === "approve"}
+                  loadingText="Approving…"
                   onClick={() => decide(true)}
                 >
-                  {status === "deciding" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
+                  Approve
                 </Button>
                 <Button
+                  size="touch"
                   className="flex-1"
                   variant="outline"
-                  disabled={status === "deciding"}
+                  aria-disabled={status === "deciding" ? true : undefined}
+                  loading={status === "deciding" && decision === "deny"}
+                  loadingText="Denying…"
                   onClick={() => decide(false)}
                 >
                   Deny
@@ -260,6 +292,6 @@ export default function OAuthConsent() {
           </Card>
         )}
       </div>
-    </div>
+    </main>
   );
 }

@@ -1,39 +1,36 @@
 import { GraduationCap, Presentation, PlayCircle } from 'lucide-react';
-import { Navigation } from '@/components/Navigation';
+import { PageContainer, PageHeader, PageSection } from '@/components/layout/Page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import videoAsset from '@/assets/fittrack-user-guide.mp4.asset.json';
 
 const PRESENTATION_URL = '/presentation/fittrack-user-guide.html';
 
 const HowTo = () => {
-  const playerHtml = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#09090b;display:flex;align-items:center;justify-content:center}video{width:100%;height:100%;object-fit:contain}</style></head><body><video src="${videoAsset.url}" controls playsinline preload="metadata"></video></body></html>`;
+  const playerHtml = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><style>html,body{margin:0;height:100%;background:transparent;display:flex;align-items:center;justify-content:center}video{width:100%;height:100%;object-fit:contain}</style></head><body><video src="${videoAsset.url}" controls playsinline preload="metadata"></video></body></html>`;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-8">
-          <GraduationCap className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">How-to</h1>
-        </div>
+    <PageContainer>
+      <PageHeader icon={GraduationCap} title="How-to" description="Learn your way around FitTrack" />
 
-        <p className="text-muted-foreground mb-6">
-          Click{' '}
+      <PageSection title="Guides" hideTitle>
+        <p className="text-muted-foreground">
+          Open{' '}
           <a
             href={PRESENTATION_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary underline underline-offset-4 hover:opacity-80 inline-flex items-center gap-1"
+            className="inline-flex min-h-11 items-center gap-1 rounded-sm text-primary underline underline-offset-4 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0"
           >
-            here to view the presentation
-            <Presentation className="h-4 w-4" />
+            the presentation
+            <Presentation className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">(opens in a new tab)</span>
           </a>
         </p>
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PlayCircle className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <PlayCircle className="h-5 w-5 text-primary" aria-hidden="true" />
               Video Guide
             </CardTitle>
           </CardHeader>
@@ -41,14 +38,14 @@ const HowTo = () => {
             <iframe
               srcDoc={playerHtml}
               title="FitTrack user guide video"
-              className="w-full aspect-video rounded-lg border bg-black"
+              className="aspect-video w-full rounded-lg border bg-muted"
+              // One fullscreen switch only: `allow` and `allowFullScreen` together make the browser warn.
               allow="fullscreen"
-              allowFullScreen
             />
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </PageSection>
+    </PageContainer>
   );
 };
 

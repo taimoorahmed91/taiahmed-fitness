@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Navigation } from '@/components/Navigation';
+import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState } from '@/components/layout/Page';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TargetRangeBar } from '@/components/TargetRangeBar';
 import { Range, resolveCalorieRange, macroRange, rangeStatus, formatRange } from '@/lib/targets';
@@ -16,6 +17,7 @@ import { useUserSettings } from '@/hooks/useUserSettings';
 import { useWeight } from '@/hooks/useWeight';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { projectMassChange } from '@/lib/energyBalance';
+import { balanceDateForCycle } from '@/lib/calorieBalance';
 import { History, Dumbbell, Moon, Search } from 'lucide-react';
 
 const PAGE_SIZE = 20;
@@ -69,13 +71,15 @@ const MacroCell = ({
 };
 
 const CalorieHistory = () => {
-  const { meals } = useMeals();
-  const { sessions } = useGymSessions();
-  const { activities } = useExtraActivities();
-  const { data: personalData } = usePersonalData();
+  const { meals, loading: mealsLoading } = useMeals();
+  const { sessions, loading: sessionsLoading } = useGymSessions();
+  const { activities, loading: activitiesLoading } = useExtraActivities();
+  const { data: personalData, loading: personalLoading } = usePersonalData();
   const { settings } = useUserSettings();
-  const { entries: weightEntries } = useWeight();
-  const { entries: whoopEntries } = useWhoopData();
+  const { entries: weightEntries, loading: weightLoading } = useWeight();
+  const { entries: whoopEntries, loading: whoopLoading } = useWhoopData();
+  // Targets, totals and the "no data" message are only meaningful once every source has answered.
+  const loading = mealsLoading || sessionsLoading || activitiesLoading || personalLoading || weightLoading || whoopLoading;
   const [page, setPage] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -169,9 +173,9 @@ const CalorieHistory = () => {
     const burnedByDate = new Map<string, number>();
     whoopEntries.forEach((e) => {
       if (e.kilojoule == null) return;
-      const d = new Date(`${e.created_at.split('T')[0]}T00:00:00Z`);
-      d.setUTCDate(d.getUTCDate() - 1);
-      burnedByDate.set(d.toISOString().slice(0, 10), Math.round(Number(e.kilojoule) / 4.184));
+      const balanceDate = balanceDateForCycle(e.date);
+      if (!balanceDate) return;
+      burnedByDate.set(balanceDate, Math.round(Number(e.kilojoule) / 4.184));
     });
     return projectMassChange(filteredRows.map((r) => ({ consumed: r.calories.consumed, burned: burnedByDate.get(r.date) || 0 })));
   }, [filteredRows, whoopEntries]);
@@ -195,41 +199,38 @@ const CalorieHistory = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="container py-8 space-y-6">
-        <div className="flex items-center gap-3">
-          <History className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">Calorie History</h1>
-            <p className="text-muted-foreground mt-1">
-              Daily targets versus what you actually ate, with protein and carbs.
-            </p>
-          </div>
-        </div>
+    <PageContainer>
+      <PageHeader
+        icon={History}
+        title="Calorie History"
+        description="Daily targets versus what you actually ate, with protein and carbs."
+      />
 
-        <TargetAdherenceGrid rows={rows} />
+      <PageSection title="Target adherence" hideTitle>
+        {loading ? <Skeleton className="h-40" aria-hidden="true" /> : <TargetAdherenceGrid rows={rows} />}
+      </PageSection>
 
+      <PageSection title="Search and summary" hideTitle>
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="shadow-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Search className="h-5 w-5 text-primary" />
+                <Search className="h-5 w-5 text-primary" aria-hidden="true" />
                 Search by date
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {[7, 14, 30].map((d) => (
-                  <Button key={d} size="sm" variant={activeQuick(d) ? 'default' : 'outline'} onClick={() => quickRange(d)}>
+                  <Button key={d} size="touch" aria-pressed={activeQuick(d)} variant={activeQuick(d) ? 'default' : 'outline'} onClick={() => quickRange(d)}>
                     {d}D
                   </Button>
                 ))}
-                <Button size="sm" variant={!startDate && !endDate ? 'default' : 'outline'} onClick={() => quickRange(null)}>
+                <Button size="touch" aria-pressed={!startDate && !endDate} variant={!startDate && !endDate ? 'default' : 'outline'} onClick={() => quickRange(null)}>
                   All
                 </Button>
               </div>
-              <div className="grid gap-4 grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
                 <div className="space-y-2">
                   <Label htmlFor="start-date">From</Label>
                   <Input id="start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -253,14 +254,16 @@ const CalorieHistory = () => {
               <CardTitle className="text-lg">Summary for selected days</CardTitle>
             </CardHeader>
             <CardContent>
-              {!summary ? (
+              {loading ? (
+                <PageLoading label="Loading summary" rows={2} />
+              ) : !summary ? (
                 <p className="text-muted-foreground">No days in this selection.</p>
               ) : (
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-2 text-sm">
                     <span className="rounded-full border px-3 py-1">{summary.days} days</span>
-                    <span className="flex items-center gap-1 rounded-full border px-3 py-1"><Dumbbell className="h-3 w-3" /> {summary.gym} gym</span>
-                    <span className="flex items-center gap-1 rounded-full border px-3 py-1"><Moon className="h-3 w-3" /> {summary.days - summary.gym} rest</span>
+                    <span className="flex items-center gap-1 rounded-full border px-3 py-1"><Dumbbell className="h-3 w-3" aria-hidden="true" /> {summary.gym} gym</span>
+                    <span className="flex items-center gap-1 rounded-full border px-3 py-1"><Moon className="h-3 w-3" aria-hidden="true" /> {summary.days - summary.gym} rest</span>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
                     {[
@@ -299,18 +302,25 @@ const CalorieHistory = () => {
             </CardContent>
           </Card>
         </div>
+      </PageSection>
 
-
+      <PageSection title="Daily records" hideTitle>
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <History className="h-5 w-5 text-primary" />
-              Daily records ({filteredRows.length})
+              <History className="h-5 w-5 text-primary" aria-hidden="true" />
+              Daily records{loading ? '' : ` (${filteredRows.length})`}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {filteredRows.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No data logged yet.</p>
+            {loading ? (
+              <PageLoading label="Loading daily records" rows={4} />
+            ) : filteredRows.length === 0 ? (
+              <PageEmptyState
+                icon={History}
+                title="No data logged yet"
+                description="Meals, workouts and extra activities will show up here by day."
+              />
             ) : (
               <>
                 {pageRows.map((row) => (
@@ -329,11 +339,11 @@ const CalorieHistory = () => {
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           {row.workedOut ? (
                             <>
-                              <Dumbbell className="h-3 w-3" /> Gym day
+                              <Dumbbell className="h-3 w-3" aria-hidden="true" /> Gym day
                             </>
                           ) : (
                             <>
-                              <Moon className="h-3 w-3" /> Rest day
+                              <Moon className="h-3 w-3" aria-hidden="true" /> Rest day
                             </>
                           )}
                         </span>
@@ -378,8 +388,8 @@ const CalorieHistory = () => {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </PageSection>
+    </PageContainer>
   );
 };
 

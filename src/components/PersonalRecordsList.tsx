@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Trophy, Search, Merge, X, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
+import { ToggleChip } from '@/components/ui/toggle-chip';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +11,7 @@ import { GymSession } from '@/types';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
 import { personalRecords } from '@/lib/workoutStats';
 import { ExerciseHistoryDialog } from '@/components/ExerciseHistoryDialog';
+import { dayDiff, defaultToday, formatDay } from '@/lib/historyDates';
 
 interface Props {
   sessions: GymSession[];
@@ -63,50 +66,49 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
     return true;
   });
 
+  // Calendar days between the set date and today (both UTC days), so the wording never shifts with the viewer's time zone.
   const daysAgo = (d: string) => {
-    const diff = Math.floor((Date.now() - new Date(d + 'T00:00:00Z').getTime()) / 86400000);
+    const diff = dayDiff(defaultToday(), d);
+    if (diff === null) return null;
     return diff <= 0 ? 'today' : diff === 1 ? 'yesterday' : `${diff} days ago`;
   };
 
   return (
     <Card>
       <CardHeader className="space-y-4">
-        <CardTitle className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-primary" />
-          Personal Records
-          <Badge variant="secondary">{records.length}</Badge>
-          <div className="ml-auto flex gap-2">
+        {/* Title and actions sit in one wrapping row: on a phone the button drops under the title instead of overflowing. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <CardTitle className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <Trophy aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
+            <span className="min-w-0 break-words">Personal Records</span>
+            <Badge variant="secondary">{records.length}</Badge>
+          </CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
             {merging ? (
               <>
-                <Button size="sm" disabled={picked.length < 2} onClick={confirmMerge}><Merge className="h-4 w-4 mr-1" />Merge {picked.length || ''}</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setMerging(false); setPicked([]); }}><X className="h-4 w-4" /></Button>
+                <Button size="sm" disabled={picked.length < 2} onClick={confirmMerge}><Merge aria-hidden="true" />Merge {picked.length || ''}</Button>
+                <IconButton label="Cancel merging" size="sm" onClick={() => { setMerging(false); setPicked([]); }}><X /></IconButton>
               </>
             ) : (
-              records.length > 1 && <Button size="sm" variant="outline" onClick={() => setMerging(true)}><Merge className="h-4 w-4 mr-1" />Merge names</Button>
+              records.length > 1 && <Button size="sm" variant="outline" onClick={() => setMerging(true)}><Merge aria-hidden="true" />Merge names</Button>
             )}
           </div>
-        </CardTitle>
+        </div>
         {merging && (
           <p className="text-sm text-muted-foreground">
             Tap the exercises that are the same movement. The first one you tap keeps its name{picked[0] ? <> — <b className="text-foreground">{picked[0]}</b></> : ''}.
           </p>
         )}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search exercises..." value={query} onChange={(e) => setQuery(e.target.value)} />
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Search exercises..." aria-label="Search exercises" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         {templates.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div role="group" aria-label="Filter by template" className="flex flex-wrap gap-2">
             {[{ id: ALL, name: 'All' }, ...templates].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTemplateFilter(t.id)}
-                className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-                  templateFilter === t.id ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:text-foreground'
-                }`}
-              >
+              <ToggleChip key={t.id} pressed={templateFilter === t.id} onPressedChange={() => setTemplateFilter(t.id)}>
                 {t.name}
-              </button>
+              </ToggleChip>
             ))}
           </div>
         )}
@@ -123,23 +125,32 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
               return (
                 <div
                   key={r.exercise}
-                  onClick={() => (merging ? togglePick(r.exercise) : setOpened(r.exercise))}
-                  className={`rounded-lg border p-4 space-y-2 cursor-pointer hover:border-primary/50 transition-colors ${picked.includes(r.exercise) ? 'border-primary ring-2 ring-primary/40' : 'border-border'}`}
+                  className={`relative rounded-lg border p-4 space-y-2 cursor-pointer hover:border-primary/50 focus-within:ring-2 focus-within:ring-ring transition-colors ${picked.includes(r.exercise) ? 'border-primary ring-2 ring-primary/40' : 'border-border'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold leading-tight">{r.exercise}</p>
+                    {/* The whole card is clickable: this button is stretched over it so keyboard and screen readers get a real control. */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => (merging ? togglePick(r.exercise) : setOpened(r.exercise))}
+                      aria-pressed={merging ? picked.includes(r.exercise) : undefined}
+                      aria-haspopup={merging ? undefined : 'dialog'}
+                      className="h-auto min-w-0 justify-start whitespace-normal rounded-sm p-0 text-left text-base font-semibold leading-tight after:absolute after:inset-0 after:content-[''] focus-visible:ring-0 focus-visible:ring-offset-0 [@media(hover:hover)]:hover:bg-transparent active:bg-transparent motion-safe:active:scale-100"
+                    >
+                      {r.exercise}
+                    </Button>
                     {merging && picked.includes(r.exercise)
                       ? <Badge className="shrink-0">{picked.indexOf(r.exercise) === 0 ? 'Keep name' : 'Merge'}</Badge>
-                      : <Trophy className="h-4 w-4 text-primary shrink-0" />}
+                      : <Trophy aria-hidden="true" className="h-4 w-4 text-primary shrink-0" />}
                   </div>
                   {namesFor(r.exercise).length > 1 && (
-                    <div className="flex flex-wrap gap-1 text-xs text-muted-foreground items-center">
+                    <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground [@media(pointer:coarse)]:gap-2">
                       Also:
                       {namesFor(r.exercise).slice(1).map((a) => (
-                        <button key={a} title="Separate this name again" onClick={(e) => { e.stopPropagation(); unmerge(a); }}
-                          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 hover:text-foreground">
-                          {a}<Undo2 className="h-3 w-3" />
-                        </button>
+                        <Button key={a} type="button" variant="outline" size="sm" aria-label={`Separate ${a} from ${r.exercise}`} onClick={() => unmerge(a)}
+                          className="relative z-10 h-7 gap-1 rounded-full px-2 text-xs font-normal [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3">
+                          {a}<Undo2 aria-hidden="true" className="!size-3" />
+                        </Button>
                       ))}
                     </div>
                   )}
@@ -147,7 +158,7 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
                     {r.weight} kg <span className="text-sm font-normal text-muted-foreground">× {r.reps} reps</span>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Set on {r.date} ({daysAgo(r.date)}) · {r.sessions} session{r.sessions === 1 ? '' : 's'} logged
+                    Set on {formatDay(r.date)}{daysAgo(r.date) && ` (${daysAgo(r.date)})`} · {r.sessions} session{r.sessions === 1 ? '' : 's'} logged
                   </p>
                   {!merging && <p className="text-xs text-primary">View history →</p>}
                   <div className="flex flex-wrap gap-1">

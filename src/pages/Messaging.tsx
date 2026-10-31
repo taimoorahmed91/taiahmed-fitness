@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Navigation } from '@/components/Navigation';
+import { PageContainer, PageHeader, PageSection, PageLoading } from '@/components/layout/Page';
+import { IconButton } from '@/components/ui/icon-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Info, MessageCircle, Save, Bell, BellOff, Mail, Clock } from 'lucide-re
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { getSessionUser } from '@/lib/authSession';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { NotificationScheduleForm } from '@/components/NotificationScheduleForm';
 
 const Messaging = () => {
@@ -23,7 +24,6 @@ const Messaging = () => {
   const [subscribing, setSubscribing] = useState(false);
   const [emailSubscribing, setEmailSubscribing] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -63,11 +63,7 @@ const Messaging = () => {
 
   const handleSave = async () => {
     if (!telegramChatId.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a Telegram Chat ID',
-        variant: 'destructive',
-      });
+      toast.error('Please enter a Telegram Chat ID');
       return;
     }
 
@@ -75,11 +71,7 @@ const Messaging = () => {
     try {
       const user = await getSessionUser();
       if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to save settings',
-          variant: 'destructive',
-        });
+        toast.error('You must be logged in to save settings');
         return;
       }
 
@@ -95,17 +87,10 @@ const Messaging = () => {
 
       setHasTelegramSet(true);
       setTelegramChatId('');
-      toast({
-        title: 'Success',
-        description: 'Telegram Chat ID saved successfully',
-      });
+      toast.success('Telegram Chat ID saved successfully');
     } catch (error) {
       console.error('Error saving Telegram Chat ID:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save Telegram Chat ID',
-        variant: 'destructive',
-      });
+      toast.error('Failed to save Telegram Chat ID');
     } finally {
       setSaving(false);
     }
@@ -116,11 +101,7 @@ const Messaging = () => {
     try {
       const user = await getSessionUser();
       if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to change subscription',
-          variant: 'destructive',
-        });
+        toast.error('You must be logged in to change subscription');
         return;
       }
 
@@ -132,17 +113,10 @@ const Messaging = () => {
       if (error) throw error;
 
       setIsSubscribed(subscribe);
-      toast({
-        title: 'Success',
-        description: subscribe ? 'Subscribed to Telegram notifications' : 'Unsubscribed from Telegram notifications',
-      });
+      toast.success(subscribe ? 'Subscribed to Telegram notifications' : 'Unsubscribed from Telegram notifications');
     } catch (error) {
       console.error('Error updating subscription:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update subscription',
-        variant: 'destructive',
-      });
+      toast.error('Failed to update subscription');
     } finally {
       setSubscribing(false);
     }
@@ -153,11 +127,7 @@ const Messaging = () => {
     try {
       const user = await getSessionUser();
       if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to change subscription',
-          variant: 'destructive',
-        });
+        toast.error('You must be logged in to change subscription');
         return;
       }
 
@@ -169,17 +139,10 @@ const Messaging = () => {
       if (error) throw error;
 
       setIsEmailSubscribed(subscribe);
-      toast({
-        title: 'Success',
-        description: subscribe ? 'Subscribed to email notifications' : 'Unsubscribed from email notifications',
-      });
+      toast.success(subscribe ? 'Subscribed to email notifications' : 'Unsubscribed from email notifications');
     } catch (error) {
       console.error('Error updating email subscription:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update email subscription',
-        variant: 'destructive',
-      });
+      toast.error('Failed to update email subscription');
     } finally {
       setEmailSubscribing(false);
     }
@@ -190,11 +153,7 @@ const Messaging = () => {
     try {
       const user = await getSessionUser();
       if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to save schedule',
-          variant: 'destructive',
-        });
+        toast.error('You must be logged in to save schedule');
         return;
       }
 
@@ -206,56 +165,47 @@ const Messaging = () => {
       if (error) throw error;
 
       setNotificationSchedule(schedule);
-      toast({
-        title: 'Success',
-        description: 'Notification schedule saved successfully',
-      });
+      toast.success('Notification schedule saved successfully');
     } catch (error) {
       console.error('Error saving notification schedule:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save notification schedule',
-        variant: 'destructive',
-      });
+      toast.error('Failed to save notification schedule');
     } finally {
       setScheduleSaving(false);
     }
   };
 
+  const header = (
+    <PageHeader
+      icon={MessageCircle}
+      title="Messaging Settings"
+      description="Choose where and when Fittrack sends you updates"
+    />
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </main>
-      </div>
+      <PageContainer>
+        {header}
+        <PageLoading label="Loading messaging settings" rows={2} stats />
+      </PageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-6">
-          <MessageCircle className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">Messaging Settings</h1>
-            <p className="text-muted-foreground">Choose where and when Fittrack sends you updates</p>
-          </div>
-        </div>
-        <div className="mb-8 grid gap-3 sm:grid-cols-3">
+    <PageContainer>
+      {header}
+
+      <PageSection title="Notification status" hideTitle>
+        <div className="grid gap-3 sm:grid-cols-3">
           {[
             { icon: MessageCircle, label: 'Telegram', on: hasTelegramSet && isSubscribed, text: !hasTelegramSet ? 'Not connected' : isSubscribed ? 'Subscribed' : 'Connected, paused' },
             { icon: Mail, label: 'Email', on: isEmailSubscribed, text: isEmailSubscribed ? 'Subscribed' : 'Off' },
             { icon: Clock, label: 'Schedule', on: !!notificationSchedule, text: notificationSchedule ? 'Set' : 'Not set' },
           ].map((t) => (
             <Card key={t.label}>
-              <CardContent className="flex items-center justify-between p-4">
+              <CardContent className="flex items-center justify-between gap-2 p-4">
                 <span className="flex items-center gap-2 font-medium">
-                  <t.icon className="h-4 w-4 text-primary" /> {t.label}
+                  <t.icon className="h-4 w-4 text-primary" aria-hidden="true" /> {t.label}
                 </span>
                 <span className={`rounded-full border px-2 py-0.5 text-xs ${t.on ? 'border-chart-min/40 text-chart-min' : 'text-muted-foreground'}`}>
                   {t.text}
@@ -264,15 +214,17 @@ const Messaging = () => {
             </Card>
           ))}
         </div>
+      </PageSection>
 
+      <PageSection title="Notification settings" hideTitle>
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Left Column: Telegram + Email */}
           <div className="space-y-6">
             {/* Telegram Card */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MessageCircle className="h-5 w-5" aria-hidden="true" />
                   Telegram Integration
                 </CardTitle>
               </CardHeader>
@@ -283,7 +235,9 @@ const Messaging = () => {
                     <Label htmlFor="telegram-chat-id">Telegram Chat ID</Label>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        <IconButton label="Where to find your Telegram Chat ID" size="sm">
+                          <Info className="text-muted-foreground" />
+                        </IconButton>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p>Find the bot "n8n-fitness" in Telegram and send a hello message to get the chatID.</p>
@@ -310,7 +264,7 @@ const Messaging = () => {
 
                 {/* Subscription Section */}
                 <div className="pt-4 border-t space-y-3">
-                  <Label>Notification Subscription</Label>
+                  <h4 className="text-sm font-medium leading-none">Notification Subscription</h4>
                   <p className="text-sm text-muted-foreground">
                     {isSubscribed 
                       ? '✓ You are subscribed to Telegram notifications.' 
@@ -345,7 +299,7 @@ const Messaging = () => {
             {/* Email Card */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <Mail className="h-5 w-5" />
                   Email Notifications
                 </CardTitle>
@@ -368,7 +322,7 @@ const Messaging = () => {
 
                 {/* Email Subscription Section */}
                 <div className="pt-4 border-t space-y-3">
-                  <Label>Email Subscription</Label>
+                  <h4 className="text-sm font-medium leading-none">Email Subscription</h4>
                   <p className="text-sm text-muted-foreground">
                     {isEmailSubscribed 
                       ? '✓ You are subscribed to email notifications.' 
@@ -405,7 +359,7 @@ const Messaging = () => {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <Clock className="h-5 w-5" />
                   Notification Schedule
                 </CardTitle>
@@ -429,8 +383,8 @@ const Messaging = () => {
             </Card>
           </div>
         </div>
-        </main>
-      </div>
+      </PageSection>
+    </PageContainer>
   );
 };
 

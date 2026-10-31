@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -40,7 +40,19 @@ const FREQUENCIES = [
   { value: '12', label: 'Every 12 hours' },
 ];
 
+// 40px on mouse, 44px on touch screens.
+const TRIGGER_CLASS = '[@media(pointer:coarse)]:min-h-11';
+
 export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: NotificationScheduleFormProps) => {
+  const uid = useId();
+  const minuteId = `${uid}-minute`;
+  const minuteHintId = `${uid}-minute-hint`;
+  const startId = `${uid}-start-hour`;
+  const endId = `${uid}-end-hour`;
+  const frequencyId = `${uid}-frequency`;
+  const daysLabelId = `${uid}-days-label`;
+  const daysErrorId = `${uid}-days-error`;
+  const previewId = `${uid}-preview-label`;
   const [minute, setMinute] = useState('30');
   const [startHour, setStartHour] = useState('9');
   const [endHour, setEndHour] = useState('21');
@@ -123,9 +135,9 @@ export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: No
       <div className="grid gap-4">
         {/* Time Selection */}
         <div className="space-y-2">
-          <Label>Notification Minute</Label>
+          <Label htmlFor={minuteId}>Notification Minute</Label>
           <Select value={minute} onValueChange={setMinute}>
-            <SelectTrigger>
+            <SelectTrigger id={minuteId} aria-describedby={minuteHintId} className={TRIGGER_CLASS}>
               <SelectValue placeholder="Select minute" />
             </SelectTrigger>
             <SelectContent>
@@ -136,7 +148,7 @@ export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: No
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
+          <p id={minuteHintId} className="text-xs text-muted-foreground">
             Notifications will be sent at this minute of each hour
           </p>
         </div>
@@ -144,9 +156,9 @@ export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: No
         {/* Hour Range */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Start Hour</Label>
+            <Label htmlFor={startId}>Start Hour</Label>
             <Select value={startHour} onValueChange={setStartHour}>
-              <SelectTrigger>
+              <SelectTrigger id={startId} className={TRIGGER_CLASS}>
                 <SelectValue placeholder="Start" />
               </SelectTrigger>
               <SelectContent>
@@ -159,9 +171,9 @@ export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: No
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>End Hour</Label>
+            <Label htmlFor={endId}>End Hour</Label>
             <Select value={endHour} onValueChange={setEndHour}>
-              <SelectTrigger>
+              <SelectTrigger id={endId} className={TRIGGER_CLASS}>
                 <SelectValue placeholder="End" />
               </SelectTrigger>
               <SelectContent>
@@ -177,9 +189,9 @@ export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: No
 
         {/* Frequency */}
         <div className="space-y-2">
-          <Label>Frequency</Label>
+          <Label htmlFor={frequencyId}>Frequency</Label>
           <Select value={frequency} onValueChange={setFrequency}>
-            <SelectTrigger>
+            <SelectTrigger id={frequencyId} className={TRIGGER_CLASS}>
               <SelectValue placeholder="Select frequency" />
             </SelectTrigger>
             <SelectContent>
@@ -193,39 +205,44 @@ export const NotificationScheduleForm = ({ initialSchedule, onSave, saving }: No
         </div>
 
         {/* Days of Week */}
-        <div className="space-y-2">
-          <Label>Days of Week</Label>
-          <div className="flex flex-wrap gap-2">
+        <div className="space-y-2" role="group" aria-labelledby={daysLabelId} aria-describedby={selectedDays.length === 0 ? daysErrorId : undefined}>
+          <span id={daysLabelId} className="text-sm font-medium leading-none">Days of Week</span>
+          <div className="flex flex-wrap gap-x-2 gap-y-1">
             {DAYS_OF_WEEK.map(day => (
-              <div key={day.value} className="flex items-center space-x-2">
+              // The whole row is the label, so the tap target is the row (44px on touch), not the 16px box.
+              <label
+                key={day.value}
+                htmlFor={`${uid}-day-${day.value}`}
+                className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm font-medium leading-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [@media(pointer:coarse)]:px-3"
+              >
                 <Checkbox
-                  id={`day-${day.value}`}
+                  id={`${uid}-day-${day.value}`}
                   checked={selectedDays.includes(day.value)}
                   onCheckedChange={() => toggleDay(day.value)}
                 />
-                <label
-                  htmlFor={`day-${day.value}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                >
-                  {day.label}
-                </label>
-              </div>
+                {day.label}
+              </label>
             ))}
           </div>
+          {selectedDays.length === 0 && (
+            <p id={daysErrorId} role="alert" className="text-xs text-destructive">
+              Pick at least one day to save a schedule.
+            </p>
+          )}
         </div>
       </div>
 
       {/* Preview */}
-      <div className="p-3 bg-muted rounded-lg">
+      <div role="group" aria-labelledby={previewId} className="p-3 bg-muted rounded-lg">
         <div className="flex items-center gap-2 mb-1">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Cron Expression Preview</span>
+          <Clock aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+          <span id={previewId} className="text-sm font-medium">Cron Expression Preview</span>
         </div>
-        <code className="text-sm font-mono text-primary">{cronExpression}</code>
+        <code className="text-sm font-mono text-foreground">{cronExpression}</code>
       </div>
 
       <Button onClick={handleSave} disabled={saving || selectedDays.length === 0}>
-        <Save className="h-4 w-4 mr-2" />
+        <Save aria-hidden="true" className="h-4 w-4 mr-2" />
         {saving ? 'Saving...' : 'Save Schedule'}
       </Button>
     </div>

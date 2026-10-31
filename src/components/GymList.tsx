@@ -1,255 +1,305 @@
-import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
-import { useState } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Trash2, Timer, Calendar, Pencil, Clock, ClipboardPlus, StickyNote, ChevronDown, ChevronUp } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { usePagination } from '@/hooks/usePagination';
-import { PaginationControls } from '@/components/PaginationControls';
-
-interface ParsedNoteEntry {
-  type: 'meta' | 'exercise' | 'raw';
-  // meta
-  text?: string;
-  // exercise
-  seq?: string;
-  name?: string;
-  sets?: string[];
-  note?: string;
-}
-
-const parseNotes = (notes: string): ParsedNoteEntry[] => {
-  return notes.split(' | ').map((part) => {
-    const trimmed = part.trim();
-    if (!trimmed) return { type: 'raw' as const, text: '' };
-
-    // meta line e.g. "Start:09:30 End:10:15"
-    if (/^(Start:|End:)/i.test(trimmed) && !trimmed.includes(': S')) {
-      return { type: 'meta', text: trimmed };
-    }
-
-    // try to extract trailing [note: ...]
-    let working = trimmed;
-    let noteText: string | undefined;
-    const noteMatch = working.match(/\s*\[note:\s*([^\]]*)\]\s*$/i);
-    if (noteMatch) {
-      noteText = noteMatch[1].trim();
-      working = working.slice(0, noteMatch.index).trim();
-    }
-
-    // expected: "1.Exercise Name: S1:12@40kg@09:32 S2:..."
-    const colonIdx = working.indexOf(':');
-    if (colonIdx === -1) {
-      return { type: 'raw', text: trimmed };
-    }
-    const header = working.slice(0, colonIdx).trim();
-    const rest = working.slice(colonIdx + 1).trim();
-
-    let seq: string | undefined;
-    let name = header;
-    const seqMatch = header.match(/^(\d+)\.(.*)$/);
-    if (seqMatch) {
-      seq = seqMatch[1];
-      name = seqMatch[2].trim();
-    }
-
-    // split sets by " S" boundary while keeping S prefix
-    const sets = rest
-      ? rest.split(/\s+(?=S\d+:)/).map((s) => s.trim()).filter(Boolean)
-      : [];
-
-    return { type: 'exercise', seq, name, sets, note: noteText };
-  });
-};
+import { ClipboardPlus, Pencil } from 'lucide-react';
+import { HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
+import { HistoryRow } from '@/components/history/HistoryRow';
+import { ActionTray, HistoryAction, HistoryDeleteAction, HistoryInlineActions } from '@/components/history/ActionTray';
+import { HistoryPager } from '@/components/history/HistoryPager';
+import { useGroupPagination } from '@/components/history/useGroupPagination';
+import { HISTORY_LG, useMinWidth } from '@/components/history/useMinWidth';
+import { WorkoutDetail } from '@/components/history/WorkoutDetail';
+import { defaultToday, formatDay, formatWeekRange, isoWeekString, weekTitle } from '@/lib/historyDates';
+import {
+  countSessionsByWeek,
+  formatKg,
+  formatMinutes,
+  groupSessionsByWeek,
+  sortSessionsNewestFirst,
+  summarizeSession,
+  summarizeWeek,
+  type SessionSummary,
+} from '@/lib/workoutHistory';
+import { cn } from '@/lib/utils';
 
 interface GymListProps {
+  /** The sessions to show (already filtered by the page). */
   sessions: GymSession[];
+  /**
+   * Every session before filtering. Lets a week say "2 of 4 workouts shown" instead of presenting a filtered
+   * subset as the whole week. Defaults to `sessions` (nothing filtered).
+   */
+  allSessions?: GymSession[];
   onDelete: (id: string) => void;
   onEdit: (session: GymSession) => void;
   onCreateTemplate?: (session: GymSession) => void;
 }
 
-export const GymList = ({ sessions, onDelete, onEdit, onCreateTemplate }: GymListProps) => {
-  const sortedSessions = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+/** A page closes at 4 weeks or ~20 workouts, never in the middle of a week. */
+const WEEKS_PER_PAGE = 4;
+const WORKOUTS_PER_PAGE = 20;
 
-  const toggleExpanded = (id: string) => {
+/** Desktop columns: Date, Workout, Time, Duration, Exercises, Sets, Volume. */
+const DESKTOP_COLUMNS = 'grid w-full grid-cols-[6.5rem_minmax(0,1fr)_7rem_4.5rem_4.5rem_3.5rem_6.5rem] items-start gap-x-3';
+const DESKTOP_ACTIONS_WIDTH = 'w-28';
+
+export const GymList = ({ sessions, allSessions, onDelete, onEdit, onCreateTemplate }: GymListProps) => {
+  const isDesktop = useMinWidth(HISTORY_LG, true);
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
+  const today = defaultToday();
+
+  const toggleExpanded = (id: string, open: boolean) =>
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (open) next.add(id);
+      else next.delete(id);
       return next;
     });
-  };
 
-  const {
-    paginatedItems,
-    currentPage,
-    totalPages,
-    totalItems,
-    goToPage,
-    hasNextPage,
-    hasPrevPage,
-  } = usePagination(sortedSessions, { pageSize: 20 });
+  const everySession = allSessions ?? sessions;
+  const filtered = everySession.length !== sessions.length;
+
+  const groups = useMemo(() => groupSessionsByWeek(sortSessionsNewestFirst(sessions)), [sessions]);
+  const sessionsPerWeek = useMemo(() => countSessionsByWeek(everySession), [everySession]);
+  const { pageGroups, page, totalPages, range, goToPage } = useGroupPagination(groups, {
+    maxGroups: WEEKS_PER_PAGE,
+    targetItems: WORKOUTS_PER_PAGE,
+    resetKey: String(everySession.length - sessions.length),
+  });
 
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-4">
         <CardTitle className="text-lg">Workout History</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {sortedSessions.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">No workouts logged yet</p>
-        ) : (
-          <div className="space-y-2">
-            {paginatedItems.map((session) => (
-              <div
-                key={session.id}
-                className="flex items-start justify-between p-3 rounded-lg bg-card border gap-3"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium break-words whitespace-pre-wrap">{session.exercise}</p>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <Timer className="h-3 w-3" />
-                      {session.duration} min
-                    </span>
-                    {session.start_time && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {session.start_time}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(session.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </span>
-                  </div>
-                  {session.notes && expandedIds.has(session.id) && (() => {
-                    const entries = parseNotes(session.notes);
-                    return (
-                      <div className="mt-2 space-y-1.5 text-sm border-t pt-2">
-                        {entries.map((entry, idx) => {
-                          if (entry.type === 'meta') {
-                            return (
-                              <p key={idx} className="text-xs text-muted-foreground italic">
-                                {entry.text}
-                              </p>
-                            );
-                          }
-                          if (entry.type === 'raw') {
-                            return (
-                              <p key={idx} className="text-muted-foreground break-words whitespace-pre-wrap">
-                                {entry.text}
-                              </p>
-                            );
-                          }
-                          return (
-                            <div key={idx} className="flex gap-2">
-                              <span className="text-primary mt-0.5 shrink-0">•</span>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium break-words">
-                                  {entry.seq ? `${entry.seq}. ` : ''}
-                                  {entry.name}
-                                </p>
-                                {entry.sets && entry.sets.length > 0 && (
-                                  <div className="flex flex-wrap gap-1.5 mt-1">
-                                    {entry.sets.map((s, i) => (
-                                      <span
-                                        key={i}
-                                        className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono"
-                                      >
-                                        {s}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                                {entry.note && (
-                                  <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground italic break-words">
-                                    <StickyNote className="h-3 w-3 mt-0.5 shrink-0" />
-                                    <span>{entry.note}</span>
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {session.notes && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleExpanded(session.id)}
-                          className="h-8 w-8"
-                          aria-label={expandedIds.has(session.id) ? 'Hide details' : 'Show details'}
-                        >
-                          {expandedIds.has(session.id) ? (
-                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {expandedIds.has(session.id) ? 'Hide details' : 'Show details'}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {onCreateTemplate && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onCreateTemplate(session)}
-                          className="h-8 w-8"
-                        >
-                          <ClipboardPlus className="h-4 w-4 text-primary" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Create template from this workout</TooltipContent>
-                    </Tooltip>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onEdit(session)}
-                    className="h-8 w-8"
-                  >
-                    <Pencil className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                  <ConfirmDeleteButton
-                    variant="ghost"
-                    size="icon"
-                    onConfirm={() => onDelete(session.id)} confirmationTitle="Delete workout?" confirmationDescription={`Are you sure you want to delete “${session.exercise}” from ${session.date}? Its recorded sets, weights, times and notes will be removed. This cannot be undone.`}
-                    className="h-8 w-8"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </ConfirmDeleteButton>
-                </div>
-              </div>
-            ))}
-          </div>
+        {filtered && (
+          <p role="status" className="text-xs text-muted-foreground">
+            Showing {sessions.length} of {everySession.length} workouts
+          </p>
         )}
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          onPageChange={goToPage}
-          hasNextPage={hasNextPage}
-          hasPrevPage={hasPrevPage}
-        />
+      </CardHeader>
+      <CardContent className="px-0">
+        {sessions.length === 0 ? (
+          <p className="text-muted-foreground text-center py-8 px-4">
+            {everySession.length === 0 ? 'No workouts logged yet' : 'No workouts match your filters'}
+          </p>
+        ) : (
+          <>
+            {isDesktop && <DesktopColumnHeader />}
+            <div>
+              {pageGroups.map((group) => {
+                const totals = summarizeWeek(group.items);
+                const inWeek = sessionsPerWeek[group.weekStart] ?? group.items.length;
+                return (
+                  <HistoryGroup
+                    key={group.key}
+                    title={
+                      <>
+                        {weekTitle(group.weekStart, today)}{' '}
+                        <span aria-hidden="true" className="font-normal text-muted-foreground">·</span>{' '}
+                        <time dateTime={isoWeekString(group.weekStart)} className="font-normal text-muted-foreground">
+                          {formatWeekRange(group.weekStart, today)}
+                        </time>
+                      </>
+                    }
+                    summary={
+                      filtered && group.items.length !== inWeek
+                        ? [`${group.items.length} of ${inWeek} workouts shown`]
+                        : [
+                            `${totals.count} ${totals.count === 1 ? 'workout' : 'workouts'}`,
+                            totals.minutes !== null ? formatMinutes(totals.minutes) : null,
+                          ]
+                    }
+                  >
+                    <HistoryList>
+                      {group.items.map((session) => (
+                        <GymSessionRow
+                          key={session.id}
+                          session={session}
+                          desktop={isDesktop}
+                          today={today}
+                          expanded={expandedIds.has(session.id)}
+                          onExpandedChange={(open) => toggleExpanded(session.id, open)}
+                          onDelete={onDelete}
+                          onEdit={onEdit}
+                          onCreateTemplate={onCreateTemplate}
+                        />
+                      ))}
+                    </HistoryList>
+                  </HistoryGroup>
+                );
+              })}
+            </div>
+          </>
+        )}
+        <HistoryPager page={page} totalPages={totalPages} unit="weeks" range={range} onPageChange={goToPage} />
       </CardContent>
     </Card>
+  );
+};
+
+const DesktopColumnHeader = () => (
+  <div aria-hidden="true" className="flex border-b py-1.5 text-xs font-medium text-muted-foreground">
+    <span className={cn(DESKTOP_COLUMNS, 'min-w-0 flex-1 px-4')}>
+      <span>Date</span>
+      <span>Workout</span>
+      <span>Time</span>
+      <span className="text-right">Duration</span>
+      <span className="text-right">Exercises</span>
+      <span className="text-right">Sets</span>
+      <span className="text-right">Volume</span>
+    </span>
+    {/* Same width as the chevron and the inline actions in each row. */}
+    <span className="w-6 shrink-0" />
+    <span className={cn('shrink-0', DESKTOP_ACTIONS_WIDTH)} />
+  </div>
+);
+
+/** Volume as shown in a row: "8,450 kg", or "≥ 8,450 kg" when only some sets had a weight. */
+const VolumeText = ({ summary }: { summary: SessionSummary }) => {
+  const stats = summary.stats;
+  if (!stats || stats.volumeKg === null) return null;
+  return stats.volumePartial ? (
+    <span title="Counts only the sets that have a weight">
+      <span aria-hidden="true">≥ </span>
+      <span className="sr-only">At least </span>
+      {formatKg(stats.volumeKg)}
+    </span>
+  ) : (
+    <>{formatKg(stats.volumeKg)}</>
+  );
+};
+
+const NotAvailable = () => (
+  <>
+    <span aria-hidden="true">—</span>
+    <span className="sr-only">not available</span>
+  </>
+);
+
+interface GymSessionRowProps {
+  session: GymSession;
+  desktop: boolean;
+  today: string;
+  expanded: boolean;
+  onExpandedChange: (open: boolean) => void;
+  onDelete: (id: string) => void;
+  onEdit: (session: GymSession) => void;
+  onCreateTemplate?: (session: GymSession) => void;
+}
+
+const GymSessionRow = ({ session, desktop, today, expanded, onExpandedChange, onDelete, onEdit, onCreateTemplate }: GymSessionRowProps) => {
+  const summary = useMemo(() => summarizeSession(session), [session]);
+  const { stats } = summary;
+
+  const actionList = (variant: 'tray' | 'inline') => [
+    ...(onCreateTemplate
+      ? [
+          <HistoryAction
+            key="template"
+            variant={variant}
+            label={`Create template from ${session.exercise}`}
+            text="Make template"
+            icon={<ClipboardPlus aria-hidden="true" className={variant === 'inline' ? 'text-primary' : undefined} />}
+            onClick={() => onCreateTemplate(session)}
+            className={variant === 'tray' ? 'col-span-2' : undefined}
+          />,
+        ]
+      : []),
+    <HistoryAction
+      key="edit"
+      variant={variant}
+      label={`Edit ${session.exercise}`}
+      text="Edit"
+      icon={<Pencil aria-hidden="true" />}
+      onClick={() => onEdit(session)}
+    />,
+    <HistoryDeleteAction
+      key="delete"
+      variant={variant}
+      label={`Delete ${session.exercise}`}
+      confirmationTitle="Delete workout?"
+      confirmationDescription={`Are you sure you want to delete “${session.exercise}” from ${session.date}? Its recorded sets, weights, times and notes will be removed. This cannot be undone.`}
+      onConfirm={() => onDelete(session.id)}
+    />,
+  ];
+
+  const detail = <WorkoutDetail parsed={summary.parsed} hasNotes={summary.hasNotes} />;
+
+  if (desktop) {
+    return (
+      <HistoryRow
+        expanded={expanded}
+        onExpandedChange={onExpandedChange}
+        reserveChevron
+        panelLabel={`Details for ${session.exercise}`}
+        panel={summary.hasNotes ? detail : undefined}
+        summary={
+          <span className={DESKTOP_COLUMNS}>
+            <span className="text-sm text-muted-foreground">
+              <time dateTime={session.date}>{formatDay(session.date, today)}</time>
+            </span>
+            <span className="min-w-0">
+              <span className="block break-words text-sm font-semibold">{session.exercise}</span>
+              {summary.preview && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{summary.preview}</span>}
+            </span>
+            <span className="text-sm tabular-nums text-muted-foreground">{summary.timeRange ?? <NotAvailable />}</span>
+            <span className="text-right text-sm tabular-nums">{summary.minutes !== null ? formatMinutes(summary.minutes) : <NotAvailable />}</span>
+            <span className="text-right text-sm tabular-nums">{stats ? stats.exerciseCount : <NotAvailable />}</span>
+            <span className="text-right text-sm tabular-nums">{stats && stats.setCount > 0 ? stats.setCount : <NotAvailable />}</span>
+            <span className="text-right text-sm tabular-nums">
+              <VolumeText summary={summary} />
+              {(!stats || stats.volumeKg === null) && <NotAvailable />}
+            </span>
+          </span>
+        }
+        actions={
+          <HistoryInlineActions label={`Actions for ${session.exercise}`} className={DESKTOP_ACTIONS_WIDTH}>
+            {actionList('inline')}
+          </HistoryInlineActions>
+        }
+      />
+    );
+  }
+
+  const facts: { key: string; node: ReactNode }[] = [];
+  if (summary.minutes !== null) facts.push({ key: 'min', node: formatMinutes(summary.minutes) });
+  if (stats) {
+    facts.push({ key: 'ex', node: `${stats.exerciseCount} ${stats.exerciseCount === 1 ? 'exercise' : 'exercises'}` });
+    if (stats.setCount > 0) facts.push({ key: 'sets', node: `${stats.setCount} ${stats.setCount === 1 ? 'set' : 'sets'}` });
+    if (stats.volumeKg !== null) facts.push({ key: 'vol', node: <><VolumeText summary={summary} /> volume</> });
+  }
+
+  return (
+    <HistoryRow
+      expanded={expanded}
+      onExpandedChange={onExpandedChange}
+      panelLabel={`Details for ${session.exercise}`}
+      summary={
+        <span className="block w-full min-w-0">
+          <span className="block break-words text-base font-semibold leading-snug">{session.exercise}</span>
+          <span className="mt-0.5 block text-sm text-muted-foreground">
+            <time dateTime={session.date}>{formatDay(session.date, today)}</time>
+            {summary.timeRange && <> · {summary.timeRange}</>}
+          </span>
+          {facts.length > 0 && (
+            <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm tabular-nums">
+              {facts.map((fact, i) => (
+                <Fragment key={fact.key}>
+                  {i > 0 && <span aria-hidden="true" className="text-muted-foreground">·</span>}
+                  <span>{fact.node}</span>
+                </Fragment>
+              ))}
+            </span>
+          )}
+          {summary.preview && !expanded && <span className="mt-1 block truncate text-xs text-muted-foreground">{summary.preview}</span>}
+        </span>
+      }
+      panel={
+        <div className="space-y-3">
+          {summary.hasNotes && detail}
+          <ActionTray label={`Actions for ${session.exercise}`}>{actionList('tray')}</ActionTray>
+        </div>
+      }
+    />
   );
 };

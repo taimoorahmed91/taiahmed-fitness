@@ -20,25 +20,20 @@ export const ChartNoteIndicator = ({ note, cx, cy }: ChartNoteIndicatorProps) =>
     <Tooltip>
       <TooltipTrigger asChild>
         <g>
-          <circle
-            cx={cx}
-            cy={10}
-            r={6}
-            fill="hsl(var(--destructive))"
+          {/* Neutral diamond, same marker as every other chart; not a status colour. */}
+          <path
+            d={`M${cx},4 L${cx + 7},11 L${cx},18 L${cx - 7},11 Z`}
+            fill="hsl(var(--foreground))"
+            stroke="hsl(var(--card))"
+            strokeWidth={2}
             className="cursor-pointer"
-          />
-          <circle
-            cx={cx}
-            cy={10}
-            r={3}
-            fill="hsl(var(--destructive-foreground))"
           />
         </g>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-[250px]">
         <div className="space-y-1">
           <div className="flex items-center gap-1 font-medium">
-            <AlertCircle className="h-3 w-3" />
+            <AlertCircle className="h-3 w-3" aria-hidden="true" />
             Note for this day
           </div>
           <div className="flex flex-wrap gap-1">
@@ -62,7 +57,7 @@ export const ChartNoteIndicator = ({ note, cx, cy }: ChartNoteIndicatorProps) =>
 
 // Custom dot component for Recharts that shows note indicators
 export const createNoteDot = (notesMap: Map<string, DailyNote>) => {
-  return (props: any) => {
+  return (props: { cx?: number; cy?: number; payload?: { date?: string } }) => {
     const { cx, cy, payload } = props;
     const note = notesMap.get(payload?.date);
     
@@ -80,7 +75,7 @@ export const NoteReferenceDots = ({
   notesMap,
   xAxisDataKey = 'date',
 }: {
-  data: any[];
+  data: { date?: string }[];
   notesMap: Map<string, DailyNote>;
   xAxisDataKey?: string;
 }) => {

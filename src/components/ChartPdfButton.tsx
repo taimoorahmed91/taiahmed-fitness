@@ -63,10 +63,11 @@ export const ChartPdfButton = ({ targetRef, title, subtitle, columns, rows }: Ch
   };
 
   return (
-    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={exportPdf} disabled={busy}
+    <Button type="button" variant="outline" size="sm" className="min-w-11 shrink-0 text-xs" onClick={exportPdf} disabled={busy}
       aria-label={`Download ${title} as PDF`} title="Download PDF" data-html2canvas-ignore="true">
-      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-      <span className="ml-1">PDF</span>
+      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <FileDown className="h-3.5 w-3.5" aria-hidden="true" />}
+      {/* Under 360px the word is hidden (the icon, aria-label and tooltip stay) so range + PDF still share a row. */}
+      <span className="ml-1 max-[359px]:sr-only">PDF</span>
     </Button>
   );
 };

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Navigation } from '@/components/Navigation';
+import { PageContainer, PageHeader, PageSection, PageLoading } from '@/components/layout/Page';
 import { FileText, Search, Tag, CalendarDays, AlertCircle } from 'lucide-react';
 import { DailyNoteForm } from '@/components/DailyNoteForm';
 import { DailyNotesList } from '@/components/DailyNotesList';
@@ -7,9 +7,10 @@ import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const DailyNotes = () => {
-  const { notes, addNote, deleteNote } = useDailyNotes();
+  const { notes, loading, addNote, deleteNote } = useDailyNotes();
   const [search, setSearch] = useState('');
   const [tag, setTag] = useState<string | null>(null);
 
@@ -47,40 +48,38 @@ const DailyNotes = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-center gap-3">
-          <FileText className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">Daily Notes</h1>
-            <p className="text-muted-foreground">
-              Log symptoms, feelings, and events to understand your health trends
-            </p>
-          </div>
-        </div>
+    <PageContainer>
+      <PageHeader
+        icon={FileText}
+        title="Daily Notes"
+        description="Log symptoms, feelings, and events to understand your health trends"
+      />
 
+      <PageSection title="Notes summary" hideTitle>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {tiles.map((t) => (
             <Card key={t.label}>
               <CardContent className="p-4">
                 <p className="flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-                  <t.icon className="h-3.5 w-3.5 text-primary" /> {t.label}
+                  <t.icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" /> {t.label}
                 </p>
-                <p className="mt-1 truncate text-2xl font-bold">{t.value}</p>
+                <p className="mt-1 truncate text-2xl font-bold">{loading ? '–' : t.value}</p>
               </CardContent>
             </Card>
           ))}
         </div>
+      </PageSection>
 
+      <PageSection title="Write and browse notes" hideTitle>
         <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
           <DailyNoteForm onSubmit={addNote} />
           <div className="space-y-4">
             <Card>
               <CardContent className="space-y-3 p-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                   <Input
+                    aria-label="Search notes, tags or dates"
                     className="pl-9"
                     placeholder="Search notes, tags or dates..."
                     value={search}
@@ -89,23 +88,27 @@ const DailyNotes = () => {
                 </div>
                 {stats.topTags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant={tag === null ? 'default' : 'outline'} onClick={() => setTag(null)}>
+                    <Button size="sm" className="[@media(pointer:coarse)]:min-h-11" aria-pressed={tag === null} variant={tag === null ? 'default' : 'outline'} onClick={() => setTag(null)}>
                       All
                     </Button>
                     {stats.topTags.slice(0, 8).map(([t, c]) => (
-                      <Button key={t} size="sm" variant={tag === t ? 'default' : 'outline'} onClick={() => setTag(tag === t ? null : t)}>
-                        {t} <span className="ml-1 text-xs opacity-70">{c}</span>
+                      <Button key={t} size="sm" className="[@media(pointer:coarse)]:min-h-11" aria-pressed={tag === t} variant={tag === t ? 'default' : 'outline'} onClick={() => setTag(tag === t ? null : t)}>
+                        {t} <span className={cn('ml-1 text-xs', tag === t ? 'text-primary-foreground' : 'opacity-70')}>{c}</span>
                       </Button>
                     ))}
                   </div>
                 )}
               </CardContent>
             </Card>
-            <DailyNotesList notes={filtered} onDelete={deleteNote} onEdit={addNote} />
+            {loading ? (
+              <PageLoading label="Loading notes" rows={3} />
+            ) : (
+              <DailyNotesList notes={filtered} onDelete={deleteNote} onEdit={addNote} />
+            )}
           </div>
         </div>
-      </main>
-    </div>
+      </PageSection>
+    </PageContainer>
   );
 };
 

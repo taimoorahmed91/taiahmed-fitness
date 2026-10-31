@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, RefreshCw, Search, Filter, ChevronDown, ChevronUp, Clock } from 'lucide-react';
-import { Navigation } from '@/components/Navigation';
+import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState } from '@/components/layout/Page';
+import { IconButton } from '@/components/ui/icon-button';
 import { format } from 'date-fns';
 
 interface ActivityLog {
@@ -132,34 +133,31 @@ const ActivityLogs = () => {
     return JSON.stringify(details, null, 2);
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="container py-8 space-y-6">
-        <div className="flex items-center gap-3">
-          <FileText className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">Audit Log</h1>
-            <p className="text-muted-foreground mt-1">Complete audit trail of all your actions</p>
-          </div>
-        </div>
+  // Don't show "0 logs" while the first page is still on its way.
+  const showStatsPlaceholder = loading && logs.length === 0;
 
+  return (
+    <PageContainer>
+      <PageHeader icon={FileText} title="Audit Log" description="Complete audit trail of all your actions" />
+
+      <PageSection title="Search and filters" hideTitle>
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <Input
                   placeholder="Search logs..."
+                  aria-label="Search logs"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
                 />
               </div>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filter by category">
+                  <Filter className="h-4 w-4 mr-2" aria-hidden="true" />
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -171,7 +169,7 @@ const ActivityLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]" aria-label="Filter by status">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -180,25 +178,27 @@ const ActivityLogs = () => {
                   <SelectItem value="error">Error</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon" onClick={() => fetchLogs(true)} disabled={loading}>
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
+              <IconButton label="Refresh audit log" tooltip variant="outline" onClick={() => fetchLogs(true)} disabled={loading} className="self-start sm:self-auto">
+                <RefreshCw className={loading ? 'animate-spin' : ''} />
+              </IconButton>
             </div>
           </CardContent>
         </Card>
+      </PageSection>
 
+      <PageSection title="Summary" hideTitle>
         {/* Log Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card>
             <CardContent className="pt-4 pb-4 text-center">
-              <p className="text-2xl font-bold">{filteredLogs.length}</p>
+              <p className="text-2xl font-bold">{showStatsPlaceholder ? '–' : filteredLogs.length}</p>
               <p className="text-xs text-muted-foreground">Logs Shown</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 pb-4 text-center">
               <p className="text-2xl font-bold text-chart-min">
-                {filteredLogs.filter(l => l.status === 'success').length}
+                {showStatsPlaceholder ? '–' : filteredLogs.filter(l => l.status === 'success').length}
               </p>
               <p className="text-xs text-muted-foreground">Successful</p>
             </CardContent>
@@ -206,7 +206,7 @@ const ActivityLogs = () => {
           <Card>
             <CardContent className="pt-4 pb-4 text-center">
               <p className="text-2xl font-bold text-destructive">
-                {filteredLogs.filter(l => l.status === 'error').length}
+                {showStatsPlaceholder ? '–' : filteredLogs.filter(l => l.status === 'error').length}
               </p>
               <p className="text-xs text-muted-foreground">Errors</p>
             </CardContent>
@@ -214,13 +214,15 @@ const ActivityLogs = () => {
           <Card>
             <CardContent className="pt-4 pb-4 text-center">
               <p className="text-2xl font-bold">
-                {new Set(filteredLogs.map(l => l.category)).size}
+                {showStatsPlaceholder ? '–' : new Set(filteredLogs.map(l => l.category)).size}
               </p>
               <p className="text-xs text-muted-foreground">Categories</p>
             </CardContent>
           </Card>
         </div>
+      </PageSection>
 
+      <PageSection title="Audit trail" hideTitle>
         {/* Logs List */}
         <Card>
           <CardHeader>
@@ -229,20 +231,34 @@ const ActivityLogs = () => {
           <CardContent>
             <ScrollArea className="h-[600px]">
               {filteredLogs.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  {loading ? 'Loading audit log...' : 'No audit entries found'}
-                </div>
+                loading ? (
+                  <PageLoading label="Loading audit log" rows={5} />
+                ) : (
+                  <PageEmptyState icon={FileText} title="No audit entries found" description="Try a different search or filter." />
+                )
               ) : (
                 <div className="space-y-2">
                   {filteredLogs.map((log) => (
                     <div
                       key={log.id}
-                      className={`rounded-lg border p-3 transition-colors cursor-pointer hover:bg-muted/50 ${
+                      className={`rounded-lg border p-3 transition-colors hover:bg-muted/50 ${
                         log.status === 'error' ? 'border-destructive/30 bg-destructive/5' : ''
                       }`}
-                      onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={expandedLog === log.id}
+                        aria-label={`${log.category.replace('_', ' ')} ${log.action}, ${format(new Date(log.created_at), 'MMM d, HH:mm:ss')}${log.status === 'error' ? ', error' : ''}`}
+                        className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setExpandedLog(expandedLog === log.id ? null : log.id);
+                          }
+                        }}
+                      >
                         <div className="flex items-center gap-2 flex-wrap min-w-0">
                           <Badge variant="outline" className={CATEGORY_COLORS[log.category] || ''}>
                             {log.category.replace('_', ' ')}
@@ -297,8 +313,8 @@ const ActivityLogs = () => {
             </ScrollArea>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </PageSection>
+    </PageContainer>
   );
 };
 
