@@ -10,6 +10,7 @@ import { CHART_COLORS, CHART_MARGIN, chartDotStroke, chartGridProps, chartLegend
 import { RANGE_LABELS, formatChartDate, windowChartRows } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { barAxisNote, computeChartDomain } from '@/lib/chartDomain';
 
 interface MacroTargetChartProps {
   /**
@@ -36,19 +37,13 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
 
   const shown = useMemo(() => windowChartRows(data, range), [data, range]);
 
-  const yDomain = useMemo(() => {
-    const values = shown.flatMap((d) => [d.actual, d.min, d.max]).filter((v): v is number => v != null);
-    if (values.length === 0) return [0, 1];
-    let min = Math.min(...values);
-    let max = Math.max(...values);
-    if (style === 'bar') min = 0;
-    if (max === min) {
-      max += 1;
-      min = Math.max(0, min - 1);
-    }
-    const pad = Math.max(1, (max - min) * 0.1);
-    return [style === 'bar' ? 0 : Math.max(0, Math.floor(min - pad)), Math.ceil(max + pad)];
-  }, [shown, style]);
+  // One Y axis for Line AND Bar (src/lib/chartDomain.ts), covering actual, min and max of every visible day.
+  const { domain, ticks, floor } = useMemo(
+    () => computeChartDomain(shown.flatMap((d) => [d.actual, d.min, d.max]), { minPad: 1 }),
+    [shown],
+  );
+  // Bars start at the axis floor, so when that is not zero the chart says so (visible caption + screen reader summary).
+  const axisNote = style === 'bar' ? barAxisNote(floor, unit) : null;
 
   const period = RANGE_LABELS[range];
   const summary = useMemo(
@@ -59,6 +54,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
     ], period),
     [shown, unit, period],
   );
+  const summaryText = axisNote ? `${summary} ${axisNote}, not zero.` : summary;
   const columns = [{ key: 'date', label: 'Date' }, { key: 'actual', label: `Actual (${unit})` }, { key: 'min', label: `Min target (${unit})` }, { key: 'max', label: `Max target (${unit})` }];
 
   const motion = chartMotionProps();
@@ -70,11 +66,11 @@ export const MacroTargetChart = ({ data, title, unit, storageKey }: MacroTargetC
         ? <ChartEmptyState action={NO_DATA.meals.action}>{NO_DATA.meals.message}</ChartEmptyState>
         : <ChartEmptyState>No intake data in this period. Try a wider date range.</ChartEmptyState>
     ) : (
-      <ChartFigure expanded={expanded} title={title} summary={summary} caption={`Values in ${unit} · ${period}`} table={{ columns, rows: shown }}>
+      <ChartFigure expanded={expanded} title={title} summary={summaryText} caption={`Values in ${unit} · ${period}${axisNote ? ` · ${axisNote}` : ''}`} table={{ columns, rows: shown }}>
         <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" tickFormatter={formatChartDate} {...chartXAxisFor(shown.length, expanded)} />
-          <YAxis domain={yDomain} {...chartYAxisProps} />
+          <YAxis domain={domain} ticks={ticks} {...chartYAxisProps} />
           <Tooltip
             cursor={chartTooltipProps.cursor}
             content={({ active, payload, label }) => {

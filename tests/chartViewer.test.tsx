@@ -247,8 +247,8 @@ describe('MacroTargetChart: the chart style applies to the whole chart (source)'
     assert.match(line, /dataKey="min"[^>]*strokeDasharray="8 5"/);
     assert.match(line, /dataKey="max"[^>]*strokeDasharray="2 5"/);
   });
-  test('y domain: bar mode starts at 0 and the values include all three series', () => {
-    assert.match(src, /shown\.flatMap\(\(d\) => \[d\.actual, d\.min, d\.max\]\)/);
-    assert.match(src, /if \(style === 'bar'\) min = 0;/);
+  test('y domain is the shared line/bar rule over all three series (details: tests/chartDomain.test.ts)', () => {
+    assert.match(src, /computeChartDomain\(shown\.flatMap\(\(d\) => \[d\.actual, d\.min, d\.max\]\), \{ minPad: 1 \}\)/);
+    assert.equal(/min = 0/.test(src), false, 'no bar-only zero');
   });
 });

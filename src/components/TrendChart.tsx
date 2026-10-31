@@ -12,6 +12,7 @@ import { CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTo
 import { CHART_RANGES, RANGE_LABELS } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { barAxisNote, computeChartDomain } from '@/lib/chartDomain';
 
 type Series = { key: string; label: string; color: string; dashed?: boolean };
 type Row = { date: string; [key: string]: string | number | null | undefined };
@@ -42,18 +43,18 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
   const view = useChartView(id, defaultStyle, { allowed: extendedRanges ? CHART_RANGES : undefined });
   const cardRef = useRef<HTMLDivElement>(null);
   const shown = useMemo(() => recentChartData(data, view.range), [data, view.range]);
-  const values = shown.flatMap(row => series.map(s => row[s.key]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)));
-  const min = values.length ? Math.min(...values) : 0;
-  const max = values.length ? Math.max(...values) : 1;
-  const pad = Math.max(cap ? 1 : 0.5, (max - min) * 0.1);
-  const domain = view.style === 'bar'
-    ? [Math.min(0, Math.floor(min - (min < 0 ? pad : 0))), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.max(1, Math.ceil(max + pad))]
-    : [min < 0 ? Math.floor(min - pad) : Math.max(0, Math.floor(min - pad)), cap ? Math.min(cap, Math.ceil(max + pad)) : Math.ceil(max + pad)];
+  // One Y axis for Line AND Bar (src/lib/chartDomain.ts): the same padded range of every visible value of every series.
+  const { domain, ticks, floor } = useMemo(
+    () => computeChartDomain(shown.flatMap(row => series.map(s => row[s.key])), { cap, minPad: cap ? 1 : 0.5 }),
+    [shown, series, cap],
+  );
+  // Bars start at the axis floor, so when that is not zero the chart says so (visible caption + screen reader summary).
+  const axisNote = view.style === 'bar' ? barAxisNote(floor, unit) : null;
   const noteDots = shown.filter(row => notesMap?.has(row.date) && typeof row[series[0]?.key] === 'number');
   const period = RANGE_LABELS[view.range];
   // Nothing logged at all (not just nothing in this range): logging is the fix, so offer the link.
   const emptyNoData = data.length === 0 ? (noData === undefined ? TREND_NO_DATA[id] : noData) : null;
-  const summaryText = useMemo(() => describeSeries(shown, series.map(s => ({ key: s.key, label: s.label, unit })), period), [shown, series, unit, period]);
+  const summaryText = useMemo(() => `${describeSeries(shown, series.map(s => ({ key: s.key, label: s.label, unit })), period)}${axisNote ? ` ${axisNote}, not zero.` : ''}`, [shown, series, unit, period, axisNote]);
 
   const pdfColumns = [{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: `${s.label}${unit ? ` (${unit})` : ''}` }))];
 
@@ -69,13 +70,13 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
         expanded={expanded}
         title={title}
         summary={summaryText}
-        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
+        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
         table={{ columns: pdfColumns, rows: shown }}
       >
         <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisFor(shown.length, expanded)} />
-          <YAxis domain={domain} {...chartYAxisProps} />
+          <YAxis domain={domain} ticks={ticks} {...chartYAxisProps} />
           <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload, label }) => {
             if (!active || !payload?.length) return null;
             const note = notesMap?.get(String(label));

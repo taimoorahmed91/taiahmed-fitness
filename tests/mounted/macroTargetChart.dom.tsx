@@ -118,18 +118,21 @@ describe('mounted: macro target chart style', () => {
     assert.equal(fill(bars[0]).getAttribute('stroke-dasharray'), null);
   });
 
-  test('Y axis: Bar mode starts at 0 and reaches above the largest of all three series; Line mode keeps its padded start', async () => {
+  test('Y axis: Line and Bar share one domain (actual, min and max all inside); Bar names a non-zero floor', async () => {
     const ticks = (root: ParentNode) => [...root.querySelectorAll('.recharts-yAxis .recharts-cartesian-axis-tick-value')].map((t) => Number(t.textContent!.replace(/,/g, '')));
+    const caption = (root: ParentNode) => root.querySelector('figure > p')?.textContent ?? '';
     const line = await mount();
     const lt = ticks(line);
-    assert.ok(Math.min(...lt) > 0, `line starts above zero: ${lt}`);
+    assert.ok(lt[0] > 0, `zoomed floor, not zero: ${lt}`);
+    assert.ok(lt[0] <= 1500 && lt.at(-1)! >= 2200, `covers actual (1500..1950) and targets (1800, 2200): ${lt}`);
+    assert.equal(/Axis starts at/.test(caption(line)), false, 'no note in Line mode');
     for (const root of roots) await act(async () => root.unmount());
     roots = []; doc().body.innerHTML = '';
     env.window.localStorage.setItem('fittrack_chart_macro_Protein: Actual vs Target_style', 'bar');
     const bar = await mount();
-    const bt = ticks(bar);
-    assert.equal(Math.min(...bt), 0);
-    assert.ok(Math.max(...bt) >= 2200, `includes the max target (2200): ${bt}`);
+    assert.deepEqual(ticks(bar), lt, 'the same axis in Bar mode');
+    assert.match(caption(bar), new RegExp(`Axis starts at ${lt[0].toLocaleString('en-US')} g`));
+    assert.match(bar.querySelector('details p')!.textContent ?? '', /Axis starts at .* g, not zero\./);
   });
 
   test('a persisted Bar choice opens the full-screen viewer with all three as bars; switching to Line there changes all three, and the card follows', async () => {
@@ -168,7 +171,7 @@ describe('mounted: macro target chart style', () => {
     assert.equal(stored('fittrack_chart_macro_Calories: Actual vs Target_style'), 'line');
   });
 
-  test('range-only truthfulness: PDF data, accessible summary and table are the same in both modes and keep nulls as "--"', async () => {
+  test('range-only truthfulness: PDF data, accessible summary (plus the Bar axis note) and table are the same in both modes and keep nulls as "--"', async () => {
     const host = await mount();
     const table = () => [...host.querySelectorAll('table tbody tr')].map((r) => [...r.children].map((c) => c.textContent));
     const lineRows = table();
@@ -177,7 +180,8 @@ describe('mounted: macro target chart style', () => {
     const summaryLine = host.querySelector('[data-chart-summary] p')!.textContent;
     await pick(host, 'Protein: Actual vs Target chart type', 'Bar chart');
     assert.deepEqual(table(), lineRows);
-    assert.equal(host.querySelector('[data-chart-summary] p')!.textContent, summaryLine);
+    // The data sentences are identical; Bar mode only adds the axis note.
+    assert.equal(host.querySelector('[data-chart-summary] p')!.textContent, `${summaryLine} Axis starts at 1,400 g, not zero.`);
     assert.match(summaryLine!, /Min target/);
     assert.ok(host.querySelector('[aria-label="Download Protein: Actual vs Target as PDF"]'));
   });
