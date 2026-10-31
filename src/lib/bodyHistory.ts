@@ -201,3 +201,24 @@ export const recoveryBand = (score: number | null | undefined): 'High' | 'Medium
   score == null ? null : score >= 67 ? 'High' : score >= 34 ? 'Medium' : 'Low';
 
 export const recoveryTone = (band: 'High' | 'Medium' | 'Low'): BandTone => (band === 'High' ? 'good' : band === 'Medium' ? 'fair' : 'poor');
+
+/**
+ * The plain difference between the newest and the oldest reading of a month shown in full (newest first in `items`).
+ * Null when there are fewer than two readings or either is not a number. A fact, not a verdict.
+ */
+export const netChangeOver = <T>(newestFirst: readonly T[], getValue: (entry: T) => number, decimals = 2): number | null => {
+  if (newestFirst.length < 2) return null;
+  const latest = getValue(newestFirst[0]);
+  const earliest = getValue(newestFirst[newestFirst.length - 1]);
+  if (!Number.isFinite(latest) || !Number.isFinite(earliest)) return null;
+  const factor = 10 ** decimals;
+  const delta = Math.round((latest - earliest) * factor) / factor;
+  return delta === 0 ? 0 : delta;
+};
+
+/** Longest night the duration bar draws in full. Longer nights fill the bar. */
+export const SLEEP_BAR_MAX_HOURS = 12;
+
+/** How full a sleep-duration bar is, 0 to 100. Only a picture of the number beside it, never a target. */
+export const sleepBarPercent = (hours: number): number =>
+  !Number.isFinite(hours) || hours <= 0 ? 0 : Math.min(100, Math.round((hours / SLEEP_BAR_MAX_HOURS) * 100));

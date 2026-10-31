@@ -9,10 +9,12 @@ import {
   groupByWeek,
   monthKey,
   monthTitle,
+  netChangeOver,
   rangeOf,
   recoveryBand,
   recoveryTone,
   sleepBand,
+  sleepBarPercent,
   sortNewestFirst,
   spokenChange,
 } from '../src/lib/bodyHistory';
@@ -160,5 +162,28 @@ describe('WHOOP history helpers', () => {
     assert.equal(week.strain, null, 'two days of strain is not an average');
     assert.equal(week.hrv, null);
     assert.equal(summarizeWhoopWeek(days.slice(0, 2)).recovery, null);
+  });
+});
+
+describe('month net change and the sleep bar', () => {
+  const rows = (...values: number[]) => values.map((weight, i) => ({ weight, id: String(i) }));
+  const w = (r: { weight: number }) => r.weight;
+  test('net change is the newest reading minus the oldest, as a plain number', () => {
+    assert.equal(netChangeOver(rows(90.2, 90.6, 90.8, 91.4, 92), w), -1.8);
+    assert.equal(netChangeOver(rows(80.5, 80), w), 0.5);
+  });
+  test('needs two readings, and zero stays zero (never -0)', () => {
+    assert.equal(netChangeOver(rows(80), w), null);
+    assert.equal(netChangeOver([], w), null);
+    assert.equal(Object.is(netChangeOver(rows(80, 80), w), 0), true);
+    assert.equal(netChangeOver(rows(Number.NaN, 80), w), null);
+  });
+  test('the sleep bar is a scale from 0 to 12 hours, clamped, and says nothing about targets', () => {
+    assert.equal(sleepBarPercent(0), 0);
+    assert.equal(sleepBarPercent(6), 50);
+    assert.equal(sleepBarPercent(7.5), 63);
+    assert.equal(sleepBarPercent(14), 100);
+    assert.equal(sleepBarPercent(Number.NaN), 0);
+    assert.equal(sleepBarPercent(-3), 0);
   });
 });

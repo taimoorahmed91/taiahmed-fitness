@@ -50,9 +50,11 @@ interface Props {
   emptyText: string;
   /** Optional goal/cadence panel rendered under the headline. */
   extra?: ReactNode;
+  /** Draws a thin ruler of tick marks under the headline number (for measurements). Decorative only. */
+  ruler?: boolean;
 }
 
-export const MetricOverviewCard = ({ title, latestLabel, latest, unit, totalEntries, deltas, emptyText, extra }: Props) => (
+export const MetricOverviewCard = ({ title, latestLabel, latest, unit, totalEntries, deltas, emptyText, extra, ruler }: Props) => (
   <Card className="h-full" titleSize="chart">
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
@@ -69,6 +71,12 @@ export const MetricOverviewCard = ({ title, latestLabel, latest, unit, totalEntr
               <p className="text-4xl font-bold tabular-nums tracking-tight">
                 {latest} <span className="text-lg font-medium text-muted-foreground">{unit}</span>
               </p>
+              {ruler && (
+                <span
+                  aria-hidden="true"
+                  className="mt-1.5 block h-2 w-full max-w-44 border-b border-foreground/40 [background-image:repeating-linear-gradient(90deg,hsl(var(--foreground)/0.4)_0,hsl(var(--foreground)/0.4)_1px,transparent_1px,transparent_8px)]"
+                />
+              )}
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Total entries</p>

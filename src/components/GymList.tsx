@@ -1,8 +1,9 @@
-import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ClipboardPlus, Pencil } from 'lucide-react';
-import { HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
+import { ClipboardPlus, Dumbbell, ListChecks, Pencil } from 'lucide-react';
+import { GroupGlyph, HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
+import { WeekPattern } from '@/components/history/WeekPattern';
 import { HistoryRow } from '@/components/history/HistoryRow';
 import { ActionTray, HistoryAction, HistoryDeleteAction, HistoryInlineActions } from '@/components/history/ActionTray';
 import { HistoryPager } from '@/components/history/HistoryPager';
@@ -18,6 +19,7 @@ import {
   sortSessionsNewestFirst,
   summarizeSession,
   summarizeWeek,
+  trainedDays,
   type SessionSummary,
 } from '@/lib/workoutHistory';
 import { cn } from '@/lib/utils';
@@ -89,9 +91,19 @@ export const GymList = ({ sessions, allSessions, onDelete, onEdit, onCreateTempl
               {pageGroups.map((group) => {
                 const totals = summarizeWeek(group.items);
                 const inWeek = sessionsPerWeek[group.weekStart] ?? group.items.length;
+                // Only a week shown in full can say which days were trained; a filtered week would be guessing.
+                const partial = filtered && group.items.length !== inWeek;
                 return (
                   <HistoryGroup
                     key={group.key}
+                    variant="workout"
+                    marker={
+                      <GroupGlyph variant="workout">
+                        <Dumbbell aria-hidden="true" />
+                      </GroupGlyph>
+                    }
+                    stat={partial ? undefined : <WeekPattern days={trainedDays(group.items, group.weekStart)} />}
+                    stackStatOnNarrow
                     title={
                       <>
                         {weekTitle(group.weekStart, today)}{' '}
@@ -102,15 +114,17 @@ export const GymList = ({ sessions, allSessions, onDelete, onEdit, onCreateTempl
                       </>
                     }
                     summary={
-                      filtered && group.items.length !== inWeek
+                      partial
                         ? [`${group.items.length} of ${inWeek} workouts shown`]
                         : [
-                            `${totals.count} ${totals.count === 1 ? 'workout' : 'workouts'}`,
+                            <span key="count" className="font-semibold text-foreground">
+                              {totals.count} {totals.count === 1 ? 'workout' : 'workouts'}
+                            </span>,
                             totals.minutes !== null ? formatMinutes(totals.minutes) : null,
                           ]
                     }
                   >
-                    <HistoryList>
+                    <HistoryList variant="workout">
                       {group.items.map((session) => (
                         <GymSessionRow
                           key={session.id}
@@ -228,6 +242,7 @@ const GymSessionRow = ({ session, desktop, today, expanded, onExpandedChange, on
   if (desktop) {
     return (
       <HistoryRow
+        variant="workout"
         expanded={expanded}
         onExpandedChange={onExpandedChange}
         reserveChevron
@@ -243,10 +258,10 @@ const GymSessionRow = ({ session, desktop, today, expanded, onExpandedChange, on
               {summary.preview && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{summary.preview}</span>}
             </span>
             <span className="text-sm tabular-nums text-muted-foreground">{summary.timeRange ?? <NotAvailable />}</span>
-            <span className="text-right text-sm tabular-nums">{summary.minutes !== null ? formatMinutes(summary.minutes) : <NotAvailable />}</span>
+            <span className="text-right text-sm font-medium tabular-nums">{summary.minutes !== null ? formatMinutes(summary.minutes) : <NotAvailable />}</span>
             <span className="text-right text-sm tabular-nums">{stats ? stats.exerciseCount : <NotAvailable />}</span>
             <span className="text-right text-sm tabular-nums">{stats && stats.setCount > 0 ? stats.setCount : <NotAvailable />}</span>
-            <span className="text-right text-sm tabular-nums">
+            <span className="text-right text-sm font-semibold tabular-nums">
               <VolumeText summary={summary} />
               {(!stats || stats.volumeKg === null) && <NotAvailable />}
             </span>
@@ -261,16 +276,18 @@ const GymSessionRow = ({ session, desktop, today, expanded, onExpandedChange, on
     );
   }
 
-  const facts: { key: string; node: ReactNode }[] = [];
-  if (summary.minutes !== null) facts.push({ key: 'min', node: formatMinutes(summary.minutes) });
+  // The headline numbers, as a strip of small value-over-label cells.
+  const facts: { key: string; value: ReactNode; label: string }[] = [];
+  if (summary.minutes !== null) facts.push({ key: 'min', value: formatMinutes(summary.minutes), label: 'duration' });
   if (stats) {
-    facts.push({ key: 'ex', node: `${stats.exerciseCount} ${stats.exerciseCount === 1 ? 'exercise' : 'exercises'}` });
-    if (stats.setCount > 0) facts.push({ key: 'sets', node: `${stats.setCount} ${stats.setCount === 1 ? 'set' : 'sets'}` });
-    if (stats.volumeKg !== null) facts.push({ key: 'vol', node: <><VolumeText summary={summary} /> volume</> });
+    facts.push({ key: 'ex', value: stats.exerciseCount, label: stats.exerciseCount === 1 ? 'exercise' : 'exercises' });
+    if (stats.setCount > 0) facts.push({ key: 'sets', value: stats.setCount, label: stats.setCount === 1 ? 'set' : 'sets' });
+    if (stats.volumeKg !== null) facts.push({ key: 'vol', value: <VolumeText summary={summary} />, label: 'volume' });
   }
 
   return (
     <HistoryRow
+      variant="workout"
       expanded={expanded}
       onExpandedChange={onExpandedChange}
       panelLabel={`Details for ${session.exercise}`}
@@ -279,23 +296,33 @@ const GymSessionRow = ({ session, desktop, today, expanded, onExpandedChange, on
           <span className="block break-words text-base font-semibold leading-snug">{session.exercise}</span>
           <span className="mt-0.5 block text-sm text-muted-foreground">
             <time dateTime={session.date}>{formatDay(session.date, today)}</time>
-            {summary.timeRange && <> · {summary.timeRange}</>}
+            {summary.timeRange && (
+              <>
+                {' '}
+                <span aria-hidden="true">·</span> <span className="tabular-nums">{summary.timeRange}</span>
+              </>
+            )}
           </span>
           {facts.length > 0 && (
-            <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm tabular-nums">
-              {facts.map((fact, i) => (
-                <Fragment key={fact.key}>
-                  {i > 0 && <span aria-hidden="true" className="text-muted-foreground">·</span>}
-                  <span>{fact.node}</span>
-                </Fragment>
+            <span className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2.5 tabular-nums min-[480px]:flex min-[480px]:flex-wrap min-[480px]:gap-x-5 min-[480px]:gap-y-2">
+              {facts.map((fact) => (
+                <span key={fact.key} className="block border-l-2 border-chart-2/50 pl-2 leading-tight">
+                  <span className="block text-sm font-semibold">{fact.value}</span>{' '}
+                  <span className="block text-xs text-muted-foreground">{fact.label}</span>
+                </span>
               ))}
             </span>
           )}
-          {summary.preview && !expanded && <span className="mt-1 block truncate text-xs text-muted-foreground">{summary.preview}</span>}
+          {summary.preview && !expanded && (
+            <span className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <ListChecks aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 truncate">{summary.preview}</span>
+            </span>
+          )}
         </span>
       }
       panel={
-        <div className="space-y-3">
+        <div className="space-y-4">
           {summary.hasNotes && detail}
           <ActionTray label={`Actions for ${session.exercise}`}>{actionList('tray')}</ActionTray>
         </div>

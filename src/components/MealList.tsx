@@ -10,8 +10,9 @@ import { useMealFavorites } from '@/hooks/useMealFavorites';
 import { SortControl } from '@/components/SortControl';
 import { MealNutrientFilter } from '@/components/MealNutrientFilter';
 import { emptyNutrientFilter, matchesNutrientFilter } from '@/lib/mealNutrientFilter';
-import { HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
-import { HistoryRow } from '@/components/history/HistoryRow';
+import { GroupStat, HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
+import { HistoryRow, TimelineNode } from '@/components/history/HistoryRow';
+import { DateBadge } from '@/components/history/DayStamp';
 import { ActionTray, HistoryAction, HistoryDeleteAction, HistoryInlineActions } from '@/components/history/ActionTray';
 import { HistoryPager } from '@/components/history/HistoryPager';
 import { useGroupPagination } from '@/components/history/useGroupPagination';
@@ -43,8 +44,8 @@ const MEALS_PER_PAGE = 30;
 /** Flat (calorie-sorted) lists have no days, so they page by plain row count. */
 const FLAT_PER_PAGE = 20;
 
-/** Desktop ledger columns: Time, Food, Protein, Carbs, Calories. The inline-actions cell sits after them. */
-const DESKTOP_COLUMNS = 'grid w-full grid-cols-[3.5rem_minmax(0,1fr)_4rem_4rem_4.5rem] items-baseline gap-x-3';
+/** Desktop ledger columns: Time, timeline node, Food, Protein, Carbs, Calories. The inline-actions cell sits after them. */
+const DESKTOP_COLUMNS = 'grid min-h-6 w-full grid-cols-[3.5rem_0.75rem_minmax(0,1fr)_4rem_4rem_4.5rem] items-baseline gap-x-3';
 const DESKTOP_ACTIONS_WIDTH = 'w-36';
 
 export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingToday }: MealListProps) => {
@@ -235,15 +236,27 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
           <>
             {isDesktop && <DesktopColumnHeader showDate={flat} />}
             {flat ? (
-              <HistoryList className="border-y">{pageGroups.map((group) => renderRow(group.items[0]))}</HistoryList>
+              <HistoryList variant="meal" className="border-y py-1">{pageGroups.map((group) => renderRow(group.items[0]))}</HistoryList>
             ) : (
               <div>
                 {pageGroups.map((group) => {
                   const context = describeMealDay(group.items, mealsPerDate[group.date] ?? group.items.length, hasActiveFilters);
                   const relative = relativeDayLabel(group.date, today);
+                  const totals = context.kind === 'totals' ? context.totals : null;
+                  // A gentle cue on today's heading, from the same "remaining" figure the banner above uses. Words, not colour.
+                  const todayCue =
+                    totals && group.date === today && caloriesRemainingToday !== undefined
+                      ? caloriesRemainingToday >= 0
+                        ? `${formatCount(Math.floor(caloriesRemainingToday))} cal left`
+                        : `${formatCount(Math.ceil(Math.abs(caloriesRemainingToday)))} cal over`
+                      : null;
                   return (
                     <HistoryGroup
                       key={group.key}
+                      variant="meal"
+                      // On wide screens the day total sits right above the Calories column (inline actions are 9rem, row padding 1rem).
+                      bandClassName={isDesktop ? 'sm:pr-[calc(9rem+1rem)]' : undefined}
+                      marker={<DateBadge date={group.date} highlight={relative === 'Today'} />}
                       title={
                         <>
                           {relative && (
@@ -251,25 +264,29 @@ export const MealList = ({ meals, onDelete, onEdit, onCopy, caloriesRemainingTod
                               {relative} <span aria-hidden="true" className="font-normal text-muted-foreground">·</span>{' '}
                             </>
                           )}
-                          <time dateTime={group.date}>{formatDay(group.date, today)}</time>
+                          <time dateTime={group.date} className={relative ? 'font-normal text-muted-foreground' : undefined}>
+                            {formatDay(group.date, today)}
+                          </time>
                         </>
                       }
+                      stat={totals ? <GroupStat value={formatCount(totals.calories)} unit="cal" label={todayCue ?? 'day total'} /> : undefined}
                       summary={
-                        context.kind === 'totals'
+                        totals
                           ? [
-                              <span key="cal" className="font-semibold tabular-nums text-foreground">{formatCount(context.totals.calories)} cal</span>,
-                              describeMacroTotal('protein', context.totals.protein),
-                              describeMacroTotal('carbs', context.totals.carbs),
-                              `${context.totals.count} ${context.totals.count === 1 ? 'meal' : 'meals'}`,
+                              describeMacroTotal('protein', totals.protein),
+                              describeMacroTotal('carbs', totals.carbs),
+                              `${totals.count} ${totals.count === 1 ? 'meal' : 'meals'}`,
                             ]
-                          : [
-                              context.shown === context.ofDay
-                                ? `${context.shown} ${context.shown === 1 ? 'meal' : 'meals'} shown`
-                                : `${context.shown} of ${context.ofDay} meals shown`,
-                            ]
+                          : context.kind === 'filtered'
+                            ? [
+                                context.shown === context.ofDay
+                                  ? `${context.shown} ${context.shown === 1 ? 'meal' : 'meals'} shown`
+                                  : `${context.shown} of ${context.ofDay} meals shown`,
+                              ]
+                            : []
                       }
                     >
-                      <HistoryList>{group.items.map(renderRow)}</HistoryList>
+                      <HistoryList variant="meal" className="py-1">{group.items.map(renderRow)}</HistoryList>
                     </HistoryGroup>
                   );
                 })}
@@ -287,6 +304,7 @@ const DesktopColumnHeader = ({ showDate }: { showDate: boolean }) => (
   <div aria-hidden="true" className="flex border-b px-0 py-1.5 text-xs font-medium text-muted-foreground">
     <span className={cn(DESKTOP_COLUMNS, 'min-w-0 flex-1 px-4')}>
       <span>{showDate ? 'Date / time' : 'Time'}</span>
+      <span />
       <span>Food</span>
       <span className="text-right">Protein</span>
       <span className="text-right">Carbs</span>
@@ -329,6 +347,18 @@ const MacroCell = ({ value, label }: { value: number | null | undefined; label: 
   </span>
 );
 
+/**
+ * A meal pinned to Quick add. Says so in words (with a filled bolt and a border), so it never depends on colour.
+ * Screen readers get the same words they always did.
+ */
+const PinnedBadge = ({ className }: { className?: string }) => (
+  <span className={cn('inline-flex items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 align-middle text-xs font-medium leading-none text-foreground', className)}>
+    <Zap aria-hidden="true" className="h-3 w-3 shrink-0 fill-primary text-primary" />
+    <span aria-hidden="true">Quick add</span>
+    <span className="sr-only"> (pinned to quick add)</span>
+  </span>
+);
+
 interface MealRowProps {
   meal: Meal;
   desktop: boolean;
@@ -350,20 +380,13 @@ const MealRow = ({ meal, desktop, showDate, today, expanded, onExpandedChange, f
   const timeCell = (
     <span className="block">
       {showDate && (
-        <time dateTime={meal.date} className="block text-xs leading-tight">
+        <time dateTime={meal.date} className="block text-xs font-normal leading-tight text-muted-foreground">
           {formatShortDay(meal.date, today)}
         </time>
       )}
       <time dateTime={clock}>{clock}</time>
     </span>
   );
-
-  const pinned = favorite ? (
-    <>
-      <Zap aria-hidden="true" className="ml-1 inline h-3.5 w-3.5 fill-primary text-primary" />
-      <span className="sr-only"> (pinned to quick add)</span>
-    </>
-  ) : null;
 
   // The same actions in either shape: labelled tray buttons on phones, compact icons on wide screens.
   const actionList = (variant: 'tray' | 'inline') => [
@@ -408,20 +431,25 @@ const MealRow = ({ meal, desktop, showDate, today, expanded, onExpandedChange, f
     />,
   ];
 
+  // Flat (calorie-sorted) lists mix days, so there is no timeline to draw.
+  const node = showDate ? null : <TimelineNode variant="meal" open={expanded} />;
+
   if (desktop) {
     return (
       <HistoryRow
-        className="[@media(hover:hover)]:hover:bg-muted/40"
+        variant="meal"
+        className="[@media(hover:hover)]:hover:bg-accent/30"
         summary={
           <span className={DESKTOP_COLUMNS}>
-            <span className="text-sm tabular-nums text-muted-foreground">{timeCell}</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{timeCell}</span>
+            {node ?? <span aria-hidden="true" />}
             <span className="min-w-0 break-words whitespace-pre-wrap text-sm font-medium">
               {meal.food}
-              {pinned}
+              {favorite && <PinnedBadge className="ml-2" />}
             </span>
             <MacroCell value={meal.protein} label="protein" />
             <MacroCell value={meal.carbs} label="carbs" />
-            <span className="text-right text-sm font-semibold tabular-nums">
+            <span className="text-right text-base font-semibold tabular-nums">
               {formatCount(meal.calories)}
               <span className="sr-only"> calories</span>
             </span>
@@ -438,20 +466,24 @@ const MealRow = ({ meal, desktop, showDate, today, expanded, onExpandedChange, f
 
   return (
     <HistoryRow
+      variant="meal"
       expanded={expanded}
       onExpandedChange={onExpandedChange}
       summary={
-        <span className="flex w-full items-start gap-2.5">
-          <span className="w-12 shrink-0 pt-0.5 text-sm tabular-nums text-muted-foreground">{timeCell}</span>
+        <span className="flex min-h-6 w-full items-start gap-2">
+          <span className={cn('shrink-0 pt-0.5 text-sm font-medium tabular-nums text-foreground', showDate ? 'w-14' : 'w-11')}>{timeCell}</span>
+          {node}
           <span className="min-w-0 flex-1">
-            <span className={cn('block break-words whitespace-pre-wrap text-sm font-medium', !expanded && 'line-clamp-2')}>
-              {meal.food}
-              {pinned}
-            </span>
+            <span className={cn('block break-words whitespace-pre-wrap text-sm font-medium', !expanded && 'line-clamp-2')}>{meal.food}</span>
             <MacroLine meal={meal} />
+            {favorite && (
+              <span className="mt-1 block">
+                <PinnedBadge />
+              </span>
+            )}
           </span>
           <span className="shrink-0 text-right leading-tight">
-            <span className="block text-base font-semibold tabular-nums">{formatCount(meal.calories)}</span>
+            <span className="block text-lg font-semibold tabular-nums">{formatCount(meal.calories)}</span>
             <span className="block text-xs text-muted-foreground">cal</span>
           </span>
         </span>

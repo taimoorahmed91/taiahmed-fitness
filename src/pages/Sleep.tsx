@@ -16,6 +16,7 @@ import { useSleep, SleepEntry } from '@/hooks/useSleep';
 import { useDataFilter } from '@/hooks/useDataFilter';
 import { MetricHistoryList } from '@/components/history/MetricHistoryList';
 import { BandChip } from '@/components/history/BandChip';
+import { SleepBar } from '@/components/history/SleepBar';
 import { fmt, rangeOf, sleepBand, MIN_FOR_AVERAGE } from '@/lib/bodyHistory';
 import { useSharedTableState } from '@/lib/sharedTable';
 import { tableView } from '@/components/feedback/tableView';
@@ -29,10 +30,10 @@ const getHours = (entry: SleepEntry) => entry.hours;
 /** Hours-only band (see sleepBand): a word, a dot and a border, never colour alone. */
 const bandFor = (entry: SleepEntry) => sleepBand(entry.hours);
 
-/** Month heading fact: the average night, only when the month has at least three nights. */
-const monthFacts = (items: SleepEntry[]) => {
+/** Month heading number: the average night, only when the month has at least three nights. */
+const monthStat = (items: SleepEntry[]) => {
   const r = rangeOf(items.map(getHours));
-  return r && r.count >= MIN_FOR_AVERAGE ? [`Avg ${fmt(r.mean, 1)} h per night`] : [];
+  return r && r.count >= MIN_FOR_AVERAGE ? { value: fmt(r.mean, 1), unit: 'h', label: 'avg per night' } : null;
 };
 
 const Sleep = () => {
@@ -250,7 +251,8 @@ const Sleep = () => {
                           <p className="text-4xl font-bold tabular-nums tracking-tight">
                             {entries[0]?.hours} <span className="text-lg font-medium text-muted-foreground">hours</span>
                           </p>
-                          <BandChip label={q.label} tone={q.tone} className="mt-1" />
+                          <SleepBar hours={entries[0].hours} className="mt-2 max-w-44" />
+                          <BandChip label={q.label} tone={q.tone} className="mt-2" />
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Total Entries</p>
@@ -331,7 +333,8 @@ const Sleep = () => {
                 entryNoun="sleep entry"
                 countNoun={{ one: 'night', many: 'nights' }}
                 band={bandFor}
-                monthFacts={monthFacts}
+                variant="sleep"
+                monthStat={monthStat}
                 deleteTitle="Delete sleep entry?"
                 deleteDescription={(entry) => `Are you sure you want to delete ${entry.hours} hours recorded on ${entry.date}, including its notes? This cannot be undone.`}
                 onEdit={handleEdit}

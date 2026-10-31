@@ -3,7 +3,7 @@
  * and one summary per session (times, duration, exercise/set counts, volume).
  */
 import type { GymSession } from '@/types';
-import { formatClock, weekStartIso } from '@/lib/historyDates';
+import { dayDiff, formatClock, weekStartIso } from '@/lib/historyDates';
 import {
   exercisePreview,
   parseWorkoutNotes,
@@ -95,4 +95,27 @@ export const summarizeWeek = (sessions: readonly GymSession[]): WeekTotals => {
   const durations = sessions.map((s) => (Number.isFinite(s.duration) && s.duration > 0 ? Math.round(s.duration) : 0));
   const total = durations.reduce((sum, d) => sum + d, 0);
   return { count: sessions.length, minutes: total > 0 ? total : null };
+};
+
+export const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+
+/**
+ * Which days of a Monday-to-Sunday week have at least one workout: seven booleans, Monday first.
+ * Only meaningful for a week shown in full (the caller skips it when a filter hides part of the week).
+ */
+export const trainedDays = (sessions: readonly GymSession[], weekStart: string): boolean[] => {
+  const days = [false, false, false, false, false, false, false];
+  for (const session of sessions) {
+    const offset = dayDiff(session.date, weekStart);
+    if (offset !== null && offset >= 0 && offset < 7) days[offset] = true;
+  }
+  return days;
+};
+
+/** "Monday, Wednesday and Friday", or null when no day is marked. */
+export const describeTrainedDays = (days: readonly boolean[]): string | null => {
+  const names = WEEKDAY_NAMES.filter((_, i) => days[i]);
+  if (names.length === 0) return null;
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 };

@@ -27,6 +27,8 @@ import {
 } from '../src/lib/mealHistory';
 import {
   countSessionsByWeek,
+  describeTrainedDays,
+  trainedDays,
   formatKg,
   formatMinutes,
   groupSessionsByWeek,
@@ -228,5 +230,23 @@ describe('workout week grouping and summaries', () => {
     assert.equal(formatKg(52.5), '52.5 kg');
     assert.deepEqual(summarizeWeek([session('a', '2026-10-26', { duration: 40 }), session('b', '2026-10-27', { duration: 35 })]), { count: 2, minutes: 75 });
     assert.deepEqual(summarizeWeek([session('a', '2026-10-26', { duration: 0 })]), { count: 1, minutes: null });
+  });
+});
+
+describe('workout week pattern', () => {
+  test('marks the days of a Monday-to-Sunday week that have a workout; two workouts on one day count once', () => {
+    const days = trainedDays(
+      [session('a', '2026-10-26'), session('b', '2026-10-28'), session('c', '2026-10-28'), session('d', '2026-11-01')],
+      '2026-10-26',
+    );
+    assert.deepEqual(days, [true, false, true, false, false, false, true]);
+  });
+  test('ignores sessions that fall outside the week and bad dates', () => {
+    assert.deepEqual(trainedDays([session('a', '2026-10-25'), session('b', '2026-11-02'), session('c', 'nope')], '2026-10-26'), [false, false, false, false, false, false, false]);
+  });
+  test('describes the days in words for screen readers', () => {
+    assert.equal(describeTrainedDays([true, false, true, false, true, false, false]), 'Monday, Wednesday and Friday');
+    assert.equal(describeTrainedDays([false, false, false, false, false, false, true]), 'Sunday');
+    assert.equal(describeTrainedDays([false, false, false, false, false, false, false]), null);
   });
 });

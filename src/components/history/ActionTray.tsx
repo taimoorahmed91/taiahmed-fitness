@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
@@ -19,8 +19,13 @@ const INLINE_REVEAL =
   '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 group-focus-within/row:opacity-100 transition-opacity motion-reduce:transition-none';
 
 export const ActionTray = ({ label, children, className }: { label: string; children: ReactNode; className?: string }) => (
-  <div role="group" aria-label={label} className={cn('grid grid-cols-2 gap-2 sm:flex sm:flex-wrap', className)}>
-    {children}
+  <div role="group" aria-label={label} className={className}>
+    {/* A quiet caption and rule, so the buttons read as the end of the open row rather than a separate block. */}
+    <p aria-hidden="true" className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      Actions
+      <span className="h-px flex-1 bg-border" />
+    </p>
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{children}</div>
   </div>
 );
 
@@ -64,10 +69,12 @@ export const HistoryAction = ({ variant, label, text, tooltip, icon, onClick, pr
       aria-label={label}
       aria-pressed={pressed}
       onClick={onClick}
-      className={cn(TRAY_BUTTON, pressed && !emphasis && 'border-primary bg-accent text-accent-foreground', className)}
+      className={cn(TRAY_BUTTON, !emphasis && 'bg-card', pressed && !emphasis && 'border-primary bg-accent text-accent-foreground', className)}
     >
       {icon}
       {text}
+      {/* A tick as well as the tint, so an "on" toggle never depends on colour. */}
+      {pressed && <Check aria-hidden="true" />}
     </Button>
   );
 };

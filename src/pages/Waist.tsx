@@ -15,7 +15,7 @@ import { Ruler, Plus, AlertCircle } from 'lucide-react';
 import { useWaist, WaistEntry } from '@/hooks/useWaist';
 import { useDataFilter } from '@/hooks/useDataFilter';
 import { MetricHistoryList } from '@/components/history/MetricHistoryList';
-import { fmt, rangeOf } from '@/lib/bodyHistory';
+import { fmt, formatChange, netChangeOver, rangeOf } from '@/lib/bodyHistory';
 import { defaultFormDate } from '@/lib/dayLabels';
 import { useSharedTableState } from '@/lib/sharedTable';
 import { tableView } from '@/components/feedback/tableView';
@@ -27,10 +27,16 @@ import { useUserSettings } from '@/hooks/useUserSettings';
 
 const getWaist = (entry: WaistEntry) => entry.waist;
 
-/** Month heading fact: the lowest and highest reading, only when the month has at least two. Plain numbers, no verdict. */
-const monthFacts = (items: WaistEntry[]) => {
+/** Month heading number: the lowest and highest reading, only when the month has at least two. Plain numbers, no verdict. */
+const monthStat = (items: WaistEntry[]) => {
   const r = rangeOf(items.map(getWaist));
-  return r && r.count >= 2 ? [`Range ${fmt(r.min, 2)}–${fmt(r.max, 2)} cm`] : [];
+  return r && r.count >= 2 ? { value: `${fmt(r.min, 2)}–${fmt(r.max, 2)}`, unit: 'cm', label: 'range' } : null;
+};
+
+/** Month heading fact: the plain difference between the first and last reading of the month. Never a verdict. */
+const monthFacts = (items: WaistEntry[]) => {
+  const net = netChangeOver(items, getWaist);
+  return net === null ? [] : [net === 0 ? 'No net change' : `Net ${formatChange(net, 'cm')}`];
 };
 
 const Waist = () => {
@@ -262,6 +268,7 @@ const Waist = () => {
               latest={latestWaist}
               unit="cm"
               totalEntries={entries.length}
+              ruler
               emptyText="No waist entries yet"
               deltas={[
                 { label: 'vs Previous', value: waistChange },
@@ -335,6 +342,8 @@ const Waist = () => {
                 entryNoun="waist entry"
                 countNoun={{ one: 'entry', many: 'entries' }}
                 showChange
+                variant="measurement"
+                monthStat={monthStat}
                 monthFacts={monthFacts}
                 deleteTitle="Delete waist entry?"
                 deleteDescription={(entry) => `Are you sure you want to delete ${entry.waist} cm recorded on ${entry.date}, including its notes? This cannot be undone.`}

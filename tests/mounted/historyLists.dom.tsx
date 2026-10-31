@@ -228,6 +228,48 @@ describe('mounted: grouped Meals and Gym history', () => {
       assert.equal(all('section').length, 2);
     });
 
+    test('day band: a date badge and the day total are decoration plus words; the badge is hidden from screen readers', async () => {
+      await mountMeals(baseMeals());
+      const [today] = all('section h4');
+      const band = today.parentElement!;
+      const badge = band.querySelector('[aria-hidden="true"]');
+      assert.ok(badge, 'a marker sits on the band');
+      assert.match(text(badge), /\d/);
+      assert.match(headerOf(today), /860 cal day total/);
+      // The total is words and numbers, so it reads the same without any colour.
+      assert.equal(band.querySelector('[class*="text-chart"], [class*="text-destructive"]'), null);
+    });
+
+    test("today's band can say how many calories are left or over, in words, and only today's band does", async () => {
+      await mountMeals(baseMeals(), { caloriesRemainingToday: 1140.4 });
+      const [today, yesterday] = all('section h4');
+      assert.match(headerOf(today), /860 cal 1,140 cal left/);
+      assert.doesNotMatch(headerOf(yesterday), /left|over/);
+      await root0unmount();
+      await mountMeals(baseMeals(), { caloriesRemainingToday: -120.2 });
+      assert.match(headerOf(all('section h4')[0]), /121 cal over/);
+    });
+
+    test('a pinned meal shows the words "Quick add" on its row, and screen readers still hear "pinned to quick add"', async () => {
+      await mountMeals(baseMeals());
+      assert.doesNotMatch(text(disclosure('Chicken rice bowl')), /Quick add/, 'not pinned: no badge');
+      await clickEl(disclosure('Chicken rice bowl'));
+      await clickEl(byLabel('Pin Chicken rice bowl to quick add'));
+      const row = disclosure('Chicken rice bowl')!;
+      assert.match(text(row), /Quick add/);
+      assert.match(text(row), /\(pinned to quick add\)/);
+      // The tray toggle carries a tick as well as a tint.
+      assert.ok(byLabel('Pin Chicken rice bowl to quick add')!.querySelector('svg.lucide-check'), 'tick on the pressed toggle');
+    });
+
+    test('the timeline is decoration: it adds no list items, buttons or text', async () => {
+      await mountMeals(baseMeals());
+      assert.equal(all('li').length, 3);
+      const nodes = all('li [aria-hidden="true"].relative');
+      assert.ok(nodes.length >= 3, 'one timeline slot per meal');
+      for (const node of nodes) assert.equal(text(node), '');
+    });
+
     test('wide screens: aligned columns, inline icon actions, no disclosure buttons', async () => {
       setViewport(1280);
       await mountMeals(baseMeals());
@@ -356,6 +398,27 @@ describe('mounted: grouped Meals and Gym history', () => {
       assert.match(text(q('[role="status"]')), /Showing 1 of 3 workouts/);
       assert.match(headerOf(all('section h4')[0]), /1 of 2 workouts shown/);
       assert.doesNotMatch(headerOf(all('section h4')[0]), /min/);
+    });
+
+    test('week band: a seven-day pattern with the same facts in words; absent when a filter hides part of the week', async () => {
+      await mountGym(baseSessions());
+      const band = all('section h4')[0].parentElement!;
+      assert.match(text(band), /Trained on \w+\./);
+      assert.match(text(band.querySelector('[aria-hidden="true"].gap-1')), /^MTWTFSS$/);
+      const everything = baseSessions();
+      await root0unmount();
+      await mountGym([everything[1]], { allSessions: everything });
+      assert.doesNotMatch(text(all('section h4')[0].parentElement), /Trained on/);
+    });
+
+    test('collapsed summary shows its numbers as labelled cells, and a workout with no stats shows only the duration', async () => {
+      await mountGym(baseSessions());
+      const push = disclosure('Push day')!;
+      const cells = [...push.querySelectorAll('span.border-l-2')].map((c) => text(c));
+      assert.deepEqual(cells.slice(0, 3), ['55 min duration', '2 exercises', '5 sets']);
+      assert.match(cells[3], /1,220 kg volume/);
+      const jog = disclosure('Easy jog')!;
+      assert.deepEqual([...jog.querySelectorAll('span.border-l-2')].map((c) => text(c)), ['25 min duration']);
     });
 
     test('empty states tell "nothing logged" apart from "nothing matches"', async () => {

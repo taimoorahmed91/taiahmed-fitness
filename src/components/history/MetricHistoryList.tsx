@@ -1,13 +1,15 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Pencil } from 'lucide-react';
-import { HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
-import { HistoryRow } from '@/components/history/HistoryRow';
+import { ArrowDown, ArrowUp, Minus, Moon, Pencil, Ruler } from 'lucide-react';
+import { GroupGlyph, GroupStat, HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
+import { HistoryRow, TimelineNode } from '@/components/history/HistoryRow';
+import type { HistoryVariant } from '@/components/history/historyVariants';
 import { ActionTray, HistoryAction, HistoryDeleteAction, HistoryInlineActions } from '@/components/history/ActionTray';
 import { HistoryPager } from '@/components/history/HistoryPager';
 import { useGroupPagination } from '@/components/history/useGroupPagination';
 import { HISTORY_MD, useMinWidth } from '@/components/history/useMinWidth';
 import { DayStamp } from '@/components/history/DayStamp';
 import { BandChip } from '@/components/history/BandChip';
+import { SleepBar } from '@/components/history/SleepBar';
 import { defaultToday, formatDay, formatShortDay } from '@/lib/historyDates';
 import {
   buildChangeMap,
@@ -32,6 +34,12 @@ import { cn } from '@/lib/utils';
  *  - Fine pointer, 768px and wider: aligned Date / Value / Change-or-Quality / Notes columns with compact inline actions.
  *  - Change from the previous entry is a plain, neutral difference (never good/bad, never colour).
  *  - Paging is by whole months, so a month's heading always describes everything under it.
+ *
+ * `variant` gives each diary its own look on top of that same structure:
+ *  - "default"      plain grey (Weight). Unchanged.
+ *  - "sleep"        a calm lavender-tinted band with a moon, a quality word, and a thin duration bar per night.
+ *  - "measurement"  a neutral ruler: an axis with a tick per reading, the number large, the change as a plain chip.
+ *    Neither adds good/bad colour. The duration bar is only a picture of the number beside it, never a target.
  */
 export interface MetricEntry {
   id: string;
@@ -71,10 +79,20 @@ export interface MetricHistoryListProps<T extends MetricEntry> {
   band?: (entry: T) => EntryBand | null;
   /** Month heading facts for a month shown in full. Only called when nothing is filtered out of it. */
   monthFacts?: (items: T[]) => ReactNode[];
+  /** One headline number for a month shown in full (shown large on the right of the month heading). */
+  monthStat?: (items: T[]) => MonthStat | null;
+  variant?: Extract<HistoryVariant, 'default' | 'sleep' | 'measurement'>;
   deleteTitle: string;
   deleteDescription: (entry: T) => string;
   onEdit: (entry: T) => void;
   onDelete: (id: string) => unknown | Promise<unknown>;
+}
+
+export interface MonthStat {
+  value: string;
+  unit?: string;
+  /** Says what the number is: "avg per night", "range". */
+  label: string;
 }
 
 const MONTHS_PER_PAGE = 3;
@@ -93,7 +111,7 @@ interface PageGroup<T> {
 export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryListProps<T>) => {
   const {
     entries, allEntries, sortOrder, sortName, getValue, valueLabel, unit, spokenUnit, entryNoun, countNoun,
-    showChange = false, band, monthFacts, deleteTitle, deleteDescription, onEdit, onDelete,
+    showChange = false, band, monthFacts, monthStat, variant = 'default', deleteTitle, deleteDescription, onEdit, onDelete,
   } = props;
   const isDesktop = useMinWidth(HISTORY_MD, true);
   const today = defaultToday();
@@ -130,11 +148,17 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
 
   const hasExtra = showChange || !!band;
   const extraLabel = showChange ? 'Change' : band ? 'Quality' : null;
+  // Only the measurement look draws an axis (and only in month groups: a value-sorted list mixes months).
+  const axis = variant === 'measurement' && !flat;
+  const grid = desktopGrid(hasExtra, axis);
 
   const renderRow = (entry: T) => (
     <MetricRow
       key={entry.id}
       entry={entry}
+      variant={variant}
+      axis={axis}
+      grid={grid}
       desktop={isDesktop}
       flat={flat}
       today={today}
@@ -155,6 +179,8 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
     />
   );
 
+  const glyph = variant === 'sleep' ? <Moon aria-hidden="true" /> : variant === 'measurement' ? <Ruler aria-hidden="true" /> : null;
+
   return (
     <div>
       {flat && (
@@ -164,7 +190,8 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
       )}
       {isDesktop && (
         <div aria-hidden="true" className="flex border-y py-1.5 text-xs font-medium text-muted-foreground">
-          <span className={cn('min-w-0 flex-1 px-4', hasExtra ? DESKTOP_GRID_WITH_EXTRA : DESKTOP_GRID)}>
+          <span className={cn('min-w-0 flex-1 px-4', grid)}>
+            {axis && <span />}
             <span>Date</span>
             <span className="text-right">{valueLabel}</span>
             {extraLabel && <span>{extraLabel}</span>}
@@ -175,7 +202,7 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
         </div>
       )}
       {flat ? (
-        <HistoryList className={isDesktop ? 'border-b' : 'border-y'}>{pageGroups.map((g) => renderRow(g.items[0]))}</HistoryList>
+        <HistoryList variant={variant} className={isDesktop ? 'border-b' : 'border-y'}>{pageGroups.map((g) => renderRow(g.items[0]))}</HistoryList>
       ) : (
         pageGroups.map((group) => {
           const inMonth = perMonth[group.month ?? ''] ?? group.items.length;
@@ -184,13 +211,17 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
           const facts = partial
             ? [group.items.length === inMonth ? `${group.items.length} ${noun} shown` : `${group.items.length} of ${inMonth} ${inMonth === 1 ? countNoun.one : countNoun.many} shown`]
             : [`${group.items.length} ${noun}`, ...(monthFacts ? monthFacts(group.items) : [])];
+          const stat = partial ? null : monthStat?.(group.items) ?? null;
           return (
             <HistoryGroup
               key={group.key}
+              variant={variant}
+              marker={glyph ? <GroupGlyph variant={variant}>{glyph}</GroupGlyph> : undefined}
+              stat={stat ? <GroupStat value={stat.value} unit={stat.unit} label={stat.label} /> : undefined}
               title={<time dateTime={group.month}>{monthTitle(group.month ?? group.key)}</time>}
               summary={facts}
             >
-              <HistoryList>{group.items.map(renderRow)}</HistoryList>
+              <HistoryList variant={variant} className={variant === 'default' ? undefined : 'py-1'}>{group.items.map(renderRow)}</HistoryList>
             </HistoryGroup>
           );
         })
@@ -200,11 +231,32 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
   );
 };
 
-const DESKTOP_GRID = 'grid grid-cols-[7.5rem_6rem_minmax(0,1fr)] items-start gap-x-4';
-const DESKTOP_GRID_WITH_EXTRA = 'grid grid-cols-[7.5rem_6rem_9rem_minmax(0,1fr)] items-start gap-x-4';
+/** Desktop columns: [axis] Date, Value, [Change or Quality], Notes. */
+const desktopGrid = (hasExtra: boolean, axis: boolean): string => {
+  if (axis) {
+    return hasExtra
+      ? 'grid grid-cols-[0.75rem_7.5rem_6rem_9rem_minmax(0,1fr)] items-start gap-x-4'
+      : 'grid grid-cols-[0.75rem_7.5rem_6rem_minmax(0,1fr)] items-start gap-x-4';
+  }
+  return hasExtra ? 'grid grid-cols-[7.5rem_6rem_9rem_minmax(0,1fr)] items-start gap-x-4' : 'grid grid-cols-[7.5rem_6rem_minmax(0,1fr)] items-start gap-x-4';
+};
+
+/** The change from the previous entry as a neutral chip: an arrow for direction, never a colour for good or bad. */
+const ChangeChip = ({ delta, text }: { delta: number; text: string }) => {
+  const Icon = delta === 0 ? Minus : delta > 0 ? ArrowUp : ArrowDown;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-1.5 py-0.5 font-medium tabular-nums text-foreground">
+      <Icon aria-hidden="true" className="h-3 w-3 shrink-0" />
+      {text}
+    </span>
+  );
+};
 
 interface MetricRowProps<T extends MetricEntry> {
   entry: T;
+  variant: 'default' | 'sleep' | 'measurement';
+  axis: boolean;
+  grid: string;
   desktop: boolean;
   flat: boolean;
   today: string;
@@ -225,7 +277,7 @@ interface MetricRowProps<T extends MetricEntry> {
 }
 
 const MetricRow = <T extends MetricEntry>({
-  entry, desktop, flat, today, expanded, onExpandedChange, value, unit, spokenUnit, entryNoun, change, isFirstEver,
+  entry, variant, axis, grid, desktop, flat, today, expanded, onExpandedChange, value, unit, spokenUnit, entryNoun, change, isFirstEver,
   band, hasExtra, deleteTitle, deleteDescription, onEdit, onDelete,
 }: MetricRowProps<T>) => {
   const notes = entry.notes?.trim() || '';
@@ -233,12 +285,14 @@ const MetricRow = <T extends MetricEntry>({
   const changeText = change ? formatChange(change.delta, unit) : null;
   const sentence = change ? spokenChange(change, spokenUnit, 2, sinceText) : null;
   const name = `${entryNoun} from ${entry.date}`;
+  const showBar = variant === 'sleep';
+  const showChip = variant === 'measurement';
 
-  const actionList = (variant: 'tray' | 'inline') => [
-    <HistoryAction key="edit" variant={variant} label={`Edit ${name}`} text="Edit" icon={<Pencil aria-hidden="true" />} onClick={onEdit} />,
+  const actionList = (kind: 'tray' | 'inline') => [
+    <HistoryAction key="edit" variant={kind} label={`Edit ${name}`} text="Edit" icon={<Pencil aria-hidden="true" />} onClick={onEdit} />,
     <HistoryDeleteAction
       key="delete"
-      variant={variant}
+      variant={kind}
       label={`Delete ${name}`}
       confirmationTitle={deleteTitle}
       confirmationDescription={deleteDescription}
@@ -257,21 +311,26 @@ const MetricRow = <T extends MetricEntry>({
     const longNote = notes.length > LONG_NOTE || notes.includes('\n');
     return (
       <HistoryRow
+        variant={variant}
         expanded={expanded}
         onExpandedChange={onExpandedChange}
         reserveChevron
         panelLabel={`Notes for ${name}`}
         panel={longNote ? <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground"><span className="sr-only">Notes: </span>{notes}</p> : undefined}
         summary={
-          <span className={hasExtra ? DESKTOP_GRID_WITH_EXTRA : DESKTOP_GRID}>
+          <span className={cn('min-h-6', grid)}>
+            {axis && <TimelineNode variant="measurement" kind="tick" />}
             <span className="text-sm text-muted-foreground">
               <time dateTime={entry.date}>{formatDay(entry.date, today)}</time>
             </span>
-            <span className="text-right text-sm font-semibold tabular-nums">{valueText}</span>
+            <span className={cn('text-right font-semibold tabular-nums', variant === 'default' ? 'text-sm' : 'text-base')}>
+              {valueText}
+              {showBar && <SleepBar hours={value} className="mt-1" />}
+            </span>
             {change && changeText ? (
               <span className="text-sm tabular-nums">
-                {changeText}
-                <span className="block text-xs text-muted-foreground">since {sinceText}</span>
+                {showChip ? <ChangeChip delta={change.delta} text={changeText} /> : changeText}
+                <span className="mt-0.5 block text-xs text-muted-foreground">since {sinceText}</span>
                 <span className="sr-only">{sentence}</span>
               </span>
             ) : band ? (
@@ -295,21 +354,25 @@ const MetricRow = <T extends MetricEntry>({
 
   return (
     <HistoryRow
+      variant={variant}
       expanded={expanded}
       onExpandedChange={onExpandedChange}
       panelLabel={`Details for ${name}`}
       summary={
-        <span className="flex w-full items-start gap-2.5">
+        <span className="flex min-h-6 w-full items-start gap-2.5">
           <DayStamp date={entry.date} withMonth={flat} today={today} />
+          {axis && <TimelineNode variant="measurement" kind="tick" />}
           <span className="min-w-0 flex-1 space-y-1">
             {band && (
               <span className="block">
                 <BandChip label={band.label} tone={band.tone} />
               </span>
             )}
-            {changeText && (
+            {showBar && <SleepBar hours={value} className="max-w-40" />}
+            {changeText && change && (
               <span className="block text-xs tabular-nums text-muted-foreground">
-                {changeText} since {sinceText}
+                {showChip ? <ChangeChip delta={change.delta} text={changeText} /> : changeText}{' '}
+                since {sinceText}
               </span>
             )}
             {!change && isFirstEver && <span className="block text-xs text-muted-foreground">First entry</span>}
@@ -321,7 +384,7 @@ const MetricRow = <T extends MetricEntry>({
             )}
           </span>
           <span className="shrink-0 text-right leading-tight">
-            <span className="block text-base font-semibold tabular-nums">{String(value)}</span>{' '}
+            <span className={cn('block font-semibold tabular-nums', variant === 'default' ? 'text-base' : 'text-xl')}>{String(value)}</span>{' '}
             <span className="block text-xs text-muted-foreground">{unit}</span>
           </span>
         </span>

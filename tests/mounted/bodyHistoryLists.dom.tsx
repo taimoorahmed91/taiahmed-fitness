@@ -279,6 +279,70 @@ describe('mounted: body and WHOOP history', () => {
     });
   });
 
+  describe('Sleep and Waist looks (variants)', () => {
+    type S = { id: string; date: string; hours: number; notes?: string };
+    const nights: S[] = [
+      { id: 's3', date: '2026-10-29', hours: 7.5 },
+      { id: 's2', date: '2026-10-28', hours: 6, notes: 'Woke twice' },
+      { id: 's1', date: '2026-10-27', hours: 9.5 },
+    ];
+    const mountVariant = (variant: 'sleep' | 'measurement', props: Record<string, unknown> = {}) =>
+      mount(
+        React.createElement(MetricHistoryList, {
+          entries: nights, allEntries: nights, sortOrder: null, sortName: 'hours', getValue: (e: S) => e.hours,
+          valueLabel: 'Hours', unit: variant === 'sleep' ? 'h' : 'cm', spokenUnit: 'hours', entryNoun: 'entry',
+          countNoun: { one: 'night', many: 'nights' }, variant,
+          deleteTitle: 'Delete?', deleteDescription: () => 'Delete?', onEdit: () => {}, onDelete: () => {}, ...props,
+        }),
+      );
+
+    test('a month stat sits on the band with a label, and only when the page supplies one for a month shown in full', async () => {
+      const monthStat = (items: S[]) => (items.length >= 3 ? { value: '7.7', unit: 'h', label: 'avg per night' } : null);
+      await mountVariant('sleep', { band: (e: S) => sleepBand(e.hours), monthStat });
+      assert.match(headerOf(all('section h4')[0]), /7\.7 h avg per night/);
+      await root0unmount();
+      // A filter that hides part of the month removes the number rather than describing a subset.
+      await mountVariant('sleep', { band: (e: S) => sleepBand(e.hours), monthStat, entries: nights.slice(0, 2) });
+      assert.doesNotMatch(headerOf(all('section h4')[0]), /avg per night/);
+      assert.match(headerOf(all('section h4')[0]), /2 of 3 nights shown/);
+    });
+
+    test('sleep rows draw a duration bar that is decoration only (hidden from screen readers, no text)', async () => {
+      await mountVariant('sleep', { band: (e: S) => sleepBand(e.hours) });
+      const bars = all('li [aria-hidden="true"].overflow-hidden');
+      assert.equal(bars.length, 3);
+      assert.deepEqual(bars.map((b) => (b.firstElementChild as HTMLElement).style.width), ['63%', '50%', '79%']);
+      for (const bar of bars) assert.equal(text(bar), '');
+    });
+
+    test('a long night is "Long", never worded as poor, and keeps its word on the row', async () => {
+      await mountVariant('sleep', { band: (e: S) => sleepBand(e.hours) });
+      assert.match(text(disclosure('9.5')), /Long/);
+    });
+
+    test('measurement rows: the change is a neutral chip with an arrow and words, and no colour for good or bad', async () => {
+      await mountVariant('measurement', { showChange: true });
+      const row = disclosure('7.5')!;
+      assert.match(text(row), /\+1\.5 cm since Oct 28/);
+      assert.equal(row.querySelector('[class*="text-chart"], [class*="bg-chart"], [class*="text-destructive"], [class*="text-primary"]'), null);
+      assert.ok(row.querySelector('svg[aria-hidden="true"]'), 'the arrow is decorative');
+    });
+
+    test('measurement groups draw a ruler axis made of decoration only', async () => {
+      await mountVariant('measurement', { showChange: true });
+      const slots = all('li [aria-hidden="true"].relative');
+      assert.equal(slots.length, 3);
+      for (const slot of slots) assert.equal(text(slot), '');
+      assert.equal(all('li').length, 3);
+    });
+
+    test('a value-sorted measurement list is flat: no months and no axis', async () => {
+      await mountVariant('measurement', { showChange: true, sortOrder: 'desc' });
+      assert.equal(all('section').length, 0);
+      assert.equal(all('li [aria-hidden="true"].relative').length, 0);
+    });
+  });
+
   // ---------------------------------------------------------------- WHOOP
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const whoop = (date: string, over: Record<string, unknown> = {}): any => ({

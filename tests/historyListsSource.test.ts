@@ -19,6 +19,9 @@ const HISTORY = [
   'src/components/history/WhoopHistoryList.tsx',
   'src/components/history/BandChip.tsx',
   'src/components/history/DayStamp.tsx',
+  'src/components/history/historyVariants.ts',
+  'src/components/history/SleepBar.tsx',
+  'src/components/history/WeekPattern.tsx',
 ];
 const PALETTE = /\b(?:bg|text|border|fill|stroke|from|to|ring|divide)-(?:red|green|blue|yellow|orange|amber|emerald|rose|purple|violet|pink|cyan|teal|sky|indigo|lime|fuchsia|slate|gray|zinc|neutral|stone|white|black)(?:-\d{2,3})?\b/g;
 
@@ -95,6 +98,46 @@ describe('history lists: row structure', () => {
   });
   test('group headers stick only on tall screens', () => {
     assert.match(read('src/components/history/HistoryGroup.tsx'), /\[@media\(min-height:40rem\)\]:sticky/);
+  });
+});
+
+describe('history lists: visual system', () => {
+  const variants = read('src/components/history/historyVariants.ts');
+  test('every variant is made from existing colour tokens only', () => {
+    assert.doesNotMatch(variants, /hsl\(\d/);
+    for (const token of variants.match(/var\(--[a-z0-9-]+\)/g) ?? []) {
+      assert.match(token, /var\(--(primary|chart-2|chart-3|foreground)\)/);
+    }
+  });
+  test('the variants the pages use all exist', () => {
+    for (const name of ['default', 'meal', 'workout', 'sleep', 'measurement']) assert.match(variants, new RegExp(`\\b${name}: \\{`));
+  });
+  test('group bands keep an opaque layer under the sticky heading, and hide their marker from screen readers', () => {
+    const group = read('src/components/history/HistoryGroup.tsx');
+    assert.match(group, /bg-card \[@media\(min-height:40rem\)\]:sticky/);
+    assert.match(group, /aria-hidden="true" className="col-start-1 row-span-2/);
+  });
+  test('the timeline and the week pattern are decorative', () => {
+    assert.match(read('src/components/history/HistoryRow.tsx'), /TimelineNode[\s\S]*aria-hidden="true"/);
+    assert.match(read('src/components/history/WeekPattern.tsx'), /sr-only/);
+    assert.match(read('src/components/history/SleepBar.tsx'), /aria-hidden="true"/);
+  });
+  test('arbitrary min-width variants use px (rem values are silently dropped by this Tailwind setup)', () => {
+    for (const file of [...LISTS, ...HISTORY]) assert.doesNotMatch(read(file), /min-\[[\d.]+rem\]/, file);
+  });
+  test('a pinned meal says so in words, not only with a coloured bolt', () => {
+    const src = read('src/components/MealList.tsx');
+    assert.match(src, /PinnedBadge/);
+    assert.match(src, /Quick add<\/span>/);
+    assert.match(src, /\(pinned to quick add\)/);
+  });
+  test('the tray marks an "on" toggle with a tick as well as a tint', () => {
+    assert.match(read('src/components/history/ActionTray.tsx'), /pressed && <Check/);
+  });
+  test('Waist stays neutral: no good/bad colour in the measurement look or its change chip', () => {
+    const variants = read('src/components/history/historyVariants.ts');
+    const measurement = variants.slice(variants.indexOf('measurement: {'));
+    assert.doesNotMatch(measurement, /chart-|destructive|primary/);
   });
 });
 
