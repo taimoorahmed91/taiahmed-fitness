@@ -203,7 +203,7 @@ describe('page wiring (source)', () => {
 
   test('Dashboard no longer decides readiness from loading flags alone, and the insights card is gated', () => {
     assert.equal(/todayReady|targetsReady/.test(dash), false);
-    assert.match(dash, /gate\('insights'[\s\S]*<CrossMetricSummaryCard \/>/);
+    assert.match(dash, /gate\('insights'[\s\S]*<CrossMetricSummaryCard onSelectDate=\{openCalendarDay\} \/>/);
     // The only place CrossMetricSummaryCard renders is inside that gate.
     assert.equal((dash.match(/<CrossMetricSummaryCard/g) ?? []).length, 1);
   });

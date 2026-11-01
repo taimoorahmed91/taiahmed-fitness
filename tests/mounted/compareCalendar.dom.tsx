@@ -94,7 +94,7 @@ mock.module('@/hooks/useGymSessions', () => ({ useGymSessions: () => (useVersion
 mock.module('@/hooks/useWeight', () => ({ useWeight: () => (useVersion(), { entries: rows('weight', data.weight), refetch: refetchFor('weight') }) }));
 mock.module('@/hooks/useSleep', () => ({ useSleep: () => (useVersion(), { entries: rows('sleep', data.sleep), refetch: refetchFor('sleep') }) }));
 mock.module('@/hooks/useWaist', () => ({ useWaist: () => (useVersion(), { entries: rows('waist', data.waist), refetch: refetchFor('waist') }) }));
-mock.module('@/hooks/useDailyNotes', () => ({ useDailyNotes: () => (useVersion(), { notes: rows('daily_notes', data.notes), refetch: refetchFor('daily_notes') }), SYMPTOM_TAGS: [] }));
+mock.module('@/hooks/useDailyNotes', () => ({ useDailyNotes: () => (useVersion(), { notes: rows('daily_notes', data.notes), refetch: refetchFor('daily_notes'), saveNote: async () => true, userId: 'u', isDemo: false }), SYMPTOM_TAGS: [] }));
 
 describe('mounted: Compare and Calendar', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -318,7 +318,7 @@ describe('mounted: Compare and Calendar', () => {
       await loadCalendar();
       assert.equal(all('h1').length, 1);
       assert.deepEqual(all('h2').map((h) => text(h).replace(/\s*Today$/, '')), [monthLabel(TODAY), longDay(TODAY)]);
-      assert.deepEqual(all('#calendar-day-detail h3').map((h) => text(h)), ['Meals', 'Workouts', 'Body', 'Recovery', 'Notes']);
+      assert.deepEqual(all('[data-day-detail] h3').map((h) => text(h)), ['Meals', 'Workouts', 'Body', 'Recovery', 'Notes']);
       assert.deepEqual(all('h3').map((h) => text(h)).slice(0, 1), ['This month, and what the shapes mean']);
     });
 
@@ -330,7 +330,7 @@ describe('mounted: Compare and Calendar', () => {
       assert.match(todayBtn.getAttribute('aria-label')!, /, today, /);
       assert.match(todayBtn.className, /ring-2 ring-inset ring-primary/, 'selected outline');
       assert.ok(todayBtn.querySelector('span.rounded-full.bg-primary'), 'today disc around the number');
-      assert.match(text(q('#calendar-day-detail')), /Today/);
+      assert.match(text(q('[data-day-detail]')), /Today/);
       assert.equal(dayButtons().filter((b) => b.getAttribute('aria-pressed') === 'true').length, 1);
     });
 
@@ -362,14 +362,14 @@ describe('mounted: Compare and Calendar', () => {
       await clickEl(dayButton(YESTERDAY));
       assert.equal(dayButton(YESTERDAY).getAttribute('aria-pressed'), 'true');
       assert.equal(dayButton(TODAY).getAttribute('aria-pressed'), 'false');
-      assert.match(text(q('#calendar-day-detail h2')), new RegExp(longDay(YESTERDAY)));
-      assert.match(text(q('#calendar-day-detail')), /Push/);
-      assert.match(text(q('#calendar-day-detail')), /2 entries across 2 areas/);
+      assert.match(text(q('[data-day-detail] h2')), new RegExp(longDay(YESTERDAY)));
+      assert.match(text(q('[data-day-detail]')), /Push/);
+      assert.match(text(q('[data-day-detail]')), /2 entries across 2 areas/);
     });
 
     test('meals are listed in clock order inside one group, not one card per event', async () => {
       await loadCalendar();
-      const meals = q('#calendar-day-detail section')!;
+      const meals = q('[data-day-detail] section')!;
       assert.equal(text(meals.querySelector('h3')), 'Meals');
       const rows = [...meals.querySelectorAll('li')].map((li) => text(li));
       assert.equal(rows.length, 2);
@@ -377,7 +377,7 @@ describe('mounted: Compare and Calendar', () => {
       assert.match(rows[1], /^19:30Pasta/);
       // Name on one line, facts on one wrapping line (not one line per fact), so a row stays short on a phone.
       assert.equal(meals.querySelectorAll('li')[0].querySelectorAll('span.block').length, 2);
-      assert.equal(q('#calendar-day-detail')!.querySelectorAll('ul').length, 5);
+      assert.equal(q('[data-day-detail]')!.querySelectorAll('ul').length, 5);
     });
 
     test('month navigation moves the heading, keeps the selection and has accessible names', async () => {
@@ -389,7 +389,7 @@ describe('mounted: Compare and Calendar', () => {
       await clickEl(next);
       assert.notEqual(text(q('#calendar-month-heading')), monthLabel(TODAY));
       // The selected day is still today, shown in the agenda.
-      assert.match(text(q('#calendar-day-detail h2')), new RegExp(longDay(TODAY)));
+      assert.match(text(q('[data-day-detail] h2')), new RegExp(longDay(TODAY)));
       await clickEl(byLabel('Previous month'));
       assert.equal(text(q('#calendar-month-heading')), monthLabel(TODAY));
       assert.equal(dayButton(TODAY).getAttribute('aria-pressed'), 'true');
@@ -407,11 +407,11 @@ describe('mounted: Compare and Calendar', () => {
       await loadCalendar();
       await clickEl(byLabel('Next day'));
       const tomorrow = day(TODAY, 1);
-      assert.match(text(q('#calendar-day-detail h2')), new RegExp(longDay(tomorrow)));
+      assert.match(text(q('[data-day-detail] h2')), new RegExp(longDay(tomorrow)));
       assert.equal(text(q('#calendar-month-heading')), monthLabel(tomorrow), 'the grid follows the selected day');
       await clickEl(byLabel('Previous day'));
       await clickEl(byLabel('Previous day'));
-      assert.match(text(q('#calendar-day-detail h2')), new RegExp(longDay(YESTERDAY)));
+      assert.match(text(q('[data-day-detail] h2')), new RegExp(longDay(YESTERDAY)));
       assert.equal(text(q('#calendar-month-heading')), monthLabel(YESTERDAY));
     });
 
@@ -431,7 +431,7 @@ describe('mounted: Compare and Calendar', () => {
       setAll('loading');
       await loadCalendar();
       assert.equal(/nothing logged/.test(dayButton(TODAY).getAttribute('aria-label')!), false);
-      assert.match(text(q('#calendar-day-detail')), /Loading entries/);
+      assert.match(text(q('[data-day-detail]')), /Loading entries/);
       assert.match(text(q('dl')), /–/);
       assert.match(text(q('#calendar-month-heading')!.parentElement), /Loading/);
     });
@@ -439,8 +439,8 @@ describe('mounted: Compare and Calendar', () => {
     test('an empty selected day is stated plainly', async () => {
       data.meals = []; data.gym = []; data.weight = []; data.sleep = []; data.notes = [];
       await loadCalendar();
-      assert.match(text(q('#calendar-day-detail')), /Nothing logged on this day\./);
-      assert.equal(q('#calendar-day-detail h3'), null);
+      assert.match(text(q('[data-day-detail]')), /Nothing logged on this day\./);
+      assert.equal(q('[data-day-detail] h3'), null);
     });
 
     test('phone strip repeats the selected day and offers a jump to its agenda', async () => {
@@ -449,10 +449,10 @@ describe('mounted: Compare and Calendar', () => {
       assert.ok(strip);
       assert.match(text(strip), /1,100 cal · 45 min · 70\.5 kg · 7\.5 h · 1 note/);
       let scrolled = 0;
-      q('#calendar-day-detail')!.scrollIntoView = () => { scrolled++; };
+      q('[data-day-detail]')!.scrollIntoView = () => { scrolled++; };
       await clickEl([...strip.querySelectorAll('button')].find((b) => text(b).startsWith('Details')));
       assert.equal(scrolled, 1);
-      assert.equal(doc().activeElement, q('#calendar-day-detail h2'));
+      assert.equal(doc().activeElement, q('[data-day-detail] h2'));
     });
   });
 
@@ -581,8 +581,8 @@ describe('mounted: Compare and Calendar', () => {
       assert.match(bodyText(), /Your meals, workouts, weigh-ins, waist logs, sleep logs and notes didn't load/);
       assert.equal(/nothing logged|nothing found|0 days|No entries|no entries/i.test(bodyText()), false, bodyText());
       assert.match(text(q('#calendar-month-heading')!.parentElement), /Couldn't load your entries/);
-      assert.match(text(q('#calendar-day-detail')), /The day's agenda is paused/);
-      assert.equal(q('#calendar-day-detail h3'), null);
+      assert.match(text(q('[data-day-detail]')), /The day's agenda is paused/);
+      assert.equal(q('[data-day-detail] h3'), null);
       // Navigation and the filter are still usable.
       assert.ok(byLabel('Previous month') && byLabel('Next month') && byLabel('Filter calendar entries'));
       assert.ok(byLabel('Next day') && byLabel('Previous day'));
@@ -600,7 +600,7 @@ describe('mounted: Compare and Calendar', () => {
       assert.deepEqual(TABLES.filter((t) => refetchCalls[t] === 1), TABLES);
       assert.ok(dayButtons().length >= 28);
       assert.equal(alerts().length, 0);
-      assert.match(text(q('#calendar-day-detail')), /Meals/);
+      assert.match(text(q('[data-day-detail]')), /Meals/);
       assert.match(text(q('#calendar-month-heading')!.parentElement), /days? with entries/);
     });
 
@@ -617,8 +617,8 @@ describe('mounted: Compare and Calendar', () => {
       assert.match(text(stat('Notes').querySelector('dd')), /^–\s*not loaded$/);
       assert.match(text(stat('Workouts').querySelector('dd')), /^\d+$/);
       // Today's agenda shows what loaded, minus sleep and notes, and says what is missing.
-      assert.match(text(q('#calendar-day-detail')), /Couldn't load your sleep logs and notes/);
-      assert.equal(q('#calendar-day-detail')!.querySelectorAll('h3').length, 3, 'meals, workouts, body');
+      assert.match(text(q('[data-day-detail]')), /Couldn't load your sleep logs and notes/);
+      assert.equal(q('[data-day-detail]')!.querySelectorAll('h3').length, 3, 'meals, workouts, body');
       // A day with nothing in the loaded data is not "nothing logged".
       const quiet = dayButtons().find((b) => /no entries in the data that loaded/.test(b.getAttribute('aria-label')!));
       assert.ok(quiet, 'quiet days say so honestly');
@@ -636,7 +636,7 @@ describe('mounted: Compare and Calendar', () => {
       assert.deepEqual(TABLES.filter((t) => refetchCalls[t] > 0), ['sleep', 'daily_notes']);
       assert.equal(alerts().length, 0);
       assert.equal(all('dl > div').some((d) => /not loaded/.test(text(d))), false);
-      assert.match(text(q('#calendar-day-detail')), /Recovery/);
+      assert.match(text(q('[data-day-detail]')), /Recovery/);
     });
 
     test('a failed refresh keeps every row and shows a stale notice, not an error', async () => {
@@ -646,7 +646,7 @@ describe('mounted: Compare and Calendar', () => {
       assert.equal(alerts().length, 0);
       const notice = all('[role="status"]').find((n) => /Couldn't refresh your meals/.test(text(n)))!;
       assert.ok(notice);
-      assert.match(text(q('#calendar-day-detail')), /Oats/);
+      assert.match(text(q('[data-day-detail]')), /Oats/);
       assert.match(dayButtons().find((b) => b.getAttribute('aria-current') === 'date')!.getAttribute('aria-label')!, /2 meals/);
       await act(async () => click(env.window, within(notice, 'Try again')!));
       await settle();
@@ -657,7 +657,7 @@ describe('mounted: Compare and Calendar', () => {
     test('a genuinely empty calendar still says "Nothing logged" and shows zero totals', async () => {
       data.meals = []; data.gym = []; data.weight = []; data.sleep = []; data.notes = [];
       await loadCalendar();
-      assert.match(text(q('#calendar-day-detail')), /Nothing logged on this day\./);
+      assert.match(text(q('[data-day-detail]')), /Nothing logged on this day\./);
       assert.match(text(q('#calendar-month-heading')!.parentElement), /0 days with entries/);
       assert.equal(alerts().length, 0);
       assert.equal(all('[role="status"]').some((n) => /Couldn't/.test(text(n))), false);
@@ -673,7 +673,7 @@ describe('mounted: Compare and Calendar', () => {
       assert.equal(alerts().length, 0);
       TABLES.forEach((t) => setPhase(t, 'ready'));
       await act(async () => bump());
-      assert.match(text(q('#calendar-day-detail')), /Meals/);
+      assert.match(text(q('[data-day-detail]')), /Meals/);
     });
   });
 });

@@ -1,12 +1,21 @@
-import { forwardRef, type ComponentPropsWithoutRef, type ReactNode, type RefObject } from 'react';
-import { Maximize2 } from 'lucide-react';
+import { forwardRef, useEffect, useState, type ComponentPropsWithoutRef, type ReactNode, type RefObject } from 'react';
+import { ArrowDownUp, Download, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CloseButton } from '@/components/ui/close-button';
 import { DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { ChartDataTable } from '@/components/charts/ChartDataTable';
+import { ChartDaySelectionBar, ChartSelectedDayPanel } from '@/components/charts/ChartDaySelectionUi';
+import { ChartCompareViewerPanel } from '@/components/charts/ChartCompareUi';
+import type { ChartComparePicks } from '@/components/charts/useChartComparePicks';
+import type { ChartDaySelection } from '@/components/charts/useChartDaySelection';
+import { downloadTextFile } from '@/components/charts/downloadCsv';
+import { buildCsv, canExportCsv, csvFilename } from '@/lib/chartCsv';
+import { describeAsOf, describeTableOrder, type ChartViewerDataset, type TableDirection } from '@/lib/chartViewerData';
 
 /**
  * The one full-screen chart viewer. ChartHeader owns it (so every chart card gets it the same way) and
- * charts only say WHAT to draw in it: `viewer={{ render: () => <the same chart, expanded> }}`.
+ * charts only say WHAT to draw in it: `viewer={{ render: () => <the same chart, expanded>, dataset }}`.
  *
  * What it guarantees
  *  - It shows the very same chart as the card: the chart component keeps its range / line-bar state and
@@ -16,10 +25,29 @@ import { DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/co
  *  - Title, close button and controls stay put at the top; the chart (and its notes / summary) scroll
  *    below them when the screen is short. The page behind never scrolls (Radix locks it).
  *  - Escape, the close button, focus trap and focus return come from Radix Dialog.
+ *  - With a `dataset` it also offers Chart | Table (a view mode, independent of the card's range and line/bar state)
+ *    and a CSV download of exactly the rows in the chart's current range. It always opens on Chart.
  */
 export interface ChartViewerSpec {
   /** Draws the chart for the viewer. Called only while the viewer is open. Give the chart `expanded`. */
   render: () => ReactNode;
+  /**
+   * The complete filtered rows the plot draws, with their columns (see src/lib/chartViewerData.ts). Powers Table and
+   * CSV. Rows carry a stable identity (`dataset.rowId`) that day selection shares.
+   */
+  dataset?: ChartViewerDataset;
+  /**
+   * The chart's selected-day state (see useChartDaySelection). When it has selectable days, the viewer adds Previous /
+   * Next date buttons, makes Table rows selectable and shows the Calendar's day panel inline below the chart. The same
+   * state drives the card's readout, so both views always agree. Leave out for charts that opted out.
+   */
+  selection?: ChartDaySelection;
+  /**
+   * The chart's A / B picks for Compare (see useChartComparePicks). Only for charts whose points are exact Weight or manual Sleep
+   * records. Adds Set as A / Set as B for the selected point, the B - A readout, Swap, Clear and Open in Compare under the
+   * selected-day bar, and A / B marks in the Table. The same state shows a small summary on the card. Leave out for every other chart.
+   */
+  compare?: ChartComparePicks;
 }
 
 interface ChartFullscreenDialogProps {
@@ -41,6 +69,125 @@ const PAD_X = 'pl-[max(var(--overlay-pad),env(safe-area-inset-left))] pr-[max(va
 
 /** Rendered only while the dialog is open, so a closed card never builds the expanded chart. */
 const ViewerBody = ({ viewer }: { viewer: ChartViewerSpec }) => <>{viewer.render()}</>;
+
+type ViewerMode = 'chart' | 'table';
+
+/**
+ * Everything below the viewer header. It lives inside the dialog content, so its state (Chart | Table, sort direction)
+ * starts fresh on every open: the viewer always opens on the chart.
+ *
+ * The chart stays mounted in Table mode, moved off screen (and made inert and hidden from assistive technology), so
+ *  - the viewer PDF button still captures the viewer chart exactly as in Chart mode,
+ *  - switching back is instant and nothing re-measures, and
+ *  - the only screen-reader table that is exposed at any time is the visible one.
+ */
+const ViewerPanel = ({ title, captureRef, children, viewer }: { title: string; captureRef: RefObject<HTMLDivElement>; children?: ReactNode; viewer: ChartViewerSpec }) => {
+  const dataset = viewer.dataset;
+  const [mode, setMode] = useState<ViewerMode>('chart');
+  const [direction, setDirection] = useState<TableDirection>('newest-first');
+  const [exported, setExported] = useState<string | null>(null);
+  const tableMode = !!dataset && mode === 'table';
+
+  // `inert` is not in React 18's typings: set it on the element so the hidden chart cannot take focus.
+  useEffect(() => {
+    const el = captureRef.current;
+    if (!el) return;
+    if (tableMode) el.setAttribute('inert', '');
+    else el.removeAttribute('inert');
+  }, [tableMode, captureRef]);
+
+  const exportable = !!dataset && canExportCsv(dataset);
+  const exportCsv = () => {
+    if (!dataset) return;
+    const csv = buildCsv(dataset);
+    if (csv == null) return;
+    downloadTextFile(csvFilename(dataset), csv);
+    setExported(`Downloaded ${dataset.rows.length} ${dataset.rows.length === 1 ? 'row' : 'rows'} as CSV.`);
+  };
+
+  const stale = dataset?.status?.stale;
+  const unavailable = dataset?.status?.unavailable;
+  const asOf = stale ? describeAsOf(stale.asOf) : null;
+  const n = dataset?.rows.length ?? 0;
+  const selection = viewer.selection?.enabled ? viewer.selection : undefined;
+
+  return (
+    <div
+      data-chart-viewer-scroll=""
+      data-viewer-mode={tableMode ? 'table' : 'chart'}
+      className={`flex min-h-0 flex-1 flex-col overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] ${PAD_X} ${tableMode ? 'overflow-hidden' : 'overflow-y-auto'} ${dataset ? 'pt-0' : 'pt-3'}`}
+    >
+      {dataset && (
+        <div data-chart-viewer-toolbar="" data-html2canvas-ignore="true" className="sticky top-0 z-10 flex shrink-0 flex-wrap items-center gap-2 bg-background pb-2 pt-3">
+          <SegmentedControl<ViewerMode>
+            size="sm"
+            ariaLabel={`${title} view`}
+            value={mode}
+            onValueChange={(next) => { setMode(next); setExported(null); }}
+            options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'Table' }]}
+          />
+          {tableMode && dataset.chronological && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-chart-sort=""
+              aria-label={`Order: ${describeTableOrder(dataset, direction).toLowerCase()}. Switch to ${direction === 'newest-first' ? 'oldest' : 'newest'} first.`}
+              onClick={() => setDirection((d) => (d === 'newest-first' ? 'oldest-first' : 'newest-first'))}
+            >
+              <ArrowDownUp aria-hidden="true" />
+              {describeTableOrder(dataset, direction)}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-chart-csv=""
+            className="sm:ml-auto"
+            disabled={!exportable}
+            aria-label={exportable ? `Download ${title} as CSV, ${n} ${n === 1 ? 'row' : 'rows'}` : `CSV download unavailable: ${unavailable ? 'data is unavailable' : 'no rows in this range'}`}
+            title={exportable ? 'Every row of this range, oldest first' : undefined}
+            onClick={exportCsv}
+          >
+            <Download aria-hidden="true" />
+            CSV
+          </Button>
+          <p role="status" aria-live="polite" className="basis-full text-xs text-muted-foreground empty:hidden">{exported}</p>
+        </div>
+      )}
+      {dataset && (stale || unavailable) && (
+        <p role="status" data-chart-data-notice="" className="mb-2 shrink-0 rounded-md border border-chart-warn/40 bg-chart-warn/10 px-3 py-2 text-sm text-foreground">
+          {unavailable
+            ? `Data unavailable: ${unavailable.reason} Nothing to export.`
+            : `This data may be out of date: ${stale!.reason}${asOf ? ` Last loaded ${asOf}.` : ''} A CSV download is marked "stale" in its file name.`}
+        </p>
+      )}
+      <div
+        ref={captureRef}
+        data-chart-viewer-capture=""
+        aria-hidden={tableMode ? true : undefined}
+        className={tableMode ? 'pointer-events-none fixed -left-[10000px] top-0 flex w-[960px] flex-col gap-3 bg-background' : 'flex flex-1 flex-col gap-3 bg-background'}
+      >
+        {children}
+        <ViewerBody viewer={viewer} />
+      </div>
+      {/* Selected-day controls. Chart mode: bar and panel sit under the chart in the scrolling viewer. Table mode: the bar,
+          the table and the panel share one scroller, so the table keeps at least 14rem and the panel is reachable. */}
+      {(selection || (tableMode && dataset)) && (
+        <div
+          data-chart-viewer-selection=""
+          className={tableMode ? 'mt-0 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain' : 'mt-3 flex shrink-0 flex-col gap-3'}
+        >
+          {selection && <ChartDaySelectionBar selection={selection} />}
+          {selection && viewer.compare && <ChartCompareViewerPanel compare={viewer.compare} />}
+          {tableMode && dataset && <ChartDataTable dataset={dataset} direction={direction} selection={selection} compare={viewer.compare} />}
+          {selection?.selected && <ChartSelectedDayPanel day={selection.selected.day} />}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const ChartFullscreenDialog = ({ title, icon, description, controls, captureRef, children, viewer }: ChartFullscreenDialogProps) => (
   <DialogContent
@@ -68,12 +215,7 @@ export const ChartFullscreenDialog = ({ title, icon, description, controls, capt
         {controls && <div className="min-w-0 max-w-full basis-full empty:hidden md:order-2 md:basis-auto">{controls}</div>}
       </div>
     </div>
-    <div data-chart-viewer-scroll="" className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 ${PAD_X}`}>
-      <div ref={captureRef} data-chart-viewer-capture="" className="flex flex-1 flex-col gap-3 bg-background">
-        {children}
-        <ViewerBody viewer={viewer} />
-      </div>
-    </div>
+    <ViewerPanel title={title} captureRef={captureRef} viewer={viewer}>{children}</ViewerPanel>
   </DialogContent>
 );
 

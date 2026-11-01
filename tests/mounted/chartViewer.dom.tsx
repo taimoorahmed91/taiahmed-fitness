@@ -270,8 +270,8 @@ describe('mounted: full-screen chart viewer', () => {
     const { TrendChart } = await import('../../src/components/TrendChart');
     await mount(React.createElement(TrendChart, { id: 'weight', title: 'Weight Trend', icon: React.createElement('span'), data: [], unit: 'kg', series: [{ key: 'weight', label: 'Weight', color: '#000' }], empty: 'No weight entries in this period.' }));
     const d = await open('Weight Trend');
-    assert.match(d.querySelector('[role="status"]')?.textContent ?? '', /No weight entries logged yet/);
-    assert.equal(d.querySelector('[role="status"] a')?.getAttribute('href'), '/weight');
+    assert.match(d.querySelector('[data-chart-viewer-capture] [role="status"]')?.textContent ?? '', /No weight entries logged yet/);
+    assert.equal(d.querySelector('[data-chart-viewer-capture] [role="status"] a')?.getAttribute('href'), '/weight');
     assert.equal(checked(d, 'Weight Trend range'), 'Last 30 days');
   });
 
@@ -290,8 +290,8 @@ describe('mounted: full-screen chart viewer', () => {
       assert.ok(d, title);
       assert.equal(d.querySelector('h2')?.textContent, title);
       assert.ok(d.querySelector('[data-chart-plot]'), `${title} has an expanded plot`);
-      assert.equal(d.querySelector('[role="radiogroup"]'), null, `${title} gained no range or style switch`);
-      assert.equal(d.querySelector('[aria-label^="Download"]'), null);
+      assert.equal(d.querySelector('[role="radiogroup"]:not([aria-label$=" view"])'), null, `${title} gained no range or style switch (only the Chart | Table view switch)`);
+      assert.equal(d.querySelector('[aria-label^="Download"][aria-label$="as PDF"]'), null, `${title}: no PDF button (the CSV button is separate)`);
       await act(async () => click(env.window, d.querySelector('[aria-label="Close full screen view"]')!));
       await flush(30);
       assert.equal(dialog(), null);

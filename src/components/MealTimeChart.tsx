@@ -9,12 +9,15 @@ import { ChartEmptyState, NO_DATA } from '@/components/charts/ChartEmptyState';
 import { CATEGORY_COLORS, chartTooltipProps, formatChartValue, UNIT_LABEL } from '@/lib/chartTheme';
 import { RANGE_LABELS } from '@/lib/chartRange';
 import { chartMotionProps } from '@/lib/chartViewer';
+import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
 
 interface MealTimeChartProps {
   data7: { name: string; calories: number; count: number }[];
   data14: { name: string; calories: number; count: number }[];
   data30: { name: string; calories: number; count: number }[];
   data90: { name: string; calories: number; count: number }[];
+  /** Source status from the page (lib/chartSourceStatus.ts): stale or unavailable. */
+  status?: ChartDatasetStatus;
 }
 
 // Time of day has no good/bad meaning, so it uses the neutral categorical hues
@@ -22,7 +25,7 @@ interface MealTimeChartProps {
 const PERIODS = ['Overnight', 'Morning', 'Midday', 'Afternoon', 'Evening', 'Late night'];
 const colorFor = (name: string) => CATEGORY_COLORS[Math.max(0, PERIODS.indexOf(name)) % CATEGORY_COLORS.length];
 
-export const MealTimeChart = ({ data7, data14, data30, data90 }: MealTimeChartProps) => {
+export const MealTimeChart = ({ data7, data14, data30, data90, status }: MealTimeChartProps) => {
   // Categorical chart: date range only (a line/bar switch does not apply to a pie).
   const { range, setRange } = useChartRange('meal_time');
   const data = range === '7' ? data7 : range === '14' ? data14 : range === '90' ? data90 : data30;
@@ -38,6 +41,17 @@ export const MealTimeChart = ({ data7, data14, data30, data90 }: MealTimeChartPr
     : `No meals in the ${period.toLowerCase()}.`;
 
   const tableColumns = [{ key: 'name', label: 'Period' }, { key: 'calories', label: `Calories (${UNIT_LABEL.calories})` }, { key: 'count', label: 'Meals' }];
+
+  // The viewer's Table and CSV list every time-of-day period of the chosen range (a period with no calories shows 0, not blank).
+  // Not a time series: the periods keep their listed order.
+  const dataset = createChartDataset({
+    name: title, period, status, chronological: false, rowId: (row) => String(row.name),
+    // Explicit opt-out of day selection: a row is a time-of-day band summed over the whole range, not one calendar day.
+    // No row, slice or Table entry here may offer "Open day".
+    selection: false,
+    rows: data.map((d) => ({ ...d, pct: share(d.calories) })),
+    columns: [{ key: 'name', label: 'Period' }, { key: 'calories', label: 'Calories', unit: UNIT_LABEL.calories, digits: 0 }, { key: 'count', label: 'Meals', digits: 0 }, { key: 'pct', label: 'Share', unit: UNIT_LABEL.percent, digits: 0 }],
+  });
 
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same state; only `expanded` differs.
@@ -95,7 +109,7 @@ export const MealTimeChart = ({ data7, data14, data30, data90 }: MealTimeChartPr
           columns: [{ key: 'name', label: 'Period' }, { key: 'calories', label: 'Calories' }, { key: 'count', label: 'Meals' }, { key: 'pct', label: 'Share (%)' }],
           rows: data.map(d => ({ ...d, pct: share(d.calories) })),
         }}
-        viewer={{ render: () => body(true) }}
+        viewer={{ render: () => body(true), dataset }}
       />
       <CardContent>{body(false)}</CardContent>
     </Card>

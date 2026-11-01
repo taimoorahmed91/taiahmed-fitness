@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ArrowDown, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageContainer, PageHeader } from '@/components/layout/Page';
 import { IconButton } from '@/components/ui/icon-button';
@@ -14,7 +14,8 @@ import { useSleep } from '@/hooks/useSleep';
 import { useWaist } from '@/hooks/useWaist';
 import { useDailyNotes } from '@/hooks/useDailyNotes';
 import { useSharedTableState } from '@/lib/sharedTable';
-import { DayDetail, CALENDAR_DAY_ID } from '@/components/calendar/DayDetail';
+import { SelectedDayPanel } from '@/components/calendar/SelectedDayPanel';
+import { useCalendarSelection } from '@/components/calendar/useCalendarSelection';
 import { MonthGrid } from '@/components/calendar/MonthGrid';
 import { MonthStats } from '@/components/calendar/MonthStats';
 import {
@@ -25,12 +26,9 @@ import {
   formatMonthLabel,
   groupEntriesByDate,
   joinTableLabels,
-  monthOf,
   monthStats,
   monthSubtitle,
   resolveCalendarAvailability,
-  shiftMonth,
-  stepDay,
   summarizeDay,
   todayIso,
   type CalendarTable,
@@ -40,13 +38,15 @@ import {
 /**
  * Calendar: the month on one side, the selected day's agenda on the other (stacked below on phones).
  * All dates are plain "YYYY-MM-DD" days and "today" is the UTC day, like every other page.
+ * The selected day lives in the address (`?date=YYYY-MM-DD`), see useCalendarSelection. With no (or an unusable)
+ * date it starts on today, so the detail panel is never an empty "pick a date" box.
  */
 const Calendar = () => {
   const today = todayIso();
-  const [month, setMonth] = useState(() => monthOf(today));
+  const { selected, month, select, step, goToToday, shiftMonth: pageMonth } = useCalendarSelection(today);
   const [displayFilter, setDisplayFilter] = useState<DisplayFilter>('all');
-  // Start on today so the detail panel is never an empty "pick a date" box.
-  const [selected, setSelected] = useState<string>(today);
+  const selectedDay = useMemo(() => ({ isoDate: selected }), [selected]);
+  const detailRef = useRef<HTMLElement>(null);
 
   const { meals, refetch: refetchMeals } = useMeals();
   const { sessions, refetch: refetchGym } = useGymSessions();
@@ -91,20 +91,11 @@ const Calendar = () => {
   const selectedEntries = entriesByDate.get(selected) ?? [];
   const selectedSummary = summarizeDay(selectedEntries);
 
-  const goToToday = () => {
-    setMonth(monthOf(today));
-    setSelected(today);
-  };
-  // Stepping a day can cross into another month; the grid follows so the selected day is always on screen.
-  const stepSelected = (delta: -1 | 1) => {
-    const next = stepDay(selected, delta);
-    setSelected(next);
-    setMonth(monthOf(next));
-  };
+  // Stepping a day can cross into another month; the month follows the selected day, so it is always on screen.
 
   // Phones: the agenda sits below the grid. Move there and focus its heading so everyone arrives.
   const jumpToDay = useCallback(() => {
-    const section = document.getElementById(CALENDAR_DAY_ID);
+    const section = detailRef.current;
     if (!section) return;
     const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     section.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
@@ -130,7 +121,7 @@ const Calendar = () => {
           <CardContent className="space-y-3 px-0 pb-3 pt-3 sm:p-[var(--card-pad)]">
             <div className="flex flex-col gap-2 px-3 sm:flex-row sm:items-center sm:justify-between sm:px-0">
               <div className="flex items-center justify-between gap-1 sm:justify-start">
-                <IconButton label="Previous month" tooltip onClick={() => setMonth(shiftMonth(month, -1))}>
+                <IconButton label="Previous month" tooltip onClick={() => pageMonth(-1)}>
                   <ChevronLeft />
                 </IconButton>
                 <div className="min-w-0 flex-1 text-center sm:min-w-[11rem] sm:flex-none">
@@ -139,7 +130,7 @@ const Calendar = () => {
                   </h2>
                   <p className="text-xs text-muted-foreground">{monthSubtitle(availability, stats.daysLogged)}</p>
                 </div>
-                <IconButton label="Next month" tooltip onClick={() => setMonth(shiftMonth(month, 1))}>
+                <IconButton label="Next month" tooltip onClick={() => pageMonth(1)}>
                   <ChevronRight />
                 </IconButton>
               </div>
@@ -174,7 +165,7 @@ const Calendar = () => {
               </div>
             ) : (
               <>
-                <MonthGrid month={month} entriesByDate={entriesByDate} selected={selected} today={today} loading={loading} missing={availability.missing} onSelect={setSelected} />
+                <MonthGrid month={month} entriesByDate={entriesByDate} selected={selected} today={today} loading={loading} missing={availability.missing} onSelect={select} />
 
                 {/* Phones and tablets: a one-line reminder of the selected day with a jump to its agenda. */}
                 <div className="mx-3 flex items-center justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2 sm:mx-0 lg:hidden">
@@ -198,7 +189,7 @@ const Calendar = () => {
           </CardContent>
         </Card>
 
-        <DayDetail iso={selected} entries={selectedEntries} today={today} loading={loading} filter={displayFilter} mode={mode} missing={availability.failed} onStep={stepSelected} />
+        <SelectedDayPanel ref={detailRef} day={selectedDay} entries={selectedEntries} today={today} loading={loading} filter={displayFilter} mode={mode} missing={availability.failed} onStep={step} />
       </section>
     </PageContainer>
   );

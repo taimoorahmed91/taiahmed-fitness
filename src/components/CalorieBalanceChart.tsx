@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
+import type { ChartDatasetStatus } from '@/lib/chartViewerData';
 import { Scale } from 'lucide-react';
 import { TrendChart } from './TrendChart';
 import { CHART_COLORS, METRIC_COLORS, UNIT_LABEL } from '@/lib/chartTheme';
 import { formatChartDate, isIsoDate } from '@/lib/chartRange';
 
 type BalanceRow = { date: string; consumed: number; burned: number; balance: number };
-interface CalorieBalanceChartProps { data: BalanceRow[] }
+interface CalorieBalanceChartProps { data: BalanceRow[]; status?: ChartDatasetStatus }
 
 /**
  * One row per UTC calendar day, oldest first. The x-axis is a category axis keyed by `date`, so two rows
@@ -30,9 +31,9 @@ const series = [
   { key: 'balance', label: 'Balance (deficit +)', color: CHART_COLORS.actual, dashed: true },
 ];
 const signed = (n: number) => `${n >= 0 ? '+' : '\u2212'}${Math.abs(n)}`;
-export const CalorieBalanceChart = ({ data }: CalorieBalanceChartProps) => {
+export const CalorieBalanceChart = ({ data, status }: CalorieBalanceChartProps) => {
   const rows = useMemo(() => calorieBalanceRows(data), [data]);
-  return <TrendChart id="calorie_balance" title="Calorie Balance" icon={<Scale className="h-5 w-5 text-primary" />} data={rows} series={series} unit={UNIT_LABEL.calories} empty="No days with both WHOOP and meal data in this period. Try a wider date range." summary={shown => {
+  return <TrendChart status={status} id="calorie_balance" title="Calorie Balance" icon={<Scale className="h-5 w-5 text-primary" />} data={rows} series={series} unit={UNIT_LABEL.calories} empty="No days with both WHOOP and meal data in this period. Try a wider date range." summary={shown => {
     const latest = shown[shown.length - 1]?.balance;
     const total = shown.reduce((sum, row) => sum + Number(row.balance ?? 0), 0);
     return <>{latest != null && `Latest: ${signed(Number(latest))} ${UNIT_LABEL.calories} · `}Total: {signed(total)} {UNIT_LABEL.calories}</>;

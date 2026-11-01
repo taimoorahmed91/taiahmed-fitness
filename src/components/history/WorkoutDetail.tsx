@@ -1,5 +1,6 @@
-import { StickyNote } from 'lucide-react';
+import { ChartLine, StickyNote } from 'lucide-react';
 import type { ParsedExercise, ParsedWorkoutNotes } from '@/lib/workoutNotes';
+import type { ExerciseHistoryTarget } from '@/lib/workoutExerciseHistory';
 import { cn } from '@/lib/utils';
 
 /**
@@ -18,19 +19,48 @@ const SectionLabel = ({ children, count }: { children: string; count?: number })
   </p>
 );
 
-const ExerciseBlock = ({ exercise }: { exercise: ParsedExercise }) => {
+interface HistoryLink {
+  target: ExerciseHistoryTarget;
+  onOpen: (target: ExerciseHistoryTarget, trigger: HTMLButtonElement) => void;
+}
+
+/** `tallHeader`: a plain name header matches the 44px button headers beside it, so the set tables line up across a row. */
+const ExerciseBlock = ({ exercise, history, tallHeader }: { exercise: ParsedExercise; history?: HistoryLink; tallHeader?: boolean }) => {
   const hasTimes = exercise.sets.some((s) => s.time);
+  const number = exercise.seq !== null && (
+    <>
+      <span aria-hidden="true" className="grid h-6 min-w-6 shrink-0 place-items-center rounded-md bg-chart-2/10 px-1 text-xs font-semibold tabular-nums text-chart-2">
+        {exercise.seq}
+      </span>
+      <span className="sr-only">{exercise.seq}. </span>
+    </>
+  );
   return (
     <div className="min-w-0 overflow-hidden rounded-lg border bg-card">
-      <p className="flex items-center gap-2.5 border-b bg-muted/40 px-3 py-2 text-sm font-semibold">
-        {exercise.seq !== null && (
-          <span aria-hidden="true" className="grid h-6 min-w-6 shrink-0 place-items-center rounded-md bg-chart-2/10 px-1 text-xs font-semibold tabular-nums text-chart-2">
-            {exercise.seq}
-          </span>
-        )}
-        {exercise.seq !== null && <span className="sr-only">{exercise.seq}. </span>}
-        <span className="min-w-0 break-words">{exercise.name}</span>
-      </p>
+      {history ? (
+        // A real button beside the number, 44px tall, never inside the row's own disclosure button.
+        <div className="flex items-center gap-2.5 border-b bg-muted/40 pl-3 text-sm font-semibold">
+          {number}
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-label={`Show history for ${exercise.name}`}
+            data-exercise-history={history.target.index}
+            onClick={(event) => history.onOpen(history.target, event.currentTarget)}
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 py-2 pr-3 text-left font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(hover:hover)]:hover:bg-muted/70"
+          >
+            <span className="min-w-0 flex-1 break-words underline decoration-muted-foreground/50 decoration-dotted underline-offset-4">{exercise.name}</span>
+            <span aria-hidden="true" className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+              <ChartLine className="h-3.5 w-3.5" />History
+            </span>
+          </button>
+        </div>
+      ) : (
+        <p className={cn('flex items-center gap-2.5 border-b bg-muted/40 px-3 py-2 text-sm font-semibold', tallHeader && 'min-h-11')}>
+          {number}
+          <span className="min-w-0 break-words">{exercise.name}</span>
+        </p>
+      )}
       <table className="w-full table-fixed border-collapse text-sm">
         <caption className="sr-only">Sets for {exercise.name}</caption>
         <thead>
@@ -71,20 +101,40 @@ const ExerciseBlock = ({ exercise }: { exercise: ParsedExercise }) => {
   );
 };
 
-export const WorkoutDetail = ({ parsed, hasNotes }: { parsed: ParsedWorkoutNotes; hasNotes: boolean }) => {
+interface WorkoutDetailProps {
+  parsed: ParsedWorkoutNotes;
+  hasNotes: boolean;
+  /**
+   * One entry per exercise, same order and same index as `parsed.exercises` (see exerciseHistoryTargets).
+   * Only `openable` ones become buttons. Leave out to show a plain, read-only detail.
+   */
+  historyTargets?: readonly ExerciseHistoryTarget[];
+  onShowHistory?: (target: ExerciseHistoryTarget, trigger: HTMLButtonElement) => void;
+}
+
+export const WorkoutDetail = ({ parsed, hasNotes, historyTargets, onShowHistory }: WorkoutDetailProps) => {
   if (!hasNotes) {
     return <p className="text-sm text-muted-foreground">No exercise details were recorded for this workout.</p>;
   }
   const nothingStructured = parsed.exercises.length === 0;
+  const anyHistory = !!onShowHistory && !!historyTargets?.some((t) => t.openable);
   return (
     <div className="space-y-4">
       {parsed.exercises.length > 0 && (
         <div>
           <SectionLabel count={parsed.exercises.length}>Exercises</SectionLabel>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {parsed.exercises.map((exercise, i) => (
-              <ExerciseBlock key={`${exercise.seq ?? 'x'}-${i}`} exercise={exercise} />
-            ))}
+            {parsed.exercises.map((exercise, i) => {
+              const target = historyTargets?.[i];
+              return (
+                <ExerciseBlock
+                  key={`${exercise.seq ?? 'x'}-${i}`}
+                  exercise={exercise}
+                  history={target?.openable && onShowHistory ? { target, onOpen: onShowHistory } : undefined}
+                  tallHeader={anyHistory}
+                />
+              );
+            })}
           </div>
         </div>
       )}

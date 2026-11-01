@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { ArrowDown, ArrowUp, Minus, Moon, Pencil, Ruler } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowDown, ArrowUp, LineChart, Minus, Moon, Pencil, Ruler } from 'lucide-react';
 import { GroupGlyph, GroupStat, HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
 import { HistoryRow, TimelineNode } from '@/components/history/HistoryRow';
 import type { HistoryVariant } from '@/components/history/historyVariants';
@@ -8,6 +8,9 @@ import { HistoryPager } from '@/components/history/HistoryPager';
 import { useGroupPagination } from '@/components/history/useGroupPagination';
 import { HISTORY_MD, useMinWidth } from '@/components/history/useMinWidth';
 import { DayStamp } from '@/components/history/DayStamp';
+import { focusHistoryRow } from '@/components/history/focusHistoryRow';
+import { pageOfItem } from '@/lib/historyPaging';
+import type { PlotStatus } from '@/lib/recordTrend';
 import { BandChip } from '@/components/history/BandChip';
 import { SleepBar } from '@/components/history/SleepBar';
 import { defaultToday, formatDay, formatShortDay } from '@/lib/historyDates';
@@ -86,6 +89,30 @@ export interface MetricHistoryListProps<T extends MetricEntry> {
   deleteDescription: (entry: T) => string;
   onEdit: (entry: T) => void;
   onDelete: (id: string) => unknown | Promise<unknown>;
+  /** A chart that draws these entries: adds the "Show on chart" row action and marks the entry selected there. */
+  chartLink?: EntryChartLink<T>;
+  /**
+   * Asks the list to show one exact entry (the chart's "Jump to entry"): it moves to the page holding it, opens the row,
+   * scrolls to it and focuses it. A request is answered once (`nonce`), then `onRevealed` is called. If the entry is not in
+   * `entries` (a filter hides it) the request waits, so the page can clear its filters and the list answers then.
+   */
+  reveal?: EntryRevealRequest | null;
+  onRevealed?: (nonce: number) => void;
+}
+
+export interface EntryChartLink<T> {
+  /** The record id selected on the chart, if any. Its row is marked and its "Show on chart" action is pressed. */
+  selectedId: string | null;
+  /** Whether an entry is the one drawn on the chart. Only a plotted entry gets the action. */
+  statusOf: (id: string) => PlotStatus;
+  /** "Show on chart" pressed: select this entry on the chart, or clear it when it already is the selection. */
+  onToggle: (entry: T) => void;
+}
+
+export interface EntryRevealRequest {
+  id: string;
+  /** Changes with every request, so asking for the same entry twice is two requests. */
+  nonce: number;
 }
 
 export interface MonthStat {
@@ -99,8 +126,12 @@ const MONTHS_PER_PAGE = 3;
 const ENTRIES_PER_PAGE = 40;
 const FLAT_PER_PAGE = 20;
 const ACTIONS_WIDTH = 'w-20';
+/** Three icons (Show on chart, Edit, Delete) instead of two. */
+const ACTIONS_WIDTH_WITH_CHART = 'w-28';
 /** Notes longer than this can run past two lines on a wide row, so that row can be opened to read them all. */
 const LONG_NOTE = 80;
+/** The entry selected on the chart: a quiet tint and ring (the pressed "Show on chart" action says it in words too). */
+const SELECTED_ROW = 'bg-primary/5 ring-1 ring-inset ring-primary/40';
 
 interface PageGroup<T> {
   key: string;
@@ -112,6 +143,7 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
   const {
     entries, allEntries, sortOrder, sortName, getValue, valueLabel, unit, spokenUnit, entryNoun, countNoun,
     showChange = false, band, monthFacts, monthStat, variant = 'default', deleteTitle, deleteDescription, onEdit, onDelete,
+    chartLink, reveal, onRevealed,
   } = props;
   const isDesktop = useMinWidth(HISTORY_MD, true);
   const today = defaultToday();
@@ -140,11 +172,33 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
     [flat, ordered],
   );
   const perMonth = useMemo(() => countBy(allEntries, (e) => monthKey(e.date)), [allEntries]);
+  const paging = { maxGroups: flat ? FLAT_PER_PAGE : MONTHS_PER_PAGE, targetItems: flat ? FLAT_PER_PAGE : ENTRIES_PER_PAGE };
   const { pageGroups, page, totalPages, range, goToPage } = useGroupPagination(groups, {
-    maxGroups: flat ? FLAT_PER_PAGE : MONTHS_PER_PAGE,
-    targetItems: flat ? FLAT_PER_PAGE : ENTRIES_PER_PAGE,
+    ...paging,
     resetKey: `${sortOrder}|${allEntries.length - entries.length}`,
   });
+
+  // Reveal one exact entry for something outside the list. Step 1 (here): find its page, go there, open the row.
+  // Step 2 (the next effect, once that page is on screen): scroll to it and focus it, then report the request done.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const answered = useRef<number | null>(null);
+  const [focusing, setFocusing] = useState<EntryRevealRequest | null>(null);
+  useEffect(() => {
+    if (!reveal || answered.current === reveal.nonce) return;
+    const target = pageOfItem(groups, paging, (entry) => (entry as T).id === reveal.id);
+    if (target === null) return; // not in the list (yet): the request stays open
+    answered.current = reveal.nonce;
+    goToPage(target);
+    toggleExpanded(reveal.id, true);
+    setFocusing(reveal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `paging` is rebuilt every render from `flat`, which `groups` already follows
+  }, [reveal, groups]);
+  useEffect(() => {
+    if (!focusing) return;
+    focusHistoryRow(rootRef.current, focusing.id);
+    onRevealed?.(focusing.nonce);
+    setFocusing(null);
+  }, [focusing, onRevealed]);
 
   const hasExtra = showChange || !!band;
   const extraLabel = showChange ? 'Change' : band ? 'Quality' : null;
@@ -156,6 +210,8 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
     <MetricRow
       key={entry.id}
       entry={entry}
+      chart={chartLink ? { pressed: chartLink.selectedId === entry.id, status: chartLink.statusOf(entry.id), onToggle: () => chartLink.onToggle(entry) } : undefined}
+      actionsWidth={chartLink ? ACTIONS_WIDTH_WITH_CHART : ACTIONS_WIDTH}
       variant={variant}
       axis={axis}
       grid={grid}
@@ -182,7 +238,7 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
   const glyph = variant === 'sleep' ? <Moon aria-hidden="true" /> : variant === 'measurement' ? <Ruler aria-hidden="true" /> : null;
 
   return (
-    <div>
+    <div ref={rootRef}>
       {flat && (
         <p role="status" className="px-4 pb-3 text-xs text-muted-foreground">
           Sorted by {sortName} ({sortOrder === 'desc' ? 'highest' : 'lowest'} first). Month grouping is off while sorting; sort again to turn it off.
@@ -198,7 +254,7 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
             <span>Notes</span>
           </span>
           <span className="w-6 shrink-0" />
-          <span className={cn('shrink-0', ACTIONS_WIDTH)} />
+          <span className={cn('shrink-0', chartLink ? ACTIONS_WIDTH_WITH_CHART : ACTIONS_WIDTH)} />
         </div>
       )}
       {flat ? (
@@ -252,8 +308,20 @@ const ChangeChip = ({ delta, text }: { delta: number; text: string }) => {
   );
 };
 
+interface MetricRowChart {
+  pressed: boolean;
+  status: PlotStatus;
+  onToggle: () => void;
+}
+
+/** Why an entry is not on the chart, in words. Only for entries that are not the plotted one. */
+const notOnChartText = (status: PlotStatus): string =>
+  status === 'same-day' ? 'Not on the chart: another entry from this day is the one plotted (the chart shows one entry per day).' : 'Not on the chart: this entry has no value to plot.';
+
 interface MetricRowProps<T extends MetricEntry> {
   entry: T;
+  chart?: MetricRowChart;
+  actionsWidth: string;
   variant: 'default' | 'sleep' | 'measurement';
   axis: boolean;
   grid: string;
@@ -277,7 +345,7 @@ interface MetricRowProps<T extends MetricEntry> {
 }
 
 const MetricRow = <T extends MetricEntry>({
-  entry, variant, axis, grid, desktop, flat, today, expanded, onExpandedChange, value, unit, spokenUnit, entryNoun, change, isFirstEver,
+  entry, chart, actionsWidth, variant, axis, grid, desktop, flat, today, expanded, onExpandedChange, value, unit, spokenUnit, entryNoun, change, isFirstEver,
   band, hasExtra, deleteTitle, deleteDescription, onEdit, onDelete,
 }: MetricRowProps<T>) => {
   const notes = entry.notes?.trim() || '';
@@ -289,6 +357,20 @@ const MetricRow = <T extends MetricEntry>({
   const showChip = variant === 'measurement';
 
   const actionList = (kind: 'tray' | 'inline') => [
+    ...(chart?.status === 'plotted'
+      ? [
+          <HistoryAction
+            key="chart"
+            variant={kind}
+            label={`Show on chart: ${name}`}
+            text="Show on chart"
+            icon={<LineChart aria-hidden="true" />}
+            pressed={chart.pressed}
+            onClick={chart.onToggle}
+            className={kind === 'inline' && chart.pressed ? 'bg-accent text-accent-foreground' : undefined}
+          />,
+        ]
+      : []),
     <HistoryAction key="edit" variant={kind} label={`Edit ${name}`} text="Edit" icon={<Pencil aria-hidden="true" />} onClick={onEdit} />,
     <HistoryDeleteAction
       key="delete"
@@ -309,14 +391,22 @@ const MetricRow = <T extends MetricEntry>({
 
   if (desktop) {
     const longNote = notes.length > LONG_NOTE || notes.includes('\n');
+    const offChart = chart && chart.status !== 'plotted' ? notOnChartText(chart.status) : null;
     return (
       <HistoryRow
+        rowId={entry.id}
+        className={chart?.pressed ? SELECTED_ROW : undefined}
         variant={variant}
         expanded={expanded}
         onExpandedChange={onExpandedChange}
         reserveChevron
         panelLabel={`Notes for ${name}`}
-        panel={longNote ? <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground"><span className="sr-only">Notes: </span>{notes}</p> : undefined}
+        panel={longNote || offChart ? (
+          <div className="space-y-2 text-sm text-muted-foreground">
+            {longNote && <p className="whitespace-pre-wrap break-words"><span className="sr-only">Notes: </span>{notes}</p>}
+            {offChart && <p>{offChart}</p>}
+          </div>
+        ) : undefined}
         summary={
           <span className={cn('min-h-6', grid)}>
             {axis && <TimelineNode variant="measurement" kind="tick" />}
@@ -344,7 +434,7 @@ const MetricRow = <T extends MetricEntry>({
           </span>
         }
         actions={
-          <HistoryInlineActions label={`Actions for ${name}`} className={ACTIONS_WIDTH}>
+          <HistoryInlineActions label={`Actions for ${name}`} className={actionsWidth}>
             {actionList('inline')}
           </HistoryInlineActions>
         }
@@ -354,6 +444,8 @@ const MetricRow = <T extends MetricEntry>({
 
   return (
     <HistoryRow
+      rowId={entry.id}
+      className={chart?.pressed ? SELECTED_ROW : undefined}
       variant={variant}
       expanded={expanded}
       onExpandedChange={onExpandedChange}
@@ -392,6 +484,7 @@ const MetricRow = <T extends MetricEntry>({
       panel={
         <div className="space-y-3">
           {sentence && <p className="text-sm text-muted-foreground">{sentence}</p>}
+          {chart && chart.status !== 'plotted' && <p className="text-sm text-muted-foreground">{notOnChartText(chart.status)}</p>}
           {band?.rule && (
             <p className="text-sm text-muted-foreground">
               {band.label}: {band.rule}. Bands go by hours slept only.

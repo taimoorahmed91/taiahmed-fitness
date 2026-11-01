@@ -6,8 +6,11 @@ import { ChartEmptyState } from '@/components/charts/ChartEmptyState';
 import { CHART_MARGIN, METRIC_COLORS, UNIT_LABEL, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps } from '@/lib/chartTheme';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
 
 interface ReportChartsProps {
+  /** Source status per chart (lib/chartSourceStatus.ts): each chart reports only the tables it is drawn from. */
+  status?: { caloriesWorkout?: ChartDatasetStatus; sleep?: ChartDatasetStatus };
   data: Array<{
     date: string;
     calories: number;
@@ -19,10 +22,20 @@ interface ReportChartsProps {
 // No link on purpose: these charts mix meals, workouts and sleep, and the fix is the report period above.
 const EMPTY = 'No data in the selected report period.';
 
-export const ReportCharts = ({ data }: ReportChartsProps) => {
+export const ReportCharts = ({ data, status }: ReportChartsProps) => {
   const motion = chartMotionProps();
   const comboColumns = [{ key: 'date', label: 'Date' }, { key: 'calories', label: `Calories (${UNIT_LABEL.calories})` }, { key: 'workout', label: `Workout (${UNIT_LABEL.minutes})` }];
   const sleepColumns = [{ key: 'date', label: 'Date' }, { key: 'sleep', label: `Sleep (${UNIT_LABEL.hours})` }];
+
+  // The viewer's Table and CSV: every day of the report period, the same rows the plots draw.
+  const comboDataset = createChartDataset({
+    name: 'Calories & Workout Trend', period: 'Report period', rows: data, status: status?.caloriesWorkout,
+    columns: [{ key: 'date', label: 'Date' }, { key: 'calories', label: 'Calories', unit: UNIT_LABEL.calories, digits: 0 }, { key: 'workout', label: 'Workout', unit: UNIT_LABEL.minutes, digits: 0 }],
+  });
+  const sleepDataset = createChartDataset({
+    name: 'Sleep Trend', period: 'Report period', rows: data, status: status?.sleep,
+    columns: [{ key: 'date', label: 'Date' }, { key: 'sleep', label: 'Sleep', unit: UNIT_LABEL.hours }],
+  });
 
   // Each card and its full-screen viewer draw the same chart from the same report data; only `expanded` differs.
   const comboBody = (expanded: boolean) => (
@@ -72,13 +85,13 @@ export const ReportCharts = ({ data }: ReportChartsProps) => {
     <div className="grid lg:grid-cols-2 gap-6">
       {/* Calories & Workout Combined */}
       <Card titleSize="chart" className="shadow-md min-w-0">
-        <ChartHeader title="Calories & Workout Trend" viewer={{ render: () => comboBody(true) }} />
+        <ChartHeader title="Calories & Workout Trend" viewer={{ render: () => comboBody(true), dataset: comboDataset }} />
         <CardContent>{comboBody(false)}</CardContent>
       </Card>
 
       {/* Sleep Trend */}
       <Card titleSize="chart" className="shadow-md min-w-0">
-        <ChartHeader title="Sleep Trend" viewer={{ render: () => sleepBody(true) }} />
+        <ChartHeader title="Sleep Trend" viewer={{ render: () => sleepBody(true), dataset: sleepDataset }} />
         <CardContent>{sleepBody(false)}</CardContent>
       </Card>
     </div>

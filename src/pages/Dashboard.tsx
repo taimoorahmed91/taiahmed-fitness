@@ -47,12 +47,14 @@ import { hookLoadFailed } from '@/lib/loadState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
+import { useOpenCalendarDay } from '@/components/charts/useOpenCalendarDay';
 import { ROUTES } from '@/app/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
 import { Clock, Flame } from 'lucide-react';
 import { resolveCalorieRange, macroRange } from '@/lib/targets';
 import { buildCalorieBalanceRows } from '@/lib/calorieBalance';
+import { dayMacroIntake, type IntakeKind } from '@/lib/macroIntake';
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 
 const shiftISODateByDays = (isoDate: string, days: number) => {
@@ -92,6 +94,8 @@ const hookView = (loading: boolean, hook: object): TableView =>
   loading ? 'loading' : hookLoadFailed(hook) ? 'error' : 'ready';
 
 const Dashboard = () => {
+  // Evidence dates in the insight card open that day in Calendar (a normal link push, no extra dialog).
+  const openCalendarDay = useOpenCalendarDay();
   const { meals, loading: mealsLoading, lastFetchedAt, getTodayCalories, getTodayProtein, getTodayCarbs, getWeeklyData, getMealsByTimeOfDay } = useMeals();
   const { sessions: gymSessions } = useGymSessions();
   const settingsHook = useUserSettings();
@@ -175,7 +179,9 @@ const Dashboard = () => {
       return value ?? sortedWeights[0]?.weight ?? null;
     };
 
-    type Row = { date: string; actual: number; min: number | null; max: number | null };
+    // `actual` is what was really logged: null (not 0) for a day with no meals, with no value for this macro, or with only some
+    // meals carrying it. `intake` says which (src/lib/macroIntake.ts). An explicit 0 stays 0 and stays selectable.
+    type Row = { date: string; actual: number | null; intake: IntakeKind; min: number | null; max: number | null };
     const calories: Row[] = [];
     const protein: Row[] = [];
     const carbs: Row[] = [];
@@ -190,9 +196,12 @@ const Dashboard = () => {
       // ISO dates, so each chart can window by real calendar days (and show MM/DD itself).
       const label = date;
 
-      calories.push({ date: label, actual: dayMeals.reduce((s, m) => s + m.calories, 0), min: goal, max: goalMax });
-      protein.push({ date: label, actual: dayMeals.reduce((s, m) => s + (m.protein || 0), 0), min: pr?.min ?? null, max: pr?.max ?? null });
-      carbs.push({ date: label, actual: dayMeals.reduce((s, m) => s + (m.carbs || 0), 0), min: cr?.min ?? null, max: cr?.max ?? null });
+      const cal = dayMacroIntake(dayMeals, 'calories');
+      const pro = dayMacroIntake(dayMeals, 'protein');
+      const car = dayMacroIntake(dayMeals, 'carbs');
+      calories.push({ date: label, actual: cal.value, intake: cal.kind, min: goal, max: goalMax });
+      protein.push({ date: label, actual: pro.value, intake: pro.kind, min: pr?.min ?? null, max: pr?.max ?? null });
+      carbs.push({ date: label, actual: car.value, intake: car.kind, min: cr?.min ?? null, max: cr?.max ?? null });
     }
 
     return { calories, protein, carbs };
@@ -471,9 +480,9 @@ const Dashboard = () => {
               />
             ), 'min-h-[16rem]')}
             {gate('mealTiming', 'Meal timing is paused', <CardSkeleton />, () => (
-              <MealTimeChart data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} data90={getMealsByTimeOfDay(90)} />
+              <MealTimeChart status={sections.mealTiming.chartStatus} data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} data90={getMealsByTimeOfDay(90)} />
             ), 'min-h-[16rem]')}
-            {gate('recovery', 'Recovery trend is paused', <CardSkeleton />, () => <RecoveryChart data={recoveryChartData} />, 'min-h-[16rem]')}
+            {gate('recovery', 'Recovery trend is paused', <CardSkeleton />, () => <RecoveryChart data={recoveryChartData} status={sections.recovery.chartStatus} />, 'min-h-[16rem]')}
           </div>
         </PageSection>
 
@@ -481,9 +490,9 @@ const Dashboard = () => {
           <div className="grid lg:grid-cols-3 gap-6">
             {sections.macroTrends.view === 'ready' ? (
               <>
-                <MacroTargetChart data={macroComparisonData.calories} title="Calories: Actual vs Target" unit="cal" />
-                <MacroTargetChart data={macroComparisonData.protein} title="Protein: Actual vs Target" unit="g" />
-                <MacroTargetChart data={macroComparisonData.carbs} title="Carbs: Actual vs Target" unit="g" />
+                <MacroTargetChart status={sections.macroTrends.chartStatus} data={macroComparisonData.calories} title="Calories: Actual vs Target" unit="cal" metric="calories" />
+                <MacroTargetChart status={sections.macroTrends.chartStatus} data={macroComparisonData.protein} title="Protein: Actual vs Target" unit="g" metric="protein" />
+                <MacroTargetChart status={sections.macroTrends.chartStatus} data={macroComparisonData.carbs} title="Carbs: Actual vs Target" unit="g" metric="carbs" />
               </>
             ) : sections.macroTrends.view === 'error' ? (
               <SectionUnavailable
@@ -502,24 +511,24 @@ const Dashboard = () => {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {gate('workoutTrend', 'Workout chart is paused', <CardSkeleton />, () => <WorkoutDurationChart data={workoutChartData} />, 'min-h-[20rem]')}
-            {gate('calorieBalance', 'Calorie balance is paused', <CardSkeleton />, () => <CalorieBalanceChart data={calorieBalanceData} />, 'min-h-[20rem]')}
+            {gate('workoutTrend', 'Workout chart is paused', <CardSkeleton />, () => <WorkoutDurationChart data={workoutChartData} status={sections.workoutTrend.chartStatus} />, 'min-h-[20rem]')}
+            {gate('calorieBalance', 'Calorie balance is paused', <CardSkeleton />, () => <CalorieBalanceChart data={calorieBalanceData} status={sections.calorieBalance.chartStatus} />, 'min-h-[20rem]')}
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {gate('weightTrend', 'Weight chart is paused', <CardSkeleton />, () => <WeightChart data={weightChartData} notesMap={notesMap} />, 'min-h-[20rem]')}
-            {gate('waistTrend', 'Waist chart is paused', <CardSkeleton />, () => <WaistChart data={waistChartData} notesMap={notesMap} />, 'min-h-[20rem]')}
+            {gate('weightTrend', 'Weight chart is paused', <CardSkeleton />, () => <WeightChart data={weightChartData} notesMap={notesMap} status={sections.weightTrend.chartStatus} />, 'min-h-[20rem]')}
+            {gate('waistTrend', 'Waist chart is paused', <CardSkeleton />, () => <WaistChart data={waistChartData} notesMap={notesMap} status={sections.waistTrend.chartStatus} />, 'min-h-[20rem]')}
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {gate('sleepTrend', 'Sleep chart is paused', <CardSkeleton />, () => <SleepChart data={sleepChartData} notesMap={notesMap} />, 'min-h-[20rem]')}
+            {gate('sleepTrend', 'Sleep chart is paused', <CardSkeleton />, () => <SleepChart data={sleepChartData} notesMap={notesMap} status={sections.sleepTrend.chartStatus} />, 'min-h-[20rem]')}
             <GoalsCard />
           </div>
         </PageSection>
 
         <PageSection title="Insights" hideTitle>
           {/* Cross-metric claims (recovery vs gym, sleep vs food, body recomposition) read six tables. Never draw them from a partial set. */}
-          {gate('insights', 'Insights are paused', <CardSkeleton bodyClassName="h-32" />, () => <CrossMetricSummaryCard />, 'min-h-[10rem]')}
+          {gate('insights', 'Insights are paused', <CardSkeleton bodyClassName="h-32" />, () => <CrossMetricSummaryCard onSelectDate={openCalendarDay} />, 'min-h-[10rem]')}
         </PageSection>
       </div>
     </PageContainer>

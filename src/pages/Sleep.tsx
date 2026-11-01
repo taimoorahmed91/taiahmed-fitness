@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSingleFlight } from '@/hooks/useSingleFlight';
 import { confirmedSuccess, SAVE_FAILED_MESSAGE } from '@/lib/confirmedMutation';
 import { defaultFormDate } from '@/lib/dayLabels';
@@ -15,6 +15,12 @@ import { Moon, Plus, AlertCircle } from 'lucide-react';
 import { useSleep, SleepEntry } from '@/hooks/useSleep';
 import { useDataFilter } from '@/hooks/useDataFilter';
 import { MetricHistoryList } from '@/components/history/MetricHistoryList';
+import { TrendSection } from '@/components/history/TrendSection';
+import { useChartHistoryLink } from '@/components/history/useChartHistoryLink';
+import { SleepChart } from '@/components/SleepChart';
+import { useWhoopData } from '@/hooks/useWhoopData';
+import { planRecordPlot, sleepChartRows } from '@/lib/recordTrend';
+import { deriveChartStatus } from '@/lib/chartSourceStatus';
 import { BandChip } from '@/components/history/BandChip';
 import { SleepBar } from '@/components/history/SleepBar';
 import { fmt, rangeOf, sleepBand, MIN_FOR_AVERAGE } from '@/lib/bodyHistory';
@@ -60,6 +66,27 @@ const Sleep = () => {
     data: entries,
     searchFields: ['notes'] as (keyof SleepEntry)[],
     dateField: 'date' as keyof SleepEntry,
+  });
+
+  // The chart: the manual record of each day (exact, linked to the history list below) next to that day's WHOOP in-bed hours.
+  // WHOOP is the shared WHOOP query (the Dashboard reads the same one), not a new fetch. If it did not load, the chart says so
+  // and still draws the manual nights, which are what this page is about.
+  const { entries: whoopEntries } = useWhoopData();
+  const whoopState = useSharedTableState('whoop');
+  const whoopView = tableView(whoopState);
+  const plan = useMemo(() => planRecordPlot(entries, (entry) => entry.hours > 0), [entries]);
+  const chartRows = useMemo(() => sleepChartRows(plan, whoopView === 'ready' ? whoopEntries : []), [plan, whoopView, whoopEntries]);
+  const chartStatus = deriveChartStatus([
+    { label: 'sleep entries', view, refreshFailed: tableState.refreshFailed },
+    ...(whoopView === 'ready' ? [{ label: 'WHOOP data', view: whoopView, refreshFailed: whoopState.refreshFailed }] : []),
+  ]);
+  const clearFilters = () => {
+    setSearchQuery('');
+    setTimeFilter('all');
+  };
+  const trend = useChartHistoryLink({
+    entries, visibleEntries: filteredEntries, statusOf: plan.statusOf, clearFilters,
+    noun: 'sleep entry', nounPlural: 'sleep entries', valueKey: 'hours',
   });
 
   // The hooks resolve `true` only when the database confirmed the change. Anything else (false or a rejection)
@@ -286,6 +313,24 @@ const Sleep = () => {
         </div>
       </PageSection>
 
+      {/* Only once the entries have loaded and there is at least one: no chart over an unknown or empty list. */}
+      {view === 'ready' && entries.length > 0 && (
+        <PageSection title="Sleep trend" hideTitle>
+          <TrendSection hint="Chart of your sleep" open={trend.trendOpen} onOpenChange={trend.setTrendOpen}>
+            <div className="space-y-3">
+              {whoopView !== 'ready' && (
+                <p role="status" data-whoop-note="" className="text-sm text-muted-foreground">
+                  {whoopView === 'error'
+                    ? "Your WHOOP data didn't load, so the chart shows only the sleep you logged yourself."
+                    : 'Loading your WHOOP in-bed hours. The chart shows the sleep you logged yourself for now.'}
+                </p>
+              )}
+              <SleepChart data={chartRows} status={chartStatus} recordLink={trend.chartLink} />
+            </div>
+          </TrendSection>
+        </PageSection>
+      )}
+
       <PageSection title="Sleep history" hideTitle>
         {/* Search and Filter */}
         <div>
@@ -339,6 +384,9 @@ const Sleep = () => {
                 deleteDescription={(entry) => `Are you sure you want to delete ${entry.hours} hours recorded on ${entry.date}, including its notes? This cannot be undone.`}
                 onEdit={handleEdit}
                 onDelete={deleteEntry}
+                chartLink={trend.listLink}
+                reveal={trend.reveal}
+                onRevealed={trend.onRevealed}
               />
             )}
           </CardContent>

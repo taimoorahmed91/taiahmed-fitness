@@ -1,11 +1,12 @@
 import { HeartPulse } from 'lucide-react';
+import type { ChartDatasetStatus } from '@/lib/chartViewerData';
 import { TrendChart } from './TrendChart';
 import { METRIC_COLORS, UNIT_LABEL } from '@/lib/chartTheme';
 
-interface RecoveryChartProps { data: { date: string; recovery: number }[] }
+interface RecoveryChartProps { data: { date: string; recovery: number }[]; status?: ChartDatasetStatus }
 const series = [{ key: 'recovery', label: 'Recovery', color: METRIC_COLORS.whoop }];
-export const RecoveryChart = ({ data }: RecoveryChartProps) =>
-  <TrendChart id="recovery" title="WHOOP Recovery" icon={<HeartPulse className="h-5 w-5 text-primary" />} data={data} series={series} unit={UNIT_LABEL.percent} cap={100} empty="No WHOOP recovery data in this period. Try a wider date range." summary={rows => {
+export const RecoveryChart = ({ data, status }: RecoveryChartProps) =>
+  <TrendChart status={status} id="recovery" title="WHOOP Recovery" icon={<HeartPulse className="h-5 w-5 text-primary" />} data={data} series={series} unit={UNIT_LABEL.percent} cap={100} empty="No WHOOP recovery data in this period. Try a wider date range." summary={rows => {
     const latest = rows[rows.length - 1]?.recovery;
     return latest != null && <>Latest: <span className="font-semibold text-foreground">{latest}{UNIT_LABEL.percent}</span></>;
   }} />;

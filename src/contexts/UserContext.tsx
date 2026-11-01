@@ -1,34 +1,12 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { UserContext } from '@/contexts/userContextCore';
 import { supabase } from '@/integrations/supabase/client';
 import {
   decideAccess, forgetApproved, isNoProfileRow, readLastApproved, rememberApproved,
   type AccessSource, type PreviousAccess, type ProfileProbe,
 } from '@/lib/offlineIdentity';
 import { defaultStorage, parkActiveDraft } from '@/lib/workoutDraft';
-
-interface UserContextType {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
-  recovering: boolean;
-  isApproved: boolean | null;
-  isOwner: boolean | null;
-  /** Where `isApproved` came from. 'last-known-offline' = the server could not be reached (see lib/offlineIdentity.ts). */
-  approvalSource: AccessSource | null;
-  /**
-   * True when approval comes only from this device's memory of a past server approval: the person may use
-   * local workout recovery, nothing more. Owner rights are never granted this way and no server write is allowed.
-   */
-  offlineRecoveryOnly: boolean;
-  /** The last profile check failed (it is retried when the connection returns). */
-  profileError: boolean;
-  signInWithGoogle: () => Promise<void>;
-  logout: () => Promise<void>;
-  isLoggedIn: boolean;
-}
-
-const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);

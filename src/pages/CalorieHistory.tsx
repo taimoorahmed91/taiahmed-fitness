@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState } from '@/components/layout/Page';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +19,9 @@ import { useWeight } from '@/hooks/useWeight';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { projectMassChange } from '@/lib/energyBalance';
 import { balanceDateForCycle } from '@/lib/calorieBalance';
-import { History, Dumbbell, Moon, Search } from 'lucide-react';
+import { History, Dumbbell, Moon, Search, CalendarDays } from 'lucide-react';
+import { buildCalendarHref, type SelectedDay } from '@/lib/selectedDay';
+import { calorieHistoryDay, openDayLabel } from '@/lib/dayEntryAdapters';
 
 const PAGE_SIZE = 20;
 
@@ -70,6 +73,18 @@ const MacroCell = ({
   );
 };
 
+/** "Open day": opens one day's agenda in the Calendar. A text button with an icon, not an icon or a colour alone. */
+const OpenDayButton = ({ date, onOpen }: { date: string; onOpen: (day: SelectedDay) => void }) => {
+  const day = calorieHistoryDay(date);
+  if (!day) return null;
+  return (
+    <Button type="button" variant="outline" size="sm" aria-label={openDayLabel(date)} onClick={() => onOpen(day)}>
+      <CalendarDays aria-hidden="true" />
+      Open day
+    </Button>
+  );
+};
+
 const CalorieHistory = () => {
   const { meals, loading: mealsLoading } = useMeals();
   const { sessions, loading: sessionsLoading } = useGymSessions();
@@ -83,6 +98,9 @@ const CalorieHistory = () => {
   const [page, setPage] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const navigate = useNavigate();
+  // A day in the adherence grid or a daily record opens that day in the Calendar (a normal push: Back returns here).
+  const openDay = (day: SelectedDay) => navigate(buildCalendarHref(day.isoDate));
 
   const rows = useMemo<DayRow[]>(() => {
     const dates = new Set<string>();
@@ -207,7 +225,7 @@ const CalorieHistory = () => {
       />
 
       <PageSection title="Target adherence" hideTitle>
-        {loading ? <Skeleton className="h-40" aria-hidden="true" /> : <TargetAdherenceGrid rows={rows} />}
+        {loading ? <Skeleton className="h-40" aria-hidden="true" /> : <TargetAdherenceGrid rows={rows} onOpenDay={openDay} />}
       </PageSection>
 
       <PageSection title="Search and summary" hideTitle>
@@ -348,11 +366,14 @@ const CalorieHistory = () => {
                           )}
                         </span>
                       </div>
-                      {row.extraCalories > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          +{row.extraCalories} cal from extra activity
-                        </span>
-                      )}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {row.extraCalories > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            +{row.extraCalories} cal from extra activity
+                          </span>
+                        )}
+                        <OpenDayButton date={row.date} onOpen={openDay} />
+                      </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-3">
                       <MacroCell

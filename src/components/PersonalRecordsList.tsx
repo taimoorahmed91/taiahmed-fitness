@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Trophy, Search, Merge, X, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { GymSession } from '@/types';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
 import { personalRecords } from '@/lib/workoutStats';
+import { listHasAnyName, namesForExercise } from '@/lib/exerciseAliases';
+import { useExerciseAliases } from '@/hooks/useExerciseAliases';
 import { ExerciseHistoryDialog } from '@/components/ExerciseHistoryDialog';
 import { dayDiff, defaultToday, formatDay } from '@/lib/historyDates';
 
@@ -19,49 +21,34 @@ interface Props {
 }
 
 const ALL = '__all__';
-const ALIAS_KEY = 'fittrack-exercise-aliases';
-
-const loadAliases = (): Record<string, string> => {
-  try { return JSON.parse(localStorage.getItem(ALIAS_KEY) || '{}'); } catch { return {}; }
-};
 
 export const PersonalRecordsList = ({ sessions, templates }: Props) => {
   const [query, setQuery] = useState('');
   const [templateFilter, setTemplateFilter] = useState(ALL);
-  const [aliases, setAliases] = useState<Record<string, string>>(loadAliases);
+  // Merges are shared with the workout detail and stored on this device only (see useExerciseAliases).
+  const { aliases, mergeNames, separateName } = useExerciseAliases();
   const [merging, setMerging] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [opened, setOpened] = useState<string | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const records = useMemo(() => personalRecords(sessions, aliases), [sessions, aliases]);
 
-  const persist = (next: Record<string, string>) => {
-    setAliases(next);
-    try { localStorage.setItem(ALIAS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
-  };
-  const namesFor = (exercise: string) => [exercise, ...Object.keys(aliases).filter((a) => aliases[a] === exercise)];
-  const has = (list: string[], names: string[]) => list.some((e) => names.some((n) => n.toLowerCase() === e.toLowerCase()));
-  const templateFor = (exercise: string) => templates.filter((t) => has(t.exercises, namesFor(exercise))).map((t) => t.name);
+  const namesFor = (exercise: string) => namesForExercise(exercise, aliases);
+  const templateFor = (exercise: string) => templates.filter((t) => listHasAnyName(t.exercises, namesFor(exercise))).map((t) => t.name);
 
   const togglePick = (name: string) => setPicked((p) => (p.includes(name) ? p.filter((x) => x !== name) : [...p, name]));
   const confirmMerge = () => {
-    const [keep, ...rest] = picked;
-    const next = { ...aliases };
-    rest.forEach((r) => {
-      Object.keys(next).forEach((a) => { if (next[a] === r) next[a] = keep; });
-      next[r] = keep;
-    });
-    delete next[keep];
-    persist(next);
-    toast.success(`Merged into "${keep}"`);
+    const keep = mergeNames(picked);
+    if (keep) toast.success(`Merged into "${keep}"`);
     setPicked([]); setMerging(false);
   };
-  const unmerge = (alias: string) => { const next = { ...aliases }; delete next[alias]; persist(next); };
+  const unmerge = (alias: string) => separateName(alias);
 
   const filtered = records.filter((r) => {
     if (query && !r.exercise.toLowerCase().includes(query.toLowerCase())) return false;
     if (templateFilter !== ALL) {
       const t = templates.find((x) => x.id === templateFilter);
-      if (!t || !has(t.exercises, namesFor(r.exercise))) return false;
+      if (!t || !listHasAnyName(t.exercises, namesFor(r.exercise))) return false;
     }
     return true;
   });
@@ -132,7 +119,11 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => (merging ? togglePick(r.exercise) : setOpened(r.exercise))}
+                      onClick={(event) => {
+                        if (merging) { togglePick(r.exercise); return; }
+                        openerRef.current = event.currentTarget;
+                        setOpened(r.exercise);
+                      }}
                       aria-pressed={merging ? picked.includes(r.exercise) : undefined}
                       aria-haspopup={merging ? undefined : 'dialog'}
                       className="h-auto min-w-0 justify-start whitespace-normal rounded-sm p-0 text-left text-base font-semibold leading-tight after:absolute after:inset-0 after:content-[''] focus-visible:ring-0 focus-visible:ring-offset-0 [@media(hover:hover)]:hover:bg-transparent active:bg-transparent motion-safe:active:scale-100"
@@ -172,7 +163,7 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
           </div>
         )}
       </CardContent>
-      <ExerciseHistoryDialog exercise={opened} sessions={sessions} aliases={aliases} onClose={() => setOpened(null)} />
+      <ExerciseHistoryDialog exercise={opened} sessions={sessions} aliases={aliases} returnFocusRef={openerRef} onClose={() => setOpened(null)} />
     </Card>
   );
 };

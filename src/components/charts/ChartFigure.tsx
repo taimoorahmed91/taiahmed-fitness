@@ -21,6 +21,11 @@ interface ChartFigureProps {
    */
   expanded?: boolean;
   className?: string;
+  /**
+   * Something that belongs directly under the plot and above the "Chart summary" toggle: the selected-day readout.
+   * Left out of the full-screen viewer, which has its own selection bar.
+   */
+  afterPlot?: ReactNode;
   /** A Recharts chart. Give it `accessibilityLayer` for keyboard access. */
   children: ReactElement;
 }
@@ -34,9 +39,13 @@ const cell = (value: unknown) => (value == null || value === '' ? '--' : typeof 
  * table for screen readers, an optional visible caption, and the responsive
  * container. The visual chart itself stays unchanged.
  */
-export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEIGHT, expanded = false, className, children }: ChartFigureProps) => {
+export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEIGHT, expanded = false, className, afterPlot, children }: ChartFigureProps) => {
   const id = useId();
-  const rows = table ? table.rows.slice(-MAX_TABLE_ROWS) : [];
+  // The card's screen-reader table is capped (it sits in every card). The full-screen viewer's is not: it never drops a row.
+  // Neither is the source of the viewer's visible Table or CSV: those read the chart's complete ChartViewerDataset.
+  const allRows = table ? table.rows : [];
+  const rows = expanded ? allRows : allRows.slice(-MAX_TABLE_ROWS);
+  const truncated = rows.length < allRows.length;
   return (
     // useId makes these ids unique per mounted figure, so the card and the full-screen viewer can be on screen together.
     <figure aria-labelledby={`${id}-label`} aria-describedby={`${id}-summary`} className={expanded ? 'm-0 flex flex-1 flex-col' : className ?? 'm-0'} data-chart-expanded={expanded ? '' : undefined}>
@@ -50,6 +59,7 @@ export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEI
       ) : (
         <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>
       )}
+      {afterPlot}
       {/* The same summary screen readers get, available to everyone on demand. Closed by default so
           it never pushes the chart around; aria-describedby still reads it while collapsed. */}
       <details data-chart-summary data-html2canvas-ignore="true" className="mt-2 text-xs text-muted-foreground">
@@ -61,7 +71,7 @@ export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEI
       {table && rows.length > 0 && (
         <div className="sr-only" data-html2canvas-ignore="true">
           <table>
-            <caption>{title} data</caption>
+            <caption>{title} data{truncated ? `. Showing the latest ${rows.length} of ${allRows.length} rows. Open full screen and choose Table for all rows.` : ''}</caption>
             <thead><tr>{table.columns.map((c) => <th key={c.key} scope="col">{c.label}</th>)}</tr></thead>
             <tbody>
               {rows.map((row, i) => (

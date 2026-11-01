@@ -1,4 +1,6 @@
 import type { SharedTableState } from '@/lib/sharedData';
+import { deriveChartStatus } from '@/lib/chartSourceStatus';
+import type { ChartDatasetStatus } from '@/lib/chartViewerData';
 import { combineViews, summarizeTables, tableView, type NamedTableState, type TableView } from './tableView';
 
 /** The shared tables the Reports screen reads. */
@@ -68,3 +70,17 @@ export const resolveReportData = (states: Record<ReportTable, SharedTableState>)
     loading: summary.loading.length > 0,
   };
 };
+
+/**
+ * Viewer / CSV status for ONE report chart, from exactly the tables it is drawn from (not the whole screen):
+ * unavailable if a first load failed, stale if only a refresh failed over kept rows, undefined otherwise.
+ */
+export const reportChartStatus = (states: Record<ReportTable, SharedTableState>, tables: readonly ReportTable[]): ChartDatasetStatus | undefined =>
+  deriveChartStatus(tables.map((t) => ({ label: REPORT_TABLE_LABELS[t], view: tableView(states[t]), refreshFailed: states[t].refreshFailed })));
+
+/** What each Reports chart is computed from. */
+export const REPORT_CHART_TABLES = {
+  caloriesWorkout: ['meals', 'gym_sessions'],
+  sleep: ['sleep'],
+  recomposition: ['weight', 'waist'],
+} as const satisfies Record<string, readonly ReportTable[]>;

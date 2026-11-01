@@ -2,12 +2,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { CorrelationInsight } from '@/hooks/useReportData';
 import { cn } from '@/lib/utils';
+import type { CrossMetricInsight } from '@/hooks/useCrossMetricInsights';
+import { InsightEvidence } from '@/components/insights/InsightEvidence';
 
 interface InsightCardProps {
-  insight: CorrelationInsight;
+  /** Cross-metric insights also carry their evidence, shown behind "Show evidence". */
+  insight: CorrelationInsight & Partial<Pick<CrossMetricInsight, 'evidence' | 'staleSources' | 'valueLabel'>>;
+  /** Called with an ISO date (YYYY-MM-DD) when someone picks a date inside the evidence. */
+  onSelectDate?: (isoDate: string) => void;
 }
 
-export const InsightCard = ({ insight }: InsightCardProps) => {
+export const InsightCard = ({ insight, onSelectDate }: InsightCardProps) => {
   const correlationStyles = {
     positive: {
       bg: 'bg-chart-min/10 border-chart-min/20',
@@ -46,9 +51,13 @@ export const InsightCard = ({ insight }: InsightCardProps) => {
           {insight.value && (
             <span className={cn('text-lg font-bold', style.valueColor)}>
               {insight.value}
+              {insight.valueLabel && <span className="block text-right text-xs font-normal text-muted-foreground">{insight.valueLabel}</span>}
             </span>
           )}
         </div>
+        {insight.evidence && (
+          <InsightEvidence title={insight.title} evidence={insight.evidence} staleSources={insight.staleSources} onSelectDate={onSelectDate} />
+        )}
       </CardContent>
     </Card>
   );

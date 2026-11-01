@@ -5,6 +5,8 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { cn } from '@/lib/utils';
 import { adherenceSummary, DayStatus, Range, rangeStatus } from '@/lib/targets';
 import { STATUS_META, TargetStatus, adherenceCellLabel } from '@/lib/targetStatus';
+import { adherenceCellDay } from '@/lib/dayEntryAdapters';
+import type { SelectedDay } from '@/lib/selectedDay';
 
 type Metric = 'calories' | 'protein';
 interface Row {
@@ -15,7 +17,16 @@ interface Row {
 
 const LEGEND: TargetStatus[] = ['within', 'under', 'over', 'none'];
 
-export const TargetAdherenceGrid = ({ rows }: { rows: Row[] }) => {
+interface TargetAdherenceGridProps {
+  rows: Row[];
+  /**
+   * Makes every day a button that opens that day (the page decides how: usually the Calendar). Without it the cells
+   * are plain, non-interactive squares as before.
+   */
+  onOpenDay?: (day: SelectedDay) => void;
+}
+
+export const TargetAdherenceGrid = ({ rows, onOpenDay }: TargetAdherenceGridProps) => {
   const [metric, setMetric] = useState<Metric>('calories');
   const summary = useMemo(() => {
     const map: Record<string, DayStatus> = {};
@@ -52,15 +63,43 @@ export const TargetAdherenceGrid = ({ rows }: { rows: Row[] }) => {
             No days with a {metric} target and logged meals in the last 30 days yet. Days appear here once meals are logged against a target.
           </p>
         ) : (
-          <ul aria-label={`${metric === 'calories' ? 'Calorie' : 'Protein'} target adherence by day, oldest first`} className="grid grid-cols-10 gap-1.5">
+          <ul
+            aria-label={`${metric === 'calories' ? 'Calorie' : 'Protein'} target adherence by day, oldest first`}
+            // Squares at least 44px wide, so every day is a comfortable touch target on a 320px phone; ten across from md.
+            className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-1.5 md:grid-cols-10"
+          >
             {summary.cells.map((c) => {
               const status: TargetStatus = c.status ?? 'none';
               const meta = STATUS_META[status];
-              return (
-                <li key={c.date} title={adherenceCellLabel(c.date, c.status)} aria-label={adherenceCellLabel(c.date, c.status)}
-                  className={cn('flex aspect-square flex-col items-center justify-center gap-px rounded-md text-xs font-medium leading-none', meta.fill, meta.onFill)}>
+              const day = onOpenDay ? adherenceCellDay(c.date, metric) : null;
+              const label = adherenceCellLabel(c.date, c.status);
+              const face = (
+                <>
                   <span aria-hidden="true">{Number(c.date.slice(8))}</span>
                   <span aria-hidden="true">{meta.glyph}</span>
+                </>
+              );
+              const cellClass = cn('flex flex-col items-center justify-center gap-px rounded-md text-xs font-medium leading-none', meta.fill, meta.onFill);
+              return day && onOpenDay ? (
+                <li key={c.date} className="aspect-square min-h-11">
+                  {/* The glyph and the word in the name say how the day went, so colour is never the only cue. */}
+                  <button
+                    type="button"
+                    title={`${label}. Open in Calendar`}
+                    aria-label={`${label}. Open in Calendar`}
+                    onClick={() => onOpenDay(day)}
+                    className={cn(
+                      cellClass,
+                      'h-full w-full ring-offset-background transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none',
+                      '[@media(hover:hover)]:hover:ring-2 [@media(hover:hover)]:hover:ring-foreground/60',
+                    )}
+                  >
+                    {face}
+                  </button>
+                </li>
+              ) : (
+                <li key={c.date} title={label} aria-label={label} className={cn(cellClass, 'aspect-square')}>
+                  {face}
                 </li>
               );
             })}

@@ -1,4 +1,6 @@
 import type { SharedTableState } from '@/lib/sharedData';
+import { deriveChartStatus } from '@/lib/chartSourceStatus';
+import type { ChartDatasetStatus } from '@/lib/chartViewerData';
 import { combineViews, joinLabels, summarizeTables, tableView, type NamedTableState, type TableView } from './tableView';
 
 /** The shared tables the Dashboard reads. */
@@ -69,6 +71,11 @@ export interface DashboardSectionState {
   view: TableView;
   /** Labels of this block's sources whose first load failed (empty unless `view` is 'error'). */
   missing: string[];
+  /**
+   * What a chart in this block should tell the viewer / CSV: `unavailable` when a source's first load failed,
+   * `stale` when only a refresh failed over kept rows, undefined otherwise (see lib/chartSourceStatus.ts).
+   */
+  chartStatus: ChartDatasetStatus | undefined;
 }
 
 export interface DashboardDataState {
@@ -108,6 +115,14 @@ export const resolveDashboardData = (
     sections[section] = {
       view: combineViews(views),
       missing: needs.filter((s) => sourceView(s, states, extras) === 'error').map((s) => DASHBOARD_LABELS[s]),
+      chartStatus: deriveChartStatus(
+        needs.map((s) => ({
+          label: DASHBOARD_LABELS[s],
+          view: sourceView(s, states, extras),
+          // Only shared tables report a failed refresh. Settings / personal targets report load or error only.
+          refreshFailed: (DASHBOARD_TABLES as readonly string[]).includes(s) && states[s as DashboardTable].refreshFailed,
+        })),
+      ),
     };
   }
 

@@ -13,6 +13,8 @@ const hookWith = (entries: unknown[]) => () => ({
 mock.module('@/hooks/useWeight', () => ({ useWeight: hookWith(entriesFor('weight', [82.4, 82.8, 83.1, 84.0])) }));
 mock.module('@/hooks/useWaist', () => ({ useWaist: hookWith(entriesFor('waist', [91.5, 92, 92.4, 93])) }));
 mock.module('@/hooks/useSleep', () => ({ useSleep: hookWith(entriesFor('hours', [7.5, 6.8, 8, 7.2])) }));
+// The Sleep page's trend chart also reads the shared WHOOP rows (none here).
+mock.module('@/hooks/useWhoopData', () => ({ useWhoopData: () => ({ entries: [], loading: false }) }));
 
 // Weight / Waist / Sleep mounted at the Poland-vs-UTC midnight boundary and with overview data:
 //  - the date field defaults to the UTC calendar day (what Meals / Dashboard use), not the local day;

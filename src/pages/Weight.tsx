@@ -15,6 +15,11 @@ import { Scale, Plus, AlertCircle } from 'lucide-react';
 import { useWeight, WeightEntry } from '@/hooks/useWeight';
 import { useDataFilter } from '@/hooks/useDataFilter';
 import { MetricHistoryList } from '@/components/history/MetricHistoryList';
+import { TrendSection } from '@/components/history/TrendSection';
+import { useChartHistoryLink } from '@/components/history/useChartHistoryLink';
+import { WeightChart } from '@/components/WeightChart';
+import { planRecordPlot, recordChartRows } from '@/lib/recordTrend';
+import { deriveChartStatus } from '@/lib/chartSourceStatus';
 import { fmt, rangeOf } from '@/lib/bodyHistory';
 import { defaultFormDate } from '@/lib/dayLabels';
 import { useSharedTableState } from '@/lib/sharedTable';
@@ -58,6 +63,19 @@ const Weight = () => {
     data: entries,
     searchFields: ['notes'] as (keyof WeightEntry)[],
     dateField: 'date' as keyof WeightEntry,
+  });
+
+  // The chart on this page draws one exact weigh-in per day and is linked to the history list below (chart point <-> row).
+  const plan = useMemo(() => planRecordPlot(entries, (entry) => entry.weight > 0), [entries]);
+  const chartRows = useMemo(() => recordChartRows(plan, 'weight', getWeight), [plan]);
+  const chartStatus = deriveChartStatus([{ label: 'weight entries', view, refreshFailed: tableState.refreshFailed }]);
+  const clearFilters = () => {
+    setSearchQuery('');
+    setTimeFilter('all');
+  };
+  const trend = useChartHistoryLink({
+    entries, visibleEntries: filteredEntries, statusOf: plan.statusOf, clearFilters,
+    noun: 'weight entry', nounPlural: 'weight entries', valueKey: 'weight',
   });
 
   // The hooks resolve `true` only when the database confirmed the change. Anything else (false or a rejection)
@@ -290,6 +308,15 @@ const Weight = () => {
         </div>
       </PageSection>
 
+      {/* Only once the entries have loaded and there is at least one: no chart over an unknown or empty list. */}
+      {view === 'ready' && entries.length > 0 && (
+        <PageSection title="Weight trend" hideTitle>
+          <TrendSection hint="Chart of your weigh-ins" open={trend.trendOpen} onOpenChange={trend.setTrendOpen}>
+            <WeightChart data={chartRows} status={chartStatus} recordLink={trend.chartLink} />
+          </TrendSection>
+        </PageSection>
+      )}
+
       <PageSection title="Weight history" hideTitle>
         {/* Search and Filter */}
         <div>
@@ -342,6 +369,9 @@ const Weight = () => {
                 deleteDescription={(entry) => `Are you sure you want to delete ${entry.weight} kg recorded on ${entry.date}, including its notes? This cannot be undone.`}
                 onEdit={handleEdit}
                 onDelete={deleteEntry}
+                chartLink={trend.listLink}
+                reveal={trend.reveal}
+                onRevealed={trend.onRevealed}
               />
             )}
           </CardContent>

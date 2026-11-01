@@ -10,10 +10,16 @@ import { useCrossMetricInsights } from '@/hooks/useCrossMetricInsights';
 import { computeBodyRecomposition, RECOMP_LABELS, shiftDate } from '@/lib/crossMetricIntelligence';
 import { toneClass } from './BodyRecompositionCard';
 import { cn } from '@/lib/utils';
+import { InsightEvidence } from '@/components/insights/InsightEvidence';
 
 const fmt = (v: number | null, unit: string) => (v == null ? '--' : `${v > 0 ? '+' : ''}${v.toFixed(1)} ${unit}`);
 
-export const CrossMetricSummaryCard = () => {
+interface CrossMetricSummaryCardProps {
+  /** Called with an ISO date (YYYY-MM-DD) when someone picks a date inside an insight's evidence. */
+  onSelectDate?: (isoDate: string) => void;
+}
+
+export const CrossMetricSummaryCard = ({ onSelectDate }: CrossMetricSummaryCardProps = {}) => {
   const { entries: weight } = useWeight();
   const { entries: waist } = useWaist();
   const since = shiftDate(new Date().toISOString().slice(0, 10), -29);
@@ -34,9 +40,18 @@ export const CrossMetricSummaryCard = () => {
           <span className="text-sm text-muted-foreground">30D: Δ Weight <b className="text-foreground">{fmt(recomp.weightDelta, 'kg')}</b> · Δ Waist <b className="text-foreground">{fmt(recomp.waistDelta, 'cm')}</b></span>
         </div>
         {insights.length ? insights.map(i => (
-          <div key={i.title} className="flex items-start justify-between gap-3 rounded-md border p-3">
-            <div><p className="text-sm font-semibold">{i.title}</p><p className="text-xs text-muted-foreground line-clamp-2">{i.description}</p></div>
-            {i.value && <span className={cn('text-sm font-bold', i.correlation === 'positive' ? 'text-chart-min' : i.correlation === 'negative' ? 'text-chart-max' : 'text-muted-foreground')}>{i.value}</span>}
+          <div key={i.id} className="min-w-0 rounded-md border p-3" data-testid={`cross-metric-${i.id}`}>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <h4 className="text-sm font-semibold">{i.title}</h4>
+              {i.value && (
+                <p className="text-sm font-bold tabular-nums text-foreground">
+                  {i.value}
+                  {i.valueLabel && <span className="ml-1 text-xs font-normal text-muted-foreground">{i.valueLabel} difference</span>}
+                </p>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{i.description}</p>
+            <InsightEvidence title={i.title} evidence={i.evidence} staleSources={i.staleSources} onSelectDate={onSelectDate} />
           </div>
         )) : <p className="text-sm text-muted-foreground">Insights appear after at least 3 days on each side of your recovery and sleep cutoffs in the last 30 days.</p>}
         <Button asChild variant="ghost" size="sm" className="px-0 text-primary"><Link to="/reports">Full breakdown in Reports <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>

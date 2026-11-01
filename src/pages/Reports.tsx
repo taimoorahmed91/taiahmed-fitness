@@ -5,7 +5,7 @@ import { LoadingAnnouncement } from '@/components/feedback/LoadingAnnouncement';
 import { PartialDataNotice } from '@/components/feedback/PartialDataNotice';
 import { SectionUnavailable } from '@/components/feedback/SectionUnavailable';
 import { joinLabels, type TableView } from '@/components/feedback/tableView';
-import { REPORT_TABLE_LABELS, resolveReportData, type ReportTable } from '@/components/feedback/reportSections';
+import { REPORT_CHART_TABLES, REPORT_TABLE_LABELS, reportChartStatus, resolveReportData, type ReportTable } from '@/components/feedback/reportSections';
 import { useSharedTableState } from '@/lib/sharedTable';
 import { useMeals } from '@/hooks/useMeals';
 import { useGymSessions } from '@/hooks/useGymSessions';
@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShareableSummary } from '@/components/ShareableSummary';
 import { InsightCard } from '@/components/InsightCard';
+import { useOpenCalendarDay } from '@/components/charts/useOpenCalendarDay';
 import { ReportCharts } from '@/components/ReportCharts';
 import { useReportData } from '@/hooks/useReportData';
 import { useCrossMetricInsights } from '@/hooks/useCrossMetricInsights';
@@ -45,6 +46,8 @@ const StatTile = ({ icon: Icon, iconClassName, value, label, view }: { icon: Luc
 };
 
 const Reports = () => {
+  // Evidence dates in the insight cards open that day in Calendar (a normal link push, no extra dialog).
+  const openCalendarDay = useOpenCalendarDay();
   const { user } = useUser();
   const summaryRef = useRef<HTMLDivElement>(null);
   const [periodType, setPeriodType] = useState<PeriodType>('week');
@@ -73,14 +76,21 @@ const Reports = () => {
 
   // Where each table really is. Zeros and "no data" only mean something once the table has loaded,
   // so every part below waits for the tables it is computed from (an error shows as soon as it happens).
-  const data = resolveReportData({
+  const tableStates = {
     meals: useSharedTableState('meals'),
     gym_sessions: useSharedTableState('gym_sessions'),
     weight: useSharedTableState('weight'),
     waist: useSharedTableState('waist'),
     sleep: useSharedTableState('sleep'),
     whoop: useSharedTableState('whoop'),
-  });
+  };
+  const data = resolveReportData(tableStates);
+  // Each chart tells the full-screen viewer (and its CSV name) about exactly the tables it is drawn from.
+  const chartStatus = {
+    caloriesWorkout: reportChartStatus(tableStates, REPORT_CHART_TABLES.caloriesWorkout),
+    sleep: reportChartStatus(tableStates, REPORT_CHART_TABLES.sleep),
+    recomposition: reportChartStatus(tableStates, REPORT_CHART_TABLES.recomposition),
+  };
   const { sections } = data;
   const retryers: Record<ReportTable, () => Promise<void>> = {
     meals: refetchMeals,
@@ -189,7 +199,7 @@ const Reports = () => {
         ) : sections.charts.view === 'error' ? (
           <SectionUnavailable title="Report charts are paused" description={pausedText(sections.charts.missing)} minHeightClassName="min-h-[22rem]" />
         ) : (
-          <ReportCharts data={chartData} />
+          <ReportCharts data={chartData} status={{ caloriesWorkout: chartStatus.caloriesWorkout, sleep: chartStatus.sleep }} />
         )}
 
         {sections.recomposition.view === 'loading' ? (
@@ -197,7 +207,7 @@ const Reports = () => {
         ) : sections.recomposition.view === 'error' ? (
           <SectionUnavailable title="Body recomposition is paused" description={pausedText(sections.recomposition.missing)} minHeightClassName="min-h-[16rem]" />
         ) : (
-          <BodyRecompositionCard weight={weightEntries.map(w => ({ date: w.date, value: w.weight }))} waist={waistEntries.map(w => ({ date: w.date, value: w.waist }))} />
+          <BodyRecompositionCard weight={weightEntries.map(w => ({ date: w.date, value: w.weight }))} waist={waistEntries.map(w => ({ date: w.date, value: w.waist }))} status={chartStatus.recomposition} />
         )}
       </PageSection>
 
@@ -207,7 +217,7 @@ const Reports = () => {
         ) : sections.insights.view === 'ready' && allInsights.length > 0 && (
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Lightbulb className="h-5 w-5 text-primary" aria-hidden="true" />Insights</CardTitle></CardHeader>
-            <CardContent><div className="grid sm:grid-cols-2 gap-4">{allInsights.map((insight, i) => <InsightCard key={i} insight={insight} />)}</div></CardContent>
+            <CardContent><div className="grid sm:grid-cols-2 gap-4">{allInsights.map((insight, i) => <InsightCard key={i} insight={insight} onSelectDate={openCalendarDay} />)}</div></CardContent>
           </Card>
         )}
 

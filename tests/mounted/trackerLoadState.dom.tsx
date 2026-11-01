@@ -57,7 +57,7 @@ const sleepRow = { id: 's1', hours: '7.5', date: '2026-10-01', notes: null };
 
 describe('trackers and reports: failed fetch is not empty', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let env: any, React: any, createRoot: any, act: any, QueryClient: any, QueryClientProvider: any, TooltipProvider: any;
+  let env: any, React: any, createRoot: any, act: any, QueryClient: any, QueryClientProvider: any, TooltipProvider: any, MemoryRouter: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let Weight: any, Waist: any, Sleep: any, Reports: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,6 +71,7 @@ describe('trackers and reports: failed fetch is not empty', () => {
     ({ createRoot } = await import('react-dom/client'));
     ({ QueryClient, QueryClientProvider } = await import('@tanstack/react-query'));
     ({ TooltipProvider } = await import('../../src/components/ui/tooltip'));
+    ({ MemoryRouter } = await import('react-router-dom'));
     act = React.act;
     Weight = (await import('../../src/pages/Weight')).default;
     Waist = (await import('../../src/pages/Waist')).default;
@@ -94,7 +95,7 @@ describe('trackers and reports: failed fetch is not empty', () => {
     const host = env.window.document.createElement('div');
     env.window.document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => root.render(React.createElement(QueryClientProvider, { client }, React.createElement(TooltipProvider, null, React.createElement(Page as never)))));
+    await act(async () => root.render(React.createElement(QueryClientProvider, { client }, React.createElement(TooltipProvider, null, React.createElement(MemoryRouter, null, React.createElement(Page as never))))));
     await act(async () => { await sleep(30); });
   };
   const text = () => env.window.document.body.textContent as string;

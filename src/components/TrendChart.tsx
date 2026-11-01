@@ -8,11 +8,15 @@ import { ChartHeader } from '@/components/charts/ChartHeader';
 import { ChartEmptyState, TREND_NO_DATA, type ChartNoDataEmpty } from '@/components/charts/ChartEmptyState';
 import { ChartTooltipCard, TooltipNote } from '@/components/charts/ChartTooltipCard';
 import { NoteDiamond } from '@/components/charts/NoteDiamond';
+import { ChartDayReadout } from '@/components/charts/ChartDaySelectionUi';
+import { selectableActiveDot, selectableBarCells, selectableBarClick, selectableBarMouseDown, selectableDot, selectedDayGuide } from '@/components/charts/ChartSelectionMarks';
+import { useAccountChartSelection } from '@/components/charts/useAccountChartSelection';
 import { CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { CHART_RANGES, RANGE_LABELS } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
 import { barAxisNote, computeChartDomain } from '@/lib/chartDomain';
+import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
 
 type Series = { key: string; label: string; color: string; dashed?: boolean };
 type Row = { date: string; [key: string]: string | number | null | undefined };
@@ -37,9 +41,24 @@ interface TrendChartProps {
    */
   noData?: ChartNoDataEmpty | null;
   extendedRanges?: boolean;
+  /**
+   * Selecting a day. On by default: every TrendChart row is one real calendar day (a daily aggregate), so a point, bar,
+   * Table row or Previous / Next press selects that day and offers "Open day" in Calendar. Rows whose `date` is not an
+   * ISO date, and rows with no number, are simply not selectable.
+   *  - `metric`: what the day is about for the SelectedDay origin (defaults to the chart id: "weight", "sleep").
+   *  - `recordId`: only when a row IS one stored record; it makes the origin a `record` instead of a daily aggregate.
+   *  - `false`: opt out (a chart whose rows are not days).
+   */
+  /**
+   * Where the chart's source data really is (see lib/chartSourceStatus.ts): `stale` (a refresh failed over kept rows) or
+   * `unavailable` (a first load failed). The viewer says so, the CSV name carries `_stale`, and unavailable data can not be
+   * exported or selected. Leave out when everything is loaded and current.
+   */
+  status?: ChartDatasetStatus;
+  daySelection?: false | { metric?: string; recordId?: (row: Row) => string | null | undefined };
 }
 
-export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, notesMap, cap, summary, empty, noData, extendedRanges }: TrendChartProps) => {
+export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, notesMap, cap, summary, empty, noData, extendedRanges, daySelection, status }: TrendChartProps) => {
   const view = useChartView(id, defaultStyle, { allowed: extendedRanges ? CHART_RANGES : undefined });
   const cardRef = useRef<HTMLDivElement>(null);
   const shown = useMemo(() => recentChartData(data, view.range), [data, view.range]);
@@ -58,6 +77,19 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
 
   const pdfColumns = [{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: `${s.label}${unit ? ` (${unit})` : ''}` }))];
 
+  // The viewer's Table and CSV read these complete rows (the same ones the plot draws), never the capped screen-reader table.
+  const dataset = useMemo(
+    () => createChartDataset({
+      name: title, period, rows: shown, status,
+      columns: [{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: s.label, unit }))],
+      selection: daySelection === false ? false : { metric: daySelection?.metric ?? id, valueKeys: series.map(s => s.key), recordId: daySelection?.recordId },
+    }),
+    [title, period, shown, series, unit, daySelection, id, status],
+  );
+  // One selected day for the card and the full-screen viewer (src/components/charts/useChartDaySelection.ts).
+  const selection = useAccountChartSelection(dataset);
+  const selectable = selection.enabled;
+
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same state; only `expanded` differs.
   const body = (expanded: boolean) => (
@@ -70,8 +102,9 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
         expanded={expanded}
         title={title}
         summary={summaryText}
-        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
+        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}${notesMap ? ' · \u25C6 marks a day with a note' : ''}${selectable ? ` · Select a ${view.style === 'bar' ? 'bar' : 'point'} for its day` : ''}`}
         table={{ columns: pdfColumns, rows: shown }}
+        afterPlot={expanded ? undefined : <ChartDayReadout selection={selection} />}
       >
         <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
@@ -88,9 +121,12 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
           }} />
           {series.length > 1 && <Legend {...chartLegendProps} />}
           {series.map(s => view.style === 'bar' ?
-            <Bar {...motion} key={s.key} dataKey={s.key} name={s.label} fill={s.color} maxBarSize={40} radius={[3, 3, 0, 0]} /> :
-            <Line {...motion} key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? false : { r: chartDotRadius(3, shown.length, expanded), fill: s.color, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls />
+            <Bar {...motion} key={s.key} dataKey={s.key} name={s.label} fill={s.color} maxBarSize={40} radius={[3, 3, 0, 0]} onClick={selectable ? selectableBarClick(selection, s.key) : undefined} onMouseDown={selectable ? selectableBarMouseDown : undefined}>
+              {selectable ? selectableBarCells(shown, selection) : null}
+            </Bar> :
+            <Line {...motion} key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? false : selectable ? selectableDot({ selection, seriesKey: s.key, color: s.color, r: chartDotRadius(3, shown.length, expanded), stroke: chartDotStroke }) : { r: chartDotRadius(3, shown.length, expanded), fill: s.color, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={selectable ? selectableActiveDot(5) : { r: 5 }} connectNulls />
           )}
+          {selectedDayGuide(selection)}
           {noteDots.map(row => <ReferenceDot key={row.date} x={row.date} y={Number(row[series[0].key])} r={7} shape={<NoteDiamond />} />)}
         </ComposedChart>
       </ChartFigure>
@@ -105,7 +141,7 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
         description={summary?.(shown)}
         view={{ ...view, extended: extendedRanges }}
         pdf={{ targetRef: cardRef, subtitle: `${period} · ${view.style} chart`, columns: pdfColumns, rows: shown }}
-        viewer={{ render: () => body(true) }}
+        viewer={{ render: () => body(true), dataset, selection }}
       />
       <CardContent>{body(false)}</CardContent>
     </Card>

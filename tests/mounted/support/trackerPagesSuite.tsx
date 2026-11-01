@@ -42,6 +42,8 @@ mock.module('@/lib/sharedTable', () => ({ useSharedTableState: () => readyState,
 mock.module('@/hooks/useWeight', () => ({ useWeight: hookFor(apis.weight) }));
 mock.module('@/hooks/useWaist', () => ({ useWaist: hookFor(apis.waist) }));
 mock.module('@/hooks/useSleep', () => ({ useSleep: hookFor(apis.sleep) }));
+// The Sleep page's trend chart also reads the shared WHOOP rows (none here).
+mock.module('@/hooks/useWhoopData', () => ({ useWhoopData: () => ({ entries: [], loading: false }) }));
 mock.module('@/hooks/useMeals', () => ({
   useMeals: () => ({
     meals: apis.meals.entries, lastFetchedAt: null, refetch: async () => {},

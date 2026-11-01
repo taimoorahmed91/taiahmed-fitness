@@ -15,6 +15,11 @@ import { Ruler, Plus, AlertCircle } from 'lucide-react';
 import { useWaist, WaistEntry } from '@/hooks/useWaist';
 import { useDataFilter } from '@/hooks/useDataFilter';
 import { MetricHistoryList } from '@/components/history/MetricHistoryList';
+import { TrendSection } from '@/components/history/TrendSection';
+import { useChartHistoryLink } from '@/components/history/useChartHistoryLink';
+import { WaistChart } from '@/components/WaistChart';
+import { planRecordPlot, recordChartRows } from '@/lib/recordTrend';
+import { deriveChartStatus } from '@/lib/chartSourceStatus';
 import { fmt, formatChange, netChangeOver, rangeOf } from '@/lib/bodyHistory';
 import { defaultFormDate } from '@/lib/dayLabels';
 import { useSharedTableState } from '@/lib/sharedTable';
@@ -64,6 +69,19 @@ const Waist = () => {
     data: entries,
     searchFields: ['notes'] as (keyof WaistEntry)[],
     dateField: 'date' as keyof WaistEntry,
+  });
+
+  // The chart on this page draws one exact measurement per day and is linked to the history list below (chart point <-> row).
+  const plan = useMemo(() => planRecordPlot(entries, (entry) => entry.waist > 0), [entries]);
+  const chartRows = useMemo(() => recordChartRows(plan, 'waist', getWaist), [plan]);
+  const chartStatus = deriveChartStatus([{ label: 'waist entries', view, refreshFailed: tableState.refreshFailed }]);
+  const clearFilters = () => {
+    setSearchQuery('');
+    setTimeFilter('all');
+  };
+  const trend = useChartHistoryLink({
+    entries, visibleEntries: filteredEntries, statusOf: plan.statusOf, clearFilters,
+    noun: 'waist entry', nounPlural: 'waist entries', valueKey: 'waist',
   });
 
   // The hooks resolve `true` only when the database confirmed the change. Anything else (false or a rejection)
@@ -295,6 +313,15 @@ const Waist = () => {
         </div>
       </PageSection>
 
+      {/* Only once the entries have loaded and there is at least one: no chart over an unknown or empty list. */}
+      {view === 'ready' && entries.length > 0 && (
+        <PageSection title="Waist trend" hideTitle>
+          <TrendSection hint="Chart of your measurements" open={trend.trendOpen} onOpenChange={trend.setTrendOpen}>
+            <WaistChart data={chartRows} status={chartStatus} recordLink={trend.chartLink} />
+          </TrendSection>
+        </PageSection>
+      )}
+
       <PageSection title="Waist history" hideTitle>
         {/* Search and Filter */}
         <div>
@@ -349,6 +376,9 @@ const Waist = () => {
                 deleteDescription={(entry) => `Are you sure you want to delete ${entry.waist} cm recorded on ${entry.date}, including its notes? This cannot be undone.`}
                 onEdit={handleEdit}
                 onDelete={deleteEntry}
+                chartLink={trend.listLink}
+                reveal={trend.reveal}
+                onRevealed={trend.onRevealed}
               />
             )}
           </CardContent>

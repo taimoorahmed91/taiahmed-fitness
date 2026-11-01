@@ -42,3 +42,13 @@ export const pageGroupRange = (pages: readonly (readonly unknown[])[], page: num
   const before = pages.slice(0, index).reduce((sum, p) => sum + p.length, 0);
   return { from: before + 1, to: before + pages[index].length, total };
 };
+
+/**
+ * The 1-based page that holds the first item `matches` accepts, using the same packing as `packGroupsIntoPages`.
+ * Null when no group on any page holds it. Lets a list jump to an exact row (a chart point's record) on the right page.
+ */
+export const pageOfItem = <G extends PageableGroup>(groups: readonly G[], options: PagingOptions, matches: (item: G['items'][number]) => boolean): number | null => {
+  const pages = packGroupsIntoPages(groups, options);
+  const index = pages.findIndex((page) => page.some((group) => group.items.some((item) => matches(item as G['items'][number]))));
+  return index < 0 ? null : index + 1;
+};

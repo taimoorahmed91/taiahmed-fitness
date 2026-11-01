@@ -33,6 +33,11 @@ export interface HistoryRowProps {
   variant?: HistoryVariant;
   className?: string;
   summaryClassName?: string;
+  /**
+   * The id of the record this row shows. Lets something outside the list (a chart's "Jump to entry") find the exact row
+   * (see focusHistoryRow). A row with no disclosure button becomes focusable by script only (tabindex -1, never in the tab order).
+   */
+  rowId?: string;
 }
 
 const PAD = 'px-3 sm:px-4';
@@ -49,13 +54,23 @@ export const HistoryRow = ({
   variant = 'default',
   className,
   summaryClassName,
+  rowId,
 }: HistoryRowProps) => {
   const panelId = useId();
   const expandable = panel !== undefined && panel !== null && panel !== false;
   const style = HISTORY_VARIANTS[variant];
 
   return (
-    <li className={cn('group/row scroll-mt-16 transition-colors motion-reduce:transition-none', expanded && style.open, className)}>
+    <li
+      data-history-row={rowId}
+      tabIndex={rowId && !expandable ? -1 : undefined}
+      className={cn(
+        'group/row scroll-mt-16 transition-colors motion-reduce:transition-none',
+        rowId && !expandable && 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+        expanded && style.open,
+        className,
+      )}
+    >
       <div className="flex items-start">
         {expandable ? (
           <button

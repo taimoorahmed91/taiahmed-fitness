@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { ArrowLeftRight } from 'lucide-react';
+import { useCallback, useMemo } from 'react';
+import { ArrowLeftRight, Info } from 'lucide-react';
 import { PageContainer, PageHeader } from '@/components/layout/Page';
 import { Button } from '@/components/ui/button';
 import { DataLoadError } from '@/components/feedback/DataLoadError';
@@ -13,10 +13,10 @@ import { CategoryPicker } from '@/components/compare/CategoryPicker';
 import { ComparisonResults, ResultsGuidance } from '@/components/compare/ComparisonResults';
 import { RecordPicker } from '@/components/compare/RecordPicker';
 import { StepSection } from '@/components/compare/StepSection';
+import { useCompareLink } from '@/components/compare/useCompareLink';
 import {
   CATEGORY_INFO,
   CATEGORY_ORDER,
-  buildEntries,
   categoryAvailability,
   noticeCategories,
   pruneSelection,
@@ -34,9 +34,6 @@ const RESULTS_ID = 'compare-results';
  * On phones the steps stack; from `lg` the records sit beside the comparison so both stay in view.
  */
 const Compare = () => {
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
   const { meals, refetch: refetchMeals } = useMeals();
   const { sessions: gymSessions, refetch: refetchGym } = useGymSessions();
   const { entries: weightEntries, refetch: refetchWeight } = useWeight();
@@ -52,12 +49,11 @@ const Compare = () => {
   });
   const retryers: Record<Category, () => Promise<void>> = { meals: refetchMeals, gym: refetchGym, weight: refetchWeight, sleep: refetchSleep };
 
-  const entries = useMemo(
-    () => buildEntries(selectedCategory, { meals, gym: gymSessions, weight: weightEntries, sleep: sleepEntries }),
-    [selectedCategory, meals, gymSessions, weightEntries, sleepEntries],
-  );
-
-  const view = selectedCategory ? availability[selectedCategory].view : 'ready';
+  // The chosen metric and the two picks live here AND in the address (?category=weight&a=<id>&b=<id>), so a
+  // refresh, a shared link and Back / Forward all land on the same comparison. See compare/useCompareLink.ts.
+  const sources = useMemo(() => ({ meals, gym: gymSessions, weight: weightEntries, sleep: sleepEntries }), [meals, gymSessions, weightEntries, sleepEntries]);
+  const link = useCompareLink({ sources, availability });
+  const { category: selectedCategory, ids: selectedIds, entries, view, notice: linkNotice } = link;
   // Counts only mean something once that source has loaded.
   const loaded = { meals: meals.length, gym: gymSessions.length, weight: weightEntries.length, sleep: sleepEntries.length };
   const counts: Partial<Record<Category, number>> = Object.fromEntries(CATEGORY_ORDER.filter((id) => availability[id].view === 'ready').map((id) => [id, loaded[id]]));
@@ -74,16 +70,11 @@ const Compare = () => {
   const state = resultsState({ category: selectedCategory, view, recordCount: entries.length, pickedCount: picked.length });
   const info = selectedCategory ? CATEGORY_INFO[selectedCategory] : null;
 
-  const handleCategorySelect = (category: Category) => {
-    setSelectedCategory(category);
-    setSelectedIds([]);
-  };
-  const handleReset = () => {
-    setSelectedCategory(null);
-    setSelectedIds([]);
-  };
-  const handleToggle = (id: string) => setSelectedIds((prev) => toggleSelection(prev, id));
-  const handleRemove = (id: string) => setSelectedIds((prev) => prev.filter((x) => x !== id));
+  const handleCategorySelect = link.selectCategory;
+  const handleReset = link.reset;
+  // Picks act on what is on screen (activeIds), so a record that is not there cannot linger as an invisible pick.
+  const handleToggle = (id: string) => link.setIds(toggleSelection(activeIds, id));
+  const handleRemove = (id: string) => link.setIds(activeIds.filter((x) => x !== id));
 
   // Phones: the comparison is below the list. Move there, and put focus on its heading so keyboard and screen reader users arrive too.
   const jumpToResults = useCallback(() => {
@@ -132,6 +123,12 @@ const Compare = () => {
           hint={selectedCategory && view !== 'error' ? `Tick two ${info!.noun.many}. A is the first pick and B is the second.` : undefined}
           done={picked.length === 2}
         >
+          {linkNotice && (
+            <p data-compare-link-notice className="mb-3 flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-foreground">
+              <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 break-words">{linkNotice}</span>
+            </p>
+          )}
           {selectedCategory && view === 'error' ? (
             <DataLoadError
               title={`We couldn't load your ${info!.noun.many}`}
@@ -150,8 +147,8 @@ const Compare = () => {
               picked={picked}
               onToggle={handleToggle}
               onRemove={handleRemove}
-              onSwap={() => setSelectedIds(swapSelection(activeIds))}
-              onClear={() => setSelectedIds([])}
+              onSwap={() => link.setIds(swapSelection(activeIds))}
+              onClear={() => link.setIds([])}
               onJumpToResults={jumpToResults}
             />
           ) : (
@@ -175,6 +172,11 @@ const Compare = () => {
           )}
         </StepSection>
       </div>
+
+      {/* Always in the page (a live region must exist before its text changes). Says which records a link opened as A and B, or which was unavailable. */}
+      <p role="status" aria-live="polite" data-compare-link-status className="sr-only">
+        {link.announcement}
+      </p>
     </PageContainer>
   );
 };

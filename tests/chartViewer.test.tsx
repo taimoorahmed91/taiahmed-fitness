@@ -89,8 +89,9 @@ describe('viewer dialog layout contract (source)', () => {
   });
   test('header stays put; only the chart area scrolls; the PDF captures the chart area, not the controls', () => {
     assert.match(src, /data-chart-viewer-header="" className=\{`shrink-0/);
-    assert.match(src, /data-chart-viewer-scroll="" className=\{`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain/);
-    assert.match(src, /ref=\{captureRef\} data-chart-viewer-capture=""/);
+    assert.match(src, /data-chart-viewer-scroll=""[^>]*className=\{`flex min-h-0 flex-1 flex-col overscroll-contain/);
+    assert.match(src, /tableMode \? 'overflow-hidden' : 'overflow-y-auto'/);
+    assert.match(src, /ref=\{captureRef\}\s+data-chart-viewer-capture=""/);
   });
   test('the expanded chart is only built while the viewer is open', () => {
     assert.match(src, /const ViewerBody = \(\{ viewer \}[^]*viewer\.render\(\)/);
@@ -184,9 +185,9 @@ describe('every eligible chart uses the shared viewer contract', () => {
     test(`${file}: every <ChartHeader> decides (viewer render, or an explicit false) and renders the same body in card and viewer`, () => {
       const src = read(file);
       const headers = src.match(/<ChartHeader\b/g)?.length ?? 0;
-      const decisions = src.match(/viewer=\{(\{ render: \(\) => \w+\(true\) \}|false)\}/g)?.length ?? 0;
-      assert.equal(decisions, headers, 'each ChartHeader needs viewer={{ render: () => body(true) }} or viewer={false}');
-      const renders = [...src.matchAll(/viewer=\{\{ render: \(\) => (\w+)\(true\) \}\}/g)].map((m) => m[1]);
+      const decisions = src.match(/viewer=\{(\{ render: \(\) => \w+\(true\), dataset(: \w+)?(, selection)? \}|false)\}/g)?.length ?? 0;
+      assert.equal(decisions, headers, 'each ChartHeader needs viewer={{ render: () => body(true), dataset }} or viewer={false}');
+      const renders = [...src.matchAll(/viewer=\{\{ render: \(\) => (\w+)\(true\), dataset(?:: \w+)? \}\}/g)].map((m) => m[1]);
       for (const name of renders) {
         assert.match(src, new RegExp(`const ${name} = \\(expanded: boolean\\)`), `${name} takes expanded`);
         assert.match(src, new RegExp(`<CardContent>\\{${name}\\(false\\)\\}</CardContent>`), `${name}(false) is the card body: one chart definition for both`);
@@ -250,5 +251,27 @@ describe('MacroTargetChart: the chart style applies to the whole chart (source)'
   test('y domain is the shared line/bar rule over all three series (details: tests/chartDomain.test.ts)', () => {
     assert.match(src, /computeChartDomain\(shown\.flatMap\(\(d\) => \[d\.actual, d\.min, d\.max\]\), \{ minPad: 1 \}\)/);
     assert.equal(/min = 0/.test(src), false, 'no bar-only zero');
+  });
+});
+
+describe('screen-reader table in ChartFigure: capped on cards (and says so), complete in the viewer', () => {
+  const rows = Array.from({ length: 150 }, (_, i) => ({ date: `D${i}`, v: i }));
+  const table = { columns: [{ key: 'date', label: 'Date' }, { key: 'v', label: 'V' }], rows };
+  const render = (expanded: boolean) => html(createElement(ChartFigure, { title: 'T', summary: 'S', expanded, table }, createElement('div')));
+  const bodyRows = (out: string) => (out.match(/<tr>/g)?.length ?? 0) - 1;
+  test('card: the latest 100 rows, and the caption says it is partial and where to find all rows', () => {
+    const out = render(false);
+    assert.equal(bodyRows(out), 100);
+    assert.match(out, /<caption>T data\. Showing the latest 100 of 150 rows\. Open full screen and choose Table for all rows\.<\/caption>/);
+  });
+  test('viewer: every row, no partial-data caption', () => {
+    const out = render(true);
+    assert.equal(bodyRows(out), 150);
+    assert.match(out, /<caption>T data<\/caption>/);
+  });
+  test('a card with 100 rows or fewer is unchanged', () => {
+    const small = html(createElement(ChartFigure, { title: 'T', summary: 'S', table: { ...table, rows: rows.slice(0, 30) } }, createElement('div')));
+    assert.equal(bodyRows(small), 30);
+    assert.match(small, /<caption>T data<\/caption>/);
   });
 });

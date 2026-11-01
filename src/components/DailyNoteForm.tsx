@@ -47,7 +47,11 @@ export const scheduleScrollTopReset = (getEl: () => { scrollTop: number } | null
 };
 
 interface DailyNoteFormProps {
-  onSubmit: (note: { date: string; tags: string[]; severity?: number | null; notes?: string }) => void;
+  /**
+   * Resolve `false` when the save did NOT happen: the form then keeps everything the person typed and says so.
+   * Anything else (`true`, or no value from an older handler) counts as saved and clears the form.
+   */
+  onSubmit: (note: { date: string; tags: string[]; severity?: number | null; notes?: string }) => void | boolean | Promise<boolean | void>;
 }
 
 export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
@@ -66,6 +70,10 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [severity, setSeverity] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  // A ref, not state: it blocks a second submit in the same frame, before React has re-rendered.
+  const inFlight = useRef(false);
 
   // Every time the date popover opens, or the mode / month count changes while it is open, start at the top.
   useEffect(() => {
@@ -79,8 +87,9 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (inFlight.current) return;
     if (selectedTags.length === 0 && !notes.trim()) {
       return;
     }
@@ -94,15 +103,35 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
 
     if (dates.length === 0) return;
 
-    dates.forEach((d) => {
-      onSubmit({
-        date: format(d, 'yyyy-MM-dd'),
-        tags: selectedTags,
-        severity,
-        notes: notes.trim() || undefined,
-      });
-    });
+    inFlight.current = true;
+    setSaving(true);
+    setSaveFailed(false);
+    let failed = false;
+    try {
+      // One day at a time: the first failure stops the run and the draft stays, so nothing is lost or half-reported.
+      for (const d of dates) {
+        const result = await onSubmit({
+          date: format(d, 'yyyy-MM-dd'),
+          tags: selectedTags,
+          severity,
+          notes: notes.trim() || undefined,
+        });
+        if (result === false) {
+          failed = true;
+          break;
+        }
+      }
+    } catch {
+      failed = true;
+    } finally {
+      inFlight.current = false;
+      setSaving(false);
+    }
 
+    if (failed) {
+      setSaveFailed(true);
+      return;
+    }
     // Reset form
     setSelectedTags([]);
     setSeverity(null);
@@ -257,7 +286,12 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={selectedTags.length === 0 && !notes.trim()}>
+          {saveFailed && (
+            <p role="alert" className="text-sm text-destructive">
+              The note was not saved. What you wrote is still here, so you can try again.
+            </p>
+          )}
+          <Button type="submit" className="w-full" loading={saving} loadingText="Saving…" disabled={selectedTags.length === 0 && !notes.trim()}>
             Save Note
           </Button>
         </form>

@@ -10,6 +10,7 @@ import { NoteDiamond } from './NoteDiamond';
 import { CHART_MARGIN, chartGridProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { createChartDataset } from '@/lib/chartViewerData';
 
 export interface WeeklyDay { date: string; fullDate: string; [key: string]: string | number }
 
@@ -42,6 +43,9 @@ export const WeeklyBarChart = ({ title, icon, data, valueKey, label, unit, color
   const hasData = data.some((d) => Number(d[valueKey]) > 0);
   const rows = data.map((d) => ({ date: d.fullDate, [valueKey]: d[valueKey] }));
   const summary = `${describeSeries(rows, [{ key: valueKey, label, unit, digits: 0 }], 'Last 7 days')}${average ? ` Daily average excluding today: ${formatChartValue(average, unit)}.` : ''}`;
+
+  // The viewer's Table and CSV: the same seven days the plot draws.
+  const dataset = createChartDataset({ name: title, period: 'Last 7 days', rows, columns: [{ key: 'date', label: 'Date' }, { key: valueKey, label, unit }] });
 
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same data; only `expanded` differs.
@@ -83,7 +87,7 @@ export const WeeklyBarChart = ({ title, icon, data, valueKey, label, unit, color
         title={title}
         icon={icon}
         description={<>Avg: <span className="whitespace-nowrap font-semibold text-foreground">{average > 0 ? average.toLocaleString('en-US') : '--'}</span> {unit}/day</>}
-        viewer={{ render: () => body(true) }}
+        viewer={{ render: () => body(true), dataset }}
       />
       <CardContent>{body(false)}</CardContent>
     </Card>

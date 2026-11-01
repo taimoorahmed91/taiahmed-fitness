@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { GymSession } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipboardPlus, Dumbbell, ListChecks, Pencil } from 'lucide-react';
@@ -10,6 +10,10 @@ import { HistoryPager } from '@/components/history/HistoryPager';
 import { useGroupPagination } from '@/components/history/useGroupPagination';
 import { HISTORY_LG, useMinWidth } from '@/components/history/useMinWidth';
 import { WorkoutDetail } from '@/components/history/WorkoutDetail';
+import { ExerciseHistoryDialog } from '@/components/ExerciseHistoryDialog';
+import { useExerciseAliases } from '@/hooks/useExerciseAliases';
+import { exerciseHistoryTargets, type ExerciseHistoryTarget } from '@/lib/workoutExerciseHistory';
+import type { ExerciseAliases } from '@/lib/exerciseAliases';
 import { defaultToday, formatDay, formatWeekRange, isoWeekString, weekTitle } from '@/lib/historyDates';
 import {
   countSessionsByWeek,
@@ -45,9 +49,27 @@ const WORKOUTS_PER_PAGE = 20;
 const DESKTOP_COLUMNS = 'grid w-full grid-cols-[6.5rem_minmax(0,1fr)_7rem_4.5rem_4.5rem_3.5rem_6.5rem] items-start gap-x-3';
 const DESKTOP_ACTIONS_WIDTH = 'w-28';
 
+/** The exercise history dialog was opened from this exercise of this saved workout. */
+interface HistoryRequest {
+  sessionId: string;
+  date: string;
+  /** Position of the exercise in the saved workout. */
+  exerciseIndex: number;
+  /** Name as saved in that workout. */
+  name: string;
+}
+
 export const GymList = ({ sessions, allSessions, onDelete, onEdit, onCreateTemplate }: GymListProps) => {
   const isDesktop = useMinWidth(HISTORY_LG, true);
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
+  const { aliases } = useExerciseAliases();
+  const [historyRequest, setHistoryRequest] = useState<HistoryRequest | null>(null);
+  const historyOpenerRef = useRef<HTMLElement | null>(null);
+
+  const showExerciseHistory = useCallback((session: GymSession, target: ExerciseHistoryTarget, trigger: HTMLButtonElement) => {
+    historyOpenerRef.current = trigger;
+    setHistoryRequest({ sessionId: session.id, date: session.date, exerciseIndex: target.index, name: target.name });
+  }, []);
   const today = defaultToday();
 
   const toggleExpanded = (id: string, open: boolean) =>
@@ -136,6 +158,8 @@ export const GymList = ({ sessions, allSessions, onDelete, onEdit, onCreateTempl
                           onDelete={onDelete}
                           onEdit={onEdit}
                           onCreateTemplate={onCreateTemplate}
+                          aliases={aliases}
+                          onShowExerciseHistory={showExerciseHistory}
                         />
                       ))}
                     </HistoryList>
@@ -147,6 +171,15 @@ export const GymList = ({ sessions, allSessions, onDelete, onEdit, onCreateTempl
         )}
         <HistoryPager page={page} totalPages={totalPages} unit="weeks" range={range} onPageChange={goToPage} />
       </CardContent>
+      {/* History always reads every saved workout, never just the filtered list. Read only. */}
+      <ExerciseHistoryDialog
+        exercise={historyRequest?.name ?? null}
+        sessions={everySession}
+        aliases={aliases}
+        origin={historyRequest ? { sessionId: historyRequest.sessionId, date: historyRequest.date } : null}
+        returnFocusRef={historyOpenerRef}
+        onClose={() => setHistoryRequest(null)}
+      />
     </Card>
   );
 };
@@ -199,9 +232,34 @@ interface GymSessionRowProps {
   onDelete: (id: string) => void;
   onEdit: (session: GymSession) => void;
   onCreateTemplate?: (session: GymSession) => void;
+  aliases: ExerciseAliases;
+  onShowExerciseHistory: (session: GymSession, target: ExerciseHistoryTarget, trigger: HTMLButtonElement) => void;
 }
 
-const GymSessionRow = ({ session, desktop, today, expanded, onExpandedChange, onDelete, onEdit, onCreateTemplate }: GymSessionRowProps) => {
+/** The opened workout. A separate component so the history lookups only run while a row is open. */
+const SessionDetail = ({
+  session,
+  summary,
+  aliases,
+  onShowExerciseHistory,
+}: {
+  session: GymSession;
+  summary: SessionSummary;
+  aliases: ExerciseAliases;
+  onShowExerciseHistory: GymSessionRowProps['onShowExerciseHistory'];
+}) => {
+  const targets = useMemo(() => exerciseHistoryTargets(session, summary.parsed, aliases), [session, summary.parsed, aliases]);
+  return (
+    <WorkoutDetail
+      parsed={summary.parsed}
+      hasNotes={summary.hasNotes}
+      historyTargets={targets}
+      onShowHistory={(target, trigger) => onShowExerciseHistory(session, target, trigger)}
+    />
+  );
+};
+
+const GymSessionRow = ({ session, desktop, today, expanded, onExpandedChange, onDelete, onEdit, onCreateTemplate, aliases, onShowExerciseHistory }: GymSessionRowProps) => {
   const summary = useMemo(() => summarizeSession(session), [session]);
   const { stats } = summary;
 
@@ -237,7 +295,7 @@ const GymSessionRow = ({ session, desktop, today, expanded, onExpandedChange, on
     />,
   ];
 
-  const detail = <WorkoutDetail parsed={summary.parsed} hasNotes={summary.hasNotes} />;
+  const detail = <SessionDetail session={session} summary={summary} aliases={aliases} onShowExerciseHistory={onShowExerciseHistory} />;
 
   if (desktop) {
     return (

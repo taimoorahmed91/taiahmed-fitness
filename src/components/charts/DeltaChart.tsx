@@ -8,6 +8,7 @@ import { ChartTooltipCard } from './ChartTooltipCard';
 import { CHART_COLORS, CHART_MARGIN, UNIT_LABEL, chartGridProps, chartTooltipProps, chartYAxisProps, formatSigned } from '@/lib/chartTheme';
 import { DeltaPoint, DeltaSummary, computeDeltaSeries } from '@/lib/deltaSeries';
 import { chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { createChartDataset } from '@/lib/chartViewerData';
 import { cn } from '@/lib/utils';
 
 interface DeltaChartProps {
@@ -51,6 +52,12 @@ export const DeltaChart = ({ title, icon, unit, entries, emptyText, emptyAction 
     ? `${title}. ${last ? `Last interval ${summaryText({ change: last.delta, days: last.days, perWeek: last.perWeek }, unit)}. ` : ''}${overall ? `Overall ${summaryText(overall, unit)}. ` : ''}Showing the last ${points.length} intervals.`
     : '';
 
+  // The viewer's Table and CSV: every interval the plot draws, keyed by the date of the later measurement.
+  const dataset = createChartDataset({
+    name: title, period: `${points.length} ${points.length === 1 ? 'interval' : 'intervals'}`, rows: points as unknown as Record<string, unknown>[],
+    columns: [{ key: 'isoDate', label: 'Date' }, { key: 'delta', label: 'Change', unit }, { key: 'days', label: 'Days', digits: 0 }, { key: 'perWeek', label: 'Per week', unit: `${unit}/week` }],
+  });
+
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same data; only `expanded` differs.
   const body = (expanded: boolean) => (
@@ -92,7 +99,7 @@ export const DeltaChart = ({ title, icon, unit, entries, emptyText, emptyAction 
 
   return (
     <Card titleSize="chart" className="shadow-md min-w-0">
-      <ChartHeader title={title} icon={icon} viewer={{ render: () => body(true) }}>
+      <ChartHeader title={title} icon={icon} viewer={{ render: () => body(true), dataset }}>
         {(last || overall) && (
           <div className="space-y-1">
             {last && line('Last', { change: last.delta, days: last.days, perWeek: last.perWeek })}

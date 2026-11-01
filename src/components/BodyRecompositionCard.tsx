@@ -13,6 +13,7 @@ import { RANGE_LABELS } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { computeBodyRecomposition, RECOMP_LABELS } from '@/lib/crossMetricIntelligence';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
 import { cn } from '@/lib/utils';
 
 type Entry = { date: string; value: number };
@@ -29,7 +30,7 @@ export const toneClass: Record<string, string> = {
 
 const fmt = (v: number | null, unit: string) => (v == null ? '--' : `${v > 0 ? '+' : v < 0 ? '\u2212' : ''}${Math.abs(v).toFixed(1)} ${unit}`);
 
-export const BodyRecompositionCard = ({ weight, waist }: { weight: Entry[]; waist: Entry[] }) => {
+export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry[]; waist: Entry[]; status?: ChartDatasetStatus }) => {
   // Two lines on separate axes: date range only, a line/bar switch does not apply.
   const view = useChartRange('body_recomp');
   const cardRef = useRef<HTMLDivElement>(null);
@@ -57,6 +58,15 @@ export const BodyRecompositionCard = ({ weight, waist }: { weight: Entry[]; wais
     { key: 'weight', label: 'Weight', unit: UNIT_LABEL.kilograms },
     { key: 'waist', label: 'Waist', unit: UNIT_LABEL.centimeters },
   ], period)}`;
+
+  // The viewer's Table and CSV read these complete rows (the plot's). A day with only one of the two measurements leaves the other blank.
+  const dataset = createChartDataset({
+    name: title, period, rows: data, status,
+    // Explicit opt-out of day selection: the index is derived over the whole period (first vs last measurement), so the plot
+    // and table must not pretend a single calendar day explains it. The Weight and Waist pages own the per-day views.
+    selection: false,
+    columns: [{ key: 'date', label: 'Date' }, { key: 'weight', label: 'Weight', unit: UNIT_LABEL.kilograms }, { key: 'waist', label: 'Waist', unit: UNIT_LABEL.centimeters }],
+  });
 
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same state; only `expanded` differs.
@@ -96,7 +106,7 @@ export const BodyRecompositionCard = ({ weight, waist }: { weight: Entry[]; wais
         icon={<Scale className="h-5 w-5 text-primary" />}
         view={view}
         pdf={{ targetRef: cardRef, subtitle: period, columns, rows: data }}
-        viewer={{ render: () => body(true) }}
+        viewer={{ render: () => body(true), dataset }}
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className={cn('border', toneClass[info.tone])}>{info.label}</Badge>
