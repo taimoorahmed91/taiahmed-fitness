@@ -27,16 +27,18 @@ export const selectedDayGuide = (selection: ChartDaySelection): ReactElement | n
 /**
  * Guides for the Compare picks: a long-dashed vertical line with a bold "A" / "B" at the top. The letter (not a colour) tells
  * them apart, and the selected-day guide stays short-dashed, so a pick that is also the selected day shows both. Rows come from
- * the visible chart only, so a guide never points at a date the axis does not have.
+ * the visible chart only, so a guide never points at a date the axis does not have. A chart with named Y axes passes one (`yAxisId`).
  */
-export const compareGuides = (compare: ChartComparePicks): ReactElement[] =>
+export const compareGuides = (compare: ChartComparePicks, yAxisId?: string): ReactElement[] =>
   (['a', 'b'] as const).flatMap((slot) => {
     const pick = compare[slot];
-    if (!pick) return [];
+    // A categorical pick has no date, so it has no place on a time axis.
+    if (!pick || !pick.isoDate) return [];
     return [
       <ReferenceLine
         key={`compare-guide-${slot}`}
         x={pick.isoDate}
+        {...(yAxisId ? { yAxisId } : {})}
         stroke={SELECTED_STROKE}
         strokeWidth={1.5}
         strokeDasharray="10 4"

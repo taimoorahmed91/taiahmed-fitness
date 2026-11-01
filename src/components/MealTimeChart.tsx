@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Clock } from 'lucide-react';
@@ -6,6 +6,9 @@ import { useChartRange } from './ChartViewControls';
 import { ChartFigure } from '@/components/charts/ChartFigure';
 import { ChartHeader } from '@/components/charts/ChartHeader';
 import { ChartEmptyState, NO_DATA } from '@/components/charts/ChartEmptyState';
+import { ChartCompareCardStrip, CompareBadge } from '@/components/charts/ChartCompareUi';
+import { useAccountChartSelection } from '@/components/charts/useAccountChartSelection';
+import { useChartComparePicks } from '@/components/charts/useChartComparePicks';
 import { CATEGORY_COLORS, chartTooltipProps, formatChartValue, UNIT_LABEL } from '@/lib/chartTheme';
 import { RANGE_LABELS } from '@/lib/chartRange';
 import { chartMotionProps } from '@/lib/chartViewer';
@@ -23,6 +26,7 @@ interface MealTimeChartProps {
 // Time of day has no good/bad meaning, so it uses the neutral categorical hues
 // (never the green/red/amber status colours).
 const PERIODS = ['Overnight', 'Morning', 'Midday', 'Afternoon', 'Evening', 'Late night'];
+const shareOf = (calories: number, total: number) => (total ? Math.round((calories / total) * 100) : 0);
 const colorFor = (name: string) => CATEGORY_COLORS[Math.max(0, PERIODS.indexOf(name)) % CATEGORY_COLORS.length];
 
 export const MealTimeChart = ({ data7, data14, data30, data90, status }: MealTimeChartProps) => {
@@ -33,7 +37,7 @@ export const MealTimeChart = ({ data7, data14, data30, data90, status }: MealTim
   const filteredData = data.filter((d) => d.calories > 0);
   const hasAnyMeals = data90.some((d) => d.calories > 0);
   const total = filteredData.reduce((sum, d) => sum + d.calories, 0);
-  const share = (calories: number) => (total ? Math.round((calories / total) * 100) : 0);
+  const share = (calories: number) => shareOf(calories, total);
   const period = RANGE_LABELS[range];
   const title = 'Calories by Time of Day';
   const summary = total
@@ -44,14 +48,19 @@ export const MealTimeChart = ({ data7, data14, data30, data90, status }: MealTim
 
   // The viewer's Table and CSV list every time-of-day period of the chosen range (a period with no calories shows 0, not blank).
   // Not a time series: the periods keep their listed order.
-  const dataset = createChartDataset({
+  const dataset = useMemo(() => createChartDataset({
     name: title, period, status, chronological: false, rowId: (row) => String(row.name),
     // Explicit opt-out of day selection: a row is a time-of-day band summed over the whole range, not one calendar day.
     // No row, slice or Table entry here may offer "Open day".
     selection: false,
-    rows: data.map((d) => ({ ...d, pct: share(d.calories) })),
+    rows: data.map((d) => ({ ...d, pct: shareOf(d.calories, total) })),
     columns: [{ key: 'name', label: 'Period' }, { key: 'calories', label: 'Calories', unit: UNIT_LABEL.calories, digits: 0 }, { key: 'count', label: 'Meals', digits: 0 }, { key: 'pct', label: 'Share', unit: UNIT_LABEL.percent, digits: 0 }],
-  });
+    // Compare two times of day IN the viewer. A CATEGORY compare: no dates, no elapsed days, no links. A period with no meals in the range is
+    // not observed (its 0 is "nothing logged", not a measurement), so it can not be picked and is never compared as zero.
+    pointCompare: { kind: 'category', seriesKeys: ['calories', 'count', 'pct'], pickKeys: ['calories'], isObserved: (row) => Number(row.count) > 0, noun: 'time of day', nounPlural: 'times of day' },
+  }), [data, period, status, total]);
+  // Compare has no selected day here (a pie has none): the viewer offers two pickers instead.
+  const compare = useChartComparePicks(useAccountChartSelection(dataset));
 
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same state; only `expanded` differs.
@@ -70,6 +79,7 @@ export const MealTimeChart = ({ data7, data14, data30, data90, status }: MealTim
           height={190}
           caption={`Share of ${UNIT_LABEL.calories} · ${period}`}
           table={{ columns: tableColumns, rows: data }}
+          afterPlot={expanded ? undefined : <ChartCompareCardStrip compare={compare} />}
         >
           <PieChart accessibilityLayer>
             {/* Fixed radii in the card; in the viewer the ring is a share of the free space so it grows with it. */}
@@ -84,9 +94,10 @@ export const MealTimeChart = ({ data7, data14, data30, data90, status }: MealTim
         </ChartFigure>
       )}
       {total > 0 && (
-        <ul className={expanded ? 'mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3' : 'mt-2 grid grid-cols-2 gap-x-4 gap-y-2'} aria-label="Share of calories by time of day">
+        <ul className={expanded ? 'mt-3 grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-x-6 gap-y-2' : 'mt-2 grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-x-4 gap-y-2'} aria-label="Share of calories by time of day">
           {data.map((entry) => (
-            <li key={entry.name} className="flex min-w-0 items-center gap-2 text-sm">
+            <li key={entry.name} data-compare-mark={compare.markOf(entry.name) ?? undefined} className="flex min-w-0 items-center gap-2 text-sm">
+              {compare.markOf(entry.name) && <><CompareBadge slot={compare.markOf(entry.name)!} /><span className="sr-only">Compare {compare.markOf(entry.name)!.toUpperCase()}, </span></>}
               <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: colorFor(entry.name) }} aria-hidden="true" />
               <span className="min-w-0 truncate text-muted-foreground">{entry.name}</span>
               <span className="ml-auto tabular-nums font-semibold text-foreground">{share(entry.calories)}%</span>
@@ -109,7 +120,7 @@ export const MealTimeChart = ({ data7, data14, data30, data90, status }: MealTim
           columns: [{ key: 'name', label: 'Period' }, { key: 'calories', label: 'Calories' }, { key: 'count', label: 'Meals' }, { key: 'pct', label: 'Share (%)' }],
           rows: data.map(d => ({ ...d, pct: share(d.calories) })),
         }}
-        viewer={{ render: () => body(true), dataset }}
+        viewer={{ render: () => body(true), dataset, compare }}
       />
       <CardContent>{body(false)}</CardContent>
     </Card>

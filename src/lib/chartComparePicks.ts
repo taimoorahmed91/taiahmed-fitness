@@ -26,7 +26,7 @@
 // Raw stored values, never chart positions. `days` is B's date minus A's date. Rate per week only when B is after A.
 import { parseIsoDate } from './selectedDay';
 import { buildCompareHrefFromRefs, compareEligibility, type CompareIneligibleReason, type CompareLinkCategory } from './compareUrl';
-import { roundCell, tableCellText, type ChartViewerDataset } from './chartViewerData';
+import { joinUnit, roundCell, tableCellText, type ChartViewerDataset } from './chartViewerData';
 import type { ChartPointRef } from './chartSelection';
 
 export type CompareSlot = 'a' | 'b';
@@ -42,6 +42,15 @@ export interface ComparePick {
   isoDate: string;
   /** The record's raw value (kg, hours). */
   value: number;
+  /**
+   * POINT MODE only (in-viewer comparison, src/lib/chartPointCompare.ts). Then `recordId` is just the point's identity (its exact
+   * record id when it is one, else its row id) and these describe the point. Absent for the exact-record picks of the Weight / Sleep pages.
+   * `label` names a categorical point ("Morning", with `isoDate` ''); `values` holds ONLY the series the point really observed (never a 0
+   * for a missing one); `exact` is set when the point is also one exact stored record Compare can open.
+   */
+  label?: string;
+  values?: Readonly<Record<string, number>>;
+  exact?: { recordId: string; category: CompareLinkCategory };
 }
 
 export interface ComparePicks {
@@ -58,7 +67,7 @@ const isReal = (value: unknown): value is number => typeof value === 'number' &&
 export type CandidateReason = CompareIneligibleReason | 'no-value';
 
 export type CompareCandidate =
-  | { ok: true; category: CompareLinkCategory; pick: ComparePick }
+  | { ok: true; category: CompareLinkCategory | null; pick: ComparePick }
   | { ok: false; reason: CandidateReason; text: string };
 
 const valueColumnLabel = (dataset: ChartViewerDataset, key: string) => dataset.columns.find((c) => c.key === key)?.label ?? key;
@@ -143,6 +152,16 @@ export interface Reconciled {
  * Compare the picks with the records available now. A missing record is dropped; the others get their current row, date and
  * value. Returns the SAME object when nothing changed, so callers can use identity to avoid needless updates.
  */
+const sameValues = (a?: Readonly<Record<string, number>>, b?: Readonly<Record<string, number>>): boolean => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+};
+
+const samePick = (a: ComparePick, b: ComparePick): boolean =>
+  a.rowId === b.rowId && a.isoDate === b.isoDate && Object.is(a.value, b.value) && a.label === b.label && sameValues(a.values, b.values) && a.exact?.recordId === b.exact?.recordId;
+
 export const reconcilePicks = (picks: ComparePicks, available: ReadonlyMap<string, ComparePick>): { picks: ComparePicks; dropped: Reconciled['dropped'] } => {
   const dropped: Reconciled['dropped'] = [];
   const next: ComparePicks = { a: null, b: null };
@@ -156,7 +175,7 @@ export const reconcilePicks = (picks: ComparePicks, available: ReadonlyMap<strin
       changed = true;
       continue;
     }
-    next[slot] = now.rowId === pick.rowId && now.isoDate === pick.isoDate && now.value === pick.value ? pick : now;
+    next[slot] = samePick(now, pick) ? pick : now;
     if (next[slot] !== pick) changed = true;
   }
   return changed ? { picks: next, dropped } : { picks, dropped };
@@ -177,7 +196,7 @@ export interface PickDifference {
 }
 
 const DAY_MS = 86_400_000;
-const dayNumber = (iso: string): number | null => {
+export const dayNumber = (iso: string): number | null => {
   const parts = parseIsoDate(iso);
   return parts ? Date.UTC(parts.year, parts.month - 1, parts.day) / DAY_MS : null;
 };
@@ -202,14 +221,14 @@ const MINUS = '\u2212';
 
 export const formatPickValue = (value: number, unit: string, digits = 2): string => {
   const text = tableCellText(value, { key: 'v', label: 'v', digits }) ?? String(value);
-  return unit ? `${text} ${unit}` : text;
+  return joinUnit(text, unit);
 };
 
 /** "+0.4 kg" / "\u22120.4 kg" / "0 kg". */
 export const formatSignedDelta = (delta: number, unit: string, digits = 2): string => {
   const text = tableCellText(Math.abs(delta), { key: 'v', label: 'v', digits }) ?? String(Math.abs(delta));
   const sign = delta > 0 ? '+' : delta < 0 ? MINUS : '';
-  return `${sign}${text}${unit ? ` ${unit}` : ''}`;
+  return `${sign}${joinUnit(text, unit)}`;
 };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;

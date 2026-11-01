@@ -6,9 +6,20 @@ import {
   reconcilePicks, slotOfRecord, swapPicks, togglePick,
   type CompareCandidate, type ComparePick, type ComparePicks, type CompareSlot, type PickDifference,
 } from '@/lib/chartComparePicks';
+import {
+  comparePointPicks, comparePoints, describePointDropped, describePointOutcome, exactCompareLink, pointOptions, pointSeries,
+  type PointComparison, type PointSeries,
+} from '@/lib/chartPointCompare';
 
 /**
- * The ordered A / B picks of a chart that can send two exact records to Compare (Weight, manual Sleep).
+ * The ordered A / B picks of a chart, in one of two modes (decided by the dataset, never by the chart component):
+ *
+ *  - `record`  (dataset.selection.compare only: the Weight and Sleep PAGES) two exact Weight / manual Sleep records, then Open in Compare.
+ *  - `point`   (dataset.pointCompare: every Dashboard graph) two points of the chart, compared IN the viewer: B - A per series. A date chart
+ *              compares two days, a categorical chart two categories. Open in Compare exists only when BOTH points are also exact records
+ *              (Weight, manual Sleep: dataset.selection.compare), never for an aggregate or a category.
+ *
+ * Both modes share the same A / B slots, notices, account scope and "hidden pick" reset described below.
  *
  * The chart component owns it, like the selected day, so the card strip, the full-screen viewer's controls, its Table marks
  * and the plot marks all read the SAME picks. What it keeps is only two record ids (plus the date / value they had when picked);
@@ -19,8 +30,32 @@ import {
  *   - a different account sees nothing from the last one (the scope check happens during render, like the day selection).
  * Picks survive Chart / Table switches and Line / Bar, which do not change the rows.
  */
+/** Point mode only: everything the in-viewer comparison needs that the exact-record picks do not. */
+export interface PointCompareState {
+  kind: 'date' | 'category';
+  /** What one point is called: "day", "time of day". */
+  noun: string;
+  nounPlural: string;
+  series: PointSeries[];
+  /** Every pickable point, for the pickers (days newest first, categories in listed order). Identity is `recordId`. */
+  options: ComparePick[];
+  /** B - A per series, when both are set. */
+  comparison: PointComparison | null;
+  /** Why Open in Compare is not offered although the chart can open exact records (one pick is not a saved entry). */
+  linkNote: string | null;
+  /** What an exact record is called ("weight entry"), or null when the chart can never open Compare. */
+  exactNoun: string | null;
+  /** The chart lets the person select a day (so the selected point is the candidate); false = pickers only. */
+  hasSelection: boolean;
+  /** Put the point with this identity in a slot (null empties the slot). Picking the other slot's point is refused with a message. */
+  setSlotTo: (slot: CompareSlot, id: string | null) => void;
+}
+
 export interface ChartComparePicks {
-  /** The chart opted in (dataset.selection.compare) and has at least one pickable record. */
+  /** 'record' (exact records of the Weight / Sleep pages) or 'point' (in-viewer comparison). Null when the chart did not opt in. */
+  mode: 'record' | 'point' | null;
+  point: PointCompareState | null;
+  /** The chart opted in and has something to show: something pickable (point mode: at least two points), a pick, or a pending message. */
   enabled: boolean;
   noun: string;
   unit: string;
@@ -48,7 +83,7 @@ export interface ChartComparePicks {
 }
 
 const DISABLED: ChartComparePicks = {
-  enabled: false, noun: '', unit: '', digits: 2, metric: '', a: null, b: null, candidate: null, slotOfSelected: null, markOf: () => null,
+  mode: null, point: null, enabled: false, noun: '', unit: '', digits: 2, metric: '', a: null, b: null, candidate: null, slotOfSelected: null, markOf: () => null,
   difference: null, href: null, notice: '', setSlot: () => {}, swap: () => {}, clear: () => {}, dismissNotice: () => {},
 };
 
@@ -57,15 +92,28 @@ interface Stored { scope: string | null; picks: ComparePicks; notice: string }
 export const useChartComparePicks = (selection: ChartDaySelection): ChartComparePicks => {
   const scope = useOptionalUserId();
   const dataset = selection.dataset;
-  const config = dataset.selection?.compare;
+  const recordConfig = dataset.selection?.compare;
+  const pointConfig = dataset.pointCompare;
+  const mode: 'record' | 'point' | null = pointConfig ? 'point' : recordConfig ? 'record' : null;
   const metric = dataset.selection?.metric ?? '';
   const [stored, setStored] = useState<Stored>({ scope, picks: EMPTY_PICKS, notice: '' });
   const sameScope = stored.scope === scope;
 
-  const available = useMemo(() => (config ? availablePicks(dataset, selection.points) : new Map<string, ComparePick>()), [config, dataset, selection.points]);
-  // What is on screen: the stored picks, only for this account, resolved against the records visible now.
+  // Point mode: every pickable point of the visible rows. Record mode: every exact record. Either way, only what is on screen now.
+  const points = useMemo(() => (mode === 'point' ? comparePoints(dataset) : []), [mode, dataset]);
+  const series = useMemo(() => (mode === 'point' ? pointSeries(dataset) : []), [mode, dataset]);
+  const available = useMemo(() => {
+    if (mode === 'point') return new Map(points.map((p) => [p.recordId, p] as const));
+    return recordConfig ? availablePicks(dataset, selection.points) : new Map<string, ComparePick>();
+  }, [mode, points, recordConfig, dataset, selection.points]);
+  // What is on screen: the stored picks, only for this account, resolved against the points visible now.
   const reconciled = useMemo(() => reconcilePicks(sameScope ? stored.picks : EMPTY_PICKS, available), [sameScope, stored.picks, available]);
   const picks = reconciled.picks;
+
+  const kind = pointConfig?.kind ?? 'date';
+  const nounPlural = pointConfig?.nounPlural ?? 'entries';
+  const unit = recordConfig?.unit ?? '';
+  const digits = recordConfig?.digits ?? 2;
 
   // The account changed: drop the old account's picks and notice (the render above already hid them).
   useEffect(() => {
@@ -75,37 +123,58 @@ export const useChartComparePicks = (selection: ChartDaySelection): ChartCompare
   // Something left the chart (range narrowed, record removed) or changed value: keep the stored picks in step and say so.
   useEffect(() => {
     if (!sameScope || reconciled.picks === stored.picks) return;
-    const digits = config?.digits ?? 2;
-    setStored((current) => (current.scope !== scope ? current : {
-      scope,
-      picks: reconciled.picks,
-      notice: reconciled.dropped.length > 0 ? describeDropped(reconciled.dropped, config?.unit ?? '', digits) : current.notice,
-    }));
-  }, [sameScope, scope, reconciled, stored.picks, config]);
+    const text = reconciled.dropped.length === 0 ? '' : mode === 'point' ? describePointDropped(reconciled.dropped, series, kind) : describeDropped(reconciled.dropped, unit, digits);
+    setStored((current) => (current.scope !== scope ? current : { scope, picks: reconciled.picks, notice: text || current.notice }));
+  }, [sameScope, scope, reconciled, stored.picks, mode, series, kind, unit, digits]);
 
-  const candidate = useMemo(
-    () => (config ? compareCandidate(dataset, selection.selected, selection.selectedSeriesKey) : null),
-    [config, dataset, selection.selected, selection.selectedSeriesKey],
-  );
-  const unit = config?.unit ?? '';
-  const digits = config?.digits ?? 2;
+  // The selected point as a candidate. Record mode: pickable, or why not. Point mode: the selected day's point (every selected day is one).
+  const candidate = useMemo((): CompareCandidate | null => {
+    if (mode === 'record') return compareCandidate(dataset, selection.selected, selection.selectedSeriesKey);
+    // Fewer than two pickable points: nothing can be started (a pick that is already set can still be changed).
+    if (mode === 'point' && points.length < 2 && !hasPicks(picks)) return null;
+    if (mode === 'point' && selection.selected) {
+      const pick = available.get(points.find((p) => p.rowId === selection.selected!.rowId)?.recordId ?? '');
+      // A selected day can have nothing recorded for Compare's purposes (a workout chart's rest day): say so instead of a missing button.
+      return pick
+        ? { ok: true, category: pick.exact?.category ?? null, pick }
+        : { ok: false, reason: 'no-value', text: `Nothing was recorded on this ${pointConfig?.noun ?? 'day'}, so it can't be compared.` };
+    }
+    return null;
+  }, [mode, dataset, selection.selected, selection.selectedSeriesKey, available, points, pointConfig, picks]);
 
-  const setSlot = useCallback((slot: CompareSlot) => {
-    if (!candidate?.ok) return;
-    const pick = candidate.pick;
+  const apply = useCallback((slot: CompareSlot, pick: ComparePick, toggle: boolean) => {
     setStored((current) => {
       const base = current.scope === scope ? current.picks : EMPTY_PICKS;
+      // A picker that chooses what the slot already holds changes nothing (only the Set buttons toggle).
+      if (!toggle && base[slot]?.recordId === pick.recordId) return current;
       const { picks: next, outcome } = togglePick(base, slot, pick);
-      return { scope, picks: next, notice: describeOutcome(outcome, pick, unit, digits) };
+      return { scope, picks: next, notice: mode === 'point' ? describePointOutcome(outcome, pick, series, nounPlural) : describeOutcome(outcome, pick, unit, digits) };
     });
-  }, [candidate, scope, unit, digits]);
+  }, [scope, mode, series, nounPlural, unit, digits]);
+
+  const setSlot = useCallback((slot: CompareSlot) => {
+    if (candidate?.ok) apply(slot, candidate.pick, true);
+  }, [candidate, apply]);
+
+  const setSlotTo = useCallback((slot: CompareSlot, id: string | null) => {
+    if (id === null || id === '') {
+      setStored((current) => {
+        const base = current.scope === scope ? current.picks : EMPTY_PICKS;
+        return base[slot] ? { scope, picks: { ...base, [slot]: null }, notice: `${slot === 'a' ? 'A' : 'B'} cleared.` } : current;
+      });
+      return;
+    }
+    const pick = available.get(id);
+    if (pick) apply(slot, pick, false);
+  }, [available, apply, scope]);
 
   const swap = useCallback(() => {
     setStored((current) => {
       const base = current.scope === scope ? current.picks : EMPTY_PICKS;
       if (!base.a && !base.b) return current;
       const next = swapPicks(base);
-      return { scope, picks: next, notice: next.a && next.b ? `Swapped. A is now ${formatPickDate(next.a.isoDate)}, B is now ${formatPickDate(next.b.isoDate)}.` : `Swapped. ${next.a ? 'A' : 'B'} is set, ${next.a ? 'B' : 'A'} is empty.` };
+      const name = (p: ComparePick) => (p.label ?? formatPickDate(p.isoDate));
+      return { scope, picks: next, notice: next.a && next.b ? `Swapped. A is now ${name(next.a)}, B is now ${name(next.b)}.` : `Swapped. ${next.a ? 'A' : 'B'} is set, ${next.a ? 'B' : 'A'} is empty.` };
     });
   }, [scope]);
   const clear = useCallback(() => setStored({ scope, picks: EMPTY_PICKS, notice: 'Compare picks cleared.' }), [scope]);
@@ -118,20 +187,36 @@ export const useChartComparePicks = (selection: ChartDaySelection): ChartCompare
   }, [picks]);
 
   return useMemo(() => {
-    if (!config) return DISABLED;
+    if (!mode) return DISABLED;
     const both = picks.a && picks.b;
+    const exactNoun = recordConfig?.noun ?? null;
+    const exact = mode === 'point' ? exactCompareLink(picks.a, picks.b, exactNoun) : null;
+    const point: PointCompareState | null = mode === 'point' && pointConfig
+      ? {
+          kind, noun: pointConfig.noun, nounPlural, series,
+          options: pointOptions(dataset, points),
+          comparison: both ? comparePointPicks(picks.a!, picks.b!, series, kind) : null,
+          linkNote: exact?.note ?? null,
+          exactNoun,
+          hasSelection: selection.enabled,
+          setSlotTo,
+        }
+      : null;
     return {
-      enabled: available.size > 0 || hasPicks(picks),
-      noun: config.noun, unit, digits, metric,
+      mode, point,
+      // A pending message keeps the section on screen: when a narrower range drops the picks (even leaving fewer than two points to compare),
+      // the person still sees and hears why they vanished. Starting a comparison still needs two pickable points.
+      enabled: (mode === 'point' ? points.length > 1 : available.size > 0) || hasPicks(picks) || (sameScope && stored.notice !== ''),
+      noun: recordConfig?.noun ?? pointConfig?.noun ?? '', unit, digits, metric,
       a: picks.a, b: picks.b,
       candidate,
       slotOfSelected: candidate?.ok ? slotOfRecord(picks, candidate.pick.recordId) : null,
       markOf,
-      difference: both ? comparePickDifference(picks.a!, picks.b!, digits) : null,
-      href: compareHrefForPicks(picks, metric),
+      difference: mode === 'record' && both ? comparePickDifference(picks.a!, picks.b!, digits) : null,
+      href: mode === 'point' ? exact?.href ?? null : compareHrefForPicks(picks, metric),
       // A notice that belongs to another account never shows.
       notice: sameScope ? stored.notice : '',
       setSlot, swap, clear, dismissNotice,
     };
-  }, [config, available, picks, candidate, unit, digits, metric, markOf, sameScope, stored.notice, setSlot, swap, clear, dismissNotice]);
+  }, [mode, recordConfig, pointConfig, kind, nounPlural, series, dataset, points, available, picks, candidate, unit, digits, metric, markOf, sameScope, stored.notice, selection.enabled, setSlot, setSlotTo, swap, clear, dismissNotice]);
 };

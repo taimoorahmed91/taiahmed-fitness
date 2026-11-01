@@ -185,7 +185,7 @@ describe('every eligible chart uses the shared viewer contract', () => {
     test(`${file}: every <ChartHeader> decides (viewer render, or an explicit false) and renders the same body in card and viewer`, () => {
       const src = read(file);
       const headers = src.match(/<ChartHeader\b/g)?.length ?? 0;
-      const decisions = src.match(/viewer=\{(\{ render: \(\) => \w+\(true\), dataset(: \w+)?(, selection)? \}|false)\}/g)?.length ?? 0;
+      const decisions = src.match(/viewer=\{(\{ render: \(\) => \w+\(true\), dataset(: \w+)?(, selection)?(, compare)? \}|false)\}/g)?.length ?? 0;
       assert.equal(decisions, headers, 'each ChartHeader needs viewer={{ render: () => body(true), dataset }} or viewer={false}');
       const renders = [...src.matchAll(/viewer=\{\{ render: \(\) => (\w+)\(true\), dataset(?:: \w+)? \}\}/g)].map((m) => m[1]);
       for (const name of renders) {

@@ -14,6 +14,7 @@ import { CarbTargetCard } from '@/components/CarbTargetCard';
 import { WeightChart } from '@/components/WeightChart';
 import { WaistChart } from '@/components/WaistChart';
 import { SleepChart } from '@/components/SleepChart';
+import { dashboardSleepRows, dashboardWaistRows, dashboardWeightRows } from '@/lib/dashboardRecordRows';
 import { GoalsCard } from '@/components/GoalsCard';
 import { CrossMetricSummaryCard } from '@/components/CrossMetricSummaryCard';
 import { WeightIntervalSetting } from '@/components/WeightIntervalSetting';
@@ -215,30 +216,14 @@ const Dashboard = () => {
 
   const notesMap = useMemo(() => getNotesMap(), [getNotesMap]);
 
-  const weightChartData = useMemo(() => 
-    weightEntries.map(e => ({ date: e.date, weight: e.weight })), 
-    [weightEntries]
-  );
+  // Weight and Sleep trends carry one EXACT stored record per day (the same plan as the Weight and Sleep pages), so the
+  // viewer can offer A / B Compare. See src/lib/dashboardRecordRows.ts for the identity rule. Waist stays aggregate.
+  const weightChartData = useMemo(() => dashboardWeightRows(weightEntries), [weightEntries]);
 
-  const waistChartData = useMemo(() => 
-    waistEntries.map(e => ({ date: e.date, waist: e.waist })), 
-    [waistEntries]
-  );
+  // One deterministic measurement per UTC date (lowest id), whatever order the rows arrive in; the chart says when a day had more.
+  const waistChartData = useMemo(() => dashboardWaistRows(waistEntries), [waistEntries]);
 
-  const sleepChartData = useMemo(() => {
-    const map = new Map<string, { date: string; hours: number; whoopHours: number }>();
-    sleepEntries.forEach(e => {
-      map.set(e.date, { date: e.date, hours: e.hours, whoopHours: 0 });
-    });
-    whoopEntries.forEach(e => {
-      const inBed = e.total_in_bed_hours ?? 0;
-      if (!inBed) return;
-      const existing = map.get(e.date);
-      if (existing) existing.whoopHours = inBed;
-      else map.set(e.date, { date: e.date, hours: 0, whoopHours: inBed });
-    });
-    return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
-  }, [sleepEntries, whoopEntries]);
+  const sleepChartData = useMemo(() => dashboardSleepRows(sleepEntries, whoopEntries), [sleepEntries, whoopEntries]);
 
   const calorieChartData = useMemo(() => {
     const data = getWeeklyData();
@@ -516,12 +501,12 @@ const Dashboard = () => {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {gate('weightTrend', 'Weight chart is paused', <CardSkeleton />, () => <WeightChart data={weightChartData} notesMap={notesMap} status={sections.weightTrend.chartStatus} />, 'min-h-[20rem]')}
+            {gate('weightTrend', 'Weight chart is paused', <CardSkeleton />, () => <WeightChart compare data={weightChartData} notesMap={notesMap} status={sections.weightTrend.chartStatus} />, 'min-h-[20rem]')}
             {gate('waistTrend', 'Waist chart is paused', <CardSkeleton />, () => <WaistChart data={waistChartData} notesMap={notesMap} status={sections.waistTrend.chartStatus} />, 'min-h-[20rem]')}
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {gate('sleepTrend', 'Sleep chart is paused', <CardSkeleton />, () => <SleepChart data={sleepChartData} notesMap={notesMap} status={sections.sleepTrend.chartStatus} />, 'min-h-[20rem]')}
+            {gate('sleepTrend', 'Sleep chart is paused', <CardSkeleton />, () => <SleepChart compare data={sleepChartData} notesMap={notesMap} status={sections.sleepTrend.chartStatus} />, 'min-h-[20rem]')}
             <GoalsCard />
           </div>
         </PageSection>

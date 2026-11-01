@@ -15,6 +15,12 @@ interface SleepChartProps {
   notesMap?: Map<string, DailyNote>;
   status?: ChartDatasetStatus;
   recordLink?: RecordChartLink;
+  /**
+   * Dashboard opt-in: rows from src/lib/dashboardRecordRows.ts carry the exact MANUAL record id, so when both picked days have a manual entry
+   * the viewer's A / B comparison can also Open in Compare (manual records only). The comparison itself covers manual AND WHOOP hours wherever
+   * observed, in the viewer. A WHOOP-only day is a daily aggregate: comparable in the viewer, never a link. Off by default.
+   */
+  compare?: boolean;
 }
 const series = [
   { key: 'hours', label: 'Manual Sleep', color: METRIC_COLORS.sleep },
@@ -28,10 +34,13 @@ const summary = (rows: Record<string, unknown>[]) => {
   };
   return <>{avg('hours') && `Manual avg: ${avg('hours')} ${UNIT_LABEL.hours}`}{avg('hours') && avg('whoopHours') && ' · '}{avg('whoopHours') && `WHOOP avg: ${avg('whoopHours')} ${UNIT_LABEL.hours}`}</>;
 };
+/** Only a row with a manual number AND a record id is one exact manual record; a WHOOP-only day stays a daily aggregate. */
+const rowRecordId = (row: Record<string, unknown>) => (typeof row.recordId === 'string' && row.recordId !== '' && typeof row.hours === 'number' ? row.recordId : undefined);
+const compareSelection = { recordId: rowRecordId, compare: { valueKey: 'hours', noun: 'manual sleep entry', unit: UNIT_LABEL.hours } };
 const icon = <Moon className="h-5 w-5 text-primary" />;
 /** Days with nothing drawable are dropped; a 0 means "no value" (not a real 0 hours), so it becomes null. */
 const plotRows = (data: SleepChartProps['data']) => data.filter(d => d.hours > 0 || (d.whoopHours ?? 0) > 0).map(d => ({ ...d, hours: d.hours || null, whoopHours: d.whoopHours || null }));
-export const SleepChart = ({ data, notesMap, status, recordLink }: SleepChartProps) =>
+export const SleepChart = ({ data, notesMap, status, recordLink, compare }: SleepChartProps) =>
   recordLink
     ? <RecordTrendChart status={status} id="sleep" title="Sleep" icon={icon} data={plotRows(data)} series={series} unit={UNIT_LABEL.hours} defaultStyle="bar" empty={empty} summary={summary} link={recordLink} />
-    : <TrendChart status={status} id="sleep" title="Sleep" icon={icon} data={plotRows(data)} series={series} unit={UNIT_LABEL.hours} notesMap={notesMap} defaultStyle="bar" empty={empty} summary={summary} />;
+    : <TrendChart status={status} id="sleep" title="Sleep" icon={icon} data={plotRows(data)} series={series} unit={UNIT_LABEL.hours} notesMap={notesMap} defaultStyle="bar" empty={empty} summary={summary} daySelection={compare ? compareSelection : undefined} />;

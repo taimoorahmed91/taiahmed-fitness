@@ -550,7 +550,7 @@ describe('mounted: chart A / B picks and Open in Compare (Weight, Sleep)', () =>
       assert.equal(all('[data-compare-set], [data-chart-open-compare]').length, 0);
     });
 
-    test('the Dashboard aggregate chart (TrendChart) has no Compare controls even for Weight', async () => {
+    test('the plain Dashboard chart (TrendChart, no exact records) compares two days in the viewer but never offers Open in Compare', async () => {
       const { WeightChart } = await import('../../src/components/WeightChart');
       const host = doc().createElement('div');
       doc().body.appendChild(host);
@@ -561,8 +561,13 @@ describe('mounted: chart A / B picks and Open in Compare (Weight, Sleep)', () =>
       await settle(10);
       await clickEl(hitIn(host, iso(5)));
       await openViewer('Weight Trend');
-      assert.equal(q('[data-chart-compare-root]', viewer()!), null);
-      assert.equal(all('[data-compare-set]').length, 0);
+      assert.ok(q('[data-chart-compare]', viewer()!), 'the in-viewer comparison is there');
+      await clickEl(q('[data-compare-set="a"]', viewer()!));
+      await clickEl(hitIn(viewer()!, iso(1)));
+      await clickEl(q('[data-compare-set="b"]', viewer()!));
+      assert.match(text(q('[data-compare-difference]', viewer()!)), /B \u2212 A: \u22121 kg \(lower\)/);
+      assert.equal(all('[data-chart-open-compare]').length, 0, 'no record ids, so nothing to open');
+      assert.equal(q('[data-compare-link-note]', viewer()!), null, 'a chart that can never open Compare does not apologise for it');
     });
   });
 

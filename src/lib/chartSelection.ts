@@ -22,7 +22,7 @@
 //   - Local selection lives in the chart component, so signing out (ProtectedRoute unmounts the page) or leaving the page
 //     clears it. There is no account data in it.
 import { createSelectedDay, selectedDayKey, type SelectedDay } from './selectedDay';
-import { tableCellText, type ChartRow, type ChartViewerDataset } from './chartViewerData';
+import { joinUnit, tableCellText, type ChartRow, type ChartViewerDataset } from './chartViewerData';
 
 export interface ChartPointRef {
   /** The dataset's stable row id (an ISO date for daily charts). The only key selection state keeps. */
@@ -109,7 +109,7 @@ export const chartPointValues = (dataset: ChartViewerDataset, rowId: string): Ch
   for (const column of dataset.columns) {
     if (column.key === dateKey) continue;
     const text = tableCellText(row[column.key], column);
-    if (text !== null) values.push({ key: column.key, label: column.label, text: column.unit ? `${text} ${column.unit}` : text });
+    if (text !== null) values.push({ key: column.key, label: column.label, text: joinUnit(text, column.unit) });
   }
   return values;
 };

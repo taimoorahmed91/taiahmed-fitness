@@ -8,6 +8,10 @@ import { ChartFigure } from '@/components/charts/ChartFigure';
 import { ChartHeader } from '@/components/charts/ChartHeader';
 import { ChartEmptyState, NO_DATA } from '@/components/charts/ChartEmptyState';
 import { ChartTooltipCard } from '@/components/charts/ChartTooltipCard';
+import { ChartCompareCardStrip } from '@/components/charts/ChartCompareUi';
+import { compareGuides } from '@/components/charts/ChartSelectionMarks';
+import { useAccountChartSelection } from '@/components/charts/useAccountChartSelection';
+import { useChartComparePicks } from '@/components/charts/useChartComparePicks';
 import { CHART_MARGIN, METRIC_COLORS, UNIT_LABEL, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { RANGE_LABELS } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
@@ -60,13 +64,18 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
   ], period)}`;
 
   // The viewer's Table and CSV read these complete rows (the plot's). A day with only one of the two measurements leaves the other blank.
-  const dataset = createChartDataset({
+  const dataset = useMemo(() => createChartDataset({
     name: title, period, rows: data, status,
     // Explicit opt-out of day selection: the index is derived over the whole period (first vs last measurement), so the plot
     // and table must not pretend a single calendar day explains it. The Weight and Waist pages own the per-day views.
     selection: false,
     columns: [{ key: 'date', label: 'Date' }, { key: 'weight', label: 'Weight', unit: UNIT_LABEL.kilograms }, { key: 'waist', label: 'Waist', unit: UNIT_LABEL.centimeters }],
-  });
+    // Two measured days of the displayed period can still be compared (B - A of what was measured on each). A day with only one of the two
+    // measurements compares just that one: the other is "no value", never 0. This is NOT the index itself, which stays a whole-period figure.
+    pointCompare: { kind: 'date', seriesKeys: ['weight', 'waist'], noun: 'day', nounPlural: 'days' },
+  }), [title, period, data, status]);
+  // No selected day here (the index is a whole-period figure), so the viewer offers two pickers.
+  const compare = useChartComparePicks(useAccountChartSelection(dataset));
 
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same state; only `expanded` differs.
@@ -77,7 +86,7 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
         ? <ChartEmptyState action={NO_DATA.body.action} secondaryAction={NO_DATA.body.secondaryAction}>{NO_DATA.body.message}</ChartEmptyState>
         : <ChartEmptyState>No weight or waist entries in this period. Try a wider date range.</ChartEmptyState>
     ) : (
-      <ChartFigure expanded={expanded} title={title} summary={summary} height={260} caption={`Left axis: weight in ${UNIT_LABEL.kilograms} (solid) · Right axis: waist in ${UNIT_LABEL.centimeters} (dashed) · ${period}`} table={{ columns, rows: data }}>
+      <ChartFigure expanded={expanded} title={title} summary={summary} height={260} caption={`Left axis: weight in ${UNIT_LABEL.kilograms} (solid) · Right axis: waist in ${UNIT_LABEL.centimeters} (dashed) · ${period}`} table={{ columns, rows: data }} afterPlot={expanded ? undefined : <ChartCompareCardStrip compare={compare} />}>
         <ComposedChart accessibilityLayer data={data} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisFor(data.length, expanded)} />
@@ -94,6 +103,7 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
           <Legend {...chartLegendProps} />
           <Line {...motion} yAxisId="w" type="monotone" dataKey="weight" name={`Weight (${UNIT_LABEL.kilograms})`} stroke={METRIC_COLORS.weight} strokeWidth={3.5} dot={{ r: chartDotRadius(4, data.length, expanded), fill: METRIC_COLORS.weight, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
           <Line {...motion} yAxisId="v" type="monotone" dataKey="waist" name={`Waist (${UNIT_LABEL.centimeters})`} stroke={METRIC_COLORS.waist} strokeWidth={2.5} strokeDasharray="8 5" dot={{ r: chartDotRadius(3, data.length, expanded), fill: METRIC_COLORS.waist, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
+          {compareGuides(compare, 'w')}
         </ComposedChart>
       </ChartFigure>
     )
@@ -106,7 +116,7 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
         icon={<Scale className="h-5 w-5 text-primary" />}
         view={view}
         pdf={{ targetRef: cardRef, subtitle: period, columns, rows: data }}
-        viewer={{ render: () => body(true), dataset }}
+        viewer={{ render: () => body(true), dataset, compare }}
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className={cn('border', toneClass[info.tone])}>{info.label}</Badge>

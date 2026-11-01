@@ -294,12 +294,15 @@ describe('the link: ordered, by record id, only when both picks are eligible', (
 });
 
 describe('who gets Compare controls (source contract)', () => {
-  test('only RecordTrendChart opts in, and only through isCompareLinkCategory (so Waist and the Dashboard never do)', () => {
+  test('exact-record picks: RecordTrendChart opts in only through isCompareLinkCategory (so Waist never does); the Dashboard compares in the viewer and links only Weight / manual Sleep', () => {
     const record = read('src/components/history/RecordTrendChart.tsx');
     assert.match(record, /compare: isCompareLinkCategory\(id\)/);
-    assert.doesNotMatch(read('src/components/TrendChart.tsx'), /compare/i);
-    assert.doesNotMatch(read('src/components/WaistChart.tsx'), /compare/i);
+    assert.doesNotMatch(read('src/components/WaistChart.tsx'), /compare: \{ valueKey|compare\?: boolean/);
     assert.doesNotMatch(read('src/pages/Waist.tsx'), /compare/i);
+    // TrendChart only forwards an exact-record config it is GIVEN (Weight, Sleep); it never invents one.
+    const trend = read('src/components/TrendChart.tsx');
+    assert.match(trend, /compare: daySelection\?\.recordId \? daySelection\.compare : undefined/);
+    assert.doesNotMatch(trend, /compare: \{ valueKey/);
   });
 
   test('the controls never use drag gestures and the buttons carry the visible A / B words', () => {

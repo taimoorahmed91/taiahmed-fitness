@@ -7,8 +7,10 @@ import { ChartHeader } from '@/components/charts/ChartHeader';
 import { ChartEmptyState, NO_DATA } from '@/components/charts/ChartEmptyState';
 import { ChartTooltipCard } from '@/components/charts/ChartTooltipCard';
 import { ChartDayReadout } from '@/components/charts/ChartDaySelectionUi';
-import { selectableActiveDot, selectableBarCells, selectableBarClick, selectableBarMouseDown, selectableDot, selectedDayGuide } from '@/components/charts/ChartSelectionMarks';
+import { ChartCompareCardStrip } from '@/components/charts/ChartCompareUi';
+import { compareGuides, selectableActiveDot, selectableBarCells, selectableBarClick, selectableBarMouseDown, selectableDot, selectedDayGuide } from '@/components/charts/ChartSelectionMarks';
 import { useAccountChartSelection } from '@/components/charts/useAccountChartSelection';
+import { useChartComparePicks } from '@/components/charts/useChartComparePicks';
 import { CHART_COLORS, CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { RANGE_LABELS, formatChartDate, windowChartRows } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
@@ -87,11 +89,15 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
       // the person's data, so they are never selectable (and a row with only targets is not a day). Non-ISO "MM/DD" rows are not selectable.
       // Only an OBSERVED actual is a day: `intake` (from the aggregation) says so, and an explicit 0 counts. Never `actual > 0`.
       selection: { metric: metric ?? slug(storageKey ?? title), valueKeys: ['actual'], isObserved: (row) => row.intake === undefined || isObservedIntake(row.intake) },
+      // Compare two days IN the viewer: B - A for the actual intake and for each target that day had. A day is pickable only by an OBSERVED
+      // actual (the selection's own rule), so a day with only targets or a partly logged day is never offered, and a missing target is "no value", not 0.
+      pointCompare: { kind: 'date', seriesKeys: ['actual', 'min', 'max'], pickKeys: ['actual'], noun: 'day', nounPlural: 'days' },
     }),
     [title, period, shown, unit, metric, storageKey, status],
   );
   // One selected day for the card and the full-screen viewer (src/components/charts/useChartDaySelection.ts).
   const selection = useAccountChartSelection(dataset);
+  const compare = useChartComparePicks(selection);
   const selectable = selection.enabled;
 
   const motion = chartMotionProps();
@@ -103,7 +109,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
         ? <ChartEmptyState action={NO_DATA.meals.action}>{NO_DATA.meals.message}</ChartEmptyState>
         : <ChartEmptyState>No intake data in this period. Try a wider date range.</ChartEmptyState>
     ) : (
-      <ChartFigure expanded={expanded} title={title} summary={summaryText} caption={`Values in ${unit} · ${period}${axisNote ? ` · ${axisNote}` : ''}${hasUnobserved ? ' · Blank = not fully logged' : ''}${selectable ? ` · Select a ${style === 'bar' ? 'bar' : 'point'} of actual intake for its day` : ''}`} table={{ columns, rows: shown }} afterPlot={expanded ? undefined : <ChartDayReadout selection={selection} />}>
+      <ChartFigure expanded={expanded} title={title} summary={summaryText} caption={`Values in ${unit} · ${period}${axisNote ? ` · ${axisNote}` : ''}${hasUnobserved ? ' · Blank = not fully logged' : ''}${selectable ? ` · Select a ${style === 'bar' ? 'bar' : 'point'} of actual intake for its day` : ''}`} table={{ columns, rows: shown }} afterPlot={expanded ? undefined : <><ChartDayReadout selection={selection} /><ChartCompareCardStrip compare={compare} /></>}>
         <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" tickFormatter={formatChartDate} {...chartXAxisFor(shown.length, expanded)} />
@@ -145,6 +151,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
             </>
           )}
           {selectedDayGuide(selection)}
+          {compareGuides(compare)}
         </ComposedChart>
       </ChartFigure>
     )
@@ -156,7 +163,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
         title={title}
         view={view}
         pdf={{ targetRef: cardRef, subtitle: `${period} · ${style} chart`, columns, rows: shown }}
-        viewer={{ render: () => body(true), dataset, selection }}
+        viewer={{ render: () => body(true), dataset, selection, compare }}
       />
       <CardContent>{body(false)}</CardContent>
     </Card>

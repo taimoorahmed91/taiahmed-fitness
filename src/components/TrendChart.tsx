@@ -9,14 +9,16 @@ import { ChartEmptyState, TREND_NO_DATA, type ChartNoDataEmpty } from '@/compone
 import { ChartTooltipCard, TooltipNote } from '@/components/charts/ChartTooltipCard';
 import { NoteDiamond } from '@/components/charts/NoteDiamond';
 import { ChartDayReadout } from '@/components/charts/ChartDaySelectionUi';
-import { selectableActiveDot, selectableBarCells, selectableBarClick, selectableBarMouseDown, selectableDot, selectedDayGuide } from '@/components/charts/ChartSelectionMarks';
+import { ChartCompareCardStrip } from '@/components/charts/ChartCompareUi';
+import { compareGuides, selectableActiveDot, selectableBarCells, selectableBarClick, selectableBarMouseDown, selectableDot, selectedDayGuide } from '@/components/charts/ChartSelectionMarks';
 import { useAccountChartSelection } from '@/components/charts/useAccountChartSelection';
+import { useChartComparePicks } from '@/components/charts/useChartComparePicks';
 import { CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { CHART_RANGES, RANGE_LABELS } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
 import { barAxisNote, computeChartDomain } from '@/lib/chartDomain';
-import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
+import { createChartDataset, type ChartDatasetCompare, type ChartDatasetStatus } from '@/lib/chartViewerData';
 
 type Series = { key: string; label: string; color: string; dashed?: boolean };
 type Row = { date: string; [key: string]: string | number | null | undefined };
@@ -48,6 +50,12 @@ interface TrendChartProps {
    *  - `metric`: what the day is about for the SelectedDay origin (defaults to the chart id: "weight", "sleep").
    *  - `recordId`: only when a row IS one stored record; it makes the origin a `record` instead of a daily aggregate.
    *  - `false`: opt out (a chart whose rows are not days).
+   *  - `compare`: OFF unless given. Lets Open in Compare appear when BOTH picked days are exact records (Weight, manual Sleep).
+   *    It needs `recordId` too: a row with no record id (an aggregate, a WHOOP-only day) is never a record. Whether a point is
+   *    one is decided by `compareEligibility` from its origin, not by this config (see ChartDatasetCompare).
+   *  - `compareObserved`: for a chart that fills days it has no data for with a 0 (Workout Duration's rest days): say which rows were really
+   *    observed. Only those days can be A or B; the others are never compared as 0. Leave out when every number is an observation.
+   * Every daily chart (unless `false`) compares two days in the viewer: B - A per series, no links (see ChartDatasetPointCompare).
    */
   /**
    * Where the chart's source data really is (see lib/chartSourceStatus.ts): `stale` (a refresh failed over kept rows) or
@@ -55,7 +63,7 @@ interface TrendChartProps {
    * exported or selected. Leave out when everything is loaded and current.
    */
   status?: ChartDatasetStatus;
-  daySelection?: false | { metric?: string; recordId?: (row: Row) => string | null | undefined };
+  daySelection?: false | { metric?: string; recordId?: (row: Row) => string | null | undefined; compare?: ChartDatasetCompare; compareObserved?: (row: Row) => boolean };
 }
 
 export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, notesMap, cap, summary, empty, noData, extendedRanges, daySelection, status }: TrendChartProps) => {
@@ -75,6 +83,12 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
   const emptyNoData = data.length === 0 ? (noData === undefined ? TREND_NO_DATA[id] : noData) : null;
   const summaryText = useMemo(() => `${describeSeries(shown, series.map(s => ({ key: s.key, label: s.label, unit })), period)}${axisNote ? ` ${axisNote}, not zero.` : ''}`, [shown, series, unit, period, axisNote]);
 
+  // A row that is one record per day (Weight, Waist, Sleep: the lowest id) says how many entries its day had. When a day has more, the caption says only one is plotted.
+  const moreThanOne = useMemo(
+    () => shown.filter(row => typeof row.entryCount === 'number' && row.entryCount > 1).length,
+    [shown],
+  );
+
   const pdfColumns = [{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: `${s.label}${unit ? ` (${unit})` : ''}` }))];
 
   // The viewer's Table and CSV read these complete rows (the same ones the plot draws), never the capped screen-reader table.
@@ -82,12 +96,16 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
     () => createChartDataset({
       name: title, period, rows: shown, status,
       columns: [{ key: 'date', label: 'Date' }, ...series.map(s => ({ key: s.key, label: s.label, unit }))],
-      selection: daySelection === false ? false : { metric: daySelection?.metric ?? id, valueKeys: series.map(s => s.key), recordId: daySelection?.recordId },
+      selection: daySelection === false ? false : { metric: daySelection?.metric ?? id, valueKeys: series.map(s => s.key), recordId: daySelection?.recordId, compare: daySelection?.recordId ? daySelection.compare : undefined },
+      // Every daily trend compares two days IN the viewer (B - A per series). Opting out of day selection opts out of this too: those rows are not days.
+      pointCompare: daySelection === false ? undefined : { kind: 'date', seriesKeys: series.map(s => s.key), noun: 'day', nounPlural: 'days', isObserved: daySelection?.compareObserved },
     }),
     [title, period, shown, series, unit, daySelection, id, status],
   );
   // One selected day for the card and the full-screen viewer (src/components/charts/useChartDaySelection.ts).
   const selection = useAccountChartSelection(dataset);
+  // A / B picks: two days compared in the viewer (B - A per series). Open in Compare only when both are exact records (`daySelection.compare` + `recordId`).
+  const compare = useChartComparePicks(selection);
   const selectable = selection.enabled;
 
   const motion = chartMotionProps();
@@ -102,9 +120,9 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
         expanded={expanded}
         title={title}
         summary={summaryText}
-        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}${notesMap ? ' · \u25C6 marks a day with a note' : ''}${selectable ? ` · Select a ${view.style === 'bar' ? 'bar' : 'point'} for its day` : ''}`}
+        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}${notesMap ? ' · \u25C6 marks a day with a note' : ''}${selectable ? ` · Select a ${view.style === 'bar' ? 'bar' : 'point'} for its day` : ''}${moreThanOne > 0 ? ` · ${moreThanOne} ${moreThanOne === 1 ? 'day has' : 'days have'} more than one entry (one is plotted)` : ''}`}
         table={{ columns: pdfColumns, rows: shown }}
-        afterPlot={expanded ? undefined : <ChartDayReadout selection={selection} />}
+        afterPlot={expanded ? undefined : <><ChartDayReadout selection={selection} /><ChartCompareCardStrip compare={compare} /></>}
       >
         <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
@@ -127,6 +145,7 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
             <Line {...motion} key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? false : selectable ? selectableDot({ selection, seriesKey: s.key, color: s.color, r: chartDotRadius(3, shown.length, expanded), stroke: chartDotStroke }) : { r: chartDotRadius(3, shown.length, expanded), fill: s.color, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={selectable ? selectableActiveDot(5) : { r: 5 }} connectNulls />
           )}
           {selectedDayGuide(selection)}
+          {compareGuides(compare)}
           {noteDots.map(row => <ReferenceDot key={row.date} x={row.date} y={Number(row[series[0].key])} r={7} shape={<NoteDiamond />} />)}
         </ComposedChart>
       </ChartFigure>
@@ -141,7 +160,7 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
         description={summary?.(shown)}
         view={{ ...view, extended: extendedRanges }}
         pdf={{ targetRef: cardRef, subtitle: `${period} · ${view.style} chart`, columns: pdfColumns, rows: shown }}
-        viewer={{ render: () => body(true), dataset, selection }}
+        viewer={{ render: () => body(true), dataset, selection, compare }}
       />
       <CardContent>{body(false)}</CardContent>
     </Card>

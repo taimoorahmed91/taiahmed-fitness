@@ -73,7 +73,8 @@ export const ChartDataTable = ({ dataset, direction, selection, compare }: Chart
           {rows.map(({ row, id }) => {
             const point = selection?.enabled ? selection.pointForRow(id) : null;
             const selected = !!point && selection!.isSelectedRow(id);
-            const mark = point && compare?.enabled ? compare.markOf(id) : null;
+            // A / B marks do not need a selectable day: a categorical row (a time of day) can be A or B too.
+            const mark = compare?.enabled ? compare.markOf(id) : null;
             return (
             <tr
               key={id}
@@ -110,6 +111,11 @@ export const ChartDataTable = ({ dataset, direction, selection, compare }: Chart
                           {mark && <><CompareBadge slot={mark} /><span className="sr-only">Compare {slotLabel(mark)}, </span></>}
                           {content}
                         </button>
+                      ) : mark ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CompareBadge slot={mark} /><span className="sr-only">Compare {slotLabel(mark)}, </span>
+                          {content}
+                        </span>
                       ) : content}
                     </th>
                   );

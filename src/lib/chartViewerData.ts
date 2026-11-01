@@ -92,6 +92,31 @@ export interface ChartDatasetCompare {
   digits?: number;
 }
 
+/**
+ * Opt-in IN-VIEWER A / B comparison of two points of ANY chart, drawn from the dataset's own rows (no record ids, no links).
+ * It is independent of day selection: a chart that opted out of selecting calendar days (a time-of-day pie, the Body
+ * Recomposition lines) can still compare two of its points.
+ *  - `date`: a point is one UTC calendar day (its `labelKey` value must be a real ISO date). B - A also says how many days apart.
+ *  - `category`: a point is a named group ("Morning"). There is no date and no elapsed time: nothing about dates or days is ever said.
+ * A point is pickable only when it was really OBSERVED: at least one `pickKeys` value is a real number (an explicit 0 counts, null /
+ * blank / NaN never do) AND `isObserved` (when given) agrees. An unknown value is never treated as zero in B - A.
+ */
+export interface ChartDatasetPointCompare<Row extends ChartRow = ChartRow> {
+  kind: 'date' | 'category';
+  /** The columns whose values B - A is shown for ("visible / meaningful series"). A series where neither pick has a value is left out. */
+  seriesKeys: readonly string[];
+  /** The column that names the point: the ISO date (default "date") or the category (default "name"). */
+  labelKey?: string;
+  /** What one point is called: "day", "time of day". */
+  noun: string;
+  /** Its plural: "days", "times of day". */
+  nounPlural: string;
+  /** Columns that make a point pickable. Default: the selection's `valueKeys` when there is one, else `seriesKeys`. */
+  pickKeys?: readonly string[];
+  /** Whether the row was really observed (see ChartDatasetSelection.isObserved). Default: the selection's, else always. */
+  isObserved?: (row: Row, index: number) => boolean;
+}
+
 export interface ChartViewerDataset<Row extends ChartRow = ChartRow> {
   /** The chart's name: "Weight Trend". Used for the table label and the CSV file name. */
   name: string;
@@ -105,6 +130,8 @@ export interface ChartViewerDataset<Row extends ChartRow = ChartRow> {
   status?: ChartDatasetStatus;
   /** Day selection config. Absent when the chart opted out (period / categorical / non-ISO rows). */
   selection?: ChartDatasetSelection<Row>;
+  /** In-viewer A / B comparison config. Absent = the chart offers no point comparison. */
+  pointCompare?: ChartDatasetPointCompare<Row>;
   capabilities: ChartDatasetCapabilities;
 }
 
@@ -123,6 +150,8 @@ export interface CreateChartDatasetInput<Row extends ChartRow> {
    * (categorical or period-derived charts); leaving it out is the same, but says nothing about intent.
    */
   selection?: ChartDatasetSelection<Row> | false;
+  /** In-viewer A / B comparison of two points (see ChartDatasetPointCompare). Independent of `selection`. */
+  pointCompare?: ChartDatasetPointCompare<Row>;
 }
 
 export const defaultRowId = (row: ChartRow, index: number): string => {
@@ -154,6 +183,7 @@ export const createChartDataset = <Row extends ChartRow>(input: CreateChartDatas
     chronological: input.chronological ?? true,
     status,
     selection,
+    pointCompare: input.pointCompare,
     capabilities: { table: true, csv: input.rows.length > 0 && !status?.unavailable, rowIdentity: true, daySelection: !!selection },
   };
 };
@@ -178,6 +208,9 @@ export const tableCellText = (value: unknown, column: ChartDatasetColumn): strin
   if (typeof value === 'number') return roundCell(value, column.digits).toLocaleString('en-US', { maximumFractionDigits: column.digits ?? DEFAULT_DIGITS });
   return String(value);
 };
+
+/** A value with its unit: "80 kg", but "41%" (a percent sign is attached, like formatChartValue). The one rule the viewer, readouts and Compare share. */
+export const joinUnit = (text: string, unit?: string): string => (unit ? (unit === '%' ? `${text}%` : `${text} ${unit}`) : text);
 
 export const columnHeader = (column: ChartDatasetColumn): string => (column.unit ? `${column.label} (${column.unit})` : column.label);
 

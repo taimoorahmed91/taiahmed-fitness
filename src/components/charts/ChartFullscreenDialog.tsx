@@ -43,9 +43,10 @@ export interface ChartViewerSpec {
    */
   selection?: ChartDaySelection;
   /**
-   * The chart's A / B picks for Compare (see useChartComparePicks). Only for charts whose points are exact Weight or manual Sleep
-   * records. Adds Set as A / Set as B for the selected point, the B - A readout, Swap, Clear and Open in Compare under the
-   * selected-day bar, and A / B marks in the Table. The same state shows a small summary on the card. Leave out for every other chart.
+   * The chart's A / B picks (see useChartComparePicks). Adds Set as A / Set as B for the selected point (or two pickers when the chart has
+   * no selectable days), the B - A readout, Swap and Clear under the selected-day bar, and A / B marks in the Table. Open in Compare is there
+   * only when both picks are exact Weight / manual Sleep records. The same state shows a small summary on the card. Leave out when the chart
+   * has no `pointCompare` (and is not a Weight / Sleep page chart).
    */
   compare?: ChartComparePicks;
 }
@@ -110,6 +111,8 @@ const ViewerPanel = ({ title, captureRef, children, viewer }: { title: string; c
   const asOf = stale ? describeAsOf(stale.asOf) : null;
   const n = dataset?.rows.length ?? 0;
   const selection = viewer.selection?.enabled ? viewer.selection : undefined;
+  // Compare needs no selected day: a chart that opted out of day selection (a pie, the Body Recomposition lines) still compares two points.
+  const compare = viewer.compare?.enabled ? viewer.compare : undefined;
 
   return (
     <div
@@ -174,14 +177,14 @@ const ViewerPanel = ({ title, captureRef, children, viewer }: { title: string; c
       </div>
       {/* Selected-day controls. Chart mode: bar and panel sit under the chart in the scrolling viewer. Table mode: the bar,
           the table and the panel share one scroller, so the table keeps at least 14rem and the panel is reachable. */}
-      {(selection || (tableMode && dataset)) && (
+      {(selection || compare || (tableMode && dataset)) && (
         <div
           data-chart-viewer-selection=""
           className={tableMode ? 'mt-0 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain' : 'mt-3 flex shrink-0 flex-col gap-3'}
         >
           {selection && <ChartDaySelectionBar selection={selection} />}
-          {selection && viewer.compare && <ChartCompareViewerPanel compare={viewer.compare} />}
-          {tableMode && dataset && <ChartDataTable dataset={dataset} direction={direction} selection={selection} compare={viewer.compare} />}
+          {compare && <ChartCompareViewerPanel compare={compare} />}
+          {tableMode && dataset && <ChartDataTable dataset={dataset} direction={direction} selection={selection} compare={compare} />}
           {selection?.selected && <ChartSelectedDayPanel day={selection.selected.day} />}
         </div>
       )}
