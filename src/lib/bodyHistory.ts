@@ -7,7 +7,8 @@
  *  - Newest first. Groups are never split across pages.
  *
  * Honesty rules
- *  - A change from the previous entry is a plain difference, never a verdict: no "good/bad", no colour.
+ *  - A change from the previous entry is a plain difference, never a verdict: no "good/bad" wording. Weight and Waist
+ *    tiles tint by direction only (see `deltaTone`), and the sign, arrow and number always say the same thing in words.
  *  - A group average or range is only produced when enough entries exist, and a group is never described with
  *    numbers when a filter has hidden part of it.
  *  - Missing values are unknown, not zero.
@@ -117,6 +118,19 @@ export const buildChangeMap = <T extends DatedEntry>(
     map.set(current.id, { delta: delta === 0 ? 0 : delta, previousValue: b, previousDate: previous.date, days: dayDiff(current.date, previous.date) });
   }
   return map;
+};
+
+/** Direction of a change: more than before, less than before, or the same / nothing to compare with. */
+export type DeltaTone = 'up' | 'down' | 'flat';
+
+/**
+ * Which tint a Weight / Waist tile gets. Goes by the rounded change from the previous entry, the same number the tile
+ * prints: above zero is "up", below zero is "down", and exactly zero, no previous entry, or a value that is not a
+ * number is "flat". A direction, not a verdict.
+ */
+export const deltaTone = (change: Pick<Change, 'delta'> | null | undefined): DeltaTone => {
+  if (!change || !Number.isFinite(change.delta) || change.delta === 0) return 'flat';
+  return change.delta > 0 ? 'up' : 'down';
 };
 
 /** Trims "0.40" to "0.4" so a change reads the way it was entered. */

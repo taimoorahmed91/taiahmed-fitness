@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildChangeMap,
   countBy,
+  deltaTone,
   describeGap,
   formatChange,
   groupByMonth,
@@ -185,5 +186,36 @@ describe('month net change and the sleep bar', () => {
     assert.equal(sleepBarPercent(14), 100);
     assert.equal(sleepBarPercent(Number.NaN), 0);
     assert.equal(sleepBarPercent(-3), 0);
+  });
+});
+
+describe('body history: tile tone follows the direction of the change', () => {
+  const all = sortNewestFirst([w('d', '2026-10-30', 70.4), w('c', '2026-10-29', 70.4), w('b', '2026-10-27', 70), w('a', '2026-10-20', 70.9)]);
+  const changes = buildChangeMap(all, value);
+
+  test('more than the previous entry is up, less is down, equal is flat', () => {
+    assert.equal(deltaTone(changes.get('c')), 'up');
+    assert.equal(deltaTone(changes.get('d')), 'flat');
+    assert.equal(deltaTone(changes.get('b')), 'down');
+    assert.equal(deltaTone({ delta: 0.4 }), 'up');
+    assert.equal(deltaTone({ delta: -0.01 }), 'down');
+  });
+  test('no previous entry, or a value that is not a number, is flat', () => {
+    assert.equal(deltaTone(changes.get('a')), 'flat');
+    assert.equal(deltaTone(undefined), 'flat');
+    assert.equal(deltaTone(null), 'flat');
+    assert.equal(deltaTone({ delta: Number.NaN }), 'flat');
+  });
+  test('tone agrees with the printed text: "No change" is always flat, a sign is always up or down', () => {
+    for (const delta of [-2.5, -0.01, 0, 0.01, 3]) {
+      const text = formatChange(delta, 'kg');
+      const tone = deltaTone({ delta });
+      if (text === 'No change') assert.equal(tone, 'flat');
+      else assert.equal(tone, text.startsWith('+') ? 'up' : 'down');
+    }
+  });
+  test('a change that rounds to nothing at display precision is flat', () => {
+    const c = buildChangeMap(sortNewestFirst([w('2', '2026-10-02', 70.201), w('1', '2026-10-01', 70.2)]), value);
+    assert.equal(deltaTone(c.get('2')), 'flat');
   });
 });

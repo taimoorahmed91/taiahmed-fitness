@@ -364,6 +364,7 @@ const Weight = () => {
                 entryNoun="weight entry"
                 countNoun={{ one: 'entry', many: 'entries' }}
                 showChange
+                layout="tiles"
                 monthFacts={monthFacts}
                 deleteTitle="Delete weight entry?"
                 deleteDescription={(entry) => `Are you sure you want to delete ${entry.weight} kg recorded on ${entry.date}, including its notes? This cannot be undone.`}

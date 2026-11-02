@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, LineChart, Minus, Moon, Pencil, Ruler } from 'lucide-react';
 import { GroupGlyph, GroupStat, HistoryGroup, HistoryList } from '@/components/history/HistoryGroup';
 import { HistoryRow, TimelineNode } from '@/components/history/HistoryRow';
+import { DeltaChip, HistoryTile, HistoryTileGrid, TileActionTray } from '@/components/history/HistoryTile';
 import type { HistoryVariant } from '@/components/history/historyVariants';
 import { ActionTray, HistoryAction, HistoryDeleteAction, HistoryInlineActions } from '@/components/history/ActionTray';
 import { HistoryPager } from '@/components/history/HistoryPager';
@@ -17,6 +18,7 @@ import { defaultToday, formatDay, formatShortDay } from '@/lib/historyDates';
 import {
   buildChangeMap,
   countBy,
+  deltaTone,
   formatChange,
   groupByMonth,
   monthKey,
@@ -35,8 +37,12 @@ import { cn } from '@/lib/utils';
  *  - Phone: date-led row, the measurement large and right-aligned, the quiet extras (change from the previous
  *    entry or a quality band, then notes) beside it. Tapping the row opens its full notes and a labelled Edit / Delete tray.
  *  - Fine pointer, 768px and wider: aligned Date / Value / Change-or-Quality / Notes columns with compact inline actions.
- *  - Change from the previous entry is a plain, neutral difference (never good/bad, never colour).
+ *  - Change from the previous entry is a plain difference (never worded as good/bad). In the default row layout it is
+ *    neutral grey. In the tile layout it is a sign, an arrow and a number, and the tile gets a soft tint for the direction.
  *  - Paging is by whole months, so a month's heading always describes everything under it.
+ *
+ * `layout="tiles"` (Weight, Waist) draws each entry as a box in a grid under the same month headings instead of a row.
+ * Same data, paging, chart link, reveal and delete confirmation; see HistoryTile for the tile contract and tints.
  *
  * `variant` gives each diary its own look on top of that same structure:
  *  - "default"      plain grey (Weight). Unchanged.
@@ -85,6 +91,8 @@ export interface MetricHistoryListProps<T extends MetricEntry> {
   /** One headline number for a month shown in full (shown large on the right of the month heading). */
   monthStat?: (items: T[]) => MonthStat | null;
   variant?: Extract<HistoryVariant, 'default' | 'sleep' | 'measurement'>;
+  /** "rows" (default) or "tiles": a grid of boxes tinted by the change from the previous entry. Needs `showChange`. */
+  layout?: 'rows' | 'tiles';
   deleteTitle: string;
   deleteDescription: (entry: T) => string;
   onEdit: (entry: T) => void;
@@ -130,6 +138,10 @@ const ACTIONS_WIDTH = 'w-20';
 const ACTIONS_WIDTH_WITH_CHART = 'w-28';
 /** Notes longer than this can run past two lines on a wide row, so that row can be opened to read them all. */
 const LONG_NOTE = 80;
+/** A tile is about a third as wide as a row, so it runs out of room sooner. */
+const TILE_LONG_NOTE = 50;
+/** Tray buttons inside a tile fill its width instead of the wide-screen sizing of a row's tray. */
+const TILE_TRAY_BUTTON = 'sm:w-full sm:min-w-0 sm:max-w-none sm:basis-auto';
 /** The entry selected on the chart: a quiet tint and ring (the pressed "Show on chart" action says it in words too). */
 const SELECTED_ROW = 'bg-primary/5 ring-1 ring-inset ring-primary/40';
 
@@ -142,7 +154,7 @@ interface PageGroup<T> {
 export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryListProps<T>) => {
   const {
     entries, allEntries, sortOrder, sortName, getValue, valueLabel, unit, spokenUnit, entryNoun, countNoun,
-    showChange = false, band, monthFacts, monthStat, variant = 'default', deleteTitle, deleteDescription, onEdit, onDelete,
+    showChange = false, band, monthFacts, monthStat, variant = 'default', layout = 'rows', deleteTitle, deleteDescription, onEdit, onDelete,
     chartLink, reveal, onRevealed,
   } = props;
   const isDesktop = useMinWidth(HISTORY_MD, true);
@@ -206,6 +218,31 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
   const axis = variant === 'measurement' && !flat;
   const grid = desktopGrid(hasExtra, axis);
 
+  const tiles = layout === 'tiles';
+
+  const renderTile = (entry: T) => (
+    <MetricTile
+      key={entry.id}
+      entry={entry}
+      chart={chartLink ? { pressed: chartLink.selectedId === entry.id, status: chartLink.statusOf(entry.id), onToggle: () => chartLink.onToggle(entry) } : undefined}
+      desktop={isDesktop}
+      today={today}
+      expanded={expandedIds.has(entry.id)}
+      onExpandedChange={(open) => toggleExpanded(entry.id, open)}
+      value={getValue(entry)}
+      unit={unit}
+      spokenUnit={spokenUnit}
+      entryNoun={entryNoun}
+      change={changes.get(entry.id)}
+      isFirstEver={showChange && entry.id === oldestId && newestFirstAll.length > 1}
+      isOnlyEntry={newestFirstAll.length === 1}
+      deleteTitle={deleteTitle}
+      deleteDescription={deleteDescription(entry)}
+      onEdit={() => onEdit(entry)}
+      onDelete={() => onDelete(entry.id)}
+    />
+  );
+
   const renderRow = (entry: T) => (
     <MetricRow
       key={entry.id}
@@ -244,7 +281,7 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
           Sorted by {sortName} ({sortOrder === 'desc' ? 'highest' : 'lowest'} first). Month grouping is off while sorting; sort again to turn it off.
         </p>
       )}
-      {isDesktop && (
+      {isDesktop && !tiles && (
         <div aria-hidden="true" className="flex border-y py-1.5 text-xs font-medium text-muted-foreground">
           <span className={cn('min-w-0 flex-1 px-4', grid)}>
             {axis && <span />}
@@ -257,7 +294,11 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
           <span className={cn('shrink-0', chartLink ? ACTIONS_WIDTH_WITH_CHART : ACTIONS_WIDTH)} />
         </div>
       )}
-      {flat ? (
+      {flat && tiles ? (
+        <div className="border-y">
+          <HistoryTileGrid>{pageGroups.map((g) => renderTile(g.items[0]))}</HistoryTileGrid>
+        </div>
+      ) : flat ? (
         <HistoryList variant={variant} className={isDesktop ? 'border-b' : 'border-y'}>{pageGroups.map((g) => renderRow(g.items[0]))}</HistoryList>
       ) : (
         pageGroups.map((group) => {
@@ -277,7 +318,11 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
               title={<time dateTime={group.month}>{monthTitle(group.month ?? group.key)}</time>}
               summary={facts}
             >
-              <HistoryList variant={variant} className={variant === 'default' ? undefined : 'py-1'}>{group.items.map(renderRow)}</HistoryList>
+              {tiles ? (
+                <HistoryTileGrid>{group.items.map(renderTile)}</HistoryTileGrid>
+              ) : (
+                <HistoryList variant={variant} className={variant === 'default' ? undefined : 'py-1'}>{group.items.map(renderRow)}</HistoryList>
+              )}
             </HistoryGroup>
           );
         })
@@ -317,6 +362,130 @@ interface MetricRowChart {
 /** Why an entry is not on the chart, in words. Only for entries that are not the plotted one. */
 const notOnChartText = (status: PlotStatus): string =>
   status === 'same-day' ? 'Not on the chart: another entry from this day is the one plotted (the chart shows one entry per day).' : 'Not on the chart: this entry has no value to plot.';
+
+interface MetricTileProps<T extends MetricEntry> {
+  entry: T;
+  chart?: MetricRowChart;
+  desktop: boolean;
+  today: string;
+  expanded: boolean;
+  onExpandedChange: (open: boolean) => void;
+  value: number;
+  unit: string;
+  spokenUnit: string;
+  entryNoun: string;
+  change?: Change;
+  isFirstEver: boolean;
+  isOnlyEntry: boolean;
+  deleteTitle: string;
+  deleteDescription: string;
+  onEdit: () => void;
+  onDelete: () => unknown | Promise<unknown>;
+}
+
+/** One entry as a tile: date, the measurement large, the change as a tinted chip, and the notes. */
+const MetricTile = <T extends MetricEntry>({
+  entry, chart, desktop, today, expanded, onExpandedChange, value, unit, spokenUnit, entryNoun, change, isFirstEver, isOnlyEntry,
+  deleteTitle, deleteDescription, onEdit, onDelete,
+}: MetricTileProps<T>) => {
+  const notes = entry.notes?.trim() || '';
+  const tone = deltaTone(change);
+  const sinceText = change ? formatShortDay(change.previousDate, today) : '';
+  const name = `${entryNoun} from ${entry.date}`;
+  const first = !change && (isFirstEver || isOnlyEntry);
+  const chipText = change ? formatChange(change.delta, unit) : first ? 'First entry' : 'No earlier entry';
+  const spoken = change ? spokenChange(change, spokenUnit, 2, sinceText) : first ? 'First entry.' : 'No earlier entry to compare with.';
+
+  const longNote = notes.length > TILE_LONG_NOTE || notes.includes('\n');
+  const offChart = chart && chart.status !== 'plotted' ? notOnChartText(chart.status) : null;
+  // A wide screen with a mouse keeps its actions on the tile; a phone or tablet opens the tile to reach them.
+  const expandable = !desktop || longNote || !!offChart;
+
+  const actionList = (kind: 'tray' | 'inline') => [
+    ...(chart?.status === 'plotted'
+      ? [
+          <HistoryAction
+            key="chart"
+            variant={kind}
+            label={`Show on chart: ${name}`}
+            text="Show on chart"
+            icon={<LineChart aria-hidden="true" />}
+            pressed={chart.pressed}
+            onClick={chart.onToggle}
+            className={kind === 'tray' ? TILE_TRAY_BUTTON : chart.pressed ? 'bg-accent text-accent-foreground' : undefined}
+          />,
+        ]
+      : []),
+    <HistoryAction key="edit" variant={kind} label={`Edit ${name}`} text="Edit" icon={<Pencil aria-hidden="true" />} onClick={onEdit} className={kind === 'tray' ? TILE_TRAY_BUTTON : undefined} />,
+    <HistoryDeleteAction
+      key="delete"
+      variant={kind}
+      label={`Delete ${name}`}
+      confirmationTitle={deleteTitle}
+      confirmationDescription={deleteDescription}
+      onConfirm={onDelete}
+      className={kind === 'tray' ? TILE_TRAY_BUTTON : undefined}
+    />,
+  ];
+
+  return (
+    <HistoryTile
+      rowId={entry.id}
+      tone={tone}
+      selected={chart?.pressed}
+      expanded={expanded}
+      onExpandedChange={onExpandedChange}
+      panelLabel={`Details for ${name}`}
+      panel={
+        expandable ? (
+          <div className="space-y-3">
+            {offChart && <p className="text-sm text-muted-foreground">{offChart}</p>}
+            {!desktop && <TileActionTray label={`Actions for ${name}`}>{actionList('tray')}</TileActionTray>}
+          </div>
+        ) : undefined
+      }
+      summary={
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="block text-xs font-medium text-muted-foreground">
+            <time dateTime={entry.date}>{formatDay(entry.date, today)}</time>
+          </span>
+          <span className="block text-xl font-semibold leading-tight tabular-nums text-foreground">
+            {String(value)}
+            <span className="text-xs font-normal text-muted-foreground"> {unit}</span>
+          </span>
+          <span aria-hidden="true" className="block">
+            <DeltaChip tone={tone}>{chipText}</DeltaChip>
+          </span>
+          {change && (
+            <span aria-hidden="true" className="block text-xs text-muted-foreground">
+              since {sinceText}
+            </span>
+          )}
+          <span className="sr-only">{spoken}</span>
+          {chart?.pressed && (
+            <span className="flex items-center gap-1 text-xs font-medium text-foreground">
+              <LineChart aria-hidden="true" className="h-3 w-3 shrink-0" />
+              On chart
+            </span>
+          )}
+          {notes && (
+            <span className={cn('block break-words whitespace-pre-wrap text-xs text-muted-foreground', !expanded && 'line-clamp-2')}>
+              <span className="sr-only">Notes: </span>
+              {notes}
+            </span>
+          )}
+        </span>
+      }
+      actions={
+        desktop ? (
+          <HistoryInlineActions label={`Actions for ${name}`} className="px-2 pb-1.5 pt-0">
+            {actionList('inline')}
+          </HistoryInlineActions>
+        ) : undefined
+      }
+    />
+  );
+};
 
 interface MetricRowProps<T extends MetricEntry> {
   entry: T;

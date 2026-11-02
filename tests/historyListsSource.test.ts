@@ -16,6 +16,7 @@ const HISTORY = [
   'src/components/history/useGroupPagination.ts',
   'src/components/history/useMinWidth.ts',
   'src/components/history/MetricHistoryList.tsx',
+  'src/components/history/HistoryTile.tsx',
   'src/components/history/WhoopHistoryList.tsx',
   'src/components/history/BandChip.tsx',
   'src/components/history/DayStamp.tsx',
@@ -198,9 +199,25 @@ describe('body and WHOOP history: wiring and rules', () => {
     assert.match(src, /<EditWhoopEntryDialog/);
     assert.match(src, /onDelete=\{deleteEntry\}/);
   });
-  test('change from the previous entry is never coloured or worded as good / bad', () => {
+  test('in the row layout, change from the previous entry is never coloured or worded as good / bad', () => {
     const src = read('src/components/history/MetricHistoryList.tsx');
     assert.doesNotMatch(src, /text-chart|text-destructive|text-primary|bg-chart/);
+  });
+  test('tiles take their tints from semantic tokens in global CSS, in both themes', () => {
+    const tile = read('src/components/history/HistoryTile.tsx');
+    const css = read('src/index.css');
+    const tw = read('tailwind.config.ts');
+    for (const name of ['delta-up', 'delta-down', 'delta-flat']) {
+      assert.match(tile, new RegExp(`bg-${name}/\\[0\\.08\\]`));
+      assert.match(tw, new RegExp(`'${name}': 'hsl\\(var\\(--${name}\\)\\)'`));
+      assert.equal((css.match(new RegExp(`--${name}:`, 'g')) ?? []).length, 2, `${name} is defined for light and dark`);
+    }
+    assert.doesNotMatch(tile, /hsl\(|rgb\(/);
+  });
+  test('only Weight and Waist use the tile layout; Sleep keeps its rows', () => {
+    assert.match(read('src/pages/Weight.tsx'), /layout="tiles"/);
+    assert.match(read('src/pages/Waist.tsx'), /layout="tiles"/);
+    assert.doesNotMatch(read('src/pages/Sleep.tsx'), /layout=/);
   });
   test('the WHOOP edit dialog fills itself when it opens and labels every field', () => {
     const src = read('src/components/EditWhoopEntryDialog.tsx');

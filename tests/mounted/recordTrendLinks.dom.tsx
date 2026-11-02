@@ -259,8 +259,10 @@ describe('mounted: trend chart <-> history list (Weight, Sleep)', () => {
       assert.equal(showOnChart('w-10')!.getAttribute('aria-pressed'), 'true');
       await clickEl(hit(iso(0)));
       assert.equal(showOnChart('w-10')!.getAttribute('aria-pressed'), 'false');
-      assert.ok(!row('w-10')!.className.includes('ring-primary'));
-      assert.ok(row('w-0')!.className.includes('ring-primary'));
+      // Weight now draws tiles: the selected one gets a neutral ring (not one of the change tints) and says "On chart".
+      assert.ok(!/ring-(primary|foreground)/.test(row('w-10')!.className));
+      assert.ok(/ring-(primary|foreground)/.test(row('w-0')!.className));
+      assert.match(text(row('w-0')), /On chart/);
     });
   });
 

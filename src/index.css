@@ -90,6 +90,13 @@ All colors MUST be HSL.
     --chart-max: 353 80% 41%;
     --chart-warn: 40 100% 27%;
 
+    /* Change-tile tones (Weight and Waist history). Soft hues used only as low-opacity tints and borders,
+       plus a full-strength arrow. Text on the tiles stays foreground / muted-foreground, so contrast never
+       depends on these. "flat" is the brand orange. */
+    --delta-up: 353 52% 46%;
+    --delta-down: 148 38% 32%;
+    --delta-flat: 20 92% 38%;
+
     --sidebar: 0 0% 98%;
 
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
@@ -178,6 +185,9 @@ All colors MUST be HSL.
     --chart-min: 145 65% 55%;
     --chart-max: 5 90% 68%;
     --chart-warn: 43 96% 56%;
+    --delta-up: 5 62% 66%;
+    --delta-down: 145 40% 56%;
+    --delta-flat: 27 95% 60%;
     --sidebar: 0 0% 14%;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);

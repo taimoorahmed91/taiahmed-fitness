@@ -217,6 +217,122 @@ describe('mounted: body and WHOOP history', () => {
     });
   });
 
+  describe('Weight / Waist tiles (layout="tiles")', () => {
+    const data: W[] = [
+      { id: 'w5', date: '2026-10-30', weight: 70.4 },
+      { id: 'w4', date: '2026-10-29', weight: 70.4, notes: 'After a long walk' },
+      { id: 'w3', date: '2026-10-27', weight: 70 },
+      { id: 'w2', date: '2026-10-20', weight: 70.9 },
+      { id: 'w1', date: '2026-09-30', weight: 71.2 },
+    ];
+    const mountTiles = (props: Record<string, unknown> = {}) => mountWeight({ entries: data, allEntries: data, layout: 'tiles', ...props });
+    const tile = (id: string) => q(`li[data-history-row="${id}"]`)!;
+
+    test('one tile per entry in a grid, still grouped under the same month headings and facts', async () => {
+      await mountTiles();
+      assert.deepEqual(headings(), ['October 2026', 'September 2026']);
+      const [oct] = all('section h4');
+      assert.match(headerOf(oct), /4 entries/);
+      assert.match(headerOf(oct), /Range 70–70\.9 kg/);
+      assert.equal(all('section ul[role="list"]').length, 2);
+      assert.equal(all('li[data-history-row]').length, 5);
+      assert.match(all('section ul[role="list"]')[0].className, /grid-cols-2.*md:grid-cols-3.*xl:grid-cols-4/);
+      assert.equal(q('[aria-hidden="true"].border-y'), null, 'no column header over tiles');
+    });
+
+    test('tint by change from the previous entry: up, down, and no change / first entry are all different', async () => {
+      await mountTiles();
+      assert.equal(tile('w5').getAttribute('data-tone'), 'flat', '70.4 after 70.4');
+      assert.equal(tile('w4').getAttribute('data-tone'), 'up', '70.4 after 70');
+      assert.equal(tile('w3').getAttribute('data-tone'), 'down', '70 after 70.9');
+      assert.equal(tile('w2').getAttribute('data-tone'), 'down', '70.9 after 71.2');
+      assert.equal(tile('w1').getAttribute('data-tone'), 'flat', 'first entry');
+      assert.match(tile('w4').className, /bg-delta-up/);
+      assert.match(tile('w3').className, /bg-delta-down/);
+      assert.match(tile('w5').className, /bg-delta-flat/);
+      assert.match(tile('w1').className, /bg-delta-flat/);
+    });
+
+    test('the change is also a sign, an arrow and words, never colour alone', async () => {
+      await mountTiles();
+      assert.match(text(tile('w4')), /\+0\.4 kg/);
+      assert.match(text(tile('w3')), /−0\.9 kg/);
+      assert.match(text(tile('w5')), /No change/);
+      assert.match(text(tile('w1')), /First entry/);
+      assert.ok(tile('w4').querySelector('svg'), 'arrow icon');
+      assert.match(text(tile('w4').querySelector('.sr-only')), /Up 0\.4 kilograms since Oct 27/);
+      assert.match(text(tile('w3').querySelector('.sr-only')), /Down 0\.9 kilograms since Oct 20/);
+    });
+
+    test('comparison is with the previous entry of ALL entries, so a filter does not change a tile', async () => {
+      await mountTiles({ entries: [data[1]] });
+      assert.equal(tile('w4').getAttribute('data-tone'), 'up');
+    });
+
+    test('phone: a tile is one disclosure button that opens to the labelled actions; delete still asks first', async () => {
+      const edited: string[] = [];
+      const deleted: string[] = [];
+      await mountTiles({ onEdit: (e: W) => edited.push(e.id), onDelete: (id: string) => deleted.push(id) });
+      const button = tile('w4').querySelector<HTMLElement>(':scope > div > button[aria-expanded]')!;
+      assert.equal(button.getAttribute('aria-expanded'), 'false');
+      assert.equal(button.querySelector('button'), null, 'no nested buttons');
+      await clickEl(button);
+      assert.equal(button.getAttribute('aria-expanded'), 'true');
+      const tray = byLabel('Actions for weight entry from 2026-10-29')!;
+      assert.deepEqual(
+        [...tray.querySelectorAll('button')].map((b) => b.getAttribute('aria-label')),
+        ['Edit weight entry from 2026-10-29', 'Delete weight entry from 2026-10-29'],
+      );
+      await clickEl(byLabel('Edit weight entry from 2026-10-29'));
+      assert.deepEqual(edited, ['w4']);
+      await clickEl(byLabel('Delete weight entry from 2026-10-29'));
+      await flush(10);
+      assert.ok(q('[role="alertdialog"]'), 'a confirmation, not an instant delete');
+      assert.deepEqual(deleted, []);
+    });
+
+    test('wide screens: actions sit on the tile, only a long note makes it open', async () => {
+      setViewport(1280);
+      const long = 'x'.repeat(120);
+      const rows: W[] = [{ id: 'a', date: '2026-10-29', weight: 70.4, notes: long }, { id: 'b', date: '2026-10-27', weight: 70, notes: 'short' }];
+      await mountTiles({ entries: rows, allEntries: rows });
+      const actions = byLabel('Actions for weight entry from 2026-10-29')!;
+      assert.ok(actions, 'inline actions without opening anything');
+      assert.ok(tile('a').querySelector(':scope > div > button[aria-expanded]'), 'long notes can be opened');
+      assert.equal(tile('b').querySelector(':scope > div > button[aria-expanded]'), null, 'short notes sit in the tile');
+      assert.equal(tile('a').querySelector(':scope > div > button')!.contains(actions), false, 'actions are outside the disclosure button');
+      assert.equal(tile('b').getAttribute('tabindex'), '-1', 'a tile with no button can still be focused by script');
+    });
+
+    test('value sorting is one flat grid with no month headings', async () => {
+      await mountTiles({ sortOrder: 'desc' });
+      assert.equal(headings().length, 0);
+      assert.equal(all('ul[role="list"]').length, 1);
+      assert.deepEqual(all('li[data-history-row]').map((li) => li.getAttribute('data-history-row')), ['w1', 'w2', 'w5', 'w4', 'w3']);
+    });
+
+    test('Show on chart marks the tile with a ring and the words "On chart", and reveal focuses its button', async () => {
+      const toggled: string[] = [];
+      const link = { selectedId: 'w4', statusOf: () => 'plotted', onToggle: (e: W) => toggled.push(e.id) };
+      await mountTiles({ chartLink: link, reveal: { id: 'w2', nonce: 1 } });
+      assert.match(tile('w4').className, /ring-2/);
+      assert.match(text(tile('w4')), /On chart/);
+      assert.doesNotMatch(text(tile('w3')), /On chart/);
+      const revealed = tile('w2').querySelector<HTMLElement>(':scope > div > button[aria-expanded]')!;
+      assert.equal(revealed.getAttribute('aria-expanded'), 'true');
+      assert.equal(doc().activeElement, revealed);
+      await clickEl(byLabel('Show on chart: weight entry from 2026-10-20'));
+      assert.deepEqual(toggled, ['w2']);
+    });
+
+    test('paging is still by whole months', async () => {
+      const many: W[] = Array.from({ length: 60 }, (_, i) => ({ id: `m${i}`, date: `2026-${String(Math.floor(i / 5) + 1).padStart(2, '0')}-${String((i % 5) + 1).padStart(2, '0')}`, weight: 70 + i / 10 }));
+      await mountTiles({ entries: many, allEntries: many });
+      assert.ok(q('nav[aria-label="Pagination"]'));
+      assert.ok(all('section h4').length <= 3, 'at most three months a page');
+    });
+  });
+
   const root0unmount = async () => {
     const root = roots.shift();
     if (root) await act(async () => root.unmount());

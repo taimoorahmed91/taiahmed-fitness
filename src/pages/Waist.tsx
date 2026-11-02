@@ -369,6 +369,7 @@ const Waist = () => {
                 entryNoun="waist entry"
                 countNoun={{ one: 'entry', many: 'entries' }}
                 showChange
+                layout="tiles"
                 variant="measurement"
                 monthStat={monthStat}
                 monthFacts={monthFacts}
