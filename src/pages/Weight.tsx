@@ -20,7 +20,7 @@ import { useChartHistoryLink } from '@/components/history/useChartHistoryLink';
 import { WeightChart } from '@/components/WeightChart';
 import { planRecordPlot, recordChartRows } from '@/lib/recordTrend';
 import { deriveChartStatus } from '@/lib/chartSourceStatus';
-import { fmt, rangeOf } from '@/lib/bodyHistory';
+import { fmt, isValidTarget, rangeOf } from '@/lib/bodyHistory';
 import { defaultFormDate } from '@/lib/dayLabels';
 import { useSharedTableState } from '@/lib/sharedTable';
 import { tableView } from '@/components/feedback/tableView';
@@ -352,28 +352,36 @@ const Weight = () => {
                 description={entries.length === 0 ? 'Log your first weigh-in above.' : 'Try a different search or time range.'}
               />
             ) : (
-              <MetricHistoryList
-                entries={filteredEntries}
-                allEntries={entries}
-                sortOrder={sortOrder}
-                sortName="weight"
-                getValue={getWeight}
-                valueLabel="Weight"
-                unit="kg"
-                spokenUnit="kilograms"
-                entryNoun="weight entry"
-                countNoun={{ one: 'entry', many: 'entries' }}
-                showChange
-                layout="tiles"
-                monthFacts={monthFacts}
-                deleteTitle="Delete weight entry?"
-                deleteDescription={(entry) => `Are you sure you want to delete ${entry.weight} kg recorded on ${entry.date}, including its notes? This cannot be undone.`}
-                onEdit={handleEdit}
-                onDelete={deleteEntry}
-                chartLink={trend.listLink}
-                reveal={trend.reveal}
-                onRevealed={trend.onRevealed}
-              />
+              <>
+                {isValidTarget(targetWeight) && (
+                  <p className="px-4 pb-3 text-xs text-muted-foreground">
+                    Target {fmt(targetWeight, 2)} kg. Green: moved toward it. Red: moved away from it or past it. Orange: no change.
+                  </p>
+                )}
+                <MetricHistoryList
+                  entries={filteredEntries}
+                  allEntries={entries}
+                  sortOrder={sortOrder}
+                  sortName="weight"
+                  getValue={getWeight}
+                  valueLabel="Weight"
+                  unit="kg"
+                  spokenUnit="kilograms"
+                  entryNoun="weight entry"
+                  countNoun={{ one: 'entry', many: 'entries' }}
+                  showChange
+                  layout="tiles"
+                  target={targetWeight}
+                  monthFacts={monthFacts}
+                  deleteTitle="Delete weight entry?"
+                  deleteDescription={(entry) => `Are you sure you want to delete ${entry.weight} kg recorded on ${entry.date}, including its notes? This cannot be undone.`}
+                  onEdit={handleEdit}
+                  onDelete={deleteEntry}
+                  chartLink={trend.listLink}
+                  reveal={trend.reveal}
+                  onRevealed={trend.onRevealed}
+                />
+              </>
             )}
           </CardContent>
         </Card>

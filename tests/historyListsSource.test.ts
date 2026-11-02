@@ -218,6 +218,11 @@ describe('body and WHOOP history: wiring and rules', () => {
     for (const page of ['Weight', 'Waist', 'Sleep']) assert.match(read(`src/pages/${page}.tsx`), /layout="tiles"/, page);
     assert.doesNotMatch(read('src/components/history/WhoopHistoryList.tsx'), /layout=|HistoryTile/);
   });
+  test('only Weight reads the target weight for its tile colours', () => {
+    assert.match(read('src/pages/Weight.tsx'), /target=\{targetWeight\}/);
+    assert.match(read('src/pages/Weight.tsx'), /personalData\.target_weight_kg/);
+    for (const page of ['Waist', 'Sleep']) assert.doesNotMatch(read(`src/pages/${page}.tsx`), /target=\{|target_weight/, page);
+  });
   test('more is red for Weight and Waist and green for Sleep, chosen by one option, not by separate colours', () => {
     assert.match(read('src/pages/Sleep.tsx'), /\bhigherIsBetter\b/);
     for (const page of ['Weight', 'Waist']) assert.doesNotMatch(read(`src/pages/${page}.tsx`), /higherIsBetter/, page);

@@ -148,6 +148,64 @@ export const deltaTint = (change: Pick<Change, 'delta'> | null | undefined, { hi
   return (tone === 'up') === higherIsBetter ? 'green' : 'red';
 };
 
+// ------------------------------------------------------------------ change relative to a target
+
+/** How an entry moved relative to a target (the person's reference weight). */
+export type TargetMove = 'toward' | 'reached' | 'away' | 'crossed' | 'none';
+
+/** A usable target is a finite number above zero. Anything else means "no target set". */
+export const isValidTarget = (target: number | null | undefined): target is number => typeof target === 'number' && Number.isFinite(target) && target > 0;
+
+/**
+ * How `current` moved from the previous entry relative to `target`, on the same rounded numbers the tile prints.
+ *  - "none"     no change (`change.delta` is 0, the same number the chip shows), or nothing to compare with.
+ *  - "reached"  now exactly on the target, coming from somewhere else.
+ *  - "toward"   closer to the target and still on the same side of it.
+ *  - "away"     farther from the target on the same side, or the previous entry was exactly on it and this one is not.
+ *  - "crossed"  went past the target to the other side (88 to 84 with a target of 85, even though 84 is close).
+ * Returns "none" when there is no valid target, so the caller can fall back to plain up / down.
+ */
+export const targetMove = (
+  change: Pick<Change, 'delta' | 'previousValue'> | null | undefined,
+  current: number,
+  target: number | null | undefined,
+  decimals = 2,
+): TargetMove => {
+  if (!change || !isValidTarget(target) || !Number.isFinite(change.delta) || change.delta === 0) return 'none';
+  const factor = 10 ** decimals;
+  const round = (n: number) => Math.round(n * factor) / factor;
+  const prev = round(change.previousValue);
+  const cur = round(current);
+  const ref = round(target);
+  if (!Number.isFinite(prev) || !Number.isFinite(cur) || cur === prev) return 'none';
+  if (prev === ref) return 'away';
+  if (cur === ref) return 'reached';
+  if (Math.sign(cur - ref) !== Math.sign(prev - ref)) return 'crossed';
+  return Math.abs(cur - ref) < Math.abs(prev - ref) ? 'toward' : 'away';
+};
+
+/** Green when it got closer (or arrived), red when it went away or past, orange when nothing changed. */
+export const tintOfMove = (move: TargetMove): DeltaTint => (move === 'none' ? 'flat' : move === 'toward' || move === 'reached' ? 'green' : 'red');
+
+/** The tile colour for a move relative to a target. */
+export const towardTargetTint = (
+  change: Pick<Change, 'delta' | 'previousValue'> | null | undefined,
+  current: number,
+  target: number | null | undefined,
+  decimals = 2,
+): DeltaTint => {
+  return tintOfMove(targetMove(change, current, target, decimals));
+};
+
+/** Short words for a move, for the tile and for screen readers. Empty for "none". */
+export const TARGET_MOVE_WORDS: Record<TargetMove, { short: string; spoken: string }> = {
+  toward: { short: 'toward target', spoken: 'Toward target.' },
+  reached: { short: 'reached target', spoken: 'Reached target.' },
+  away: { short: 'away from target', spoken: 'Away from target.' },
+  crossed: { short: 'past target', spoken: 'Past target, away from it.' },
+  none: { short: '', spoken: '' },
+};
+
 /** Trims "0.40" to "0.4" so a change reads the way it was entered. */
 const trimmed = (n: number, decimals: number) => String(Number(Math.abs(n).toFixed(decimals)));
 

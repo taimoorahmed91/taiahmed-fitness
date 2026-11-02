@@ -421,6 +421,68 @@ describe('mounted: body and WHOOP history', () => {
     });
   });
 
+  describe('Weight tiles with a target weight', () => {
+    const entries: W[] = [
+      { id: 'e7', date: '2026-10-07', weight: 84 },
+      { id: 'e6', date: '2026-10-06', weight: 86 },
+      { id: 'e5', date: '2026-10-05', weight: 88 },
+      { id: 'e4', date: '2026-10-04', weight: 85 },
+      { id: 'e3', date: '2026-10-03', weight: 94 },
+      { id: 'e2', date: '2026-10-02', weight: 92 },
+      { id: 'e1', date: '2026-10-01', weight: 92 },
+      { id: 'e0', date: '2026-09-30', weight: 93 },
+    ];
+    const mountTarget = (props: Record<string, unknown> = {}) => mountWeight({ entries, allEntries: entries, layout: 'tiles', target: 85, ...props });
+    const tile = (id: string) => q(`li[data-history-row="${id}"]`)!;
+    const tintOf = (id: string) => tile(id).getAttribute('data-tint');
+
+    test('colours follow the target: toward is green, away or past is red, no change is orange', async () => {
+      await mountTarget();
+      assert.equal(tintOf('e1'), 'green', '93 to 92: closer');
+      assert.equal(tintOf('e2'), 'flat', '92 to 92');
+      assert.equal(tintOf('e3'), 'red', '92 to 94: farther');
+      assert.equal(tintOf('e4'), 'green', '94 to 85: arrived on target');
+      assert.equal(tintOf('e5'), 'red', '85 to 88: moved off the target');
+      assert.equal(tintOf('e6'), 'green', '88 to 86: closer');
+      assert.equal(tintOf('e7'), 'red', '86 to 84: crossed past 85');
+      assert.equal(tintOf('e0'), 'flat', 'first entry');
+      assert.match(tile('e1').className, /bg-delta-down/, 'the soft green token');
+      assert.match(tile('e7').className, /bg-delta-up/, 'the soft red token');
+      assert.match(tile('e2').className, /bg-delta-flat/);
+    });
+
+    test('the arrow and sign stay truthful and the words say toward / away / past', async () => {
+      await mountTarget();
+      assert.equal(tile('e7').getAttribute('data-tone'), 'down');
+      assert.match(text(tile('e7')), /−2 kg/);
+      assert.match(text(tile('e7')), /past target/);
+      assert.match(text(tile('e1')), /toward target/);
+      assert.match(text(tile('e3')), /away from target/);
+      assert.match(text(tile('e4')), /reached target/);
+      assert.match(text(tile('e1').querySelector('.sr-only')), /Down 1 kilograms since Sep 30.*Toward target\./);
+      assert.match(text(tile('e3').querySelector('.sr-only')), /Up 2 kilograms.*Away from target\./);
+      assert.match(text(tile('e7').querySelector('.sr-only')), /Past target, away from it\./);
+      assert.doesNotMatch(text(tile('e2')), /target/, 'no change says nothing about the target');
+    });
+
+    test('compares with the previous entry of ALL entries, so a filter does not change a tile', async () => {
+      await mountTarget({ entries: [entries[0]] });
+      assert.equal(tintOf('e7'), 'red');
+    });
+
+    test('no target (null, 0 or not a number): back to up = red, down = green, and no target words', async () => {
+      for (const target of [null, 0, Number.NaN]) {
+        await mountTarget({ target });
+        assert.equal(tintOf('e1'), 'green', '93 to 92: down');
+        assert.equal(tintOf('e3'), 'red', '92 to 94: up');
+        assert.equal(tintOf('e7'), 'green', '86 to 84: down');
+        assert.equal(tintOf('e2'), 'flat');
+        assert.doesNotMatch(text(tile('e3')), /target/);
+        await root0unmount();
+      }
+    });
+  });
+
   const root0unmount = async () => {
     const root = roots.shift();
     if (root) await act(async () => root.unmount());

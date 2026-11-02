@@ -4,6 +4,10 @@ import {
   buildChangeMap,
   countBy,
   deltaTint,
+  isValidTarget,
+  targetMove,
+  tintOfMove,
+  towardTargetTint,
   deltaTone,
   describeGap,
   formatChange,
@@ -242,5 +246,80 @@ describe('body history: tile tint (colour) from the direction of the change', ()
     assert.equal(deltaTone({ delta: 0.5 }), 'up');
     assert.equal(deltaTone({ delta: -0.5 }), 'down');
     assert.equal(formatChange(0.5, 'h'), '+0.5 h');
+  });
+});
+
+describe('body history: Weight tile colour relative to a target weight', () => {
+  // Build the change the way the list does, then ask for the tint.
+  const tint = (prev: number, cur: number, target: number | null | undefined) => {
+    const all = sortNewestFirst([w('2', '2026-10-02', cur), w('1', '2026-10-01', prev)]);
+    return towardTargetTint(buildChangeMap(all, value).get('2'), cur, target);
+  };
+  const move = (prev: number, cur: number, target: number | null | undefined) => {
+    const all = sortNewestFirst([w('2', '2026-10-02', cur), w('1', '2026-10-01', prev)]);
+    return targetMove(buildChangeMap(all, value).get('2'), cur, target);
+  };
+
+  test('the examples with a target of 85', () => {
+    assert.equal(tint(92, 91, 85), 'green', '92 to 91: closer, same side');
+    assert.equal(tint(84, 83, 85), 'red', '84 to 83: farther, same side');
+    assert.equal(tint(85, 83, 85), 'red', 'was exactly on target, moved off');
+    assert.equal(tint(94, 85, 85), 'green', 'arrived exactly on target');
+    assert.equal(tint(84, 86, 85), 'red', 'crossed to the other side');
+    assert.equal(tint(88, 84, 85), 'red', 'crossed past it, even though 84 is close');
+  });
+  test('the same moves in the other direction (below the target)', () => {
+    assert.equal(tint(80, 82, 85), 'green', 'closer from below');
+    assert.equal(tint(80, 79, 85), 'red', 'farther below');
+    assert.equal(tint(80, 85, 85), 'green', 'arrived from below');
+    assert.equal(tint(82, 88, 85), 'red', 'crossed upward');
+    assert.equal(tint(86, 90, 85), 'red', 'farther above');
+  });
+  test('no change is orange, and so is a first entry', () => {
+    assert.equal(tint(90, 90, 85), 'flat');
+    assert.equal(tint(85, 85, 85), 'flat');
+    assert.equal(towardTargetTint(undefined, 90, 85), 'flat');
+    assert.equal(towardTargetTint(null, 90, 85), 'flat');
+  });
+  test('the move says why, for the words on the tile', () => {
+    assert.equal(move(92, 91, 85), 'toward');
+    assert.equal(move(94, 85, 85), 'reached');
+    assert.equal(move(84, 83, 85), 'away');
+    assert.equal(move(85, 83, 85), 'away');
+    assert.equal(move(84, 86, 85), 'crossed');
+    assert.equal(move(90, 90, 85), 'none');
+    assert.equal(tintOfMove('toward'), 'green');
+    assert.equal(tintOfMove('reached'), 'green');
+    assert.equal(tintOfMove('away'), 'red');
+    assert.equal(tintOfMove('crossed'), 'red');
+    assert.equal(tintOfMove('none'), 'flat');
+  });
+  test('no target, or one that is not a valid number, gives no move so the caller falls back to up = red, down = green', () => {
+    for (const bad of [null, undefined, Number.NaN, 0, -5, Number.POSITIVE_INFINITY]) {
+      assert.equal(isValidTarget(bad), false);
+      assert.equal(move(92, 91, bad), 'none');
+      assert.equal(tint(92, 91, bad), 'flat');
+    }
+    assert.equal(isValidTarget(85), true);
+    assert.equal(isValidTarget(85.5), true);
+    const all = sortNewestFirst([w('2', '2026-10-02', 91), w('1', '2026-10-01', 92)]);
+    assert.equal(deltaTint(buildChangeMap(all, value).get('2')), 'green', 'the fallback: down is green');
+    assert.equal(deltaTint({ delta: 1 }), 'red', 'the fallback: up is red');
+  });
+  test('rounded numbers decide, the same ones the tile prints', () => {
+    // 85.004 shows as 85 (on target); 85.006 shows as 85.01 (off it).
+    assert.equal(move(86, 85.004, 85), 'reached');
+    assert.equal(move(86, 85.006, 85), 'toward');
+    // The change rounds to nothing, so the chip says "No change" and the tile is orange.
+    assert.equal(tint(90.001, 90.002, 85), 'flat');
+    // Previous value of 85.004 is exactly on target once rounded, so moving off it is red.
+    assert.equal(tint(85.004, 83, 85), 'red');
+    // Target is rounded too.
+    assert.equal(move(92, 91, 85.001), 'toward');
+  });
+  test('the arrow and sign stay truthful: a decrease past the target is red but still a minus', () => {
+    assert.equal(formatChange(-4, 'kg'), '−4 kg');
+    assert.equal(deltaTone({ delta: -4 }), 'down');
+    assert.equal(tint(88, 84, 85), 'red');
   });
 });
