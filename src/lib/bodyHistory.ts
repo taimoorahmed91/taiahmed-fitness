@@ -133,6 +133,21 @@ export const deltaTone = (change: Pick<Change, 'delta'> | null | undefined): Del
   return change.delta > 0 ? 'up' : 'down';
 };
 
+/** Which soft tint a tile gets. Named by colour, not by direction, because "more" is red for waist and green for sleep. */
+export type DeltaTint = 'red' | 'green' | 'flat';
+
+/**
+ * The tint for a tile: the direction of the change (see `deltaTone`) mapped to a colour. By default more is red and
+ * less is green (Weight, Waist). With `higherIsBetter` it is the other way round (Sleep: more hours is green). No change,
+ * no previous entry or a value that is not a number is always the neutral orange. The arrow and sign on the tile still
+ * follow the real direction, so "↑ +0.5 h" is truthful whatever the colour.
+ */
+export const deltaTint = (change: Pick<Change, 'delta'> | null | undefined, { higherIsBetter = false }: { higherIsBetter?: boolean } = {}): DeltaTint => {
+  const tone = deltaTone(change);
+  if (tone === 'flat') return 'flat';
+  return (tone === 'up') === higherIsBetter ? 'green' : 'red';
+};
+
 /** Trims "0.40" to "0.4" so a change reads the way it was entered. */
 const trimmed = (n: number, decimals: number) => String(Number(Math.abs(n).toFixed(decimals)));
 

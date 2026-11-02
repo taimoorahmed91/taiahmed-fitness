@@ -214,10 +214,13 @@ describe('body and WHOOP history: wiring and rules', () => {
     }
     assert.doesNotMatch(tile, /hsl\(|rgb\(/);
   });
-  test('only Weight and Waist use the tile layout; Sleep keeps its rows', () => {
-    assert.match(read('src/pages/Weight.tsx'), /layout="tiles"/);
-    assert.match(read('src/pages/Waist.tsx'), /layout="tiles"/);
-    assert.doesNotMatch(read('src/pages/Sleep.tsx'), /layout=/);
+  test('Weight, Waist and Sleep use the tile layout; WHOOP keeps its own list', () => {
+    for (const page of ['Weight', 'Waist', 'Sleep']) assert.match(read(`src/pages/${page}.tsx`), /layout="tiles"/, page);
+    assert.doesNotMatch(read('src/components/history/WhoopHistoryList.tsx'), /layout=|HistoryTile/);
+  });
+  test('more is red for Weight and Waist and green for Sleep, chosen by one option, not by separate colours', () => {
+    assert.match(read('src/pages/Sleep.tsx'), /\bhigherIsBetter\b/);
+    for (const page of ['Weight', 'Waist']) assert.doesNotMatch(read(`src/pages/${page}.tsx`), /higherIsBetter/, page);
   });
   test('the WHOOP edit dialog fills itself when it opens and labels every field', () => {
     const src = read('src/components/EditWhoopEntryDialog.tsx');

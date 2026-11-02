@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildChangeMap,
   countBy,
+  deltaTint,
   deltaTone,
   describeGap,
   formatChange,
@@ -217,5 +218,29 @@ describe('body history: tile tone follows the direction of the change', () => {
   test('a change that rounds to nothing at display precision is flat', () => {
     const c = buildChangeMap(sortNewestFirst([w('2', '2026-10-02', 70.201), w('1', '2026-10-01', 70.2)]), value);
     assert.equal(deltaTone(c.get('2')), 'flat');
+  });
+});
+
+describe('body history: tile tint (colour) from the direction of the change', () => {
+  test('default (Weight, Waist): more is red, less is green, nothing to compare is orange', () => {
+    assert.equal(deltaTint({ delta: 0.4 }), 'red');
+    assert.equal(deltaTint({ delta: -0.4 }), 'green');
+    assert.equal(deltaTint({ delta: 0 }), 'flat');
+    assert.equal(deltaTint(undefined), 'flat');
+  });
+  test('higherIsBetter (Sleep) inverts the colours: more is green, less is red', () => {
+    assert.equal(deltaTint({ delta: 0.5 }, { higherIsBetter: true }), 'green');
+    assert.equal(deltaTint({ delta: -0.5 }, { higherIsBetter: true }), 'red');
+  });
+  test('higherIsBetter never changes the neutral cases', () => {
+    for (const change of [{ delta: 0 }, { delta: Number.NaN }, null, undefined]) {
+      assert.equal(deltaTint(change, { higherIsBetter: true }), 'flat');
+      assert.equal(deltaTint(change), 'flat');
+    }
+  });
+  test('the direction (arrow and sign) is the same whichever way the colours go', () => {
+    assert.equal(deltaTone({ delta: 0.5 }), 'up');
+    assert.equal(deltaTone({ delta: -0.5 }), 'down');
+    assert.equal(formatChange(0.5, 'h'), '+0.5 h');
   });
 });

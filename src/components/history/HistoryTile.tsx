@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Minus } from 'lucide-react';
-import type { DeltaTone } from '@/lib/bodyHistory';
+import type { DeltaTint, DeltaTone } from '@/lib/bodyHistory';
 import { cn } from '@/lib/utils';
 
 /**
@@ -19,14 +19,17 @@ import { cn } from '@/lib/utils';
  * word ("No change", "First entry") and says the same in a sentence for screen readers.
  */
 
-/** Soft tints per direction. Colours come from the --delta-* tokens in index.css; every class is written out in full. */
-const TILE_TONES: Record<DeltaTone, { surface: string; chip: string; icon: string }> = {
-  up: {
+/**
+ * Soft tints, by colour. Colours come from the --delta-* tokens in index.css (--delta-up is the soft red, --delta-down the
+ * soft green, --delta-flat the brand orange; the names come from the Weight and Waist mapping). Every class is written out in full.
+ */
+const TILE_TONES: Record<DeltaTint, { surface: string; chip: string; icon: string }> = {
+  red: {
     surface: 'border-delta-up/30 bg-delta-up/[0.08] [@media(hover:hover)]:hover:bg-delta-up/[0.12]',
     chip: 'bg-delta-up/15',
     icon: 'text-delta-up',
   },
-  down: {
+  green: {
     surface: 'border-delta-down/30 bg-delta-down/[0.08] [@media(hover:hover)]:hover:bg-delta-down/[0.12]',
     chip: 'bg-delta-down/15',
     icon: 'text-delta-down',
@@ -41,11 +44,11 @@ const TILE_TONES: Record<DeltaTone, { surface: string; chip: string; icon: strin
 const TONE_ICONS = { up: ArrowUp, down: ArrowDown, flat: Minus } as const;
 
 /** A small pill with the change as a sign and a number. The arrow is decorative; the text carries the meaning. */
-export const DeltaChip = ({ tone, children }: { tone: DeltaTone; children: ReactNode }) => {
-  const Icon = TONE_ICONS[tone];
+export const DeltaChip = ({ direction, tint, children }: { direction: DeltaTone; tint: DeltaTint; children: ReactNode }) => {
+  const Icon = TONE_ICONS[direction];
   return (
-    <span className={cn('inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums text-foreground', TILE_TONES[tone].chip)}>
-      <Icon aria-hidden="true" className={cn('h-3.5 w-3.5 shrink-0', TILE_TONES[tone].icon)} />
+    <span className={cn('inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums text-foreground', TILE_TONES[tint].chip)}>
+      <Icon aria-hidden="true" className={cn('h-3.5 w-3.5 shrink-0', TILE_TONES[tint].icon)} />
       <span className="min-w-0 break-words">{children}</span>
     </span>
   );
@@ -59,7 +62,9 @@ export const HistoryTileGrid = ({ children, className }: { children: ReactNode; 
 );
 
 export interface HistoryTileProps {
+  /** Which way the number moved (data-tone), and the colour it is drawn in (data-tint). */
   tone: DeltaTone;
+  tint: DeltaTint;
   summary: ReactNode;
   /** Revealed content. Present = the tile can open. */
   panel?: ReactNode;
@@ -74,7 +79,7 @@ export interface HistoryTileProps {
   rowId?: string;
 }
 
-export const HistoryTile = ({ tone, summary, panel, expanded = false, onExpandedChange, actions, panelLabel, selected, rowId }: HistoryTileProps) => {
+export const HistoryTile = ({ tone, tint, summary, panel, expanded = false, onExpandedChange, actions, panelLabel, selected, rowId }: HistoryTileProps) => {
   const panelId = useId();
   const expandable = panel !== undefined && panel !== null && panel !== false;
 
@@ -82,10 +87,11 @@ export const HistoryTile = ({ tone, summary, panel, expanded = false, onExpanded
     <li
       data-history-row={rowId}
       data-tone={tone}
+      data-tint={tint}
       tabIndex={rowId && !expandable ? -1 : undefined}
       className={cn(
         'group/row min-w-0 scroll-mt-16 rounded-lg border transition-colors motion-reduce:transition-none',
-        TILE_TONES[tone].surface,
+        TILE_TONES[tint].surface,
         rowId && !expandable && 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         selected && 'ring-2 ring-foreground/60',
       )}

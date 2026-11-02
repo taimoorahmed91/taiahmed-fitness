@@ -18,6 +18,7 @@ import { defaultToday, formatDay, formatShortDay } from '@/lib/historyDates';
 import {
   buildChangeMap,
   countBy,
+  deltaTint,
   deltaTone,
   formatChange,
   groupByMonth,
@@ -93,6 +94,8 @@ export interface MetricHistoryListProps<T extends MetricEntry> {
   variant?: Extract<HistoryVariant, 'default' | 'sleep' | 'measurement'>;
   /** "rows" (default) or "tiles": a grid of boxes tinted by the change from the previous entry. Needs `showChange`. */
   layout?: 'rows' | 'tiles';
+  /** Tiles only: more than the previous entry is green and less is red (Sleep). Default is the other way round (Weight, Waist). */
+  higherIsBetter?: boolean;
   deleteTitle: string;
   deleteDescription: (entry: T) => string;
   onEdit: (entry: T) => void;
@@ -154,7 +157,7 @@ interface PageGroup<T> {
 export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryListProps<T>) => {
   const {
     entries, allEntries, sortOrder, sortName, getValue, valueLabel, unit, spokenUnit, entryNoun, countNoun,
-    showChange = false, band, monthFacts, monthStat, variant = 'default', layout = 'rows', deleteTitle, deleteDescription, onEdit, onDelete,
+    showChange = false, band, monthFacts, monthStat, variant = 'default', layout = 'rows', higherIsBetter = false, deleteTitle, deleteDescription, onEdit, onDelete,
     chartLink, reveal, onRevealed,
   } = props;
   const isDesktop = useMinWidth(HISTORY_MD, true);
@@ -227,6 +230,9 @@ export const MetricHistoryList = <T extends MetricEntry>(props: MetricHistoryLis
       chart={chartLink ? { pressed: chartLink.selectedId === entry.id, status: chartLink.statusOf(entry.id), onToggle: () => chartLink.onToggle(entry) } : undefined}
       desktop={isDesktop}
       today={today}
+      variant={variant}
+      higherIsBetter={higherIsBetter}
+      band={band?.(entry) ?? null}
       expanded={expandedIds.has(entry.id)}
       onExpandedChange={(open) => toggleExpanded(entry.id, open)}
       value={getValue(entry)}
@@ -366,6 +372,9 @@ const notOnChartText = (status: PlotStatus): string =>
 interface MetricTileProps<T extends MetricEntry> {
   entry: T;
   chart?: MetricRowChart;
+  variant: 'default' | 'sleep' | 'measurement';
+  higherIsBetter: boolean;
+  band: EntryBand | null;
   desktop: boolean;
   today: string;
   expanded: boolean;
@@ -385,11 +394,12 @@ interface MetricTileProps<T extends MetricEntry> {
 
 /** One entry as a tile: date, the measurement large, the change as a tinted chip, and the notes. */
 const MetricTile = <T extends MetricEntry>({
-  entry, chart, desktop, today, expanded, onExpandedChange, value, unit, spokenUnit, entryNoun, change, isFirstEver, isOnlyEntry,
+  entry, chart, variant, higherIsBetter, band, desktop, today, expanded, onExpandedChange, value, unit, spokenUnit, entryNoun, change, isFirstEver, isOnlyEntry,
   deleteTitle, deleteDescription, onEdit, onDelete,
 }: MetricTileProps<T>) => {
   const notes = entry.notes?.trim() || '';
   const tone = deltaTone(change);
+  const tint = deltaTint(change, { higherIsBetter });
   const sinceText = change ? formatShortDay(change.previousDate, today) : '';
   const name = `${entryNoun} from ${entry.date}`;
   const first = !change && (isFirstEver || isOnlyEntry);
@@ -432,6 +442,7 @@ const MetricTile = <T extends MetricEntry>({
     <HistoryTile
       rowId={entry.id}
       tone={tone}
+      tint={tint}
       selected={chart?.pressed}
       expanded={expanded}
       onExpandedChange={onExpandedChange}
@@ -440,6 +451,11 @@ const MetricTile = <T extends MetricEntry>({
         expandable ? (
           <div className="space-y-3">
             {offChart && <p className="text-sm text-muted-foreground">{offChart}</p>}
+            {band?.rule && (
+              <p className="text-sm text-muted-foreground">
+                {band.label}: {band.rule}. Bands go by hours slept only.
+              </p>
+            )}
             {!desktop && <TileActionTray label={`Actions for ${name}`}>{actionList('tray')}</TileActionTray>}
           </div>
         ) : undefined
@@ -453,8 +469,14 @@ const MetricTile = <T extends MetricEntry>({
             {String(value)}
             <span className="text-xs font-normal text-muted-foreground"> {unit}</span>
           </span>
+          {variant === 'sleep' && <SleepBar hours={value} />}
+          {band && (
+            <span className="block">
+              <BandChip label={band.label} tone={band.tone} />
+            </span>
+          )}
           <span aria-hidden="true" className="block">
-            <DeltaChip tone={tone}>{chipText}</DeltaChip>
+            <DeltaChip direction={tone} tint={tint}>{chipText}</DeltaChip>
           </span>
           {change && (
             <span aria-hidden="true" className="block text-xs text-muted-foreground">

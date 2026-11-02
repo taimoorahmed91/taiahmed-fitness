@@ -377,6 +377,9 @@ const Sleep = () => {
                 spokenUnit="hours"
                 entryNoun="sleep entry"
                 countNoun={{ one: 'night', many: 'nights' }}
+                showChange
+                layout="tiles"
+                higherIsBetter
                 band={bandFor}
                 variant="sleep"
                 monthStat={monthStat}

@@ -333,6 +333,94 @@ describe('mounted: body and WHOOP history', () => {
     });
   });
 
+  describe('Sleep tiles (layout="tiles", higherIsBetter)', () => {
+    type S = { id: string; date: string; hours: number; notes?: string };
+    const nights: S[] = [
+      { id: 's5', date: '2026-10-30', hours: 7.5 },
+      { id: 's4', date: '2026-10-29', hours: 7.5 },
+      { id: 's3', date: '2026-10-28', hours: 7 },
+      { id: 's2', date: '2026-10-27', hours: 6.2, notes: 'Woke twice' },
+      { id: 's1', date: '2026-09-30', hours: 9.5 },
+    ];
+    const mountSleepTiles = (props: Record<string, unknown> = {}) =>
+      mount(
+        React.createElement(MetricHistoryList, {
+          entries: nights, allEntries: nights, sortOrder: null, sortName: 'hours', getValue: (e: S) => e.hours,
+          valueLabel: 'Hours', unit: 'h', spokenUnit: 'hours', entryNoun: 'sleep entry', countNoun: { one: 'night', many: 'nights' },
+          showChange: true, layout: 'tiles', higherIsBetter: true, variant: 'sleep', band: (e: S) => sleepBand(e.hours),
+          monthStat: (items: S[]) => (items.length >= 3 ? { value: '7.1', unit: 'h', label: 'avg per night' } : null),
+          deleteTitle: 'Delete sleep entry?', deleteDescription: () => 'Delete?', onEdit: () => {}, onDelete: () => {}, ...props,
+        }),
+      );
+    const tile = (id: string) => q(`li[data-history-row="${id}"]`)!;
+
+    test('same grid and month grouping, with the month average on the heading', async () => {
+      await mountSleepTiles();
+      assert.deepEqual(headings(), ['October 2026', 'September 2026']);
+      assert.match(headerOf(all('section h4')[0]), /4 nights/);
+      assert.match(text(q('section')), /7\.1\s*h\s*avg per night/);
+      assert.match(all('section ul[role="list"]')[0].className, /grid-cols-2.*md:grid-cols-3.*xl:grid-cols-4/);
+      assert.equal(all('li[data-history-row]').length, 5);
+    });
+
+    test('more sleep is green, less is red, no change and the first entry are orange', async () => {
+      await mountSleepTiles();
+      assert.equal(tile('s5').getAttribute('data-tint'), 'flat', '7.5 after 7.5');
+      assert.equal(tile('s4').getAttribute('data-tint'), 'green', '7.5 after 7: more sleep');
+      assert.equal(tile('s3').getAttribute('data-tint'), 'green', '7 after 6.2: more sleep');
+      assert.equal(tile('s1').getAttribute('data-tint'), 'flat', 'first entry');
+      assert.match(tile('s4').className, /bg-delta-down/, 'the soft green token');
+      assert.match(tile('s5').className, /bg-delta-flat/);
+    });
+
+    test('less sleep is red, and the arrow and sign stay truthful (down arrow, minus)', async () => {
+      const dropped: S[] = [{ id: 'b', date: '2026-10-02', hours: 6 }, { id: 'a', date: '2026-10-01', hours: 7.5 }];
+      await mountSleepTiles({ entries: dropped, allEntries: dropped });
+      assert.equal(tile('b').getAttribute('data-tint'), 'red');
+      assert.equal(tile('b').getAttribute('data-tone'), 'down');
+      assert.match(tile('b').className, /bg-delta-up/, 'the soft red token');
+      assert.match(text(tile('b')), /−1\.5 h/);
+      assert.match(text(tile('b').querySelector('.sr-only')), /Down 1\.5 hours since Oct 1/);
+    });
+
+    test('an increase keeps its up arrow and plus sign even though it is green', async () => {
+      await mountSleepTiles();
+      assert.equal(tile('s4').getAttribute('data-tone'), 'up');
+      assert.match(text(tile('s4')), /\+0\.5 h/);
+      assert.match(text(tile('s4').querySelector('.sr-only')), /Up 0\.5 hours since Oct 28/);
+    });
+
+    test('the same data without higherIsBetter is the other way round (Weight and Waist)', async () => {
+      await mountSleepTiles({ higherIsBetter: false });
+      assert.equal(tile('s4').getAttribute('data-tint'), 'red');
+    });
+
+    test('sleep visuals stay: a duration bar, the quality word, and the band rule when a tile opens', async () => {
+      await mountSleepTiles();
+      assert.ok(tile('s3').querySelector('span.bg-chart-3'), 'duration bar');
+      assert.match(text(tile('s3')), /Good/);
+      assert.match(text(tile('s2')), /Fair/);
+      await clickEl(tile('s2').querySelector(':scope > div > button[aria-expanded]'));
+      assert.match(text(tile('s2')), /Fair: 6 to under 7 hours\. Bands go by hours slept only\./);
+    });
+
+    test('actions, delete confirmation and chart link still work', async () => {
+      const edited: string[] = [];
+      const toggled: string[] = [];
+      const link = { selectedId: 's3', statusOf: () => 'plotted', onToggle: (e: S) => toggled.push(e.id) };
+      await mountSleepTiles({ onEdit: (e: S) => edited.push(e.id), chartLink: link });
+      assert.match(text(tile('s3')), /On chart/);
+      await clickEl(tile('s4').querySelector(':scope > div > button[aria-expanded]'));
+      await clickEl(byLabel('Edit sleep entry from 2026-10-29'));
+      assert.deepEqual(edited, ['s4']);
+      await clickEl(byLabel('Show on chart: sleep entry from 2026-10-29'));
+      assert.deepEqual(toggled, ['s4']);
+      await clickEl(byLabel('Delete sleep entry from 2026-10-29'));
+      await flush(10);
+      assert.ok(q('[role="alertdialog"]'));
+    });
+  });
+
   const root0unmount = async () => {
     const root = roots.shift();
     if (root) await act(async () => root.unmount());
