@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
  * Shared interaction rules for every button-like control:
  *  - focus-visible ring (keyboard only, never on mouse click)
  *  - hover styles only where a real hover exists (no sticky hover on touch)
- *  - pressed feedback via a tiny scale, switched off for reduced-motion users
+ *  - pressed feedback via the shared `press` class (src/index.css): quick squish to 0.95, springy release,
+ *    off for disabled / aria-disabled / busy controls and for reduced-motion users
  *  - pressed must beat hover: Tailwind emits the hover media block after plain `active:`, so with a mouse the
  *    hover colour would win while the button is held. The `hover:active:` twin (higher specificity) fixes that
  *    regardless of CSS order; the plain `active:` class stays for touch screens, where hover never applies.
@@ -20,9 +21,7 @@ import { cn } from "@/lib/utils";
 const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background",
-    "transition-[color,background-color,border-color,box-shadow,opacity,transform] duration-150",
-    "motion-reduce:transition-none motion-reduce:active:transform-none",
-    "motion-safe:active:scale-[0.98]",
+    "press motion-reduce:transition-none",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
     "disabled:pointer-events-none disabled:opacity-50",
     "aria-disabled:pointer-events-none aria-disabled:opacity-50",
@@ -43,7 +42,7 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground [@media(hover:hover)]:hover:bg-secondary-hover active:bg-secondary-active [@media(hover:hover)]:hover:active:bg-secondary-active",
         ghost:
           "[@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-accent-foreground active:bg-accent active:text-accent-foreground",
-        link: "text-primary underline-offset-4 [@media(hover:hover)]:hover:underline motion-safe:active:scale-100",
+        link: "text-primary underline-offset-4 [@media(hover:hover)]:hover:underline [--press-scale:1]",
       },
       size: {
         default: "h-10 px-4 py-2 [@media(pointer:coarse)]:min-h-11",

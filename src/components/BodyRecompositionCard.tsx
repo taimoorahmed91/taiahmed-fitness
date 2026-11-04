@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Scale } from 'lucide-react';
 import { chartDateLabel, recentChartData, useChartRange } from './ChartViewControls';
 import { ChartFigure } from '@/components/charts/ChartFigure';
@@ -32,7 +33,8 @@ export const toneClass: Record<string, string> = {
   muted: 'bg-muted text-muted-foreground border-border',
 };
 
-const fmt = (v: number | null, unit: string) => (v == null ? '--' : `${v > 0 ? '+' : v < 0 ? '\u2212' : ''}${Math.abs(v).toFixed(1)} ${unit}`);
+const formatDelta = (v: number) => `${v > 0 ? '+' : v < 0 ? '\u2212' : ''}${Math.abs(v).toFixed(1)}`;
+const fmt = (v: number | null, unit: string) => (v == null ? '--' : `${formatDelta(v)} ${unit}`);
 
 export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry[]; waist: Entry[]; status?: ChartDatasetStatus }) => {
   // Two lines on separate axes: date range only, a line/bar switch does not apply.
@@ -120,8 +122,8 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className={cn('border', toneClass[info.tone])}>{info.label}</Badge>
-          <span className="text-sm text-muted-foreground">Δ Weight <b className="text-foreground">{fmt(result.weightDelta, UNIT_LABEL.kilograms)}</b></span>
-          <span className="text-sm text-muted-foreground">Δ Waist <b className="text-foreground">{fmt(result.waistDelta, UNIT_LABEL.centimeters)}</b></span>
+          <span className="text-sm text-muted-foreground">Δ Weight <b className="text-foreground"><AnimatedNumber value={result.weightDelta} format={formatDelta} suffix={` ${UNIT_LABEL.kilograms}`} fallback="--" /></b></span>
+          <span className="text-sm text-muted-foreground">Δ Waist <b className="text-foreground"><AnimatedNumber value={result.waistDelta} format={formatDelta} suffix={` ${UNIT_LABEL.centimeters}`} fallback="--" /></b></span>
         </div>
         <p className="text-sm text-muted-foreground">{info.message}</p>
       </ChartHeader>

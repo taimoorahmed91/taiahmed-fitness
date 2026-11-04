@@ -90,7 +90,7 @@ export const TargetAdherenceGrid = ({ rows, onOpenDay }: TargetAdherenceGridProp
                     onClick={() => onOpenDay(day)}
                     className={cn(
                       cellClass,
-                      'h-full w-full ring-offset-background transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none',
+                      'press h-full w-full ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none',
                       '[@media(hover:hover)]:hover:ring-2 [@media(hover:hover)]:hover:ring-foreground/60',
                     )}
                   >

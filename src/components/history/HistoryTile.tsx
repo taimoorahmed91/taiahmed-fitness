@@ -103,7 +103,7 @@ export const HistoryTile = ({ tone, tint, summary, panel, expanded = false, onEx
             aria-expanded={expanded}
             aria-controls={panelId}
             onClick={() => onExpandedChange?.(!expanded)}
-            className="relative flex min-h-11 w-full min-w-0 flex-col rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="press [--press-scale:0.98] relative flex min-h-11 w-full min-w-0 flex-col rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             {summary}
             <ChevronDown

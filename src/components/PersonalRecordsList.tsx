@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { GymSession } from '@/types';
 import { WorkoutTemplate } from '@/hooks/useWorkoutTemplates';
 import { personalRecords } from '@/lib/workoutStats';
@@ -126,7 +127,7 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
                       }}
                       aria-pressed={merging ? picked.includes(r.exercise) : undefined}
                       aria-haspopup={merging ? undefined : 'dialog'}
-                      className="h-auto min-w-0 justify-start whitespace-normal rounded-sm p-0 text-left text-base font-semibold leading-tight after:absolute after:inset-0 after:content-[''] focus-visible:ring-0 focus-visible:ring-offset-0 [@media(hover:hover)]:hover:bg-transparent active:bg-transparent motion-safe:active:scale-100"
+                      className="h-auto min-w-0 justify-start whitespace-normal rounded-sm p-0 text-left text-base font-semibold leading-tight after:absolute after:inset-0 after:content-[''] focus-visible:ring-0 focus-visible:ring-offset-0 [@media(hover:hover)]:hover:bg-transparent active:bg-transparent [--press-scale:1]"
                     >
                       {r.exercise}
                     </Button>
@@ -146,7 +147,7 @@ export const PersonalRecordsList = ({ sessions, templates }: Props) => {
                     </div>
                   )}
                   <p className="text-2xl font-bold text-primary">
-                    {r.weight} kg <span className="text-sm font-normal text-muted-foreground">× {r.reps} reps</span>
+                    <AnimatedNumber value={r.weight} /> kg <span className="text-sm font-normal text-muted-foreground">× <AnimatedNumber value={r.reps} /> reps</span>
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Set on {formatDay(r.date)}{daysAgo(r.date) && ` (${daysAgo(r.date)})`} · {r.sessions} session{r.sessions === 1 ? '' : 's'} logged

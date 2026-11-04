@@ -9,9 +9,12 @@ import { useSleep } from '@/hooks/useSleep';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { weeklyDigest } from '@/lib/crossMetricIntelligence';
 import { cn } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
-const fmt = (v: number | null, unit = '', signed = false) =>
-  v == null ? '–' : `${signed && v > 0 ? '+' : ''}${v.toLocaleString()}${unit}`;
+/** One headline figure of the digest. Same text as before: "–" when missing, a "+" for positive signed changes, locale separators. */
+const fmt = (v: number | null, unit = '', signed = false) => (
+  <AnimatedNumber value={v} format={(n) => `${signed && n > 0 ? '+' : ''}${n.toLocaleString()}`} suffix={unit} fallback="–" />
+);
 
 /** Compares two values; `lowerIsBetter` flips the good/bad colouring. */
 const Change = ({ now, before, unit = '', lowerIsBetter = false }: { now: number | null; before: number | null; unit?: string; lowerIsBetter?: boolean }) => {
@@ -22,7 +25,7 @@ const Change = ({ now, before, unit = '', lowerIsBetter = false }: { now: number
   return <span className={cn('text-xs font-medium', good ? 'text-[hsl(var(--chart-min))]' : 'text-[hsl(var(--chart-max))]')}>{d > 0 ? '+' : ''}{d.toLocaleString()}{unit} vs last week</span>;
 };
 
-const Row = ({ label, value, change }: { label: string; value: string; change: React.ReactNode }) => (
+const Row = ({ label, value, change }: { label: string; value: React.ReactNode; change: React.ReactNode }) => (
   <div className="flex items-baseline justify-between gap-2">
     <span className="text-sm text-muted-foreground">{label}</span>
     <span className="text-right"><span className="font-semibold">{value}</span><br />{change}</span>

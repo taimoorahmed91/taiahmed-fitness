@@ -5,6 +5,9 @@ import { TargetLimitRows } from '@/components/charts/TargetLimitRows';
 import { STATUS_META, describeTarget } from '@/lib/targetStatus';
 import { UNIT_LABEL, formatNumber } from '@/lib/chartTheme';
 import { cn } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/ui/animated-number';
+
+const formatWhole = (v: number) => formatNumber(v, 0);
 
 interface CalorieGoalProgressProps {
   current: number;
@@ -40,7 +43,7 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, autoMode = false, 
         <TargetRangeBar current={current} range={range} unit={unit} label="Calories against daily goal" />
         <div className="flex items-baseline justify-between pt-1">
           <span className="text-sm text-muted-foreground">Consumed</span>
-          <span className="text-2xl font-bold text-primary">{formatNumber(current, 0)} <span className="text-sm font-medium text-muted-foreground">{unit}</span></span>
+          <span className="text-2xl font-bold text-primary"><AnimatedNumber value={current} format={formatWhole} /> <span className="text-sm font-medium text-muted-foreground">{unit}</span></span>
         </div>
         <p className={cn('flex items-center gap-1.5 text-sm font-medium', meta.text)}>
           <span aria-hidden="true">{meta.glyph}</span>

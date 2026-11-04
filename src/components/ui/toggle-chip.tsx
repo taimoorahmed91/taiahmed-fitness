@@ -25,7 +25,7 @@ const ToggleChip = React.forwardRef<HTMLButtonElement, ToggleChipProps>(
       }}
       className={cn(
         "inline-flex min-h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium ring-offset-background",
-        "transition-[color,background-color,border-color,transform] duration-150 motion-reduce:transition-none motion-safe:active:scale-[0.97]",
+        "press motion-reduce:transition-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "disabled:pointer-events-none disabled:opacity-50",
         "[&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",

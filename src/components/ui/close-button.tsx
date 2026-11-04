@@ -20,9 +20,9 @@ const CloseButton = React.forwardRef<HTMLButtonElement, CloseButtonProps>(
       aria-label={label}
       className={cn(
         "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground ring-offset-background",
-        "transition-[color,background-color,opacity,transform] duration-150",
+        "press",
         "[@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-accent-foreground",
-        "active:bg-accent active:text-accent-foreground motion-safe:active:scale-95 motion-reduce:transition-none",
+        "active:bg-accent active:text-accent-foreground motion-reduce:transition-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "disabled:pointer-events-none disabled:opacity-50",
         "[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11",

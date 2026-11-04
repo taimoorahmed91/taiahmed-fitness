@@ -158,9 +158,12 @@ describe('TargetRangeBar Min / Max labels', () => {
       const html = render(1, min, max);
       const row = html.match(/<dl data-limit-labels.*?<\/dl>/s)?.[0] ?? '';
       assert.ok(row.length > 0);
-      assert.doesNotMatch(row, /\babsolute\b|style="|left:|translate/);
-      assert.match(row, /\bjustify-between\b/);
-      assert.match(row, /\bflex-wrap\b/);
+      // Check the row and label containers themselves. The rolling digits inside the amounts (AnimatedNumber) legitimately
+      // use an inline transform and a clip window; they are spans, so they are not part of the label layout.
+      const layoutTags = [...row.matchAll(/<(?:dl|div)\b[^>]*>/g)].map((m) => m[0]).join('');
+      assert.doesNotMatch(layoutTags, /\babsolute\b|style="|left:|translate/);
+      assert.match(layoutTags, /\bjustify-between\b/);
+      assert.match(layoutTags, /\bflex-wrap\b/);
     }
   });
 

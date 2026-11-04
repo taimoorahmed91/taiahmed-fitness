@@ -27,18 +27,21 @@ import { useWaist } from '@/hooks/useWaist';
 import { useUser } from '@/contexts/UserContext';
 import { Download, Share2, Flame, Dumbbell, Moon, Scale, Lightbulb, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 type PeriodType = 'week' | 'month';
 
+const formatLocale = (v: number) => v.toLocaleString();
+
 /** One summary number. Shows a same-size skeleton while its table loads and a dash if it never did. */
-const StatTile = ({ icon: Icon, iconClassName, value, label, view }: { icon: LucideIcon; iconClassName: string; value: string; label: string; view: TableView }) => {
+const StatTile = ({ icon: Icon, iconClassName, value, format, suffix, fallback, label, view }: { icon: LucideIcon; iconClassName: string; value: number | null; format?: (v: number) => string; suffix?: string; fallback?: string; label: string; view: TableView }) => {
   if (view === 'loading') return <CardSkeleton noHeader bodyClassName="h-[5.75rem]" />;
   const unavailable = view === 'error';
   return (
     <Card>
       <CardContent className="pt-6 text-center">
         <Icon className={`h-8 w-8 mx-auto mb-2 ${iconClassName}`} aria-hidden="true" />
-        <p className="text-2xl font-bold">{unavailable ? '--' : value}</p>
+        <p className="text-2xl font-bold">{unavailable ? '--' : <AnimatedNumber value={value} format={format} suffix={suffix} fallback={fallback} />}</p>
         <p className="text-sm text-muted-foreground">{label}{unavailable && <span className="block text-xs">Couldn't load</span>}</p>
       </CardContent>
     </Card>
@@ -188,10 +191,10 @@ const Reports = () => {
         }
       >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatTile icon={Flame} iconClassName="text-primary" value={stats.avgCalories.toLocaleString()} label="Avg Daily Calories" view={sections.statCalories.view} />
-          <StatTile icon={Dumbbell} iconClassName="text-primary" value={String(stats.totalWorkouts)} label="Total Workouts" view={sections.statWorkouts.view} />
-          <StatTile icon={Moon} iconClassName="text-chart-2" value={`${stats.avgSleepHours}h`} label="Avg Sleep" view={sections.statSleep.view} />
-          <StatTile icon={Scale} iconClassName="text-chart-3" value={stats.avgWeight > 0 ? `${stats.avgWeight}kg` : '--'} label="Avg Weight" view={sections.statWeight.view} />
+          <StatTile icon={Flame} iconClassName="text-primary" value={stats.avgCalories} format={formatLocale} label="Avg Daily Calories" view={sections.statCalories.view} />
+          <StatTile icon={Dumbbell} iconClassName="text-primary" value={stats.totalWorkouts} label="Total Workouts" view={sections.statWorkouts.view} />
+          <StatTile icon={Moon} iconClassName="text-chart-2" value={stats.avgSleepHours} suffix="h" label="Avg Sleep" view={sections.statSleep.view} />
+          <StatTile icon={Scale} iconClassName="text-chart-3" value={stats.avgWeight > 0 ? stats.avgWeight : null} suffix="kg" fallback="--" label="Avg Weight" view={sections.statWeight.view} />
         </div>
 
         {sections.charts.view === 'loading' ? (

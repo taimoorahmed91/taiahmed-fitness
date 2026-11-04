@@ -2,6 +2,9 @@ import { cn } from '@/lib/utils';
 import { Range } from '@/lib/targets';
 import { STATUS_META, describeTarget } from '@/lib/targetStatus';
 import { formatNumber } from '@/lib/chartTheme';
+import { AnimatedNumber } from '@/components/ui/animated-number';
+
+const formatWhole = (v: number) => formatNumber(v, 0);
 
 interface TargetRangeBarProps {
   current: number;
@@ -26,7 +29,6 @@ export const TargetRangeBar = ({ current, range, className, unit = '', label = '
   const { status, text } = describeTarget(current, range, unit);
   const fill = STATUS_META[status].fill;
   const single = Math.round(range.max) === Math.round(range.min);
-  const amount = (v: number) => `${formatNumber(Math.round(v), 0)}${unit ? ` ${unit}` : ''}`;
   const limits = single
     ? [{ key: 'target', word: 'Target', value: range.max, tick: 'bg-chart-min' }]
     : [
@@ -69,7 +71,7 @@ export const TargetRangeBar = ({ current, range, className, unit = '', label = '
           <div key={m.key} data-limit-label={m.key} className="flex items-center gap-1.5">
             <span aria-hidden="true" className={cn('h-3 w-0.5 shrink-0 rounded-full', m.tick)} />
             <dt className="font-medium text-foreground">{m.word}</dt>
-            <dd className="m-0 tabular-nums text-muted-foreground">{amount(m.value)}</dd>
+            <dd className="m-0 tabular-nums text-muted-foreground"><AnimatedNumber value={Math.round(m.value)} format={formatWhole} suffix={unit ? ` ${unit}` : ''} /></dd>
           </div>
         ))}
       </dl>

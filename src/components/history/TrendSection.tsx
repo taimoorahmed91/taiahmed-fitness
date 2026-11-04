@@ -29,7 +29,7 @@ export const TrendSection = ({ label = 'Trend', hint, open, onOpenChange, childr
         aria-controls={panelId}
         onClick={() => onOpenChange(!open)}
         className={cn(
-          'flex min-h-11 w-full items-center gap-3 rounded-lg border bg-card px-4 py-2 text-left shadow-sm md:hidden',
+          'press [--press-scale:0.98] flex min-h-11 w-full items-center gap-3 rounded-lg border bg-card px-4 py-2 text-left shadow-sm md:hidden',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         )}
       >

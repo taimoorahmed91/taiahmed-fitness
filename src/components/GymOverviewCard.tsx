@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Dumbbell, History, CalendarCheck } from 'lucide-react';
 import { GymSession } from '@/types';
 import { formatDay } from '@/lib/historyDates';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 const DAYS = [
   { v: 1, l: 'Mon' }, { v: 2, l: 'Tue' }, { v: 3, l: 'Wed' }, { v: 4, l: 'Thu' },
@@ -101,16 +102,16 @@ export const GymOverviewCard = ({ sessions, workoutDays }: Props) => {
           <div>
             <p className="text-xs text-muted-foreground">Plan hit</p>
             <p className="text-xl font-semibold">
-              {plannedCount ? `${plannedHit}/${plannedCount}` : '—'}
+              <AnimatedNumber value={plannedCount ? plannedHit : null} suffix={`/${plannedCount}`} />
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Sessions</p>
-            <p className="text-xl font-semibold">{weekSessions}</p>
+            <p className="text-xl font-semibold"><AnimatedNumber value={weekSessions} /></p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Minutes</p>
-            <p className="text-xl font-semibold">{weekMinutes}</p>
+            <p className="text-xl font-semibold"><AnimatedNumber value={weekMinutes} /></p>
           </div>
         </div>
         {!plannedCount && (
@@ -136,8 +137,8 @@ export const GymOverviewCard = ({ sessions, workoutDays }: Props) => {
         </div>
 
         <div className="flex justify-between border-t pt-3 text-sm">
-          <span className="text-muted-foreground">All time: <span className="font-semibold text-foreground">{sessions.length}</span> workouts</span>
-          <span className="text-muted-foreground">Avg <span className="font-semibold text-foreground">{avg}</span> min</span>
+          <span className="text-muted-foreground">All time: <span className="font-semibold text-foreground"><AnimatedNumber value={sessions.length} /></span> workouts</span>
+          <span className="text-muted-foreground">Avg <span className="font-semibold text-foreground"><AnimatedNumber value={avg} /></span> min</span>
         </div>
       </CardContent>
     </Card>

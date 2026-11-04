@@ -1,9 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { TrendingDown, TrendingUp, Target, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STATUS_META, describeTarget, formatTargetRange } from '@/lib/targetStatus';
 import { UNIT_LABEL, formatNumber } from '@/lib/chartTheme';
 import { formatLongDay, yesterdayIso } from '@/lib/dayLabels';
+
+const formatWhole = (v: number) => formatNumber(v, 0);
 
 interface YesterdayStatusProps {
   yesterdayCalories: number;
@@ -51,7 +54,7 @@ export const YesterdayStatus = ({ yesterdayCalories, goal, goalMax, date }: Yest
           <p className="text-sm text-muted-foreground">{yesterdayStr}</p>
           <div className="flex items-baseline justify-center gap-2">
             <span className={cn('text-3xl font-bold', config.color)}>
-              {yesterdayCalories > 0 ? formatNumber(yesterdayCalories, 0) : '\u2014'}
+              <AnimatedNumber value={yesterdayCalories > 0 ? yesterdayCalories : null} format={formatWhole} />
             </span>
             {yesterdayCalories > 0 && <span className="text-muted-foreground">/ {formatTargetRange(range)} {unit}</span>}
           </div>

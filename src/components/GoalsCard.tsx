@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useGoals, GoalProgress } from '@/hooks/useGoals';
 import { Target, Plus, Trash2, Flame, Dumbbell, Moon, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 const categoryIcons = {
   calories: Flame,
@@ -245,11 +246,11 @@ export const GoalsCard = () => {
                   
                   <div className="space-y-1">
                     <div className="flex justify-between gap-2 text-xs text-muted-foreground">
-                      <span>{gp.current_value} / {gp.goal.target_value} {categoryUnits[gp.goal.category as keyof typeof categoryUnits]}</span>
+                      <span><AnimatedNumber value={gp.current_value} /> / <AnimatedNumber value={gp.goal.target_value} /> {categoryUnits[gp.goal.category as keyof typeof categoryUnits]}</span>
                       <span className="flex items-center gap-1">
                         <span className={cn('font-medium', status.text)}><span aria-hidden="true">{status.glyph} </span>{status.label}</span>
                         <span aria-hidden="true">·</span>
-                        <span>{gp.percentage}%</span>
+                        <span><AnimatedNumber value={gp.percentage} suffix="%" /></span>
                       </span>
                     </div>
                     <Progress value={gp.percentage} aria-label={`${categoryLabels[gp.goal.category as keyof typeof categoryLabels]} goal progress`} className={cn('h-2 bg-progress-track', status.indicator)} />

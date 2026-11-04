@@ -6,6 +6,9 @@ import { Range } from '@/lib/targets';
 import { STATUS_META, describeTarget } from '@/lib/targetStatus';
 import { formatNumber } from '@/lib/chartTheme';
 import { cn } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/ui/animated-number';
+
+const formatWhole = (v: number) => formatNumber(v, 0);
 
 interface Props {
   title: string;
@@ -32,7 +35,7 @@ export const MacroTargetCard = ({ title, icon, range, current, emptyText, unit =
             <TargetRangeBar current={current} range={range} unit={unit} label={`${title} against target`} />
             <div className="flex items-baseline justify-between pt-1">
               <span className="text-sm text-muted-foreground">Consumed</span>
-              <span className="text-2xl font-bold text-primary">{formatNumber(Math.round(current), 0)} <span className="text-sm font-medium text-muted-foreground">{unit}</span></span>
+              <span className="text-2xl font-bold text-primary"><AnimatedNumber value={Math.round(current)} format={formatWhole} /> <span className="text-sm font-medium text-muted-foreground">{unit}</span></span>
             </div>
             <p className={cn('flex items-center gap-1.5 text-sm font-medium', STATUS_META[status.status].text)}>
               <span aria-hidden="true">{STATUS_META[status.status].glyph}</span>

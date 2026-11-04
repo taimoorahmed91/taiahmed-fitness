@@ -2,6 +2,7 @@
  import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  import { Badge } from '@/components/ui/badge';
  import { Progress } from '@/components/ui/progress';
+import { AnimatedNumber } from '@/components/ui/animated-number';
  import { useGoalAchievements, WeeklyAchievement } from '@/hooks/useGoalAchievements';
  import { Trophy, Medal, Star, Crown, Flame, Zap, Rocket, Award, Target, TrendingUp, Check, X } from 'lucide-react';
  import { format } from 'date-fns';
@@ -54,28 +55,28 @@
            <Card>
              <CardContent className="p-4 text-center">
                <Target className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-               <p className="text-2xl font-bold">{stats.totalGoalsSet}</p>
+               <p className="text-2xl font-bold"><AnimatedNumber value={stats.totalGoalsSet} /></p>
                <p className="text-sm text-muted-foreground">Goals Set</p>
              </CardContent>
            </Card>
            <Card>
              <CardContent className="p-4 text-center">
                <Check className="h-8 w-8 mx-auto mb-2 text-chart-min" />
-               <p className="text-2xl font-bold">{stats.goalsMetCount}</p>
+               <p className="text-2xl font-bold"><AnimatedNumber value={stats.goalsMetCount} /></p>
                <p className="text-sm text-muted-foreground">Goals Met</p>
              </CardContent>
            </Card>
            <Card>
              <CardContent className="p-4 text-center">
                <Flame className="h-8 w-8 mx-auto mb-2 text-primary" />
-               <p className="text-2xl font-bold">{stats.currentStreak}</p>
+               <p className="text-2xl font-bold"><AnimatedNumber value={stats.currentStreak} /></p>
                <p className="text-sm text-muted-foreground">Current Streak</p>
              </CardContent>
            </Card>
            <Card>
              <CardContent className="p-4 text-center">
                <TrendingUp className="h-8 w-8 mx-auto mb-2 text-primary" />
-               <p className="text-2xl font-bold">{stats.longestStreak}</p>
+               <p className="text-2xl font-bold"><AnimatedNumber value={stats.longestStreak} /></p>
                <p className="text-sm text-muted-foreground">Longest Streak</p>
              </CardContent>
            </Card>

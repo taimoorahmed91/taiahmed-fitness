@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TargetRangeBar } from '@/components/TargetRangeBar';
 import { Range, formatRange } from '@/lib/targets';
 import { Target } from 'lucide-react';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 interface Props {
   calories: number;
@@ -15,12 +16,14 @@ interface Props {
   dayType: 'Gym day' | 'Rest day' | null;
 }
 
+const formatLocale = (v: number) => v.toLocaleString();
+
 const MetricRow = ({ label, unit, value, range }: { label: string; unit: string; value: number; range: Range | null }) => (
   <div>
     <div className="flex items-baseline justify-between">
       <span className="text-sm font-medium">{label}</span>
       <span className="text-sm text-muted-foreground">
-        <span className="text-base font-bold text-foreground">{Math.round(value)}</span>
+        <span className="text-base font-bold text-foreground"><AnimatedNumber value={Math.round(value)} /></span>
         {range ? ` / ${formatRange(range)} ${unit}` : ` ${unit}`}
       </span>
     </div>
@@ -28,8 +31,8 @@ const MetricRow = ({ label, unit, value, range }: { label: string; unit: string;
       <>
         <TargetRangeBar current={value} range={range} className="pb-4" />
         <div className="flex justify-between text-xs">
-          <span className="text-chart-min">To min: {Math.max(0, Math.round(range.min - value))} {unit}</span>
-          <span className="text-chart-max">To max: {Math.max(0, Math.round(range.max - value))} {unit}</span>
+          <span className="text-chart-min">To min: <AnimatedNumber value={Math.max(0, Math.round(range.min - value))} /> {unit}</span>
+          <span className="text-chart-max">To max: <AnimatedNumber value={Math.max(0, Math.round(range.max - value))} /> {unit}</span>
         </div>
       </>
     ) : (
@@ -87,8 +90,8 @@ export const MealsTodayCard = ({ calories, protein, carbs, calorieRange, protein
         </div>
 
         <div className="grid grid-cols-2 gap-3 border-t pt-3 text-sm">
-          <span className="text-muted-foreground">Meals today: <span className="font-semibold text-foreground">{mealsToday}</span></span>
-          <span className="text-right text-muted-foreground">Last 7 days: <span className="font-semibold text-foreground">{weekCalories.toLocaleString()}</span> cal</span>
+          <span className="text-muted-foreground">Meals today: <span className="font-semibold text-foreground"><AnimatedNumber value={mealsToday} /></span></span>
+          <span className="text-right text-muted-foreground">Last 7 days: <span className="font-semibold text-foreground"><AnimatedNumber value={weekCalories} format={formatLocale} /></span> cal</span>
         </div>
       </CardContent>
     </Card>

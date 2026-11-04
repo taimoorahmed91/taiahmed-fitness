@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TrendingDown, TrendingUp, Minus, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 export interface DeltaItem {
   label: string;
@@ -34,7 +35,7 @@ export const DeltaTile = ({ label, value, unit, decimals = 1 }: DeltaItem & { un
     <StatTile label={label}>
       <div className={cn('flex items-center gap-1 whitespace-nowrap', toneFor(value))}>
         <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-        {value === null ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(decimals)} ${unit}`}
+        <AnimatedNumber value={value} format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(decimals)}`} suffix={` ${unit}`} />
       </div>
     </StatTile>
   );
@@ -69,7 +70,7 @@ export const MetricOverviewCard = ({ title, latestLabel, latest, unit, totalEntr
             <div>
               <p className="text-sm text-muted-foreground">{latestLabel}</p>
               <p className="text-4xl font-bold tabular-nums tracking-tight">
-                {latest} <span className="text-lg font-medium text-muted-foreground">{unit}</span>
+                <AnimatedNumber value={latest} /> <span className="text-lg font-medium text-muted-foreground">{unit}</span>
               </p>
               {ruler && (
                 <span
@@ -80,7 +81,7 @@ export const MetricOverviewCard = ({ title, latestLabel, latest, unit, totalEntr
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Total entries</p>
-              <p className="text-xl font-semibold">{totalEntries}</p>
+              <p className="text-xl font-semibold"><AnimatedNumber value={totalEntries} /></p>
             </div>
           </div>
           {extra}

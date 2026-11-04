@@ -30,8 +30,12 @@ import { DataLoadError } from '@/components/feedback/DataLoadError';
 import { StaleDataNotice } from '@/components/feedback/StaleDataNotice';
 import { CardSkeleton } from '@/components/feedback/CardSkeleton';
 import { StatTile, STAT_GRID_CLASS } from '@/components/MetricOverviewCard';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 const getHours = (entry: SleepEntry) => entry.hours;
+
+/** Same text as the old `.toFixed(1)` strings: "7.0 h", never "7 h". */
+const oneDecimal = (v: number) => v.toFixed(1);
 
 /** Hours-only band (see sleepBand): a word, a dot and a border, never colour alone. */
 const bandFor = (entry: SleepEntry) => sleepBand(entry.hours);
@@ -276,25 +280,25 @@ const Sleep = () => {
                         <div>
                           <p className="text-sm text-muted-foreground">Last Night</p>
                           <p className="text-4xl font-bold tabular-nums tracking-tight">
-                            {entries[0]?.hours} <span className="text-lg font-medium text-muted-foreground">hours</span>
+                            <AnimatedNumber value={entries[0]?.hours} /> <span className="text-lg font-medium text-muted-foreground">hours</span>
                           </p>
                           <SleepBar hours={entries[0].hours} className="mt-2 max-w-44" />
                           <BandChip label={q.label} tone={q.tone} className="mt-2" />
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Total Entries</p>
-                          <p className="text-xl font-semibold">{entries.length}</p>
+                          <p className="text-xl font-semibold"><AnimatedNumber value={entries.length} /></p>
                         </div>
                       </div>
                       <div className={STAT_GRID_CLASS}>
                         {[
-                          { label: '7-Day Avg', value: avgSleep ? `${avgSleep} h` : '—' },
-                          { label: '30-Entry Avg', value: `${avg30} h` },
-                          { label: 'Best Night', value: `${best} h` },
-                          { label: 'Shortest', value: `${worst} h` },
+                          { label: '7-Day Avg', value: avgSleep ? Number(avgSleep) : null, format: oneDecimal },
+                          { label: '30-Entry Avg', value: Number(avg30), format: oneDecimal },
+                          { label: 'Best Night', value: best },
+                          { label: 'Shortest', value: worst },
                         ].map((t) => (
                           <StatTile key={t.label} label={t.label}>
-                            <span className="whitespace-nowrap">{t.value}</span>
+                            <span className="whitespace-nowrap"><AnimatedNumber value={t.value} format={t.format} suffix=" h" /></span>
                           </StatTile>
                         ))}
                       </div>

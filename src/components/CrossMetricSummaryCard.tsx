@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Brain, ArrowRight } from 'lucide-react';
 import { useWeight } from '@/hooks/useWeight';
 import { useWaist } from '@/hooks/useWaist';
@@ -12,7 +13,7 @@ import { toneClass } from './BodyRecompositionCard';
 import { cn } from '@/lib/utils';
 import { InsightEvidence } from '@/components/insights/InsightEvidence';
 
-const fmt = (v: number | null, unit: string) => (v == null ? '--' : `${v > 0 ? '+' : ''}${v.toFixed(1)} ${unit}`);
+const formatDelta = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
 
 interface CrossMetricSummaryCardProps {
   /** Called with an ISO date (YYYY-MM-DD) when someone picks a date inside an insight's evidence. */
@@ -37,7 +38,7 @@ export const CrossMetricSummaryCard = ({ onSelectDate }: CrossMetricSummaryCardP
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className={cn('border', toneClass[info.tone])}>{info.label}</Badge>
-          <span className="text-sm text-muted-foreground">30D: Δ Weight <b className="text-foreground">{fmt(recomp.weightDelta, 'kg')}</b> · Δ Waist <b className="text-foreground">{fmt(recomp.waistDelta, 'cm')}</b></span>
+          <span className="text-sm text-muted-foreground">30D: Δ Weight <b className="text-foreground"><AnimatedNumber value={recomp.weightDelta} format={formatDelta} suffix=" kg" fallback="--" /></b> · Δ Waist <b className="text-foreground"><AnimatedNumber value={recomp.waistDelta} format={formatDelta} suffix=" cm" fallback="--" /></b></span>
         </div>
         {insights.length ? insights.map(i => (
           <div key={i.id} className="min-w-0 rounded-md border p-3" data-testid={`cross-metric-${i.id}`}>
