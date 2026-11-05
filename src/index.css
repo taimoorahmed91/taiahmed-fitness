@@ -374,6 +374,119 @@ All colors MUST be HSL.
   }
 }
 
+/* Shared glass look (first used by the navigation drawer, meant to be reused by the dashboard later).
+   Charcoal glass in BOTH themes, so these tokens do not follow --background / --card:
+   - --glow-accent is the brand orange (#FF8C32), the same value as the dock's --dock-accent. The dock's own
+     selectors stay as they are, so the value lives in both places (a test keeps them equal).
+   - --glass-ink / -soft / -muted are >= 4.5:1 on the glass over a dimmed light or dark page.
+   Utilities: .glass-panel (surface), .glass-edge-end (lit inner edge for a panel attached to the right),
+   .glow-selection (lit-glass "selected" pill), .glass-scrim (page dimmer behind a glass overlay). */
+@layer base {
+  :root {
+    --glass-surface: 0 0% 13%;
+    --glass-surface-alpha: 0.72;
+    --glass-border: 0 0% 100%;
+    --glass-highlight: 0 0% 100%;
+    --glass-shadow: 0 0% 0%;
+    --glass-shadow-alpha: 0.5;
+    --glass-blur: 22px;
+
+    --glass-ink: 0 0% 98%;
+    --glass-ink-soft: 0 0% 82%;
+    --glass-ink-muted: 0 0% 72%;
+
+    --glass-scrim: 0 0% 0%;
+    --glass-scrim-alpha: 0.42;
+    --glass-scrim-blur: 3px;
+
+    --glow-accent: 28 100% 60%;
+    --glow-accent-lift: 32 100% 72%;
+    --glow-accent-foreground: 18 45% 8%;
+  }
+  html.dark {
+    --glass-shadow-alpha: 0.7;
+    --glass-scrim-alpha: 0.5;
+  }
+}
+
+@layer utilities {
+  /* Translucent charcoal glass: blur, a soft orange glow in the top-left corner, a top reflection,
+     a thin lit border and layered shadows. Sits last in the utilities layer so it replaces bg-background / shadow-lg. */
+  .glass-panel {
+    color: hsl(var(--glass-ink));
+    color-scheme: dark;
+    background:
+      radial-gradient(130% 55% at 0% 0%, hsl(var(--glow-accent) / 0.14) 0%, hsl(var(--glow-accent) / 0) 62%),
+      linear-gradient(180deg, hsl(var(--glass-highlight) / 0.1) 0%, hsl(var(--glass-highlight) / 0) 26%),
+      linear-gradient(hsl(var(--glass-surface) / var(--glass-surface-alpha)), hsl(var(--glass-surface) / var(--glass-surface-alpha)));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    box-shadow:
+      inset 0 0 0 1px hsl(var(--glass-border) / 0.1),
+      inset 0 1px 0 hsl(var(--glass-highlight) / 0.2),
+      var(--glass-edge, inset 0 0 0 0 transparent),
+      0 18px 48px -12px hsl(var(--glass-shadow) / var(--glass-shadow-alpha)),
+      0 4px 14px -6px hsl(var(--glass-shadow) / calc(var(--glass-shadow-alpha) * 0.8)),
+      var(--glass-cast, 0 0 0 0 transparent);
+  }
+  /* For a panel attached to the left of the screen: lit inner (right) edge and a shadow cast onto the page. */
+  .glass-edge-end {
+    --glass-edge: inset -1px 0 0 hsl(var(--glass-highlight) / 0.24);
+    --glass-cast: 22px 0 60px -18px hsl(var(--glass-shadow) / var(--glass-shadow-alpha));
+  }
+  /* Dims and softly blurs the page behind a glass overlay. */
+  .glass-scrim {
+    background-color: hsl(var(--glass-scrim) / var(--glass-scrim-alpha));
+    -webkit-backdrop-filter: blur(var(--glass-scrim-blur));
+    backdrop-filter: blur(var(--glass-scrim-blur));
+  }
+  /* "Lit glass" selected pill: dark translucent fill, an orange wash, a thin orange outline and a soft glow past the edges.
+     Static (no animated glow). Pair with white text and an orange icon. */
+  .glow-selection {
+    background:
+      linear-gradient(135deg, hsl(var(--glow-accent) / 0.22) 0%, hsl(var(--glow-accent) / 0.06) 70%),
+      linear-gradient(hsl(var(--glass-shadow) / 0.3), hsl(var(--glass-shadow) / 0.3));
+    box-shadow:
+      inset 0 0 0 1px hsl(var(--glow-accent) / 0.55),
+      inset 0 1px 0 hsl(var(--glass-highlight) / 0.12),
+      0 0 14px -2px hsl(var(--glow-accent) / 0.3),
+      0 0 30px -10px hsl(var(--glow-accent) / 0.22);
+  }
+}
+
+@layer components {
+  /* Drawer open / close: gentle ease-out in, quicker ease-in out. Scoped to the navigation drawer. */
+  /* Doubled class so these beat the Sheet's own duration utilities without !important
+     (the Sheet's motion-reduce rule is !important, so reduced motion still wins). */
+  .glass-drawer.glass-drawer[data-state='open'] {
+    animation-duration: 420ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .glass-drawer.glass-drawer[data-state='closed'] {
+    animation-duration: 260ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.7, 0.2);
+  }
+  /* The single "selected" pill that glides between drawer items (moved with transform only). */
+  .nav-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius: 0.75rem;
+    pointer-events: none;
+    opacity: 0;
+    will-change: transform;
+  }
+  .nav-indicator[data-visible='true'] {
+    opacity: 1;
+  }
+  /* Gliding is only switched on when the user has no reduced-motion preference. */
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-indicator[data-ready='true'] {
+      transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-out;
+    }
+  }
+}
+
 /* sm and up (matches Tailwind's 640px breakpoint): roomier card and overlay padding. */
 @media (min-width: 640px) {
   :root {

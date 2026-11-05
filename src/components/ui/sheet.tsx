@@ -77,12 +77,17 @@ interface SheetContentProps
   closeLabel?: string;
   /** Hide the built-in X (only if the sheet supplies its own clearly labelled close control). */
   hideClose?: boolean;
+  /** Extra classes for this sheet's dimming overlay only. Other sheets keep the shared overlay. */
+  overlayClassName?: string;
 }
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", layout, className, children, closeLabel = "Close", hideClose = false, ...props }, ref) => (
+  (
+    { side = "right", layout, className, children, closeLabel = "Close", hideClose = false, overlayClassName, ...props },
+    ref,
+  ) => (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side, layout }), className)} {...props}>
         {children}
         {!hideClose && (
