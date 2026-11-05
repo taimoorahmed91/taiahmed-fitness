@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
  * 16px on phones, 24px from `sm` up. Sections read it with `p-[var(--card-pad)]`, so a
  * caller's own `p-*` class still replaces it exactly as before. A card that needs
  * a different rhythm can set `[--card-pad:0.75rem]` on the Card itself.
+ *
+ * Every Card carries a bare `data-card` attribute. It changes nothing by itself: it is the hook a page-level
+ * wrapper (today `.dashboard-surface`, see index.css) uses to restyle the cards inside it, so no other page changes.
  */
 
 export type CardHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
@@ -63,7 +66,12 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     const defaults = React.useMemo(() => ({ level: headingLevel, size: titleSize }), [headingLevel, titleSize]);
     return (
       <CardTitleContext.Provider value={defaults}>
-        <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
+        <div
+          ref={ref}
+          data-card=""
+          className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)}
+          {...props}
+        />
       </CardTitleContext.Provider>
     );
   },

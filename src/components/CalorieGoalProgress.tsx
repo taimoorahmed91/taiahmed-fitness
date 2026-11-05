@@ -41,9 +41,9 @@ export const CalorieGoalProgress = ({ current, goal, goalMax, autoMode = false, 
       </CardHeader>
       <CardContent className="space-y-3">
         <TargetRangeBar current={current} range={range} unit={unit} label="Calories against daily goal" />
-        <div className="flex items-baseline justify-between pt-1">
-          <span className="text-sm text-muted-foreground">Consumed</span>
-          <span className="text-2xl font-bold text-primary"><AnimatedNumber value={current} format={formatWhole} /> <span className="text-sm font-medium text-muted-foreground">{unit}</span></span>
+        <div className="flex items-baseline justify-between pt-1 md:pt-0.5">
+          <span className="text-sm text-muted-foreground md:text-xs md:font-medium md:uppercase md:tracking-wider">Consumed</span>
+          <span className="text-2xl font-bold tabular-nums tracking-tight text-primary md:text-[1.75rem] md:leading-8"><AnimatedNumber value={current} format={formatWhole} /> <span className="text-sm font-medium text-muted-foreground">{unit}</span></span>
         </div>
         <p className={cn('flex items-center gap-1.5 text-sm font-medium', meta.text)}>
           <span aria-hidden="true">{meta.glyph}</span>

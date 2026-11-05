@@ -72,8 +72,8 @@ const StatTile = ({
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="text-sm font-medium mt-1 text-muted-foreground">Reminder paused</p>
+              <p className="text-sm text-muted-foreground md:text-xs md:font-medium md:uppercase md:tracking-wider">{label}</p>
+              <p className="text-sm font-medium md:font-semibold mt-1 text-muted-foreground">Reminder paused</p>
               <p className="text-xs text-muted-foreground">Couldn't load your {unavailableSubject}</p>
             </div>
             <div className="p-2 rounded-lg bg-muted">
@@ -85,17 +85,17 @@ const StatTile = ({
     );
   }
   const card = (
-    <Card className="shadow-md transition-colors motion-reduce:transition-none [@media(hover:hover)]:group-hover:border-primary/50">
+    <Card className="shadow-md">
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="flex items-center gap-1 text-sm text-muted-foreground">
+            <p className="flex items-center gap-1 text-sm text-muted-foreground md:text-xs md:font-medium md:uppercase md:tracking-wider">
               {label}
-              {!loading && <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />}
+              {!loading && <ChevronRight className="panel-chevron h-3.5 w-3.5" aria-hidden="true" />}
             </p>
             {loading ? <TileTextSkeleton /> : children}
           </div>
-          <div className={`p-2 rounded-lg ${iconBoxClass}`}>{icon}</div>
+          <div className={`p-2 rounded-lg ring-1 ring-inset ring-foreground/10 ${iconBoxClass}`}>{icon}</div>
         </div>
       </CardContent>
     </Card>
@@ -104,7 +104,7 @@ const StatTile = ({
   return (
     <Link
       to={to}
-      className="group block rounded-lg ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="panel-link group block rounded-lg ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       {card}
       <span className="sr-only">Open {destination}</span>
@@ -189,7 +189,7 @@ export const StatsCards = ({
         icon={workoutIcon}
         iconBoxClass={!showWorkoutReminder ? 'bg-muted' : 'bg-primary/10'}
       >
-        <p className={`text-sm font-medium mt-1 ${!showWorkoutReminder ? 'text-muted-foreground' : ''}`}>{workoutTitle}</p>
+        <p className={`text-sm font-medium md:font-semibold mt-1 ${!showWorkoutReminder ? 'text-muted-foreground' : ''}`}>{workoutTitle}</p>
         <p className="text-xs text-muted-foreground">{workoutSubtitle}</p>
       </StatTile>
 
@@ -202,7 +202,7 @@ export const StatsCards = ({
         icon={<Scale className={`h-5 w-5 ${weightDueToday ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />}
         iconBoxClass={!weightDueToday ? 'bg-muted' : 'bg-primary/10'}
       >
-        <p className={`text-sm font-medium mt-1 ${!weightDueToday ? 'text-muted-foreground' : ''}`}>
+        <p className={`text-sm font-medium md:font-semibold mt-1 ${!weightDueToday ? 'text-muted-foreground' : ''}`}>
           {weightDueToday ? 'Measure your weight today' : `Next measurement in ${daysUntilWeight} day${daysUntilWeight !== 1 ? 's' : ''}`}
         </p>
         <p className="text-xs text-muted-foreground">{weightDueToday ? 'Time to check in!' : 'On track'}</p>
@@ -217,7 +217,7 @@ export const StatsCards = ({
         icon={<Ruler className={`h-5 w-5 ${waistDueToday ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />}
         iconBoxClass={!waistDueToday ? 'bg-muted' : 'bg-primary/10'}
       >
-        <p className={`text-sm font-medium mt-1 ${!waistDueToday ? 'text-muted-foreground' : ''}`}>
+        <p className={`text-sm font-medium md:font-semibold mt-1 ${!waistDueToday ? 'text-muted-foreground' : ''}`}>
           {waistDueToday ? 'Measure your waist today' : `Next measurement in ${daysUntilWaist} day${daysUntilWaist !== 1 ? 's' : ''}`}
         </p>
         <p className="text-xs text-muted-foreground">{waistDueToday ? 'Time to check in!' : 'On track'}</p>
@@ -234,7 +234,7 @@ export const StatsCards = ({
           : <Activity className="h-5 w-5 text-primary" aria-hidden="true" />}
         iconBoxClass={whoopSyncedToday ? 'bg-muted' : 'bg-primary/10'}
       >
-        <p className={`text-sm font-medium mt-1 ${!whoopSyncedToday ? '' : 'text-muted-foreground'}`}>
+        <p className={`text-sm font-medium md:font-semibold mt-1 ${!whoopSyncedToday ? '' : 'text-muted-foreground'}`}>
           {whoopSyncedToday ? 'Data synced today' : 'Not synced yet today'}
         </p>
         <p className="text-xs text-muted-foreground">

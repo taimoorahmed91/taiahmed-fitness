@@ -409,6 +409,45 @@ All colors MUST be HSL.
   }
 }
 
+/* Panel surface: the quiet, layered card used on the desktop dashboard (and meant for the chart cards in the next phase).
+   Unlike .glass-panel (an overlay that floats over the page), a panel sits IN the page, so these tokens DO follow the theme:
+   - fill-top / fill-bottom: a gentle top-lit gradient. Dark: charcoal 17.5% to 13.5% over the 9% page. Light: white to near white.
+   - edge: a fine 1px border, low contrast on purpose. highlight: the lit top rim. shadow: the soft drop under the card.
+   - well: a sunken inner area (meal rows, inputs' surroundings) a touch darker than the card.
+   - Orange is NOT in the panel. It only appears on interactive states (--glow-accent, from the glass tokens above).
+   Utilities: .panel-surface (opt-in look for any card), .dashboard-surface (page wrapper that applies it to every Card inside,
+   from 768px up), .panel-link (a linked card: lift + orange edge on hover/focus), .panel-well (inner sunken area). */
+@layer base {
+  :root {
+    --panel-fill-top: 0 0% 100%;
+    --panel-fill-bottom: 0 0% 98%;
+    --panel-fill-alpha: 1;
+    --panel-edge: 0 0% 0%;
+    --panel-edge-alpha: 0.11;
+    --panel-highlight: 0 0% 100%;
+    --panel-highlight-alpha: 0.9;
+    --panel-shadow: 220 25% 15%;
+    --panel-shadow-alpha: 0.1;
+    --panel-well: 0 0% 0%;
+    --panel-well-alpha: 0.035;
+    --panel-well-edge-alpha: 0.08;
+  }
+  html.dark {
+    --panel-fill-top: 0 0% 17.5%;
+    --panel-fill-bottom: 0 0% 13.5%;
+    --panel-fill-alpha: 0.92;
+    --panel-edge: 0 0% 100%;
+    --panel-edge-alpha: 0.09;
+    --panel-highlight: 0 0% 100%;
+    --panel-highlight-alpha: 0.07;
+    --panel-shadow: 0 0% 0%;
+    --panel-shadow-alpha: 0.55;
+    --panel-well: 0 0% 0%;
+    --panel-well-alpha: 0.26;
+    --panel-well-edge-alpha: 0.07;
+  }
+}
+
 @layer utilities {
   /* Translucent charcoal glass: blur, a soft orange glow in the top-left corner, a top reflection,
      a thin lit border and layered shadows. Sits last in the utilities layer so it replaces bg-background / shadow-lg. */
@@ -455,6 +494,65 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  /* The panel look itself. Not used directly: .panel-surface and .dashboard-surface both apply it, so the two can
+     never drift apart. No backdrop blur on purpose: the page behind a card is flat, so a blur would cost paint time
+     on every card and show nothing. */
+  .panel-surface-look {
+    border-color: hsl(var(--panel-edge) / var(--panel-edge-alpha));
+    background:
+      linear-gradient(180deg, hsl(var(--panel-highlight) / var(--panel-highlight-alpha)) 0%, hsl(var(--panel-highlight) / 0) 7rem),
+      linear-gradient(hsl(var(--panel-fill-top) / var(--panel-fill-alpha)), hsl(var(--panel-fill-bottom) / var(--panel-fill-alpha)));
+    box-shadow:
+      inset 0 1px 0 hsl(var(--panel-highlight) / var(--panel-highlight-alpha)),
+      0 1px 2px hsl(var(--panel-shadow) / calc(var(--panel-shadow-alpha) * 0.6)),
+      0 10px 26px -14px hsl(var(--panel-shadow) / var(--panel-shadow-alpha));
+  }
+  /* Opt-in for one card. Doubled class so it beats the Card's own bg-card / shadow-sm utilities. */
+  .panel-surface.panel-surface {
+    @apply panel-surface-look;
+  }
+  /* Page wrapper: every Card inside gets the panel look from 768px up. Phones keep the plain card. */
+  @media (min-width: 768px) {
+    .dashboard-surface [data-card] {
+      @apply panel-surface-look;
+    }
+    /* Sunken inner area inside a card (list rows). */
+    .dashboard-surface .panel-well {
+      background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+      border-color: hsl(var(--panel-edge) / var(--panel-well-edge-alpha));
+    }
+    /* A selector or field inside a card sits a little deeper than the card. Border and focus ring are left alone. */
+    .dashboard-surface [data-card] [role='combobox'] {
+      background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+    }
+  }
+  /* A card that is a link (the reminder tiles). Only these react to the pointer: a soft orange edge and glow, never a
+     move or resize, so nothing shifts. Hover is limited to devices that really hover. The link's own focus ring stays. */
+  @media (min-width: 768px) {
+    .dashboard-surface .panel-link [data-card] {
+      transition: border-color 0.18s ease-out, box-shadow 0.18s ease-out;
+    }
+    .dashboard-surface .panel-link .panel-chevron {
+      transition: transform 0.18s ease-out, color 0.18s ease-out;
+    }
+    .dashboard-surface .panel-link:focus-visible [data-card] {
+      border-color: hsl(var(--glow-accent) / 0.5);
+    }
+  }
+  @media (min-width: 768px) and (hover: hover) {
+    .dashboard-surface .panel-link:hover [data-card] {
+      border-color: hsl(var(--glow-accent) / 0.5);
+      box-shadow:
+        inset 0 1px 0 hsl(var(--panel-highlight) / var(--panel-highlight-alpha)),
+        0 0 0 1px hsl(var(--glow-accent) / 0.1),
+        0 0 22px -8px hsl(var(--glow-accent) / 0.35),
+        0 10px 26px -14px hsl(var(--panel-shadow) / var(--panel-shadow-alpha));
+    }
+    .dashboard-surface .panel-link:hover .panel-chevron {
+      transform: translateX(2px);
+      color: hsl(var(--glow-accent));
+    }
+  }
   /* Drawer open / close: gentle ease-out in, quicker ease-in out. Scoped to the navigation drawer. */
   /* Doubled class so these beat the Sheet's own duration utilities without !important
      (the Sheet's motion-reduce rule is !important, so reduced motion still wins). */

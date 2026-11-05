@@ -33,7 +33,7 @@ export const WeightIntervalSetting = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="flex items-center gap-2 text-sm font-medium md:text-xs md:uppercase md:tracking-wider md:text-muted-foreground">
             <Scale className="h-4 w-4 text-muted-foreground" />
             Weight
           </div>
@@ -50,7 +50,7 @@ export const WeightIntervalSetting = ({
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="flex items-center gap-2 text-sm font-medium md:text-xs md:uppercase md:tracking-wider md:text-muted-foreground">
             <Ruler className="h-4 w-4 text-muted-foreground" />
             Waist
           </div>
@@ -67,7 +67,7 @@ export const WeightIntervalSetting = ({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Weight every <span className="font-medium">{interval}</span> day{interval !== 1 ? 's' : ''} · Waist every <span className="font-medium">{waistInterval}</span> day{waistInterval !== 1 ? 's' : ''}
+          Weight every <span className="font-medium md:text-foreground">{interval}</span> day{interval !== 1 ? 's' : ''} · Waist every <span className="font-medium md:text-foreground">{waistInterval}</span> day{waistInterval !== 1 ? 's' : ''}
         </p>
       </CardContent>
     </Card>

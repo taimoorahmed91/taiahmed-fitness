@@ -310,7 +310,7 @@ const Dashboard = () => {
   } as const;
 
   return (
-    <PageContainer>
+    <PageContainer className="dashboard-surface">
       <PageHeader
         title="Dashboard"
         description="Track your nutrition and fitness progress"
@@ -428,7 +428,7 @@ const Dashboard = () => {
                     {todaysMeals.map((meal: Meal) => (
                       <div
                         key={meal.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-background border"
+                        className="panel-well flex items-center justify-between p-3 rounded-lg bg-background border"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="font-medium break-words">{meal.food}</p>
@@ -446,7 +446,7 @@ const Dashboard = () => {
                             )}
                           </div>
                         </div>
-                        <span className="font-semibold text-primary shrink-0 ml-2">{meal.calories} cal</span>
+                        <span className="font-semibold tabular-nums text-primary shrink-0 ml-2">{meal.calories} cal</span>
                       </div>
                     ))}
                   </div>
