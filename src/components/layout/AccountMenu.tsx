@@ -24,6 +24,7 @@ import {
   describeAppRefresh, describeUpdateStarting,
 } from '@/components/pwa/appRefreshCopy';
 import { DEMO_EMAIL } from '@/components/DemoBanner';
+import { APP_VERSION } from '@/lib/version';
 
 /**
  * Secondary header actions (theme, refresh, sign out) in one menu so the
@@ -117,6 +118,7 @@ export const AccountMenu = () => {
           <span className="block truncate text-sm font-semibold">{displayName}</span>
           {user?.email && <span className="block truncate text-xs text-muted-foreground">{user.email}</span>}
           {isDemo && <span className="mt-1 block text-xs text-primary">Demo account - view only</span>}
+          <span className="mt-1 block select-none text-[11px] tabular-nums text-muted-foreground/80">FitTrack v{APP_VERSION}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

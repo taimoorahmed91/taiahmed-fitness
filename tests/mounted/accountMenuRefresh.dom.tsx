@@ -85,6 +85,18 @@ describe('mounted: Refresh app & data', () => {
   const last = () => toasts[toasts.length - 1];
   const untouched = () => { assert.equal(rig.calls.cachesTouched, 0, 'no cache was read or deleted'); assert.equal(rig.calls.swTouched, 0, 'the service worker registration was not touched'); };
 
+  test('the open menu shows the app version as quiet metadata, on every screen size', async () => {
+    const { APP_VERSION } = await import('../../src/lib/version');
+    await mountMenu();
+    await openMenu();
+    const menu = doc().querySelector('[role="menu"]')!;
+    assert.ok((menu.textContent ?? '').includes(`v${APP_VERSION}`), 'version text is in the open menu');
+    const line = [...menu.querySelectorAll('span')].find((e) => (e.textContent ?? '').includes(`v${APP_VERSION}`))!;
+    assert.equal(line.textContent, `FitTrack v${APP_VERSION}`);
+    assert.equal(/\bhidden\b|sm:/.test(line.className), false, 'not hidden at any breakpoint');
+    assert.equal(line.closest('[role="menuitem"]'), null, 'not an action');
+  });
+
   test('the menu item says "Refresh app & data" (never the old wording) with a hidden icon', async () => {
     await mountMenu();
     await openMenu();
