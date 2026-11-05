@@ -25,6 +25,8 @@ export interface PwaState {
   offlineReady: boolean;
   /** A new version is installed and waiting. */
   needRefresh: boolean;
+  /** A newly found version is still downloading/installing. */
+  installing: boolean;
   /** A workout is saved on this device right now. */
   activeWorkout: boolean;
   status: UpdateStatus;
@@ -37,11 +39,12 @@ export type ApplyResult = 'applied' | 'blocked' | 'nothing-to-apply';
 /**
  * How a look for a new version ended:
  *  - checked:     the browser really asked the server (a waiting version, if any, is in state.needRefresh)
+ *  - installing:  a new version was found and is still downloading
  *  - skipped:     the automatic check was not due yet, or the device is offline (nothing was asked)
  *  - failed:      the check threw or took too long
  *  - unavailable: no worker is registered here (dev build, ?sw=off, unsupported browser)
  */
-export type CheckResult = 'checked' | 'skipped' | 'failed' | 'unavailable';
+export type CheckResult = 'checked' | 'skipped' | 'installing' | 'failed' | 'unavailable';
 
 export interface CheckOptions {
   /** An explicit user action: skip the normal minimum gap between checks. */
@@ -51,7 +54,7 @@ export interface CheckOptions {
 type StorageReader = { getItem(key: string): string | null } | null;
 type Updater = (reloadPage?: boolean) => Promise<void> | void;
 /** Does the actual look (register.ts wires it to registration.update()). Resolves 'skipped' when it chose not to ask. */
-export type Checker = (options: { force: boolean }) => Promise<'checked' | 'skipped'>;
+export type Checker = (options: { force: boolean }) => Promise<'checked' | 'skipped' | 'installing'>;
 
 export interface UpdateControllerDeps {
   storage: StorageReader;
@@ -69,7 +72,7 @@ export const createUpdateController = (deps: UpdateControllerDeps) => {
   let inflightCheck: Promise<CheckResult> | null = null;
   const schedule = deps.schedule ?? defaultSchedule;
   const checkTimeoutMs = deps.checkTimeoutMs ?? CHECK_TIMEOUT_MS;
-  let base = { supported: false, registered: false, disabled: false, offlineReady: false, needRefresh: false, lastCheckedAt: null as number | null, error: null as string | null };
+  let base = { supported: false, registered: false, disabled: false, offlineReady: false, needRefresh: false, installing: false, lastCheckedAt: null as number | null, error: null as string | null };
   let state: PwaState = derive();
 
   function derive(): PwaState {
@@ -107,6 +110,7 @@ export const createUpdateController = (deps: UpdateControllerDeps) => {
     markDisabled: (disabled: boolean) => patch({ disabled }),
     markOfflineReady: (offlineReady = true) => patch({ offlineReady }),
     markNeedRefresh: (needRefresh = true) => patch({ needRefresh }),
+    markInstalling: (installing: boolean) => patch({ installing }),
     markChecked: () => patch({ lastCheckedAt: now() }),
     markError: (error: string | null) => patch({ error }),
     /** Provide the function that activates the waiting worker (from virtual:pwa-register). */
@@ -140,7 +144,7 @@ export const createUpdateController = (deps: UpdateControllerDeps) => {
         Promise.resolve()
           .then(() => run({ force: !!options.force }))
           .then((outcome) => {
-            if (outcome === 'checked') patch({ lastCheckedAt: now() });
+            if (outcome === 'checked' || outcome === 'installing') patch({ lastCheckedAt: now() });
             settle(outcome);
           })
           .catch(() => settle('failed'));

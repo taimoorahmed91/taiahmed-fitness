@@ -10,6 +10,9 @@
 //  - It never unregisters a worker and never deletes a cache. It only asks for a check and, when allowed, applies.
 import type { GlobalRefreshResult } from '../app/globalRefresh';
 import type { ApplyResult, CheckResult, PwaState } from './updateController';
+import { defaultSchedule, type Schedule } from './updateCheck';
+
+export const DOWNLOAD_WAIT_MS = 60_000;
 
 export type DataRefreshOutcome =
   | { kind: 'result'; result: GlobalRefreshResult }
@@ -25,8 +28,9 @@ export type DataRefreshOutcome =
  *  - check-failed:  the check threw or timed out and nothing is waiting
  *  - unavailable:   no worker here (dev build, ?sw=off, unsupported browser)
  *  - apply-failed:  a version is waiting but activating it failed
+ *  - downloading:   a new version is still downloading after the bounded wait
  */
-export type UpdateOutcome = 'applied' | 'blocked' | 'current' | 'check-failed' | 'unavailable' | 'apply-failed';
+export type UpdateOutcome = 'applied' | 'blocked' | 'current' | 'check-failed' | 'unavailable' | 'apply-failed' | 'downloading';
 
 export interface AppRefreshResult {
   data: DataRefreshOutcome;
@@ -38,21 +42,46 @@ export interface AppRefreshController {
   applyUpdate(): Promise<ApplyResult>;
   /** Re-reads whether a workout is saved, then returns the state. */
   refresh(): void;
-  getState(): Pick<PwaState, 'needRefresh' | 'activeWorkout'>;
+  getState(): Pick<PwaState, 'needRefresh' | 'activeWorkout' | 'installing'>;
+  subscribe(listener: () => void): () => void;
 }
 
 export interface AppRefreshDeps {
   refreshData: () => Promise<DataRefreshOutcome>;
   controller: AppRefreshController;
+  schedule?: Schedule;
+  downloadTimeoutMs?: number;
 }
 
 export interface AppRefreshRunOptions {
   /** Awaited right before a reload-causing apply, with everything known so far. */
   beforeApply?: (result: AppRefreshResult) => void | Promise<void>;
+  onDownloading?: () => void;
 }
 
-export const createAppRefresh = ({ refreshData, controller }: AppRefreshDeps) => {
+export const createAppRefresh = ({ refreshData, controller, schedule = defaultSchedule, downloadTimeoutMs = DOWNLOAD_WAIT_MS }: AppRefreshDeps) => {
   let inflight: Promise<AppRefreshResult> | null = null;
+
+  const waitForDownload = (): Promise<'ready' | 'check-failed' | 'downloading'> => new Promise((resolve) => {
+    let done = false;
+    let unsubscribe = () => {};
+    let cancel = () => {};
+    const finish = (outcome: 'ready' | 'check-failed' | 'downloading') => {
+      if (done) return;
+      done = true;
+      unsubscribe();
+      cancel();
+      resolve(outcome);
+    };
+    const inspect = () => {
+      const state = controller.getState();
+      if (state.needRefresh) finish('ready');
+      else if (!state.installing) finish('check-failed');
+    };
+    unsubscribe = controller.subscribe(inspect);
+    cancel = schedule(() => finish('downloading'), downloadTimeoutMs);
+    inspect(); // Covers a transition between the check and subscribing.
+  });
 
   const execute = async (options: AppRefreshRunOptions): Promise<AppRefreshResult> => {
     const [data, check] = await Promise.all([
@@ -62,7 +91,14 @@ export const createAppRefresh = ({ refreshData, controller }: AppRefreshDeps) =>
 
     // A version may already have been waiting (the banner), or may have just been found by the check.
     controller.refresh();
-    const state = controller.getState();
+    let state = controller.getState();
+    if (!state.needRefresh && (check === 'installing' || state.installing)) {
+      options.onDownloading?.();
+      const outcome = await waitForDownload();
+      if (outcome !== 'ready') return { data, update: outcome };
+      controller.refresh(); // A workout may have started while the version was downloading.
+      state = controller.getState();
+    }
     if (!state.needRefresh) {
       return { data, update: check === 'unavailable' ? 'unavailable' : check === 'failed' ? 'check-failed' : 'current' };
     }

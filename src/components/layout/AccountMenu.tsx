@@ -20,7 +20,7 @@ import { useGlobalRefresh, useGlobalRefreshSnapshot } from '@/app/globalRefreshC
 import { createAppRefresh, type DataRefreshOutcome } from '@/pwa/appRefresh';
 import { getPwaController } from '@/pwa/pwaController';
 import {
-  REFRESH_ACTION_LABEL, REFRESH_BUSY_LABEL, REFRESH_LOADING_TOAST, REFRESH_UNEXPECTED_ERROR,
+  REFRESH_ACTION_LABEL, REFRESH_BUSY_LABEL, REFRESH_LOADING_TOAST, REFRESH_DOWNLOADING_TOAST, REFRESH_UNEXPECTED_ERROR,
   describeAppRefresh, describeUpdateStarting,
 } from '@/components/pwa/appRefreshCopy';
 import { DEMO_EMAIL } from '@/components/DemoBanner';
@@ -74,6 +74,7 @@ export const AccountMenu = () => {
     try {
       let startingShown = false;
       const result = await appRefresh.run({
+        onDownloading: () => { toast.loading(REFRESH_DOWNLOADING_TOAST, { id: toastId }); },
         // Applying may reload the page, so say so first.
         beforeApply: ({ data }) => {
           startingShown = true;

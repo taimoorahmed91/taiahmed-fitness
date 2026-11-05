@@ -122,6 +122,27 @@ describe('mounted: Refresh app & data', () => {
     untouched();
   });
 
+  test('slow download updates the same loading toast, stays busy, then applies when ready', async () => {
+    rig.onCheck = async (c: { markInstalling: (v: boolean) => void }) => { c.markInstalling(true); return 'installing'; };
+    await mountMenu();
+    await tap();
+    assert.equal(last().message, 'Downloading the new version…');
+    assert.equal(last().kind, 'loading');
+    assert.equal(last().opts?.id, 'tid');
+    assert.deepEqual(rig.calls.apply, []);
+    await openMenu();
+    assert.equal(item()!.getAttribute('aria-busy'), 'true');
+    await act(async () => {
+      rig.controller.markNeedRefresh(true);
+      rig.controller.markInstalling(false);
+    });
+    await flush();
+    assert.equal(last().message, 'Installing the new version…');
+    assert.equal(last().opts?.id, 'tid');
+    assert.deepEqual(rig.calls.apply, [true]);
+    untouched();
+  });
+
   test('active workout: no reload, "ready and will wait" toast, draft preserved', async () => {
     env.window.localStorage.setItem('fittrack-active-workout', '{"templateId":"t","sets":[1,2,3]}');
     rig.onCheck = async (c: { markNeedRefresh: (v: boolean) => void }) => { c.markNeedRefresh(true); return 'checked'; };

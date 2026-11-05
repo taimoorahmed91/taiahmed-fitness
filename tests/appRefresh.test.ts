@@ -1,11 +1,11 @@
 import { describe, test } from 'bun:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createAppRefresh, type DataRefreshOutcome } from '../src/pwa/appRefresh';
-import { createUpdateController } from '../src/pwa/updateController';
+import { createAppRefresh, DOWNLOAD_WAIT_MS, type DataRefreshOutcome } from '../src/pwa/appRefresh';
+import { createUpdateController, type Checker } from '../src/pwa/updateController';
 import { checkRegistrationForUpdate, type RegistrationLike, type Schedule, type WorkerLike } from '../src/pwa/updateCheck';
 import { ACTIVE_WORKOUT_KEY } from '../src/pwa/swPolicy';
-import { describeAppRefresh, describeUpdateStarting, REFRESH_ACTION_LABEL } from '../src/components/pwa/appRefreshCopy';
+import { describeAppRefresh, describeUpdateStarting, REFRESH_ACTION_LABEL, REFRESH_DOWNLOADING_TOAST } from '../src/components/pwa/appRefreshCopy';
 import type { GlobalRefreshResult } from '../src/app/globalRefresh';
 
 // "Refresh app & data": data refresh + a forced look for a new version + the gated apply. Everything is
@@ -40,7 +40,7 @@ interface Rig {
 }
 
 /** A controller whose "browser check" runs `onCheck` (which may mark a waiting version, throw, or never end). */
-const rig = (opts: { workout?: boolean; onCheck?: (c: Rig['controller']) => Promise<'checked' | 'skipped'> | 'checked' | 'skipped'; noChecker?: boolean; waiting?: boolean } = {}): Rig => {
+const rig = (opts: { workout?: boolean; onCheck?: (c: Rig['controller']) => ReturnType<Checker> | Awaited<ReturnType<Checker>>; noChecker?: boolean; waiting?: boolean } = {}): Rig => {
   const storage = store(opts.workout ? { [ACTIVE_WORKOUT_KEY]: '{"templateId":"t"}' } : {});
   const timer = manualSchedule();
   const controller = createUpdateController({ storage, schedule: timer.schedule, checkTimeoutMs: 10_000, now: () => 1234 });
@@ -50,7 +50,7 @@ const rig = (opts: { workout?: boolean; onCheck?: (c: Rig['controller']) => Prom
   if (!opts.noChecker) {
     controller.setChecker(async ({ force }) => {
       calls.check.push({ force });
-      return (await (opts.onCheck ? opts.onCheck(controller) : 'checked')) as 'checked' | 'skipped';
+      return await (opts.onCheck ? opts.onCheck(controller) : 'checked');
     });
   }
   return { controller, storage, calls, timer };
@@ -192,6 +192,129 @@ describe('update discovered', () => {
   });
 });
 
+describe('downloading a newly found version', () => {
+  const downloadingRig = () => {
+    const r = rig({ onCheck: (c) => { c.markInstalling(true); return 'installing'; } });
+    const timer = manualSchedule();
+    let listeners = 0;
+    let notices = 0;
+    let notifyStarted = () => {};
+    const started = new Promise<void>((resolve) => { notifyStarted = resolve; });
+    const app = createAppRefresh({
+      controller: {
+        ...r.controller,
+        subscribe: (listener) => {
+          listeners++;
+          const unsubscribe = r.controller.subscribe(listener);
+          return () => { listeners--; unsubscribe(); };
+        },
+      },
+      refreshData: async () => ok(), schedule: timer.schedule,
+    });
+    const promise = app.run({ onDownloading: () => { notices++; notifyStarted(); } });
+    const cleaned = () => {
+      assert.equal(listeners, 0, 'download subscription removed');
+      assert.ok(timer.pending.every((entry) => entry.cancelled), 'download timers cancelled');
+      assert.equal(notices, 1);
+      assert.equal(app.isRunning(), false);
+    };
+    return { ...r, app, promise, started, downloadTimer: timer, cleaned };
+  };
+
+  test('waits for needRefresh, then applies through the gate and cleans up', async () => {
+    const r = downloadingRig();
+    await r.started;
+    assert.deepEqual(r.calls.apply, []);
+    assert.equal(r.controller.getState().lastCheckedAt, 1234);
+    assert.equal(r.app.run(), r.promise, 'repeat calls share the downloading run');
+    r.controller.markNeedRefresh(true);
+    r.controller.markInstalling(false);
+    assert.equal((await r.promise).update, 'applied');
+    assert.deepEqual(r.calls.apply, [true]);
+    r.cleaned();
+  });
+
+  test('a workout started during the wait blocks applying and preserves its draft', async () => {
+    const r = downloadingRig();
+    await r.started;
+    r.storage.set(ACTIVE_WORKOUT_KEY, '{"templateId":"during-download"}');
+    r.controller.markNeedRefresh(true);
+    r.controller.markInstalling(false);
+    assert.equal((await r.promise).update, 'blocked');
+    assert.deepEqual(r.calls.apply, []);
+    assert.equal(r.storage.getItem(ACTIVE_WORKOUT_KEY), '{"templateId":"during-download"}');
+    r.cleaned();
+  });
+
+  test('download timeout reports downloading, never current; later readiness is not auto-applied', async () => {
+    const r = downloadingRig();
+    await r.started;
+    assert.equal(r.downloadTimer.pending[0].ms, DOWNLOAD_WAIT_MS);
+    r.downloadTimer.fire();
+    const out = await r.promise;
+    assert.equal(out.update, 'downloading');
+    const msg = describeAppRefresh(out);
+    assert.equal(msg.kind, 'info');
+    assert.equal(msg.description, 'A new version is still downloading. You\'ll get an "Update available" prompt as soon as it\'s ready.');
+    assert.equal(REFRESH_DOWNLOADING_TOAST, 'Downloading the new version…');
+    r.cleaned();
+    r.controller.markNeedRefresh(true);
+    assert.deepEqual(r.calls.apply, []);
+  });
+
+  test('installation ending without a waiting version reports failure and cleans up', async () => {
+    const r = downloadingRig();
+    await r.started;
+    r.controller.markInstalling(false);
+    assert.equal((await r.promise).update, 'check-failed');
+    assert.deepEqual(r.calls.apply, []);
+    r.cleaned();
+  });
+
+  test('forced action joining an automatic check waits beyond its short check window', async () => {
+    let finish = (_outcome: 'installing') => {};
+    const r = rig({ onCheck: (c) => {
+      c.markInstalling(true);
+      return new Promise<'installing'>((resolve) => { finish = resolve; });
+    } });
+    const automatic = r.controller.checkForUpdate();
+    await Promise.resolve();
+    let downloading = () => {};
+    const started = new Promise<void>((resolve) => { downloading = resolve; });
+    const app = createAppRefresh({ controller: r.controller, refreshData: async () => ok(), schedule: manualSchedule().schedule });
+    const pending = app.run({ onDownloading: downloading });
+    finish('installing');
+    assert.equal(await automatic, 'installing');
+    await started;
+    r.controller.markNeedRefresh(true);
+    r.controller.markInstalling(false);
+    assert.equal((await pending).update, 'applied');
+    assert.deepEqual(r.calls.check, [{ force: false }], 'the automatic check remains single flight');
+  });
+
+  test('state.installing also causes a wait when the checker returns checked', async () => {
+    const r = rig({ onCheck: (c) => { c.markInstalling(true); return 'checked'; } });
+    const timer = manualSchedule();
+    let downloading = () => {};
+    const started = new Promise<void>((resolve) => { downloading = resolve; });
+    const app = createAppRefresh({ controller: r.controller, refreshData: async () => ok(), schedule: timer.schedule, downloadTimeoutMs: 42 });
+    const pending = app.run({ onDownloading: downloading });
+    await started;
+    assert.equal(timer.pending[0].ms, 42);
+    timer.fire();
+    assert.equal((await pending).update, 'downloading');
+  });
+
+  test('settlement during onDownloading is caught without leaving a timer or subscription', async () => {
+    const r = rig({ onCheck: (c) => { c.markInstalling(true); return 'installing'; } });
+    const timer = manualSchedule();
+    const app = createAppRefresh({ controller: r.controller, refreshData: async () => ok(), schedule: timer.schedule });
+    const out = await app.run({ onDownloading: () => r.controller.markNeedRefresh(true) });
+    assert.equal(out.update, 'applied');
+    assert.ok(timer.pending.every((entry) => entry.cancelled));
+  });
+});
+
 describe('update check problems never hide the data result', () => {
   test('check error + data success: both outcomes, clearly separate', async () => {
     const r = rig({ onCheck: () => { throw new Error('network'); } });
@@ -291,14 +414,14 @@ describe('checkRegistrationForUpdate (the only code that touches the registratio
   test('nothing new: update() is called once, nothing waits, nothing is unregistered', async () => {
     const { reg, spy } = registration();
     let waiting = 0;
-    await checkRegistrationForUpdate(reg, { onWaiting: () => waiting++ });
+    assert.equal(await checkRegistrationForUpdate(reg, { onWaiting: () => waiting++ }), 'none');
     assert.deepEqual(spy, { update: 1, unregister: 0 });
     assert.equal(waiting, 0);
   });
   test('already waiting: reported immediately', async () => {
     const { reg } = registration({ waiting: worker('installed') });
     let waiting = 0;
-    await checkRegistrationForUpdate(reg, { onWaiting: () => waiting++ });
+    assert.equal(await checkRegistrationForUpdate(reg, { onWaiting: () => waiting++ }), 'waiting');
     assert.equal(waiting, 1);
   });
   test('installing then installed: waits for it, then reports a waiting version', async () => {
@@ -311,7 +434,7 @@ describe('checkRegistrationForUpdate (the only code that touches the registratio
     assert.equal(waiting, 0, 'still installing');
     (reg as { waiting: WorkerLike | null }).waiting = installing;
     installing.move('installed');
-    await p;
+    assert.equal(await p, 'waiting');
     assert.equal(waiting, 1);
     assert.equal(installing.listeners.size, 0, 'listener removed');
     assert.equal(timer.pending.every((x) => x.cancelled), true, 'timer cleaned up');
@@ -323,21 +446,64 @@ describe('checkRegistrationForUpdate (the only code that touches the registratio
     const p = checkRegistrationForUpdate(reg, { onWaiting: () => waiting++, schedule: manualSchedule().schedule });
     await Promise.resolve(); await Promise.resolve();
     installing.move('redundant');
-    await p;
+    assert.equal(await p, 'none');
     assert.equal(waiting, 0);
   });
-  test('an install that never finishes is bounded by the settle timeout', async () => {
+  test('settle timeout reports installing, retaining the listener for later waiting and settlement', async () => {
     const installing = worker('installing');
     const { reg } = registration({ installing });
     const timer = manualSchedule();
     let waiting = 0;
-    const p = checkRegistrationForUpdate(reg, { onWaiting: () => waiting++, schedule: timer.schedule, settleTimeoutMs: 6000 });
+    let started = 0;
+    let settled = 0;
+    const p = checkRegistrationForUpdate(reg, { onWaiting: () => waiting++, onInstalling: () => started++, onSettled: () => settled++, schedule: timer.schedule, settleTimeoutMs: 6000 });
     await Promise.resolve(); await Promise.resolve();
     assert.equal(timer.pending[0].ms, 6000);
     timer.fire();
-    await p;
+    assert.equal(await p, 'installing');
+    assert.equal(started, 1);
+    assert.equal(settled, 0);
     assert.equal(waiting, 0);
+    assert.equal(installing.listeners.size, 1);
+    reg.waiting = installing;
+    installing.move('installed');
+    assert.equal(waiting, 1);
+    assert.equal(settled, 1);
     assert.equal(installing.listeners.size, 0);
+    assert.ok(timer.pending.every((entry) => entry.cancelled));
+    installing.move('activated');
+    assert.equal(settled, 1, 'settlement is only reported once');
+  });
+  test('late redundant or activated worker settles and removes its retained listener', async () => {
+    for (const terminal of ['redundant', 'activated']) {
+      const installing = worker('installing');
+      const { reg } = registration({ installing });
+      const timer = manualSchedule();
+      let settled = 0;
+      let waiting = 0;
+      const p = checkRegistrationForUpdate(reg, { onWaiting: () => waiting++, onSettled: () => settled++, schedule: timer.schedule });
+      await Promise.resolve();
+      timer.fire();
+      assert.equal(await p, 'installing');
+      if (terminal === 'activated') reg.waiting = installing;
+      installing.move(terminal);
+      assert.equal(settled, 1);
+      assert.equal(waiting, terminal === 'activated' ? 1 : 0);
+      assert.equal(installing.listeners.size, 0);
+    }
+  });
+  test('an already terminal worker is inspected after observing installation', async () => {
+    const installing = worker('activated');
+    const { reg } = registration({ installing });
+    const timer = manualSchedule();
+    const events: string[] = [];
+    assert.equal(await checkRegistrationForUpdate(reg, {
+      onWaiting: () => events.push('waiting'), onInstalling: () => events.push('installing'),
+      onSettled: () => events.push('settled'), schedule: timer.schedule,
+    }), 'none');
+    assert.deepEqual(events, ['installing', 'settled']);
+    assert.equal(installing.listeners.size, 0);
+    assert.ok(timer.pending.every((entry) => entry.cancelled));
   });
   test('update() rejecting (offline / server error) rejects, so the controller reports "failed"', async () => {
     const { reg } = registration({ update: async () => { throw new Error('offline'); } });

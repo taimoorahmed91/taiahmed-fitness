@@ -14,6 +14,7 @@ export interface AppRefreshMessage {
 export const REFRESH_ACTION_LABEL = 'Refresh app & data';
 export const REFRESH_BUSY_LABEL = 'Refreshing app & data…';
 export const REFRESH_LOADING_TOAST = 'Refreshing your data and checking for a new version…';
+export const REFRESH_DOWNLOADING_TOAST = 'Downloading the new version…';
 export const REFRESH_UNEXPECTED_ERROR = { message: "Couldn't refresh.", description: 'Please try again.' } as const;
 
 const dataMessage = (data: DataRefreshOutcome): { kind: RefreshToastKind; message: string; description?: string } => {
@@ -45,6 +46,7 @@ const appSentence = (update: UpdateOutcome): string => {
     case 'applied': return 'FitTrack will reload once to finish updating. Your data and any saved workout are kept.';
     case 'blocked': return 'A new version is ready. It will wait until you finish your workout, so nothing reloads now and your workout is kept.';
     case 'current': return 'Checked for updates: you are on the latest version.';
+    case 'downloading': return 'A new version is still downloading. You\'ll get an "Update available" prompt as soon as it\'s ready.';
     case 'check-failed': return "Couldn't check for a new version right now.";
     case 'apply-failed': return "A new version is ready but couldn't be installed. Please try again.";
     default: return "Updates aren't checked in this session, so only your data was refreshed.";
@@ -70,13 +72,15 @@ export const describeAppRefresh = ({ data, update }: AppRefreshResult): AppRefre
   const d = dataMessage(data);
   // A data problem is the headline; the app fact follows. Otherwise the app news leads when there is any.
   if (d.kind === 'error' || d.kind === 'warning') {
-    return { kind: update === 'blocked' || update === 'current' || update === 'unavailable' ? d.kind : worst(d.kind, 'warning'), message: d.message, description: join(d.description, appSentence(update)) };
+    return { kind: update === 'blocked' || update === 'current' || update === 'unavailable' || update === 'downloading' ? d.kind : worst(d.kind, 'warning'), message: d.message, description: join(d.description, appSentence(update)) };
   }
   switch (update) {
     case 'applied':
       return describeUpdateStarting(data);
     case 'blocked':
       return { kind: 'info', message: 'New version ready. It will wait for your workout.', description: join(dataSentence(data), 'Nothing reloads while your workout is in progress, and your workout is kept.') };
+    case 'downloading':
+      return { kind: 'info', message: d.message, description: join(d.description, appSentence(update)) };
     case 'apply-failed':
       return { kind: 'warning', message: d.message, description: join(d.description, appSentence(update)) };
     case 'check-failed':

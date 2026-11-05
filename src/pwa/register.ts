@@ -78,15 +78,22 @@ const start = () => {
     }
     if (!force && Date.now() - lastCheck < MIN_CHECK_GAP_MS) return 'skipped';
     lastCheck = Date.now();
-    await checkRegistrationForUpdate(registration, { onWaiting: () => controller.markNeedRefresh(true) });
-    return 'checked';
+    const result = await checkRegistrationForUpdate(registration, {
+      onWaiting: () => controller.markNeedRefresh(true),
+      onInstalling: () => controller.markInstalling(true),
+      onSettled: () => controller.markInstalling(false),
+    });
+    return result === 'installing' ? 'installing' : 'checked';
   });
   const checkForUpdate = () => { void controller.checkForUpdate(); };
 
   const begin = () => {
     const updateSW = registerSW({
       immediate: true,
-      onNeedRefresh: () => controller.markNeedRefresh(true),
+      onNeedRefresh: () => {
+        controller.markNeedRefresh(true);
+        controller.markInstalling(false);
+      },
       onOfflineReady: () => controller.markOfflineReady(true),
       onRegisteredSW: (_url, reg) => {
         registration = reg;
