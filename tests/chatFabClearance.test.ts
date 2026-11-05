@@ -53,12 +53,13 @@ describe('shared bottom clearance for the chat button', () => {
   });
 
   test('clearance by viewport always keeps the last control above the button, with air to spare', () => {
-    // 320, 390 and 768 wide, no home indicator: phones have the 4rem bar, 768 is `sm` and up (bar 0).
+    // 320, 390 and 768 wide, no home indicator: phones have the floating dock (5.75rem: gap + glass + bubble rise),
+    // 768 is `sm` and up (bar 0).
     expect(BOTTOM_BAR_VAR_CLASS).toContain(`[--bottom-bar-height:${BOTTOM_BAR_HEIGHT_REM}rem]`);
     const cases = [
-      { width: 320, barRem: BOTTOM_BAR_HEIGHT_REM, safe: 0, reserve: 144 },
-      { width: 390, barRem: BOTTOM_BAR_HEIGHT_REM, safe: 0, reserve: 144 },
-      { width: 390, barRem: BOTTOM_BAR_HEIGHT_REM, safe: 34, reserve: 162 }, // iPhone home indicator
+      { width: 320, barRem: BOTTOM_BAR_HEIGHT_REM, safe: 0, reserve: 172 },
+      { width: 390, barRem: BOTTOM_BAR_HEIGHT_REM, safe: 0, reserve: 172 },
+      { width: 390, barRem: BOTTOM_BAR_HEIGHT_REM, safe: 34, reserve: 190 }, // iPhone home indicator
       { width: 768, barRem: 0, safe: 0, reserve: 80 },
       { width: 1280, barRem: 0, safe: 0, reserve: 80 },
     ];

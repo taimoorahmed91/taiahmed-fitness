@@ -236,6 +236,144 @@ All colors MUST be HSL.
   }
 }
 
+/* Phone bottom dock (components/layout/BottomNav + LiquidDock). Everything is scoped to [data-bottom-nav].
+   The dock is charcoal glass in BOTH themes, so its tokens do not follow --background / --primary:
+   - --dock-accent is the brand orange (#FF8C32). Dark --primary is within ~1% of it, but light --primary is a deeper
+     orange made for text on light surfaces, which would look muddy on charcoal, so the dock has its own token.
+   - --dock-accent-foreground is a near-black warm brown: ~8:1 on the orange, where white would only reach ~2.3:1.
+   - --dock-ink-soft (inactive icons and labels) is >= 6:1 on the glass over a light or a dark page.
+   - Sizes below must match DOCK_* in components/layout/liquidDockPath.ts (a test checks this). */
+@layer base {
+  [data-bottom-nav] {
+    --dock-body: 3.75rem;
+    --dock-rise: 1.5rem;
+    --dock-float: 0.5rem;
+    --dock-bubble: 3rem;
+    --dock-inset: 0.75rem;
+
+    --dock-glass: 0 0% 9%;
+    --dock-glass-lift: 0 0% 19%;
+    --dock-ink: 0 0% 98%;
+    --dock-ink-soft: 0 0% 80%;
+
+    --dock-accent: 28 100% 60%;
+    --dock-accent-lift: 32 100% 72%;
+    --dock-accent-deep: 22 95% 44%;
+    --dock-accent-foreground: 18 45% 8%;
+
+    --dock-shadow: 0 0% 0%;
+    --dock-shadow-alpha: 0.28;
+  }
+  .dark [data-bottom-nav] {
+    --dock-shadow-alpha: 0.6;
+  }
+}
+
+@layer components {
+  /* Frosted glass. The clip-path (set from the outline path) shapes both the fill and the blur. */
+  [data-bottom-nav] .dock-glass {
+    background:
+      linear-gradient(180deg, hsl(0 0% 100% / 0.17) 0%, hsl(0 0% 100% / 0.05) 34%, hsl(0 0% 100% / 0) 58%),
+      linear-gradient(180deg, hsl(var(--dock-glass-lift) / 0.86), hsl(var(--dock-glass) / 0.92));
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    backdrop-filter: blur(18px) saturate(1.6);
+  }
+  @supports not (clip-path: path('M0 0')) {
+    [data-bottom-nav] .dock-glass {
+      border-radius: 9999px;
+    }
+  }
+  [data-bottom-nav] .dock-shadow {
+    filter: blur(10px);
+  }
+  [data-bottom-nav] .dock-shadow path {
+    fill: hsl(var(--dock-shadow) / var(--dock-shadow-alpha));
+    transform: translateY(8px);
+  }
+
+  /* Thin glass edge: bright at the top, fading down, plus a little orange light where the scoop is. */
+  [data-bottom-nav] .dock-rim-top {
+    stop-color: hsl(0 0% 100% / 0.5);
+  }
+  [data-bottom-nav] .dock-rim-mid {
+    stop-color: hsl(0 0% 100% / 0.15);
+  }
+  [data-bottom-nav] .dock-rim-bottom {
+    stop-color: hsl(0 0% 100% / 0.07);
+  }
+  [data-bottom-nav] .dock-rim-light-core {
+    stop-color: hsl(var(--dock-accent) / 0.6);
+  }
+  [data-bottom-nav] .dock-rim-light-edge {
+    stop-color: hsl(var(--dock-accent) / 0);
+  }
+
+  /* The bubble is centred on the top edge of the glass, so half of it stands above the dock. */
+  [data-bottom-nav] .dock-bubble-track {
+    top: calc(var(--dock-bubble) / -2);
+    width: var(--dock-bubble);
+    height: var(--dock-bubble);
+    will-change: transform;
+  }
+  [data-bottom-nav] .dock-bubble {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    color: hsl(var(--dock-accent-foreground));
+    background: radial-gradient(circle at 34% 22%, hsl(var(--dock-accent-lift)) 0%, hsl(var(--dock-accent)) 58%, hsl(var(--dock-accent-deep)) 100%);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.5),
+      inset 0 -3px 6px hsl(var(--dock-accent-deep) / 0.45),
+      0 6px 14px -4px hsl(var(--dock-accent-deep) / 0.55);
+  }
+  /* Soft, wide, low-alpha halo: reads as light on the glass, not a neon outline. */
+  [data-bottom-nav] .dock-glow {
+    position: absolute;
+    inset: -1.1rem;
+    border-radius: 9999px;
+    background: radial-gradient(circle, hsl(var(--dock-accent) / 0.32) 0%, hsl(var(--dock-accent) / 0.12) 46%, hsl(var(--dock-accent) / 0) 70%);
+  }
+  /* Only added once the active tab has changed, so nothing animates on first paint. */
+  [data-bottom-nav] .dock-glow.dock-animate {
+    animation: dock-glow-swell 0.5s ease-out both;
+  }
+  [data-bottom-nav] .dock-icon-pop.dock-animate {
+    animation: dock-icon-pop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  /* Log is an action, not a destination: an orange outline, never the filled bubble. */
+  [data-bottom-nav] .dock-log-ring {
+    border-radius: 9999px;
+    border: 1.5px solid hsl(var(--dock-accent) / 0.9);
+    background: hsl(var(--dock-accent) / 0.12);
+    color: hsl(var(--dock-accent));
+  }
+}
+
+@keyframes dock-glow-swell {
+  from {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes dock-icon-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-10deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* sm and up (matches Tailwind's 640px breakpoint): roomier card and overlay padding. */
 @media (min-width: 640px) {
   :root {

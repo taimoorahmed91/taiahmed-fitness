@@ -17,6 +17,7 @@ import {
   BOTTOM_BAR_VAR,
   BOTTOM_BAR_VAR_CLASS,
 } from '../src/components/layout/bottom-bar';
+import { DOCK_BODY_PX } from '../src/components/layout/liquidDockPath';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -80,8 +81,9 @@ describe('bottom bar sizing', () => {
     expect(BOTTOM_BAR_VAR).toBe('--bottom-bar-height');
     expect(BOTTOM_BAR_VAR_CLASS).toContain(`[${BOTTOM_BAR_VAR}:${BOTTOM_BAR_HEIGHT_REM}rem]`);
     expect(BOTTOM_BAR_VAR_CLASS).toContain(`sm:[${BOTTOM_BAR_VAR}:0px]`);
-    // Tailwind h-16 = 4rem.
-    expect(read('src/components/layout/BottomNav.tsx')).toContain(`h-${BOTTOM_BAR_HEIGHT_REM * 4}`);
+    // The dock body height comes from the scoped token, which must equal the glass height used by the path.
+    expect(read('src/components/layout/BottomNav.tsx')).toContain('h-[var(--dock-body)]');
+    expect(read('src/index.css')).toContain(`--dock-body: ${DOCK_BODY_PX / 16}rem;`);
   });
 
   test('bar is phone-only and matches the breakpoint where the CSS variable drops to 0', () => {
@@ -91,7 +93,11 @@ describe('bottom bar sizing', () => {
 
   test('clearance adds the home-indicator safe area to the bar height', () => {
     expect(BOTTOM_BAR_CLEARANCE).toBe('calc(var(--bottom-bar-height, 0px) + env(safe-area-inset-bottom))');
-    expect(read('src/components/layout/BottomNav.tsx')).toContain('pb-[env(safe-area-inset-bottom)]');
+    // The dock floats above the safe area (plus its own gap) and stays inside the left/right insets.
+    const nav = read('src/components/layout/BottomNav.tsx');
+    expect(nav).toContain('bottom-[calc(env(safe-area-inset-bottom)+var(--dock-float))]');
+    expect(nav).toContain('env(safe-area-inset-left)');
+    expect(nav).toContain('env(safe-area-inset-right)');
   });
 
   test('at 320px all five slots are at least 44px wide and tall, and the icon pill fits its slot', () => {
@@ -100,8 +106,8 @@ describe('bottom bar sizing', () => {
     expect(slots).toBe(5);
     const slotWidth = 320 / slots;
     expect(slotWidth).toBeGreaterThanOrEqual(44);
-    expect(BOTTOM_BAR_HEIGHT_REM * 16).toBeGreaterThanOrEqual(44);
-    const pillRem = Number(/h-8 w-(\d+)/.exec(read('src/components/layout/BottomNav.tsx'))?.[1]);
+    expect(DOCK_BODY_PX).toBeGreaterThanOrEqual(44);
+    const pillRem = Number(/h-7 w-(\d+)/.exec(read('src/components/layout/BottomNav.tsx'))?.[1]);
     expect(pillRem * 4).toBeLessThanOrEqual(slotWidth);
   });
 
@@ -126,9 +132,10 @@ describe('shell wiring', () => {
     expect(bar.match(/<nav\b/g)).toHaveLength(1);
     expect(bar).toContain('aria-label="Quick access"');
     expect(drawer).toContain('aria-label="Primary"');
-    // NavLink sets aria-current="page" on the active destination; the bar styles from that attribute.
+    // NavLink sets aria-current="page" on the active destination. The bubble look follows data-active,
+    // which the bar derives from the same route match (and from "More" when it is open or covers the page).
     expect(bar).toContain("from '@/components/NavLink'");
-    expect(bar).toContain('aria-[current=page]');
+    expect(bar).toContain('data-[active=true]');
   });
 
   test('layout supplies the single main landmark and the bar clearance', () => {

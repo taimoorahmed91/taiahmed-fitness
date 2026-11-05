@@ -1,10 +1,12 @@
 import { useLayoutEffect } from 'react';
+import { DOCK_BODY_PX, DOCK_FLOAT_PX, DOCK_RISE_PX } from './liquidDockPath';
 
 /**
  * Shared sizing for the phone bottom navigation.
  *
- * `--bottom-bar-height` is the bar's own height (without the phone's home-bar
- * safe area) and is 0 wherever the bar is hidden. Anything fixed to the bottom
+ * `--bottom-bar-height` is everything the floating dock occupies above the phone's
+ * home-bar safe area: the gap under the dock, the glass body, and the bubble that
+ * stands above the body (see liquidDockPath.ts). It is 0 wherever the bar is hidden. Anything fixed to the bottom
  * of the screen (the chat button) or scrolling under the bar (page content)
  * adds the safe area itself:
  *
@@ -12,8 +14,11 @@ import { useLayoutEffect } from 'react';
  */
 export const BOTTOM_BAR_VAR = '--bottom-bar-height';
 
-/** Bar height in rem. Matches `h-16` on the bar's row. */
-export const BOTTOM_BAR_HEIGHT_REM = 4;
+/**
+ * Occupied height in rem: floating gap + glass body + bubble rise (8 + 60 + 24 = 92px = 5.75rem).
+ * The CSS tokens `--dock-float`, `--dock-body` and `--dock-rise` in index.css must match.
+ */
+export const BOTTOM_BAR_HEIGHT_REM = (DOCK_FLOAT_PX + DOCK_BODY_PX + DOCK_RISE_PX) / 16;
 
 /** The bar shows below Tailwind's `sm` breakpoint (640px); the header drawer takes over from there. */
 export const BOTTOM_BAR_MEDIA_QUERY = '(max-width: 639.98px)';
@@ -25,7 +30,7 @@ export const BOTTOM_BAR_CLEARANCE = `calc(var(${BOTTOM_BAR_VAR}, 0px) + env(safe
  * Declares the variable for the layout subtree with plain CSS, so the first
  * paint is already correct. Written out in full so Tailwind can see the classes.
  */
-export const BOTTOM_BAR_VAR_CLASS = '[--bottom-bar-height:4rem] sm:[--bottom-bar-height:0px]';
+export const BOTTOM_BAR_VAR_CLASS = '[--bottom-bar-height:5.75rem] sm:[--bottom-bar-height:0px]';
 
 /**
  * Publishes `--bottom-bar-height` on <html> so elements outside the layout

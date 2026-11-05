@@ -11,12 +11,28 @@ import {
 } from '@/components/ui/sheet';
 import { NavLink } from '@/components/NavLink';
 import { Button } from '@/components/ui/button';
-import { getBottomNavItems, getQuickLogItems, isMoreActive, type NavItemConfig } from '@/app/navigation';
+import {
+  getBottomNavItems,
+  getQuickLogItems,
+  isMoreActive,
+  isNavItemActive,
+  type NavItemConfig,
+} from '@/app/navigation';
 import { cn } from '@/lib/utils';
+import { LiquidDock } from './LiquidDock';
 
-/** Every bar slot shares one layout: a 32px "pill" holding the icon, and a 12px label under it. */
-const SLOT_CLASS =
-  'group flex h-full w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(hover:hover)]:hover:text-foreground';
+/**
+ * Every dock slot shares one layout: a 28px icon box with a 12px label under it. Colours come from the
+ * scoped dock tokens (index.css), so the icons stay readable on the dark glass in both themes.
+ * The active slot (data-active) hides its own icon because the bubble draws it, and gains a taller
+ * tap area so the part of the bubble that rises above the glass is tappable too.
+ */
+const SLOT_CLASS = cn(
+  'dock-slot group relative flex h-full w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 text-xs font-medium transition-colors',
+  'text-[hsl(var(--dock-ink-soft))] data-[active=true]:text-[hsl(var(--dock-ink))] [@media(hover:hover)]:hover:text-[hsl(var(--dock-ink))]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--dock-accent))]',
+  'data-[active=true]:before:absolute data-[active=true]:before:inset-x-0 data-[active=true]:before:-top-6 data-[active=true]:before:h-6 data-[active=true]:before:content-[""]',
+);
 /**
  * Same slot look for the two real buttons (Log, More). They are the shared Button, so they keep
  * its focus ring, pressed feedback and aria-busy/disabled handling; these classes only undo the
@@ -25,14 +41,17 @@ const SLOT_CLASS =
 const SLOT_BUTTON_CLASS = cn(
   SLOT_CLASS,
   'h-full min-h-0 whitespace-normal py-0 [&_svg]:size-5 focus-visible:ring-offset-0',
-  '[@media(hover:hover)]:hover:bg-transparent [@media(hover:hover)]:hover:text-foreground active:bg-transparent active:text-foreground',
+  '[@media(hover:hover)]:hover:bg-transparent active:bg-transparent active:text-[hsl(var(--dock-ink))]',
 );
-const PILL_CLASS = 'flex h-8 w-14 items-center justify-center rounded-full transition-colors motion-reduce:transition-none';
-const PILL_ACTIVE_CLASS = 'bg-primary/15 text-primary';
+const ICON_BOX_CLASS =
+  'flex h-7 w-7 items-center justify-center transition-[opacity,transform] duration-200 group-active:scale-90 group-data-[active=true]:opacity-0 motion-reduce:transition-none';
+const BUBBLE_ICON_CLASS = 'h-[1.375rem] w-[1.375rem]';
 
-const DestinationLink = ({ item }: { item: NavItemConfig }) => (
-  <NavLink to={item.to} className={cn(SLOT_CLASS, 'aria-[current=page]:text-foreground')}>
-    <span className={cn(PILL_CLASS, 'group-aria-[current=page]:bg-primary/15 group-aria-[current=page]:text-primary')}>
+type IconComponent = NavItemConfig['icon'];
+
+const DestinationLink = ({ item, active }: { item: NavItemConfig; active: boolean }) => (
+  <NavLink to={item.to} data-active={active} className={SLOT_CLASS}>
+    <span className={ICON_BOX_CLASS}>
       <item.icon className="h-5 w-5" aria-hidden="true" />
     </span>
     <span className="max-w-full truncate">{item.shortLabel ?? item.label}</span>
@@ -51,9 +70,10 @@ const QuickLog = () => {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button type="button" variant="ghost" aria-haspopup="dialog" className={cn(SLOT_BUTTON_CLASS, 'text-foreground')}>
-          <span className={cn(PILL_CLASS, 'bg-primary text-primary-foreground shadow-sm')}>
-            <Plus className="!size-6" aria-hidden="true" />
+        <Button type="button" variant="ghost" aria-haspopup="dialog" className={SLOT_BUTTON_CLASS}>
+          {/* An action, not a destination: an outlined ring, never the filled bubble. */}
+          <span className={cn(ICON_BOX_CLASS, 'dock-log-ring')}>
+            <Plus className="!size-4" aria-hidden="true" />
           </span>
           <span>Log</span>
         </Button>
@@ -95,49 +115,69 @@ interface BottomNavProps {
  * Phone-only bottom navigation: Home, Meals, (Log), Gym, More.
  * Destinations come from NAV_ITEMS (`mobilePrimary`); "More" opens the same
  * grouped drawer as the header. Hidden from `sm` up, where the header drawer is used.
+ *
+ * Visually it is a floating glass dock (LiquidDock): the bubble and the scoop in the glass sit on the
+ * one active destination (Home, Meals, Gym or More) and slide together when it changes. Log is an
+ * action, so it never gets the bubble. Exactly one slot is active; "More" covers every other page.
  */
 export const BottomNav = ({ moreOpen, onOpenMore, moreRef }: BottomNavProps) => {
   const { pathname } = useLocation();
   const { before, after } = useMemo(getBottomNavItems, []);
   const moreActive = moreOpen || isMoreActive(pathname);
 
+  // Slot order: before..., Log, after..., More.
+  const logIndex = before.length;
+  const moreIndex = before.length + 1 + after.length;
+  let activeIndex = moreIndex;
+  if (!moreActive) {
+    const b = before.findIndex((item) => isNavItemActive(item, pathname));
+    const a = after.findIndex((item) => isNavItemActive(item, pathname));
+    if (b >= 0) activeIndex = b;
+    else if (a >= 0) activeIndex = logIndex + 1 + a;
+  }
+  const icons: IconComponent[] = [...before.map((i) => i.icon), Plus, ...after.map((i) => i.icon), Menu];
+  const ActiveIcon = icons[activeIndex];
+
   return (
     <nav
       aria-label="Quick access"
       data-bottom-nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur-sm sm:hidden"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+var(--dock-float))] left-[calc(env(safe-area-inset-left)+var(--dock-inset))] right-[calc(env(safe-area-inset-right)+var(--dock-inset))] z-40 h-[var(--dock-body)] sm:hidden"
     >
-      <ul className="flex h-16 items-stretch">
-        {before.map((item) => (
-          <li key={item.to} className="min-w-0 flex-1">
-            <DestinationLink item={item} />
+      <LiquidDock activeIndex={activeIndex} activeIcon={<ActiveIcon className={BUBBLE_ICON_CLASS} aria-hidden="true" />}>
+        <ul className="flex h-full items-stretch px-2">
+          {before.map((item, i) => (
+            <li key={item.to} className="min-w-0 flex-1" data-dock-slot>
+              <DestinationLink item={item} active={activeIndex === i} />
+            </li>
+          ))}
+          <li className="min-w-0 flex-1" data-dock-slot>
+            <QuickLog />
           </li>
-        ))}
-        <li className="min-w-0 flex-1">
-          <QuickLog />
-        </li>
-        {after.map((item) => (
-          <li key={item.to} className="min-w-0 flex-1">
-            <DestinationLink item={item} />
+          {after.map((item, i) => (
+            <li key={item.to} className="min-w-0 flex-1" data-dock-slot>
+              <DestinationLink item={item} active={activeIndex === logIndex + 1 + i} />
+            </li>
+          ))}
+          <li className="min-w-0 flex-1" data-dock-slot>
+            <Button
+              ref={moreRef}
+              type="button"
+              variant="ghost"
+              aria-haspopup="dialog"
+              aria-expanded={moreOpen}
+              onClick={onOpenMore}
+              data-active={activeIndex === moreIndex}
+              className={SLOT_BUTTON_CLASS}
+            >
+              <span className={ICON_BOX_CLASS}>
+                <Menu className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span>More</span>
+            </Button>
           </li>
-        ))}
-        <li className="min-w-0 flex-1">
-          <Button
-            ref={moreRef}
-            type="button"
-            variant="ghost"
-            aria-haspopup="dialog"
-            aria-expanded={moreOpen}
-            onClick={onOpenMore}
-            className={cn(SLOT_BUTTON_CLASS, moreActive && 'text-foreground')}
-          >
-            <span className={cn(PILL_CLASS, moreActive && PILL_ACTIVE_CLASS)}>
-              <Menu className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span>More</span>
-          </Button>
-        </li>
-      </ul>
+        </ul>
+      </LiquidDock>
     </nav>
   );
 };

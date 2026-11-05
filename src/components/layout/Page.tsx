@@ -29,7 +29,7 @@ export const PAGE_GUTTER_CLASS = 'px-4 sm:px-8';
  *   FAB top  = max(1rem, safe-area-bottom) + --bottom-bar-height + 3.5rem (the h-14 button)
  *   reserve  = that + 0.5rem of air
  *
- * Phones (bar 4rem, no home indicator): 4rem + 1rem + 4rem = 9rem (144px). From `sm` up (bar 0): 5rem (80px).
+ * Phones (dock 5.75rem, no home indicator): 5.75rem + 1rem + 4rem = 10.75rem (172px). From `sm` up (bar 0): 5rem (80px).
  * Toast lift is temporary and deliberately not reserved. Keep the edge in step with ChatBot's fabBottom.
  */
 export const CHAT_FAB_SIZE_REM = 3.5;
