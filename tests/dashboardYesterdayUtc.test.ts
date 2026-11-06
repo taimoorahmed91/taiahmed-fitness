@@ -50,10 +50,10 @@ describe('Dashboard yesterday is the UTC day before today, in every time zone', 
     }
   });
 
-  test('Dashboard uses the shared helper and hands the exact day to YesterdayStatus', () => {
+  test('Dashboard uses the shared helper and hands the exact day to PreviousDaySnapshot', () => {
     const src = readFileSync(new URL('../src/pages/Dashboard.tsx', import.meta.url), 'utf8');
     expect(src).toContain('const yesterdayStr = yesterdayIso(todayStr);');
     expect(src).not.toMatch(/setDate\(/);
-    expect(src).toMatch(/<YesterdayStatus[^>]*date=\{yesterdayStr\}/s);
+    expect(src).toMatch(/<PreviousDaySnapshot[^>]*date=\{yesterdayStr\}/s);
   });
 });

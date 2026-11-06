@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { defaultFormDate, formatLongDay, yesterdayIso } from '../src/lib/dayLabels';
-import { YesterdayStatus } from '../src/components/YesterdayStatus';
+import { PreviousDaySnapshot } from '../src/components/PreviousDaySnapshot';
 import { MetricOverviewCard, STAT_GRID_CLASS } from '../src/components/MetricOverviewCard';
 import { PersonalRecordsList } from '../src/components/PersonalRecordsList';
 import { GymOverviewCard } from '../src/components/GymOverviewCard';
@@ -48,19 +48,11 @@ describe('UTC midnight boundary (Poland vs UTC)', () => {
     expect(formatLongDay('not-a-date')).toBe('not-a-date');
   });
 
-  test('YesterdayStatus label comes from the passed UTC date', () => {
-    const html = renderToStaticMarkup(createElement(YesterdayStatus, { yesterdayCalories: 1800, goal: 2000, date: '2026-10-30' }));
-    expect(text(html)).toContain('Friday, Oct 30');
-  });
-
-  test('YesterdayStatus without a date uses the UTC day before now', () => {
-    setSystemTime(justBeforeUtcMidnight); // UTC Oct 31, local Nov 1
-    const before = text(renderToStaticMarkup(createElement(YesterdayStatus, { yesterdayCalories: 0, goal: 2000 })));
-    expect(before).toContain('Friday, Oct 30'); // the old local code said "Saturday, Oct 31"
-    setSystemTime(new Date('2026-11-01T00:30:00Z'));
-    const after = text(renderToStaticMarkup(createElement(YesterdayStatus, { yesterdayCalories: 0, goal: 2000 })));
-    expect(after).toContain('Saturday, Oct 31');
-    setSystemTime();
+  test('PreviousDaySnapshot label comes from the passed UTC date, with or without meals', () => {
+    const logged = renderToStaticMarkup(createElement(PreviousDaySnapshot, { calories: 1800, mealCount: 2, goal: 2000, date: '2026-10-30' }));
+    expect(text(logged)).toContain('Friday, Oct 30');
+    const none = renderToStaticMarkup(createElement(PreviousDaySnapshot, { calories: 0, mealCount: 0, goal: 2000, date: '2026-10-30' }));
+    expect(text(none)).toContain('Friday, Oct 30');
   });
 
   test('Weight, Waist and Sleep default their form date through the shared UTC helper', () => {

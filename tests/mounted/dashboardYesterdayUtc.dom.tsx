@@ -2,7 +2,7 @@ import { describe, test, expect, mock, beforeAll, afterAll, afterEach, beforeEac
 import { installDom, loadJsdom, sleep } from './support/domHarness';
 
 // The real Dashboard at the daylight-saving edges: yesterday's calories, goal and label must all come from the
-// same UTC day (and that day is handed to YesterdayStatus explicitly). Scripted backend, stand-in children.
+// same UTC day (and that day is handed to PreviousDaySnapshot explicitly). Scripted backend, stand-in children.
 const JSDOM = await loadJsdom();
 if (!JSDOM) throw new Error('jsdom not available: set JSDOM_PATH to an installed jsdom');
 
@@ -58,7 +58,7 @@ const stub = (name: string, testid: string, extra?: (p: Record<string, unknown>)
 stub('CalorieGoalProgress', 'calorie-goal', (p) => `calorie-goal ${String(p.current)} cal`);
 stub('ProteinTargetCard', 'protein-target');
 stub('CarbTargetCard', 'carb-target');
-stub('YesterdayStatus', 'yesterday', (p) => `yesterday ${String(p.yesterdayCalories)} cal on ${String(p.date)}`);
+stub('PreviousDaySnapshot', 'yesterday', (p) => `yesterday ${String(p.calories)} cal on ${String(p.date)}`);
 stub('MealTimeChart', 'meal-timing');
 stub('RecoveryChart', 'recovery-chart');
 stub('MacroTargetChart', 'macro-chart', (p) => `macro-chart ${String(p.title)}`);

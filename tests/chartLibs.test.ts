@@ -150,7 +150,7 @@ describe('shared chart theme', () => {
 describe('owned chart/card files use semantic roles only', () => {
   const src = join(root, 'src');
   const files = [
-    ...readdirSync(join(src, 'components')).filter((f) => /Chart.*\.tsx$/.test(f) || ['ChartViewControls.tsx', 'TargetAdherenceGrid.tsx', 'TargetRangeBar.tsx', 'MacroTargetCard.tsx', 'CalorieGoalProgress.tsx', 'YesterdayStatus.tsx', 'GoalsCard.tsx', 'ShareableSummary.tsx', 'BodyRecompositionCard.tsx'].includes(f)).map((f) => join(src, 'components', f)),
+    ...readdirSync(join(src, 'components')).filter((f) => /Chart.*\.tsx$/.test(f) || ['ChartViewControls.tsx', 'TargetAdherenceGrid.tsx', 'TargetRangeBar.tsx', 'MacroTargetCard.tsx', 'CalorieGoalProgress.tsx', 'PreviousDaySnapshot.tsx', 'GoalsCard.tsx', 'ShareableSummary.tsx', 'BodyRecompositionCard.tsx'].includes(f)).map((f) => join(src, 'components', f)),
     ...readdirSync(join(src, 'components/charts')).map((f) => join(src, 'components/charts', f)),
     ...['chartRange', 'chartTheme', 'chartSummary', 'deltaSeries', 'targetStatus'].map((n) => join(src, 'lib', `${n}.ts`)),
   ];

@@ -61,7 +61,7 @@ const stub = (name: string, testid: string, extra?: (p: Record<string, unknown>)
 stub('CalorieGoalProgress', 'calorie-goal', (p) => `calorie-goal ${String(p.current)} cal`);
 stub('ProteinTargetCard', 'protein-target');
 stub('CarbTargetCard', 'carb-target');
-stub('YesterdayStatus', 'yesterday', (p) => `yesterday ${String(p.yesterdayCalories)} cal`);
+stub('PreviousDaySnapshot', 'yesterday', (p) => `yesterday ${String(p.calories)} cal`);
 stub('MealTimeChart', 'meal-timing');
 stub('RecoveryChart', 'recovery-chart');
 stub('MacroTargetChart', 'macro-chart', (p) => `macro-chart ${String(p.title)}`);

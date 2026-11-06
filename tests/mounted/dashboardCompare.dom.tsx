@@ -55,7 +55,7 @@ mock.module('@/hooks/useUserSettings', () => ({
 }));
 // Cards that are not charts are stand-ins; every CHART is real.
 const stub = (name: string, testid: string) => { mock.module(`@/components/${name}`, () => ({ [name]: () => <div data-testid={testid}>{testid}</div> })); };
-for (const [name, id] of [['CalorieGoalProgress', 'calorie-goal'], ['ProteinTargetCard', 'protein-target'], ['CarbTargetCard', 'carb-target'], ['YesterdayStatus', 'yesterday'], ['GoalsCard', 'goals-card'], ['CrossMetricSummaryCard', 'insights-card'], ['WeightIntervalSetting', 'interval-setting'], ['BodyRecompositionCard', 'recomp'], ['WeeklyDigestCard', 'digest']]) stub(name, id);
+for (const [name, id] of [['CalorieGoalProgress', 'calorie-goal'], ['ProteinTargetCard', 'protein-target'], ['CarbTargetCard', 'carb-target'], ['PreviousDaySnapshot', 'yesterday'], ['GoalsCard', 'goals-card'], ['CrossMetricSummaryCard', 'insights-card'], ['WeightIntervalSetting', 'interval-setting'], ['BodyRecompositionCard', 'recomp'], ['WeeklyDigestCard', 'digest']]) stub(name, id);
 
 const iso = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
 const short = (date: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));

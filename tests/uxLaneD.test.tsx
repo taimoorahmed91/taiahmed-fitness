@@ -37,9 +37,10 @@ describe('F26/F27 dashboard order', () => {
     before(src, '<CarbTargetCard', '<StatsCards');
     before(src, '<StatsCards', 'Meals{mealsView');
   });
-  test('the meal list stays inside the Today section, before yesterday/trends', () => {
-    before(src, 'Meals{mealsView', '<YesterdayStatus');
-    before(src, '<YesterdayStatus', '<PageSection title="Trends"');
+  test('the previous-day snapshot sits in the header, before the Today section; the meal list stays before the charts row and trends', () => {
+    before(src, '<PreviousDaySnapshot', '<PageSection title="Today"');
+    before(src, 'Meals{mealsView', '<MealTimeChart');
+    before(src, '<MealTimeChart', '<PageSection title="Trends"');
   });
 });
 

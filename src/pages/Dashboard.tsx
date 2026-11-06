@@ -4,7 +4,7 @@ import { CalorieBalanceChart } from '@/components/CalorieBalanceChart';
 import { WorkoutDurationChart } from '@/components/WorkoutDurationChart';
 import { MealTimeChart } from '@/components/MealTimeChart';
 import { CalorieGoalProgress } from '@/components/CalorieGoalProgress';
-import { YesterdayStatus } from '@/components/YesterdayStatus';
+import { PreviousDaySnapshot } from '@/components/PreviousDaySnapshot';
 import { yesterdayIso } from '@/lib/dayLabels';
 import { RecoveryChart } from '@/components/RecoveryChart';
 import { MacroTargetChart } from '@/components/MacroTargetChart';
@@ -52,7 +52,7 @@ import { useOpenCalendarDay } from '@/components/charts/useOpenCalendarDay';
 import { ROUTES } from '@/app/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meal } from '@/types';
-import { Clock, Flame } from 'lucide-react';
+import { AlertTriangle, Clock, Flame } from 'lucide-react';
 import { resolveCalorieRange, macroRange } from '@/lib/targets';
 import { buildCalorieBalanceRows } from '@/lib/calorieBalance';
 import { dayMacroIntake, type IntakeKind } from '@/lib/macroIntake';
@@ -119,7 +119,7 @@ const Dashboard = () => {
       .reduce((sum, a) => sum + (a.calories || 0), 0);
     const workedOut = gymSessions.some((s) => s.date === dateStr);
     const r = resolveCalorieRange(personalData, settings.daily_calorie_goal, workedOut, extraCalories);
-    return { goal: r.min, goalMax: r.max, workedOut, auto: r.auto };
+    return { goal: r.min, goalMax: r.max, workedOut, auto: r.auto, extraCalories };
   }, [gymSessions, personalData, settings.daily_calorie_goal, extraActivities]);
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -130,7 +130,7 @@ const Dashboard = () => {
     () => resolveGoalForDate(todayStr),
     [resolveGoalForDate, todayStr]
   );
-  const { goal: yesterdayGoal, goalMax: yesterdayGoalMax } = useMemo(
+  const { goal: yesterdayGoal, goalMax: yesterdayGoalMax, workedOut: yesterdayWorkedOut, auto: yesterdayAuto, extraCalories: yesterdayExtra } = useMemo(
     () => resolveGoalForDate(yesterdayStr),
     [resolveGoalForDate, yesterdayStr]
   );
@@ -237,11 +237,11 @@ const Dashboard = () => {
     [meals, whoopEntries],
   );
 
-  // Yesterday's total, using the same UTC day as `yesterdayStr`.
-  const yesterdayCalories = useMemo(
-    () => meals.filter((meal) => meal.date === yesterdayStr).reduce((sum, meal) => sum + meal.calories, 0),
-    [meals, yesterdayStr],
-  );
+  // Yesterday's meals, using the same UTC day as `yesterdayStr`. The COUNT decides "No data" (a day with no meals is not
+  // zero calories); the total is the calories of exactly those meals.
+  const yesterdayMeals = useMemo(() => meals.filter((meal) => meal.date === yesterdayStr), [meals, yesterdayStr]);
+  const yesterdayMealCount = yesterdayMeals.length;
+  const yesterdayCalories = useMemo(() => yesterdayMeals.reduce((sum, meal) => sum + meal.calories, 0), [yesterdayMeals]);
 
   // Today's meals (UTC day, matching the "Resets at 00:00 UTC" countdown).
   const todaysMeals = useMemo(() => meals.filter((meal) => meal.date === todayStr), [meals, todayStr]);
@@ -276,6 +276,7 @@ const Dashboard = () => {
   }, [refetchAll]);
 
   const mealsView = sections.mealsToday.view;
+  const yesterdayView = sections.yesterday.view;
   const pageLoading = data.loading;
 
   /** One block: skeleton while loading, a quiet "paused" card if its data never loaded, otherwise the content. */
@@ -315,17 +316,43 @@ const Dashboard = () => {
         title="Dashboard"
         description="Track your nutrition and fitness progress"
         actions={
-          <div className="flex flex-col gap-2 sm:items-end">
-            <ResetCountdown />
-            <DataFreshness
-              fetchedAt={lastFetchedAt}
-              loading={mealsLoading}
-              refreshing={isRefreshing}
-              lastStartedAt={lastStartedAt}
-              lastFinishedAt={lastFinishedAt}
-              intervalMs={REFRESH_INTERVAL_MS}
-              onRetry={retryDashboard}
-            />
+          // The previous-day snapshot sits beside the reset countdown and refresh status (wraps under them on a phone).
+          <div className="flex w-full min-w-0 flex-wrap items-start gap-x-6 gap-y-3 sm:w-auto sm:justify-end">
+            {yesterdayView === 'loading' ? (
+              <Skeleton aria-hidden="true" className="h-[4.25rem] w-full sm:w-[28rem]" />
+            ) : yesterdayView === 'error' ? (
+              <div role="status" className="panel-surface w-full rounded-lg border px-3 py-2.5 sm:w-[28rem]">
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-chart-warn" aria-hidden="true" />
+                  Yesterday&apos;s summary is paused
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{dashboardPausedText(sections.yesterday.missing)}</p>
+              </div>
+            ) : (
+              <div className="w-full min-w-0 sm:w-[28rem]">
+                <PreviousDaySnapshot
+                  date={yesterdayStr}
+                  mealCount={yesterdayMealCount}
+                  calories={yesterdayCalories}
+                  goal={yesterdayGoal}
+                  goalMax={yesterdayGoalMax}
+                  dayType={yesterdayAuto ? (yesterdayWorkedOut ? 'gym' : 'rest') : undefined}
+                  extraCalories={yesterdayExtra}
+                />
+              </div>
+            )}
+            <div className="flex flex-col gap-2 sm:items-end">
+              <ResetCountdown />
+              <DataFreshness
+                fetchedAt={lastFetchedAt}
+                loading={mealsLoading}
+                refreshing={isRefreshing}
+                lastStartedAt={lastStartedAt}
+                lastFinishedAt={lastFinishedAt}
+                intervalMs={REFRESH_INTERVAL_MS}
+                onRetry={retryDashboard}
+              />
+            </div>
           </div>
         }
       />
@@ -455,15 +482,8 @@ const Dashboard = () => {
             </Card>
           )}
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            {gate('yesterday', "Yesterday's summary is paused", <CardSkeleton bodyClassName="h-[190px]" />, () => (
-              <YesterdayStatus
-                yesterdayCalories={yesterdayCalories}
-                goal={yesterdayGoal}
-                goalMax={yesterdayGoalMax}
-                date={yesterdayStr}
-              />
-            ), 'min-h-[16rem]')}
+          {/* Two charts share the row (the previous-day summary moved up to the header). */}
+          <div className="grid lg:grid-cols-2 gap-6">
             {gate('mealTiming', 'Meal timing is paused', <CardSkeleton />, () => (
               <MealTimeChart status={sections.mealTiming.chartStatus} data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} data90={getMealsByTimeOfDay(90)} />
             ), 'min-h-[16rem]')}
