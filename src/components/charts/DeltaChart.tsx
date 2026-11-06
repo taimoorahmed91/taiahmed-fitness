@@ -8,6 +8,7 @@ import { ChartTooltipCard } from './ChartTooltipCard';
 import { CHART_COLORS, CHART_MARGIN, UNIT_LABEL, chartGridProps, chartTooltipProps, chartYAxisProps, formatSigned } from '@/lib/chartTheme';
 import { DeltaPoint, DeltaSummary, computeDeltaSeries } from '@/lib/deltaSeries';
 import { chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { computeYAxis } from '@/lib/chartAxis';
 import { createChartDataset } from '@/lib/chartViewerData';
 import { cn } from '@/lib/utils';
 
@@ -58,6 +59,8 @@ export const DeltaChart = ({ title, icon, unit, entries, emptyText, emptyAction 
     columns: [{ key: 'isoDate', label: 'Date' }, { key: 'delta', label: 'Change', unit }, { key: 'days', label: 'Days', digits: 0 }, { key: 'perWeek', label: 'Per week', unit: `${unit}/week` }],
   });
 
+  // Changes go both ways: the axis includes 0 and pads the rises and the drops (src/lib/chartAxis.ts).
+  const axis = useMemo(() => computeYAxis(points.map((p) => p.delta), { bar: true, minPad: 0 }), [points]);
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same data; only `expanded` differs.
   const body = (expanded: boolean) => (
@@ -75,7 +78,7 @@ export const DeltaChart = ({ title, icon, unit, entries, emptyText, emptyAction 
         <BarChart accessibilityLayer data={points} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" {...chartXAxisFor(points.length, expanded)} />
-          <YAxis {...chartYAxisProps} />
+          <YAxis domain={axis.domain} ticks={axis.ticks} {...chartYAxisProps} />
           <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const p = payload[0].payload as DeltaPoint;

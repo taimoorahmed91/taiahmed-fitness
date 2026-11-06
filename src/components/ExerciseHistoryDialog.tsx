@@ -7,6 +7,7 @@ import { ChartFigure } from '@/components/charts/ChartFigure';
 import { cn } from '@/lib/utils';
 import { buildExerciseHistory, type ExerciseHistoryOrigin, type ExerciseHistoryRow } from '@/lib/workoutExerciseHistory';
 import type { ExerciseAliases } from '@/lib/exerciseAliases';
+import { computeYAxis } from '@/lib/chartAxis';
 import { GymSession } from '@/types';
 
 interface Props {
@@ -53,7 +54,10 @@ export const ExerciseHistoryDialog = ({ exercise, sessions, aliases, origin, ret
     () => (shownExercise ? buildExerciseHistory(sessions, shownExercise, aliases, { sessionId: shownSessionId, date: shownDate }) : null),
     [shownExercise, shownSessionId, shownDate, sessions, aliases],
   );
-  const history = view?.entries ?? [];
+  const history = useMemo(() => view?.entries ?? [], [view]);
+  // Two axes, two metrics (src/lib/chartAxis.ts): top weight is zoomed around the lifts, volume starts at 0.
+  const weightAxis = useMemo(() => computeYAxis(history.map((h) => h.topWeight), { base: 'zoom', minPad: 1 }), [history]);
+  const volumeAxis = useMemo(() => computeYAxis(history.map((h) => h.volume)), [history]);
   const first = history[0];
   const last = history[history.length - 1];
   const best = history.reduce((m, h) => Math.max(m, h.topWeight), 0);
@@ -141,8 +145,8 @@ export const ExerciseHistoryDialog = ({ exercise, sessions, aliases, origin, ret
                     <ComposedChart accessibilityLayer data={history} margin={{ left: 0, right: 0, top: 22 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(d) => d.slice(5)} />
-                      <YAxis yAxisId="w" width={44} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" domain={['auto', 'auto']} />
-                      <YAxis yAxisId="v" orientation="right" width={44} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis yAxisId="w" width={44} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" domain={weightAxis.domain} ticks={weightAxis.ticks} />
+                      <YAxis yAxisId="v" orientation="right" width={44} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" domain={volumeAxis.domain} ticks={volumeAxis.ticks} />
                       <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
                       <Line yAxisId="w" type="linear" dataKey="topWeight" name="Top weight (kg)" stroke="hsl(var(--chart-actual))" strokeWidth={2.5} dot={(p) => <HistoryDot key={p.key} cx={p.cx} cy={p.cy} index={p.index} payload={p.payload} total={history.length} />} isAnimationActive={false} />
                       <Line yAxisId="v" type="linear" dataKey="volume" name="Volume (kg)" stroke="hsl(var(--chart-min))" strokeDasharray="5 4" dot={false} isAnimationActive={false} />

@@ -47,7 +47,9 @@ export type MetricColor = keyof typeof METRIC_COLORS;
 /** Categorical slices with no status meaning (time-of-day etc.). */
 export const CATEGORY_COLORS = [v('chart-3'), v('chart-1'), v('chart-2'), v('chart-4'), v('chart-5'), v('chart-actual')] as const;
 
-export const CHART_MARGIN = { top: 10, right: 10, left: 0, bottom: 0 } as const;
+// Room around the plot so nothing is cut: the biggest mark is the selected-point halo (dot radius 4 + 5 + stroke = ~10px).
+// The axis rule (src/lib/chartAxis.ts) also keeps data off the top edge with headroom.
+export const CHART_MARGIN = { top: 14, right: 12, left: 0, bottom: 0 } as const;
 export const CHART_Y_AXIS_WIDTH = 44;
 export const CHART_HEIGHT = 250;
 

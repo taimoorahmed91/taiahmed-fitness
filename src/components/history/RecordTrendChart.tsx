@@ -17,7 +17,8 @@ import { CHART_MARGIN, chartDotStroke, chartGridProps, chartLegendProps, chartTo
 import { CHART_RANGES, RANGE_LABELS, STANDARD_RANGES, todayUtc, type ChartRange } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
-import { barAxisNote, computeChartDomain } from '@/lib/chartDomain';
+import { axisBaseFor, barAxisNote, barsStartAtZero, computeYAxis, emptyTopFor } from '@/lib/chartAxis';
+import { curveFor, seriesHasGaps } from '@/lib/chartCurves';
 import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
 import { smallestRangeIncluding } from '@/lib/recordTrend';
 import { isCompareLinkCategory } from '@/lib/compareUrl';
@@ -99,11 +100,14 @@ export const RecordTrendChart = ({ id, title, icon, data, series, unit, defaultS
   const cardRef = useRef<HTMLDivElement>(null);
   const jumpRef = useRef<HTMLButtonElement>(null);
   const shown = useMemo(() => recentChartData(data, view.range), [data, view.range]);
+  // Same axis and curve rules as TrendChart (src/lib/chartAxis.ts, src/lib/chartCurves.ts).
   const { domain, ticks, floor } = useMemo(
-    () => computeChartDomain(shown.flatMap(row => series.map(s => row[s.key])), { cap, minPad: cap ? 1 : 0.5 }),
-    [shown, series, cap],
+    () => computeYAxis(shown.flatMap(row => series.map(s => row[s.key])), { base: axisBaseFor(id), bar: view.style === 'bar' && barsStartAtZero(id), ceiling: cap, minPad: cap ? 1 : 0.5, emptyTop: emptyTopFor(id) }),
+    [shown, series, id, view.style, cap],
   );
+  // Weight and waist bars keep the zoomed axis, so the caption and the screen reader summary say where the bars start.
   const axisNote = view.style === 'bar' ? barAxisNote(floor, unit) : null;
+  const curve = curveFor(id);
   const period = RANGE_LABELS[view.range];
   const emptyNoData = data.length === 0 ? (noData === undefined ? TREND_NO_DATA[id] : noData) : null;
   const summaryText = useMemo(() => `${describeSeries(shown, series.map(s => ({ key: s.key, label: s.label, unit })), period)}${axisNote ? ` ${axisNote}, not zero.` : ''}`, [shown, series, unit, period, axisNote]);
@@ -265,7 +269,7 @@ export const RecordTrendChart = ({ id, title, icon, data, series, unit, defaultS
             <Bar {...motion} key={s.key} dataKey={s.key} name={s.label} fill={s.color} maxBarSize={40} radius={[3, 3, 0, 0]} onClick={selectable ? selectableBarClick(selection, s.key) : undefined} onMouseDown={selectable ? selectableBarMouseDown : undefined}>
               {selectable ? selectableBarCells(shown, selection) : null}
             </Bar> :
-            <Line {...motion} key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? false : selectable ? selectableDot({ selection, seriesKey: s.key, color: s.color, r: chartDotRadius(3, shown.length, expanded), stroke: chartDotStroke }) : { r: chartDotRadius(3, shown.length, expanded), fill: s.color, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={selectable ? selectableActiveDot(5) : { r: 5 }} connectNulls />
+            <Line {...motion} key={s.key} type={curve} dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={s.dashed ? 2 : 3} strokeDasharray={s.dashed ? '8 5' : undefined} dot={s.dashed ? (seriesHasGaps(shown, s.key) ? { r: 3, fill: s.color, stroke: chartDotStroke, strokeWidth: 1 } : false) : selectable ? selectableDot({ selection, seriesKey: s.key, color: s.color, r: chartDotRadius(3, shown.length, expanded), stroke: chartDotStroke }) : { r: chartDotRadius(3, shown.length, expanded), fill: s.color, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={selectable ? selectableActiveDot(5) : { r: 5 }} />
           )}
           {selectedDayGuide(selection)}
           {compareGuides(compare)}

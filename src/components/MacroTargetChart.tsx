@@ -15,7 +15,8 @@ import { CHART_COLORS, CHART_MARGIN, chartDotStroke, chartGridProps, chartLegend
 import { RANGE_LABELS, formatChartDate, windowChartRows } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
-import { barAxisNote, computeChartDomain } from '@/lib/chartDomain';
+import { computeYAxis } from '@/lib/chartAxis';
+import { TARGET_CURVE, curveFor } from '@/lib/chartCurves';
 import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
 import { isObservedIntake, type IntakeKind } from '@/lib/macroIntake';
 
@@ -58,13 +59,11 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
 
   const shown = useMemo(() => windowChartRows(data, range), [data, range]);
 
-  // One Y axis for Line AND Bar (src/lib/chartDomain.ts), covering actual, min and max of every visible day.
-  const { domain, ticks, floor } = useMemo(
-    () => computeChartDomain(shown.flatMap((d) => [d.actual, d.min, d.max]), { minPad: 1 }),
-    [shown],
+  // One zero-based Y axis for Line AND Bar (src/lib/chartAxis.ts): the highest of actual, Min and Max over the visible days, plus headroom.
+  const { domain, ticks } = useMemo(
+    () => computeYAxis(shown.flatMap((d) => [d.actual, d.min, d.max]), { base: 'zero', bar: style === 'bar' }),
+    [shown, style],
   );
-  // Bars start at the axis floor, so when that is not zero the chart says so (visible caption + screen reader summary).
-  const axisNote = style === 'bar' ? barAxisNote(floor, unit) : null;
 
   const period = RANGE_LABELS[range];
   // Days with no observed actual are blank, not zero: say so on the chart.
@@ -77,7 +76,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
     ], period),
     [shown, unit, period],
   );
-  const summaryText = axisNote ? `${summary} ${axisNote}, not zero.` : summary;
+  const summaryText = summary;
   const columns = [{ key: 'date', label: 'Date' }, { key: 'actual', label: `Actual (${unit})` }, { key: 'min', label: `Min target (${unit})` }, { key: 'max', label: `Max target (${unit})` }];
 
   // The viewer's Table and CSV read these complete rows (the same ones the plot draws). A day without a target stays blank, never 0.
@@ -109,7 +108,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
         ? <ChartEmptyState action={NO_DATA.meals.action}>{NO_DATA.meals.message}</ChartEmptyState>
         : <ChartEmptyState>No intake data in this period. Try a wider date range.</ChartEmptyState>
     ) : (
-      <ChartFigure expanded={expanded} title={title} summary={summaryText} caption={`Values in ${unit} · ${period}${axisNote ? ` · ${axisNote}` : ''}${hasUnobserved ? ' · Blank = not fully logged' : ''}${selectable ? ` · Select a ${style === 'bar' ? 'bar' : 'point'} of actual intake for its day` : ''}`} table={{ columns, rows: shown }} afterPlot={expanded ? undefined : <><ChartDayReadout selection={selection} /><ChartCompareCardStrip compare={compare} /></>}>
+      <ChartFigure expanded={expanded} title={title} summary={summaryText} caption={`Values in ${unit} · ${period}${hasUnobserved ? ' · Blank = not fully logged' : ''}${selectable ? ` · Select a ${style === 'bar' ? 'bar' : 'point'} of actual intake for its day` : ''}`} table={{ columns, rows: shown }} afterPlot={expanded ? undefined : <><ChartDayReadout selection={selection} /><ChartCompareCardStrip compare={compare} /></>}>
         <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" tickFormatter={formatChartDate} {...chartXAxisFor(shown.length, expanded)} />
@@ -145,9 +144,9 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
             </>
           ) : (
             <>
-              <Line {...motion} type="monotone" dataKey="actual" stroke={CHART_COLORS.actual} strokeWidth={3.5} dot={selectable ? selectableDot({ selection, seriesKey: 'actual', color: CHART_COLORS.actual, r: chartDotRadius(4, shown.length, expanded), stroke: chartDotStroke, strokeWidth: 1.5 }) : { r: chartDotRadius(4, shown.length, expanded), fill: CHART_COLORS.actual, stroke: chartDotStroke, strokeWidth: 1.5 }} activeDot={selectable ? selectableActiveDot(6) : { r: 6 }} name="actual" />
-              <Line {...motion} type="monotone" dataKey="min" stroke={CHART_COLORS.min} strokeWidth={2} strokeDasharray="8 5" dot={false} activeDot={selectable ? selectableActiveDot(4) : undefined} name="min" connectNulls />
-              <Line {...motion} type="monotone" dataKey="max" stroke={CHART_COLORS.max} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} activeDot={selectable ? selectableActiveDot(4) : undefined} name="max" connectNulls />
+              <Line {...motion} type={curveFor('macro_actual')} dataKey="actual" stroke={CHART_COLORS.actual} strokeWidth={3.5} dot={selectable ? selectableDot({ selection, seriesKey: 'actual', color: CHART_COLORS.actual, r: chartDotRadius(4, shown.length, expanded), stroke: chartDotStroke, strokeWidth: 1.5 }) : { r: chartDotRadius(4, shown.length, expanded), fill: CHART_COLORS.actual, stroke: chartDotStroke, strokeWidth: 1.5 }} activeDot={selectable ? selectableActiveDot(6) : { r: 6 }} name="actual" />
+              <Line {...motion} type={TARGET_CURVE} dataKey="min" stroke={CHART_COLORS.min} strokeWidth={2} strokeDasharray="8 5" dot={false} activeDot={selectable ? selectableActiveDot(4) : undefined} name="min" connectNulls />
+              <Line {...motion} type={TARGET_CURVE} dataKey="max" stroke={CHART_COLORS.max} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" dot={false} activeDot={selectable ? selectableActiveDot(4) : undefined} name="max" connectNulls />
             </>
           )}
           {selectedDayGuide(selection)}

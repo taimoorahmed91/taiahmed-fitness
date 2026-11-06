@@ -18,6 +18,8 @@ import { RANGE_LABELS } from '@/lib/chartRange';
 import { describeSeries } from '@/lib/chartSummary';
 import { computeBodyRecomposition, RECOMP_LABELS } from '@/lib/crossMetricIntelligence';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { computeYAxis } from '@/lib/chartAxis';
+import { curveFor } from '@/lib/chartCurves';
 import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
 import { cn } from '@/lib/utils';
 
@@ -52,12 +54,10 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
     return recentChartData([...map.values()], view.range);
   }, [weight, waist, view.range]);
 
-  const domain = (key: 'weight' | 'waist') => {
-    const vals = data.map(d => d[key]).filter((v): v is number => typeof v === 'number');
-    if (!vals.length) return [0, 1];
-    const min = Math.min(...vals), max = Math.max(...vals), pad = Math.max(0.5, (max - min) * 0.1);
-    return [Math.max(0, Math.floor(min - pad)), Math.ceil(max + pad)];
-  };
+  // Each side has its own zoomed axis (kg on the left, cm on the right): different metrics never share a domain (src/lib/chartAxis.ts).
+  const weightAxis = useMemo(() => computeYAxis(data.map(d => d.weight), { base: 'zoom' }), [data]);
+  const waistAxis = useMemo(() => computeYAxis(data.map(d => d.waist), { base: 'zoom' }), [data]);
+  const curve = curveFor('body_recomposition');
 
   const columns = [{ key: 'date', label: 'Date' }, { key: 'weight', label: `Weight (${UNIT_LABEL.kilograms})` }, { key: 'waist', label: `Waist (${UNIT_LABEL.centimeters})` }];
   const summary = `${info.label}. ${info.message} Weight change ${fmt(result.weightDelta, UNIT_LABEL.kilograms)}, waist change ${fmt(result.waistDelta, UNIT_LABEL.centimeters)}. ${describeSeries(data, [
@@ -92,8 +92,8 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
         <ComposedChart accessibilityLayer data={data} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisFor(data.length, expanded)} />
-          <YAxis yAxisId="w" domain={domain('weight')} {...chartYAxisProps} tick={{ ...chartYAxisProps.tick, fill: METRIC_COLORS.weight }} />
-          <YAxis yAxisId="v" orientation="right" domain={domain('waist')} {...chartYAxisProps} tick={{ ...chartYAxisProps.tick, fill: METRIC_COLORS.waist }} />
+          <YAxis yAxisId="w" domain={weightAxis.domain} ticks={weightAxis.ticks} {...chartYAxisProps} tick={{ ...chartYAxisProps.tick, fill: METRIC_COLORS.weight }} />
+          <YAxis yAxisId="v" orientation="right" domain={waistAxis.domain} ticks={waistAxis.ticks} {...chartYAxisProps} tick={{ ...chartYAxisProps.tick, fill: METRIC_COLORS.waist }} />
           <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload, label }) => {
             if (!active || !payload?.length) return null;
             return <ChartTooltipCard title={chartDateLabel(String(label))} rows={payload.filter(p => p.value != null).map(p => ({
@@ -103,8 +103,10 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
             }))} />;
           }} />
           <Legend {...chartLegendProps} />
-          <Line {...motion} yAxisId="w" type="monotone" dataKey="weight" name={`Weight (${UNIT_LABEL.kilograms})`} stroke={METRIC_COLORS.weight} strokeWidth={3.5} dot={{ r: chartDotRadius(4, data.length, expanded), fill: METRIC_COLORS.weight, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
-          <Line {...motion} yAxisId="v" type="monotone" dataKey="waist" name={`Waist (${UNIT_LABEL.centimeters})`} stroke={METRIC_COLORS.waist} strokeWidth={2.5} strokeDasharray="8 5" dot={{ r: chartDotRadius(3, data.length, expanded), fill: METRIC_COLORS.waist, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
+          {/* The one place lines join across empty rows: weight and waist are measured on different days, so each line joins its own
+              entries (the dots are the real ones). Every other chart leaves gaps as gaps. */}
+          <Line {...motion} yAxisId="w" type={curve} dataKey="weight" name={`Weight (${UNIT_LABEL.kilograms})`} stroke={METRIC_COLORS.weight} strokeWidth={3.5} dot={{ r: chartDotRadius(4, data.length, expanded), fill: METRIC_COLORS.weight, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
+          <Line {...motion} yAxisId="v" type={curve} dataKey="waist" name={`Waist (${UNIT_LABEL.centimeters})`} stroke={METRIC_COLORS.waist} strokeWidth={2.5} strokeDasharray="8 5" dot={{ r: chartDotRadius(3, data.length, expanded), fill: METRIC_COLORS.waist, stroke: chartDotStroke, strokeWidth: 1 }} connectNulls />
           {compareGuides(compare, 'w')}
         </ComposedChart>
       </ChartFigure>

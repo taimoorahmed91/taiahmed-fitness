@@ -11,8 +11,8 @@ const dashboard = read('src/pages/Dashboard.tsx');
 const stats = read('src/components/StatsCards.tsx');
 
 describe('dashboard panel surface (v1.9)', () => {
-  test('the release shows version 1.11', () => {
-    expect(APP_VERSION).toBe('1.11');
+  test('the release shows version 1.12', () => {
+    expect(APP_VERSION).toBe('1.12');
   });
 
   test('panel tokens exist for both themes so chart cards can reuse them', () => {

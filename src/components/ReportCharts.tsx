@@ -6,6 +6,9 @@ import { ChartEmptyState } from '@/components/charts/ChartEmptyState';
 import { CHART_MARGIN, METRIC_COLORS, UNIT_LABEL, chartDotStroke, chartGridProps, chartLegendProps, chartTooltipProps, chartYAxisProps } from '@/lib/chartTheme';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartDotRadius, chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { computeYAxis } from '@/lib/chartAxis';
+import { curveFor } from '@/lib/chartCurves';
+import { useMemo } from 'react';
 import { createChartDataset, type ChartDatasetStatus } from '@/lib/chartViewerData';
 
 interface ReportChartsProps {
@@ -24,6 +27,10 @@ const EMPTY = 'No data in the selected report period.';
 
 export const ReportCharts = ({ data, status }: ReportChartsProps) => {
   const motion = chartMotionProps();
+  // Each axis is its own metric (src/lib/chartAxis.ts): calories and workout minutes are bars from 0, sleep hours a zoomed line.
+  const caloriesAxis = useMemo(() => computeYAxis(data.map((d) => d.calories), { bar: true }), [data]);
+  const workoutAxis = useMemo(() => computeYAxis(data.map((d) => d.workout), { bar: true }), [data]);
+  const sleepAxis = useMemo(() => computeYAxis(data.map((d) => d.sleep), { base: 'zoom' }), [data]);
   const comboColumns = [{ key: 'date', label: 'Date' }, { key: 'calories', label: `Calories (${UNIT_LABEL.calories})` }, { key: 'workout', label: `Workout (${UNIT_LABEL.minutes})` }];
   const sleepColumns = [{ key: 'date', label: 'Date' }, { key: 'sleep', label: `Sleep (${UNIT_LABEL.hours})` }];
 
@@ -50,8 +57,8 @@ export const ReportCharts = ({ data, status }: ReportChartsProps) => {
         <BarChart accessibilityLayer data={data} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" {...chartXAxisFor(data.length, expanded)} />
-          <YAxis yAxisId="left" {...chartYAxisProps} />
-          <YAxis yAxisId="right" orientation="right" {...chartYAxisProps} />
+          <YAxis yAxisId="left" domain={caloriesAxis.domain} ticks={caloriesAxis.ticks} {...chartYAxisProps} />
+          <YAxis yAxisId="right" orientation="right" domain={workoutAxis.domain} ticks={workoutAxis.ticks} {...chartYAxisProps} />
           <Tooltip {...chartTooltipProps} />
           <Legend {...chartLegendProps} />
           <Bar {...motion} yAxisId="left" dataKey="calories" fill={METRIC_COLORS.calories} name={`Calories (${UNIT_LABEL.calories})`} radius={[4, 4, 0, 0]} />
@@ -73,9 +80,9 @@ export const ReportCharts = ({ data, status }: ReportChartsProps) => {
         <LineChart accessibilityLayer data={data} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" {...chartXAxisFor(data.length, expanded)} />
-          <YAxis domain={[0, 12]} {...chartYAxisProps} />
+          <YAxis domain={sleepAxis.domain} ticks={sleepAxis.ticks} {...chartYAxisProps} />
           <Tooltip {...chartTooltipProps} />
-          <Line {...motion} type="monotone" dataKey="sleep" stroke={METRIC_COLORS.sleep} strokeWidth={3} name={`Sleep (${UNIT_LABEL.hours})`} dot={{ r: chartDotRadius(3, data.length, expanded), fill: METRIC_COLORS.sleep, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={{ r: 5 }} />
+          <Line {...motion} type={curveFor('report_sleep')} dataKey="sleep" stroke={METRIC_COLORS.sleep} strokeWidth={3} name={`Sleep (${UNIT_LABEL.hours})`} dot={{ r: chartDotRadius(3, data.length, expanded), fill: METRIC_COLORS.sleep, stroke: chartDotStroke, strokeWidth: 1 }} activeDot={{ r: 5 }} />
         </LineChart>
       </ChartFigure>
     )

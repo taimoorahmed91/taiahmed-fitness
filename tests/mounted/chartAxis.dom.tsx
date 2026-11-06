@@ -2,8 +2,9 @@ import { describe, test, beforeAll as before, afterAll as after, afterEach, befo
 import assert from 'node:assert/strict';
 import { click, installDom, loadJsdom, sleep } from './support/domHarness';
 
-// Line and Bar share one Y axis on the switchable charts. A 91 -> 92 kg change must be visible in Bar mode, the
-// axis must show its real (non-zero) start, and the full-screen viewer must use the identical axis and note.
+// The Y axis of the switchable charts (src/lib/chartAxis.ts). Weight and waist use ONE zoomed axis for Line and Bar (a 91 -> 92 kg
+// change must be visible in Bar mode, with an "Axis starts at" note); quantities (calories, minutes, sleep hours) start at 0 in Bar mode.
+// The full-screen viewer uses the identical axis and note as the card.
 // ResponsiveContainer is replaced by a fixed-size one so Recharts draws real SVG in jsdom; reduced motion is on.
 // Run via tests/laneBMountedRunner.test.ts (own process).
 const JSDOM = await loadJsdom();
@@ -137,21 +138,25 @@ describe('mounted: shared Y-axis domain for line and bar', () => {
     assert.match(src, /value: formatChartValue\(Number\(p\.value\), unit\)/);
   });
 
-  test('other TrendCharts keep sane axes: Duration reaches zero (no note), Sleep stays zoomed with a note, Recovery stays within 0..100', async () => {
+  test('other TrendCharts: Duration and Sleep bars start at 0 (no note), Recovery stays within 0..100 with headroom, and the range switch recomputes', async () => {
     const { WorkoutDurationChart } = await import('../../src/components/WorkoutDurationChart');
     const { SleepChart } = await import('../../src/components/SleepChart');
     const { RecoveryChart } = await import('../../src/components/RecoveryChart');
     for (const id of ['workout_duration', 'sleep', 'recovery']) { env.window.localStorage.setItem(`fittrack_chart_${id}_style`, 'bar'); env.window.localStorage.setItem(`fittrack_chart_${id}_range`, '14'); }
     const host = await mountNode(React.createElement('div', null,
-      React.createElement(WorkoutDurationChart, { data: days(10).map((date, i) => ({ date, duration: 20 + i * 5 })) }),
+      React.createElement(WorkoutDurationChart, { data: days(10).map((date, i) => ({ date, duration: i === 0 ? 200 : 20 + i * 5 })) }),
       React.createElement(SleepChart, { data: days(10).map((date, i) => ({ date, hours: 5 + (i % 5) })) }),
       React.createElement(RecoveryChart, { data: days(10).map((date, i) => ({ date, recovery: 40 + i * 6 })) })));
     const cards = [...host.querySelectorAll('[data-chart-header]')].map((h) => h.closest('.shadow-md')!);
     const num = (t: string) => Number(t.replace(/,/g, ''));
     const [dur, sleep, rec] = cards.map((c) => ({ t: ticks(c).map(num), cap: caption(c) }));
-    assert.equal(dur.t[0], 0); assert.equal(/Axis starts at/.test(dur.cap), false);
-    assert.ok(sleep.t[0] > 0 && sleep.t[0] <= 5); assert.match(sleep.cap, new RegExp(`Axis starts at ${sleep.t[0]} hrs`));
-    assert.ok(rec.t.at(-1)! === 100 && rec.t[0] >= 0 && rec.t[0] <= 40);
+    assert.equal(dur.t[0], 0); assert.ok(dur.t.at(-1)! >= 200 * 1.12);
+    assert.equal(sleep.t[0], 0); assert.ok(sleep.t.at(-1)! >= 9 * 1.12); assert.equal(/Axis starts at/.test(sleep.cap), false);
+    assert.equal(rec.t[0], 0); assert.equal(rec.t.at(-1), 100);
+    // Switching the Duration range to 7 days drops the 200 min day (the oldest): the axis is recomputed from what is on screen.
+    await pick(cards[0], 'Workout Duration range', 'Last 7 days');
+    const after = ticks(cards[0]).map(num);
+    assert.ok(after[0] === 0 && after.at(-1)! >= 65 * 1.12 && after.at(-1)! < dur.t.at(-1)!, `recomputed: ${dur.t} -> ${after}`);
   });
 
   test('state stays per chart: the Waist chart keeps its own style while Weight changes', async () => {

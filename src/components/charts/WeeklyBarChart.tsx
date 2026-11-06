@@ -10,6 +10,7 @@ import { NoteDiamond } from './NoteDiamond';
 import { CHART_MARGIN, chartGridProps, chartTooltipProps, chartYAxisProps, formatChartValue } from '@/lib/chartTheme';
 import { describeSeries } from '@/lib/chartSummary';
 import { chartMotionProps, chartXAxisFor } from '@/lib/chartViewer';
+import { computeYAxis } from '@/lib/chartAxis';
 import { createChartDataset } from '@/lib/chartViewerData';
 
 export interface WeeklyDay { date: string; fullDate: string; [key: string]: string | number }
@@ -47,6 +48,8 @@ export const WeeklyBarChart = ({ title, icon, data, valueKey, label, unit, color
   // The viewer's Table and CSV: the same seven days the plot draws.
   const dataset = createChartDataset({ name: title, period: 'Last 7 days', rows, columns: [{ key: 'date', label: 'Date' }, { key: valueKey, label, unit }] });
 
+  // Bars from 0 up to the highest day plus headroom (src/lib/chartAxis.ts).
+  const axis = computeYAxis(data.map((d) => d[valueKey]), { bar: true });
   const motion = chartMotionProps();
   // The card and the full-screen viewer draw the same chart from the same data; only `expanded` differs.
   const body = (expanded: boolean) => (
@@ -63,7 +66,7 @@ export const WeeklyBarChart = ({ title, icon, data, valueKey, label, unit, color
         <BarChart accessibilityLayer data={data} margin={{ ...CHART_MARGIN, top: 20 }}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" {...chartXAxisFor(data.length, expanded)} />
-          <YAxis {...chartYAxisProps} />
+          <YAxis domain={axis.domain} ticks={axis.ticks} {...chartYAxisProps} />
           <Tooltip cursor={chartTooltipProps.cursor} content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const day = payload[0].payload as WeeklyDay;
