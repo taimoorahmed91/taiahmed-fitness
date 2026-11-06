@@ -23,6 +23,10 @@ export const CHART_COLORS = {
   warn: v('chart-warn'),
   muted: v('muted-foreground'),
   grid: v('border'),
+  /** Hairline gridlines, the axis line and the hover cursor (alpha tokens, see index.css). Decorative: data never relies on them. */
+  gridline: v('chart-gridline'),
+  axisline: v('chart-axisline'),
+  cursor: v('chart-cursor'),
   card: v('card'),
   foreground: v('foreground'),
 } as const;
@@ -52,7 +56,7 @@ const tick = { fill: CHART_COLORS.muted, fontSize: MIN_CHART_FONT_SIZE };
 export const chartXAxisProps = {
   tick,
   tickLine: false,
-  axisLine: { stroke: CHART_COLORS.grid },
+  axisLine: { stroke: CHART_COLORS.axisline },
   minTickGap: 16,
 } as const;
 
@@ -63,28 +67,32 @@ export const chartYAxisProps = {
   width: CHART_Y_AXIS_WIDTH,
 } as const;
 
+// Solid hairlines, not dashes: the Min / Max target lines are dashed and dotted, so a solid, faint grid keeps targets
+// clearly apart from it.
 export const chartGridProps = {
-  strokeDasharray: '3 3',
   vertical: false,
-  stroke: CHART_COLORS.grid,
+  stroke: CHART_COLORS.gridline,
 } as const;
 
 /** For Recharts' default tooltip. Custom tooltips use ChartTooltipCard instead. */
 export const chartTooltipProps = {
   contentStyle: {
-    backgroundColor: CHART_COLORS.card,
-    border: `1px solid ${CHART_COLORS.grid}`,
-    borderRadius: 8,
+    backgroundColor: 'hsl(var(--popover) / 0.97)',
+    border: '1px solid hsl(var(--panel-edge) / 0.2)',
+    borderRadius: 10,
+    boxShadow: '0 14px 32px -12px hsl(var(--panel-shadow) / 0.7)',
+    padding: '8px 12px',
     color: CHART_COLORS.foreground,
     fontSize: MIN_CHART_FONT_SIZE,
   },
-  labelStyle: { color: CHART_COLORS.foreground, fontWeight: 600, fontSize: MIN_CHART_FONT_SIZE },
-  itemStyle: { fontSize: MIN_CHART_FONT_SIZE },
-  cursor: { fill: 'hsl(var(--muted) / 0.5)' },
+  labelStyle: { color: CHART_COLORS.foreground, fontWeight: 600, fontSize: MIN_CHART_FONT_SIZE, marginBottom: 2 },
+  itemStyle: { fontSize: MIN_CHART_FONT_SIZE, paddingTop: 1, paddingBottom: 1 },
+  // A soft band behind the hovered bars; on line charts the same colour is the thin vertical cursor.
+  cursor: { fill: CHART_COLORS.cursor, stroke: CHART_COLORS.axisline, strokeWidth: 1, strokeDasharray: '2 3' },
 } as const;
 
 export const chartLegendProps = {
-  wrapperStyle: { fontSize: MIN_CHART_FONT_SIZE, color: CHART_COLORS.muted },
+  wrapperStyle: { fontSize: MIN_CHART_FONT_SIZE, color: CHART_COLORS.muted, paddingTop: 6 },
 } as const;
 
 export const chartDotStroke = CHART_COLORS.card;

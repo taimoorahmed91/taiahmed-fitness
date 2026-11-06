@@ -65,7 +65,7 @@ export interface SelectableDotOptions {
  * the hit area underneath, so press and release land on different elements and the browser never sends a click.
  * Give it `pointer-events: none` when the line is selectable.
  */
-export const selectableActiveDot = (r: number) => ({ r, style: { pointerEvents: 'none' as const } });
+export const selectableActiveDot = (r: number) => ({ r, stroke: CHART_COLORS.card, strokeWidth: 2, style: { pointerEvents: 'none' as const } });
 
 /** Hit area radius: at least 10px around every real point, so a finger is not asked to land on a 3px dot. */
 const HIT_RADIUS = 10;
@@ -83,7 +83,7 @@ export const selectableDot = ({ selection, seriesKey, color, r, stroke, strokeWi
     const selected = !!point && selection.isSelectedRow(point.rowId);
     return (
       <g key={props.key} data-chart-point={point ? String(isoDate) : undefined} data-selected={selected ? '' : undefined}>
-        {selected && <circle cx={cx} cy={cy} r={r + 5} fill="none" stroke={SELECTED_STROKE} strokeWidth={2} pointerEvents="none" />}
+        {selected && <circle cx={cx} cy={cy} r={r + 5} fill="hsl(var(--foreground) / 0.14)" stroke={SELECTED_STROKE} strokeWidth={2} pointerEvents="none" />}
         <circle cx={cx} cy={cy} r={selected ? r + 1.5 : r} fill={color} stroke={stroke} strokeWidth={strokeWidth} pointerEvents="none" />
         {point && (
           <circle

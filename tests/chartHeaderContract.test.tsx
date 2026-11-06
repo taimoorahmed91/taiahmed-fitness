@@ -100,7 +100,7 @@ describe('PDF button stays reachable and named at every width', () => {
     assert.equal(/max-\[359px\]:hidden/.test(src), false);
   });
   test('icon-only width still meets 44px, and the button never shrinks away inside the controls group', () => {
-    assert.match(src, /className="min-w-11 shrink-0 text-xs"/);
+    assert.match(src, /className="chart-action min-w-11 shrink-0 text-xs"/);
   });
 });
 

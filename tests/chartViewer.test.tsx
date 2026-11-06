@@ -107,8 +107,8 @@ describe('ChartFigure in the viewer', () => {
     assert.ok(EXPANDED_CHART_MIN_HEIGHT >= 360);
     const out = figure(true);
     assert.match(out, /data-chart-expanded=""/);
-    assert.match(out, new RegExp(`data-chart-plot="" class="relative w-full flex-1" style="min-height:${EXPANDED_CHART_MIN_HEIGHT}px"`));
-    assert.match(out, /absolute inset-0/);
+    assert.match(out, new RegExp(`data-chart-plot="" class="chart-plot relative w-full flex-1" style="min-height:${EXPANDED_CHART_MIN_HEIGHT}px"`));
+    assert.match(out, /absolute inset-x-1 inset-y-1\.5/);
   });
   test('the card figure is unchanged: no expanded marker, no plot box', () => {
     const out = figure(false);

@@ -53,16 +53,17 @@ export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEI
       {caption && <p className="mb-2 text-xs text-muted-foreground">{caption}</p>}
       {expanded ? (
         // The absolutely placed inner box gives ResponsiveContainer a real pixel size to measure, whatever the flex parent does.
-        <div data-chart-plot="" className="relative w-full flex-1" style={{ minHeight: EXPANDED_CHART_MIN_HEIGHT }}>
-          <div className="absolute inset-0"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div>
+        <div data-chart-plot="" className="chart-plot relative w-full flex-1" style={{ minHeight: EXPANDED_CHART_MIN_HEIGHT }}>
+          <div className="absolute inset-x-1 inset-y-1.5"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>
+        // Same height as before: the sunken plot surface is only a background, it adds no height (only a little side padding so the axis numbers do not touch its edge).
+        <div className="chart-plot px-1.5"><ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer></div>
       )}
       {afterPlot}
       {/* The same summary screen readers get, available to everyone on demand. Closed by default so
           it never pushes the chart around; aria-describedby still reads it while collapsed. */}
-      <details data-chart-summary data-html2canvas-ignore="true" className="mt-2 text-xs text-muted-foreground">
+      <details data-chart-summary data-html2canvas-ignore="true" className="chart-footer mt-2 text-xs text-muted-foreground">
         <summary className="inline-flex min-h-8 cursor-pointer items-center rounded-sm px-1 font-medium underline-offset-4 [@media(hover:hover)]:hover:text-foreground [@media(hover:hover)]:hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11">
           Chart summary
         </summary>

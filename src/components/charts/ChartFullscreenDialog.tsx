@@ -124,6 +124,7 @@ const ViewerPanel = ({ title, captureRef, children, viewer }: { title: string; c
         <div data-chart-viewer-toolbar="" data-html2canvas-ignore="true" className="sticky top-0 z-10 flex shrink-0 flex-wrap items-center gap-2 bg-background pb-2 pt-3">
           <SegmentedControl<ViewerMode>
             size="sm"
+            className="chart-segmented"
             ariaLabel={`${title} view`}
             value={mode}
             onValueChange={(next) => { setMode(next); setExported(null); }}
@@ -135,6 +136,7 @@ const ViewerPanel = ({ title, captureRef, children, viewer }: { title: string; c
               variant="outline"
               size="sm"
               data-chart-sort=""
+              className="chart-action"
               aria-label={`Order: ${describeTableOrder(dataset, direction).toLowerCase()}. Switch to ${direction === 'newest-first' ? 'oldest' : 'newest'} first.`}
               onClick={() => setDirection((d) => (d === 'newest-first' ? 'oldest-first' : 'newest-first'))}
             >
@@ -147,7 +149,7 @@ const ViewerPanel = ({ title, captureRef, children, viewer }: { title: string; c
             variant="outline"
             size="sm"
             data-chart-csv=""
-            className="sm:ml-auto"
+            className="chart-action sm:ml-auto"
             disabled={!exportable}
             aria-label={exportable ? `Download ${title} as CSV, ${n} ${n === 1 ? 'row' : 'rows'}` : `CSV download unavailable: ${unavailable ? 'data is unavailable' : 'no rows in this range'}`}
             title={exportable ? 'Every row of this range, oldest first' : undefined}
@@ -230,7 +232,7 @@ export const ChartExpandButton = forwardRef<HTMLButtonElement, { title: string }
       type="button"
       variant="outline"
       size="sm"
-      className={`min-w-11 shrink-0 px-0 ${className ?? ''}`.trim()}
+      className={`chart-action min-w-11 shrink-0 px-0 ${className ?? ''}`.trim()}
       aria-label={`Open ${title} in full screen`}
       title="Full screen"
       data-chart-expand=""

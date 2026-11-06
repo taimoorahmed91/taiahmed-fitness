@@ -194,7 +194,7 @@ describe('chart controls never widen the page', () => {
     assert.match(src, /<div className="min-w-0 max-w-full" data-html2canvas-ignore="true">/);
     // The old one-row "range + style" group is gone: ChartHeader owns the two-row layout.
     assert.equal(/export const ChartViewControls\b/.test(src), false);
-    assert.match(src, /className="max-w-full flex-wrap \[&>button\]:px-2"/);
+    assert.match(src, /className="chart-segmented max-w-full flex-wrap \[&>button\]:px-2"/);
   });
   test('touch targets are still 44px (the shared control keeps its coarse-pointer sizes)', () => {
     const control = read('src/components/ui/segmented-control.tsx');

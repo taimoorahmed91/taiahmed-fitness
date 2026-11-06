@@ -89,6 +89,11 @@ All colors MUST be HSL.
     --chart-min: 145 72% 25%;
     --chart-max: 353 80% 41%;
     --chart-warn: 40 100% 27%;
+    /* Plot furniture (decorative, so no contrast floor): gridlines are hairlines well below the data, the axis line a step
+       above them, the hover cursor between the two. Alpha is part of the value: use as hsl(var(--chart-gridline)). */
+    --chart-gridline: 0 0% 0% / 0.09;
+    --chart-axisline: 0 0% 0% / 0.28;
+    --chart-cursor: 0 0% 0% / 0.07;
 
     /* Change-tile tones (Weight and Waist history). Soft hues used only as low-opacity tints and borders,
        plus a full-strength arrow. Text on the tiles stays foreground / muted-foreground, so contrast never
@@ -185,6 +190,9 @@ All colors MUST be HSL.
     --chart-min: 145 65% 55%;
     --chart-max: 5 90% 68%;
     --chart-warn: 43 96% 56%;
+    --chart-gridline: 0 0% 100% / 0.08;
+    --chart-axisline: 0 0% 100% / 0.28;
+    --chart-cursor: 0 0% 100% / 0.07;
     --delta-up: 5 62% 66%;
     --delta-down: 145 40% 56%;
     --delta-flat: 27 95% 60%;
@@ -526,6 +534,84 @@ All colors MUST be HSL.
       background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
     }
   }
+  /* ---- Chart controls (every chart card, the full-screen viewer and the other pages that show charts) ----
+     One look for the range selector, the line/bar switch and the PDF / full screen / CSV buttons, so a header reads as one
+     row of matching parts. Same 36px height on a mouse, 44px+ on touch (the shared controls already carry that).
+     Selected = a soft orange wash with a thin orange outline (drawn by ::after, so the keyboard focus ring, which is a
+     box-shadow, is never replaced). Hover = a faint lift. Orange marks "selected" only; data colours are untouched. */
+  .chart-segmented.chart-segmented {
+    padding: 2px;
+    background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+    box-shadow: inset 0 0 0 1px hsl(var(--panel-edge) / var(--panel-well-edge-alpha));
+  }
+  .chart-segmented [role='radio'] {
+    position: relative;
+  }
+  .chart-segmented [role='radio'][data-state='unchecked'] {
+    color: hsl(var(--muted-foreground));
+  }
+  @media (hover: hover) {
+    .chart-segmented [role='radio'][data-state='unchecked']:hover {
+      color: hsl(var(--foreground));
+      background-color: hsl(var(--foreground) / 0.07);
+    }
+  }
+  .chart-segmented [role='radio'][data-state='checked'] {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    background-color: hsl(var(--glow-accent) / 0.16);
+    /* Drop the default shadow through its variable, so the focus ring (also a box-shadow) still draws. */
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-colored: 0 0 #0000;
+  }
+  .chart-segmented [role='radio'][data-state='checked']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    border: 1px solid hsl(var(--glow-accent) / 0.6);
+    box-shadow: 0 0 12px -3px hsl(var(--glow-accent) / 0.35);
+  }
+  /* PDF, full screen and CSV buttons: the same sunken surface as the segmented controls. The border stays visible
+     (about 3:1 against the card) and the Tailwind focus ring is left alone. */
+  .chart-action.chart-action {
+    background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+    border-color: hsl(var(--foreground) / 0.36);
+    color: hsl(var(--foreground));
+    transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
+  }
+  @media (hover: hover) {
+    .chart-action.chart-action:hover {
+      background-color: hsl(var(--glow-accent) / 0.1);
+      border-color: hsl(var(--glow-accent) / 0.65);
+      color: hsl(var(--foreground));
+    }
+  }
+  .chart-action.chart-action:active {
+    background-color: hsl(var(--glow-accent) / 0.18);
+  }
+  /* The plot: a faintly sunken area so the lines and bars sit on their own surface inside the card. */
+  .chart-plot {
+    border-radius: 0.5rem;
+    background: linear-gradient(180deg, hsl(var(--panel-well) / var(--panel-well-alpha)), hsl(var(--panel-well) / calc(var(--panel-well-alpha) * 0.4)));
+    box-shadow: inset 0 0 0 1px hsl(var(--panel-edge) / calc(var(--panel-well-edge-alpha) * 0.7));
+  }
+  /* The hover tooltip: a raised panel, one step above the card, with a hairline under the date. */
+  .chart-tooltip {
+    background: hsl(var(--popover) / 0.97);
+    border: 1px solid hsl(var(--panel-edge) / 0.2);
+    box-shadow:
+      inset 0 1px 0 hsl(var(--panel-highlight) / var(--panel-highlight-alpha)),
+      0 14px 32px -12px hsl(var(--panel-shadow) / calc(var(--panel-shadow-alpha) + 0.15));
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  /* "Chart summary" toggle row: separated from the plot by a hairline, like the footer of the panel. */
+  .chart-footer {
+    border-top: 1px solid hsl(var(--panel-edge) / var(--panel-well-edge-alpha));
+  }
+
   /* A card that is a link (the reminder tiles). Only these react to the pointer: a soft orange edge and glow, never a
      move or resize, so nothing shifts. Hover is limited to devices that really hover. The link's own focus ring stays. */
   @media (min-width: 768px) {
