@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
  * caller's own `p-*` class still replaces it exactly as before. A card that needs
  * a different rhythm can set `[--card-pad:0.75rem]` on the Card itself.
  *
- * Every Card carries a bare `data-card` attribute. It changes nothing by itself: it is the hook a page-level
- * wrapper (today `.dashboard-surface`, see index.css) uses to restyle the cards inside it, so no other page changes.
+ * Every Card carries a bare `data-card` attribute: the hook index.css uses to give EVERY card the premium panel look (layered charcoal,
+ * fine edge, soft shadow; v1.15, app-wide). A card with its own status tint adds `data-card-tone` to keep its own fill and border.
  */
 
 export type CardHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";

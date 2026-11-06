@@ -100,7 +100,7 @@ export const WorkoutExerciseCard = memo((props: WorkoutExerciseCardProps) => {
 
   return (
     <Collapsible open={expanded} onOpenChange={(open) => onToggle(index, open)}>
-      <div data-workout-exercise={index} className={cn('rounded-lg border transition-colors', complete ? 'border-primary/30 bg-primary/10' : 'bg-card')}>
+      <div data-workout-exercise={index} className={cn('rounded-lg border transition-colors', complete ? 'border-primary/30 bg-primary/10' : 'panel-surface bg-card')}>
         <CollapsibleTrigger asChild>
           <Button
             type="button"

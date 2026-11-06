@@ -126,7 +126,7 @@ export const AppLayout = ({ children }: { children?: ReactNode }) => {
   return (
     <ShellContext.Provider value>
       <GlobalRefreshContext.Provider value={globalRefresh}>
-        <div className={`min-h-dvh bg-background ${BOTTOM_BAR_VAR_CLASS}`}>
+        <div className={`app-backdrop min-h-dvh bg-background ${BOTTOM_BAR_VAR_CLASS}`}>
           <AppHeader
             drawerOpen={drawerOpen}
             onDrawerOpenChange={handleDrawerOpenChange}

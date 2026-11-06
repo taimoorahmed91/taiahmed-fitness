@@ -423,8 +423,9 @@ All colors MUST be HSL.
    - edge: a fine 1px border, low contrast on purpose. highlight: the lit top rim. shadow: the soft drop under the card.
    - well: a sunken inner area (meal rows, inputs' surroundings) a touch darker than the card.
    - Orange is NOT in the panel. It only appears on interactive states (--glow-accent, from the glass tokens above).
-   Utilities: .panel-surface (opt-in look for any card), .dashboard-surface (page wrapper that applies it to every Card inside,
-   from 768px up), .panel-link (a linked card: lift + orange edge on hover/focus), .panel-well (inner sunken area). */
+   App-wide since v1.15: every [data-card] takes the panel look; fields (.field-glass), raised surfaces (.surface-raised), buttons,
+   tabs and tables share these same tokens. Utilities: .panel-surface (opt-in look for any element), .panel-link (a linked card:
+   lift + orange edge on hover/focus), .panel-well (inner sunken area). */
 @layer base {
   :root {
     --panel-fill-top: 0 0% 100%;
@@ -439,6 +440,8 @@ All colors MUST be HSL.
     --panel-well: 0 0% 0%;
     --panel-well-alpha: 0.035;
     --panel-well-edge-alpha: 0.08;
+    --surface-raised-alpha: 0.96;
+    --backdrop-wash-alpha: 0.05;
   }
   html.dark {
     --panel-fill-top: 0 0% 17.5%;
@@ -453,6 +456,8 @@ All colors MUST be HSL.
     --panel-well: 0 0% 0%;
     --panel-well-alpha: 0.26;
     --panel-well-edge-alpha: 0.07;
+    --surface-raised-alpha: 0.95;
+    --backdrop-wash-alpha: 0.07;
   }
 }
 
@@ -502,7 +507,7 @@ All colors MUST be HSL.
 }
 
 @layer components {
-  /* The panel look itself. Not used directly: .panel-surface and .dashboard-surface both apply it, so the two can
+  /* The panel look itself. Not used directly: .panel-surface and the app-wide [data-card] rule both apply it, so the two can
      never drift apart. No backdrop blur on purpose: the page behind a card is flat, so a blur would cost paint time
      on every card and show nothing. */
   .panel-surface-look {
@@ -515,25 +520,147 @@ All colors MUST be HSL.
       0 1px 2px hsl(var(--panel-shadow) / calc(var(--panel-shadow-alpha) * 0.6)),
       0 10px 26px -14px hsl(var(--panel-shadow) / var(--panel-shadow-alpha));
   }
-  /* Opt-in for one card. Doubled class so it beats the Card's own bg-card / shadow-sm utilities. */
+  /* Opt-in for one non-Card element. Doubled class so it beats bg-card / shadow-sm utilities. */
   .panel-surface.panel-surface {
     @apply panel-surface-look;
   }
-  /* Page wrapper: every Card inside gets the panel look from 768px up. Phones keep the plain card. */
-  @media (min-width: 768px) {
-    .dashboard-surface [data-card] {
-      @apply panel-surface-look;
-    }
-    /* Sunken inner area inside a card (list rows). */
-    .dashboard-surface .panel-well {
-      background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
-      border-color: hsl(var(--panel-edge) / var(--panel-well-edge-alpha));
-    }
-    /* A selector or field inside a card sits a little deeper than the card. Border and focus ring are left alone. */
-    .dashboard-surface [data-card] [role='combobox'] {
-      background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+  /* App-wide (v1.15): EVERY Card (every page, dialog and sheet, phone and desktop) gets the panel look. Doubled attribute so it beats the
+     Card's own bg-card / shadow-sm utilities. Cards that carry their own status tint (data-card-tone: a red, amber or orange card) keep
+     their own fill and border and only take the soft shadow. A Card inside a Card is a sunken area, not a second raised panel.
+     No backdrop blur here: a page can hold dozens of cards. */
+  [data-card][data-card]:not([data-card-tone]) {
+    @apply panel-surface-look;
+  }
+  [data-card][data-card][data-card-tone] {
+    box-shadow:
+      inset 0 1px 0 hsl(var(--panel-highlight) / var(--panel-highlight-alpha)),
+      0 10px 26px -14px hsl(var(--panel-shadow) / var(--panel-shadow-alpha));
+  }
+  [data-card][data-card] [data-card][data-card]:not([data-card-tone]) {
+    background: hsl(var(--panel-well) / var(--panel-well-alpha));
+    border-color: hsl(var(--panel-edge) / var(--panel-well-edge-alpha));
+    box-shadow: none;
+  }
+  /* Sunken inner area inside a card (list rows). */
+  .panel-well.panel-well {
+    background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+    border-color: hsl(var(--panel-edge) / var(--panel-well-edge-alpha));
+  }
+
+  /* ---- Fields (v1.15): text inputs, text areas and select triggers (the `field-glass` class on the primitive) ----
+     A sunken glass well: a darker fill, a soft inner shadow at the top and a faint lit edge at the bottom. The border colour stays
+     the shared --input token (so the field edge keeps its 3:1 contrast). The Tailwind focus ring (a box-shadow, same specificity,
+     emitted later) replaces the inner shadow while the field has focus, exactly as before; focus also tints the border orange. */
+  .field-glass.field-glass {
+    background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+    box-shadow:
+      inset 0 1px 2px hsl(var(--panel-shadow) / calc(var(--panel-shadow-alpha) * 0.45)),
+      0 1px 0 hsl(var(--panel-highlight) / calc(var(--panel-highlight-alpha) * 0.7));
+    transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
+  }
+  .field-glass.field-glass:focus-visible,
+  .field-glass.field-glass[data-state='open'] {
+    border-color: hsl(var(--glow-accent) / 0.7);
+  }
+  @media (hover: hover) {
+    .field-glass.field-glass:hover:not(:disabled):not(:focus-visible) {
+      border-color: hsl(var(--glow-accent) / 0.45);
     }
   }
+
+  /* ---- Raised surfaces (v1.15): dropdown, select list, popover, tooltip, dialog, alert dialog ----
+     One step above a card: top-lit glass, a lit edge, a soft deep shadow, a light blur of what is behind (these are one at a time, so the blur is
+     cheap). The same look as the Previous Day popover and the chart tooltip. The navigation drawer keeps its own .glass-panel. */
+  .surface-raised.surface-raised {
+    border-color: hsl(var(--panel-edge) / calc(var(--panel-edge-alpha) + 0.08));
+    background:
+      linear-gradient(180deg, hsl(var(--panel-highlight) / var(--panel-highlight-alpha)) 0%, hsl(var(--panel-highlight) / 0) 5rem),
+      linear-gradient(hsl(var(--popover) / var(--surface-raised-alpha)), hsl(var(--popover) / var(--surface-raised-alpha)));
+    box-shadow:
+      inset 0 1px 0 hsl(var(--panel-highlight) / var(--panel-highlight-alpha)),
+      0 22px 48px -16px hsl(var(--panel-shadow) / calc(var(--panel-shadow-alpha) + 0.1)),
+      0 4px 14px -6px hsl(var(--panel-shadow) / calc(var(--panel-shadow-alpha) * 0.7));
+    -webkit-backdrop-filter: blur(14px) saturate(1.25);
+    backdrop-filter: blur(14px) saturate(1.25);
+  }
+  /* The dimmer behind a dialog: a hint of blur so the page recedes. */
+  .overlay-glass {
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+
+  /* ---- Buttons (v1.15). Primary keeps its orange and destructive its red: only a lit top edge and a soft shadow are added. ---- */
+  .btn-solid-glass {
+    box-shadow:
+      inset 0 1px 0 hsl(var(--panel-highlight) / 0.28),
+      inset 0 -1px 0 hsl(var(--panel-shadow) / 0.14),
+      0 1px 2px hsl(var(--panel-shadow) / 0.3);
+  }
+  @media (hover: hover) {
+    .btn-primary-glass:hover:not(:disabled):not([aria-disabled='true']) {
+      box-shadow:
+        inset 0 1px 0 hsl(var(--panel-highlight) / 0.3),
+        inset 0 -1px 0 hsl(var(--panel-shadow) / 0.14),
+        0 6px 18px -8px hsl(var(--glow-accent) / 0.6);
+    }
+  }
+  .btn-outline-glass.btn-outline-glass {
+    background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+    box-shadow:
+      inset 0 1px 2px hsl(var(--panel-shadow) / calc(var(--panel-shadow-alpha) * 0.35)),
+      0 1px 0 hsl(var(--panel-highlight) / calc(var(--panel-highlight-alpha) * 0.7));
+  }
+  .btn-secondary-glass {
+    background-image: linear-gradient(180deg, hsl(var(--panel-highlight) / calc(var(--panel-highlight-alpha) + 0.03)), hsl(var(--panel-highlight) / 0));
+    box-shadow:
+      inset 0 1px 0 hsl(var(--panel-highlight) / var(--panel-highlight-alpha)),
+      0 1px 2px hsl(var(--panel-shadow) / calc(var(--panel-shadow-alpha) * 0.5));
+  }
+
+  /* ---- Tabs (v1.15): the same sunken track with an orange-washed selected pill as the chart controls ---- */
+  .segmented-glass.segmented-glass {
+    padding: 2px;
+    background-color: hsl(var(--panel-well) / var(--panel-well-alpha));
+    box-shadow: inset 0 0 0 1px hsl(var(--panel-edge) / var(--panel-well-edge-alpha));
+  }
+  .segmented-glass [role='tab'] {
+    position: relative;
+    color: hsl(var(--muted-foreground));
+  }
+  @media (hover: hover) {
+    .segmented-glass [role='tab'][data-state='inactive']:hover {
+      color: hsl(var(--foreground));
+      background-color: hsl(var(--foreground) / 0.07);
+    }
+  }
+  .segmented-glass [role='tab'][data-state='active'] {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    background-color: hsl(var(--glow-accent) / 0.16);
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-colored: 0 0 #0000;
+  }
+  .segmented-glass [role='tab'][data-state='active']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    border: 1px solid hsl(var(--glow-accent) / 0.6);
+    box-shadow: 0 0 12px -3px hsl(var(--glow-accent) / 0.35);
+  }
+
+  /* ---- Tables (v1.15): a faint lit header band. Rows only react to the pointer when they are interactive (data-interactive). ---- */
+  .table-glass thead {
+    background: linear-gradient(180deg, hsl(var(--panel-highlight) / calc(var(--panel-highlight-alpha) * 0.6)), hsl(var(--panel-highlight) / 0));
+  }
+
+  /* ---- Page backdrop (v1.15): a faint warm wash at the top of the first screen so cards have something to sit on. Static, one element. ---- */
+  .app-backdrop {
+    background-image: radial-gradient(80% 36rem at 50% -8rem, hsl(var(--glow-accent) / var(--backdrop-wash-alpha)), hsl(var(--glow-accent) / 0) 70%);
+    background-repeat: no-repeat;
+  }
+
   /* ---- Chart controls (every chart card, the full-screen viewer and the other pages that show charts) ----
      One look for the range selector, the line/bar switch and the PDF / full screen / CSV buttons, so a header reads as one
      row of matching parts. Same 36px height on a mouse, 44px+ on touch (the shared controls already carry that).
@@ -614,19 +741,19 @@ All colors MUST be HSL.
 
   /* A card that is a link (the reminder tiles). Only these react to the pointer: a soft orange edge and glow, never a
      move or resize, so nothing shifts. Hover is limited to devices that really hover. The link's own focus ring stays. */
-  @media (min-width: 768px) {
-    .dashboard-surface .panel-link [data-card] {
+  @media all {
+    .panel-link [data-card] {
       transition: border-color 0.18s ease-out, box-shadow 0.18s ease-out;
     }
-    .dashboard-surface .panel-link .panel-chevron {
+    .panel-link .panel-chevron {
       transition: transform 0.18s ease-out, color 0.18s ease-out;
     }
-    .dashboard-surface .panel-link:focus-visible [data-card] {
+    .panel-link:focus-visible [data-card] {
       border-color: hsl(var(--glow-accent) / 0.5);
     }
   }
-  @media (min-width: 768px) and (hover: hover) {
-    .dashboard-surface .panel-link:hover [data-card] {
+  @media (hover: hover) {
+    .panel-link:hover [data-card] {
       border-color: hsl(var(--glow-accent) / 0.5);
       box-shadow:
         inset 0 1px 0 hsl(var(--panel-highlight) / var(--panel-highlight-alpha)),
@@ -634,7 +761,7 @@ All colors MUST be HSL.
         0 0 22px -8px hsl(var(--glow-accent) / 0.35),
         0 10px 26px -14px hsl(var(--panel-shadow) / var(--panel-shadow-alpha));
     }
-    .dashboard-surface .panel-link:hover .panel-chevron {
+    .panel-link:hover .panel-chevron {
       transform: translateX(2px);
       color: hsl(var(--glow-accent));
     }

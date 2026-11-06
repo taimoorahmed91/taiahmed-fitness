@@ -36,7 +36,7 @@ const ExerciseBlock = ({ exercise, history, tallHeader }: { exercise: ParsedExer
     </>
   );
   return (
-    <div className="min-w-0 overflow-hidden rounded-lg border bg-card">
+    <div className="panel-surface min-w-0 overflow-hidden rounded-lg border bg-card">
       {history ? (
         // A real button beside the number, 44px tall, never inside the row's own disclosure button.
         <div className="flex items-center gap-2.5 border-b bg-muted/40 pl-3 text-sm font-semibold">

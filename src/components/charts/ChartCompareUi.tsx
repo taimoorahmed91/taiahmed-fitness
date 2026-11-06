@@ -243,7 +243,7 @@ const Pickers = ({ compare, point }: { compare: ChartComparePicks; point: PointC
             data-compare-select={slot}
             value={compare[slot]?.recordId ?? ''}
             onChange={(event) => point.setSlotTo(slot, event.target.value)}
-            className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:h-11"
+            className="field-glass h-10 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:h-11"
           >
             <option value="">Choose a {point.noun}</option>
             {point.options.map((option) => {

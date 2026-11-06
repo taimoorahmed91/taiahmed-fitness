@@ -369,7 +369,7 @@ const Gym = () => {
       />
 
       {draftView.status === 'unreadable' && !activeTemplate && (
-        <Card className="border-destructive/50 bg-destructive/5">
+        <Card data-card-tone="" className="border-destructive/50 bg-destructive/5">
           <CardContent role="alert" className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
@@ -387,7 +387,7 @@ const Gym = () => {
       )}
 
       {draftView.claimable.map((q) => (
-        <Card key={q.id} className="border-chart-warn/50">
+        <Card data-card-tone="" key={q.id} className="border-chart-warn/50">
           <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-chart-warn" aria-hidden="true" />
@@ -417,7 +417,7 @@ const Gym = () => {
       ))}
 
       {pausedWorkout && !activeTemplate && (
-        <Card className="border-primary/40 bg-primary/5">
+        <Card data-card-tone="" className="border-primary/40 bg-primary/5">
           <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
             <div className="flex items-center gap-3">
               <PlayCircle className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
@@ -452,7 +452,7 @@ const Gym = () => {
         const daysAgo = daysSinceTemplate(sessions, tpl.name, todayStr);
         const recent = !doneToday && isRecentlyDone(daysAgo);
         return (
-          <Card className={recent ? 'border-accent-foreground/50' : 'border-primary/40'}>
+          <Card data-card-tone="" className={recent ? 'border-accent-foreground/50' : 'border-primary/40'}>
             <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
               <div className="flex items-center gap-3 min-w-0">
                 <CalendarCheck className={`h-5 w-5 shrink-0 ${recent ? 'text-accent-foreground' : 'text-primary'}`} aria-hidden="true" />

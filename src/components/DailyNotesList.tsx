@@ -84,7 +84,7 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
               {pagination.paginatedItems.map((note) => (
                 <div
                   key={note.id}
-                  className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  className="panel-surface p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">

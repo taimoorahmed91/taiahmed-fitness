@@ -99,7 +99,7 @@ export const MealRemainingSummary = ({ eaten, max, className }: { eaten: number;
       role="group"
       aria-label="Calories left today"
       data-meal-remaining-summary
-      className={cn('flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3', className)}
+      className={cn('panel-surface flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3', className)}
     >
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{over ? 'Over today\'s max by' : 'Left today'}</p>

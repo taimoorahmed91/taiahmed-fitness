@@ -48,7 +48,7 @@ function SegmentedControl<T extends string = string>({
       value={value}
       onValueChange={(next) => next && onValueChange(next as T)}
       className={cn(
-        "items-center gap-0.5 rounded-lg bg-muted p-1 text-muted-foreground",
+        "chart-segmented items-center gap-0.5 rounded-lg bg-muted p-1 text-muted-foreground",
         fullWidth ? "grid w-full auto-cols-fr grid-flow-col" : "inline-flex",
         className,
       )}

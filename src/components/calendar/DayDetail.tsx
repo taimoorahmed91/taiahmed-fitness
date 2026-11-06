@@ -42,7 +42,7 @@ export const DayDetail = forwardRef<HTMLElement, DayDetailProps>(({ iso, entries
   const unavailable = mode === 'unavailable';
   const showAgenda = !loading && !unavailable && sections.length > 0;
   return (
-    <section ref={ref} data-day-detail={iso} aria-labelledby={headingId} className={cn('scroll-mt-20 rounded-lg border bg-card text-card-foreground shadow-sm', className)}>
+    <section ref={ref} data-day-detail={iso} aria-labelledby={headingId} className={cn('panel-surface scroll-mt-20 rounded-lg border bg-card text-card-foreground shadow-sm', className)}>
       <header className={cn('flex items-start justify-between gap-2 p-[var(--card-pad)]', showAgenda || unavailable ? 'pb-3' : '')}>
         <div className="min-w-0">
           <h2 id={headingId} tabIndex={-1} className="text-lg font-semibold leading-snug tracking-tight focus:outline-none">

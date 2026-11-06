@@ -33,13 +33,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground [@media(hover:hover)]:hover:bg-primary-hover active:bg-primary-active [@media(hover:hover)]:hover:active:bg-primary-active",
+          "btn-solid-glass btn-primary-glass bg-primary text-primary-foreground [@media(hover:hover)]:hover:bg-primary-hover active:bg-primary-active [@media(hover:hover)]:hover:active:bg-primary-active",
         destructive:
-          "bg-destructive text-destructive-foreground [@media(hover:hover)]:hover:bg-destructive-hover active:bg-destructive-active [@media(hover:hover)]:hover:active:bg-destructive-active",
+          "btn-solid-glass bg-destructive text-destructive-foreground [@media(hover:hover)]:hover:bg-destructive-hover active:bg-destructive-active [@media(hover:hover)]:hover:active:bg-destructive-active",
         outline:
-          "border border-input bg-background [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-accent-foreground active:bg-accent active:text-accent-foreground",
+          "btn-outline-glass border border-input bg-background [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-accent-foreground active:bg-accent active:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground [@media(hover:hover)]:hover:bg-secondary-hover active:bg-secondary-active [@media(hover:hover)]:hover:active:bg-secondary-active",
+          "btn-secondary-glass bg-secondary text-secondary-foreground [@media(hover:hover)]:hover:bg-secondary-hover active:bg-secondary-active [@media(hover:hover)]:hover:active:bg-secondary-active",
         ghost:
           "[@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-accent-foreground active:bg-accent active:text-accent-foreground",
         link: "text-primary underline-offset-4 [@media(hover:hover)]:hover:underline [--press-scale:1]",

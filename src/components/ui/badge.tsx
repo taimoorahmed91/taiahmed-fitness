@@ -11,7 +11,7 @@ const badgeVariants = cva(
         default: "border-transparent bg-primary text-primary-foreground [@media(hover:hover)]:hover:bg-primary-hover",
         secondary: "border-transparent bg-secondary text-secondary-foreground [@media(hover:hover)]:hover:bg-secondary-hover",
         destructive: "border-transparent bg-destructive text-destructive-foreground [@media(hover:hover)]:hover:bg-destructive-hover",
-        outline: "text-foreground",
+        outline: "border-foreground/20 bg-[hsl(var(--panel-well)/var(--panel-well-alpha))] text-foreground",
       },
     },
     defaultVariants: {

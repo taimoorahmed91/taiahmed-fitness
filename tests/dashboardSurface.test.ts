@@ -11,8 +11,8 @@ const dashboard = read('src/pages/Dashboard.tsx');
 const stats = read('src/components/StatsCards.tsx');
 
 describe('dashboard panel surface (v1.9)', () => {
-  test('the release shows version 1.14', () => {
-    expect(APP_VERSION).toBe('1.14');
+  test('the release shows version 1.15', () => {
+    expect(APP_VERSION).toBe('1.15');
   });
 
   test('panel tokens exist for both themes so chart cards can reuse them', () => {
@@ -28,12 +28,10 @@ describe('dashboard panel surface (v1.9)', () => {
     expect(html).not.toContain('panel-');
   });
 
-  test('only the dashboard page turns the wrapper on, and the restyle starts at 768px', () => {
-    expect(dashboard).toContain('<PageContainer className="dashboard-surface">');
-    const media = css.indexOf('@media (min-width: 768px) {\n    .dashboard-surface [data-card]');
-    expect(media).toBeGreaterThan(-1);
-    // No unscoped rule restyles every Card in the app.
-    expect(css).not.toMatch(/(^|\n)\s*\[data-card\]\s*\{/);
+  test('since v1.15 the panel look is app-wide: no page wrapper is needed any more', () => {
+    expect(dashboard).not.toContain('dashboard-surface');
+    expect(css).not.toContain('.dashboard-surface');
+    expect(css).toContain('[data-card][data-card]:not([data-card-tone]) {');
   });
 
   test('orange appears only on interactive states: linked tiles get panel-link, static cards do not', () => {
@@ -46,7 +44,7 @@ describe('dashboard panel surface (v1.9)', () => {
   });
 
   test('hover lift is limited to devices that hover, and the link keeps its keyboard focus ring', () => {
-    expect(css).toContain('@media (min-width: 768px) and (hover: hover)');
+    expect(css).toMatch(/@media \(hover: hover\) \{\s*\.panel-link:hover \[data-card\]/);
     expect(stats).toContain('focus-visible:ring-2');
   });
 });

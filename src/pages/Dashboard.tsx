@@ -311,7 +311,7 @@ const Dashboard = () => {
   } as const;
 
   return (
-    <PageContainer className="dashboard-surface">
+    <PageContainer>
       <PageHeader
         title="Dashboard"
         description="Track your nutrition and fitness progress"
