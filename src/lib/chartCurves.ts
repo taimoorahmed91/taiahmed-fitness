@@ -1,36 +1,36 @@
 // How lines are drawn between points, per chart. Pure and React free.
 //
-// Recharts offers many curve types. 'natural', 'basis' and 'cardinal' can overshoot (a smooth line dips below a real low
-// or rises above a real high, so the picture shows values nobody logged). This app uses only three:
-//  - 'monotone'  smooth, and NEVER leaves the range of the two points it joins (no overshoot). For slow, continuous
-//                body measures where the day in between really was somewhere in between: weight, waist.
-//  - 'linear'    straight segments. For daily totals and scores that jump from day to day (calories, protein, carbs,
-//                sleep hours, workout minutes, recovery %, calorie balance): a curve would suggest a smooth change
-//                that never happened.
-//  - 'step'      for Min / Max target lines. Each day has its own target (a gym day and a rest day differ), so the
-//                line holds one value per day and changes halfway between two days instead of sliding between them.
+// Every line chart is drawn as a smooth curve. The curve type is 'monotone' on purpose: Recharts' other smooth types
+// ('natural', 'basis', 'cardinal') can overshoot (a smooth line dips below a real low or rises above a real high, so the
+// picture shows values nobody logged). 'monotone' stays smooth but NEVER leaves the range of the two points it joins,
+// so every recorded value is still drawn exactly where it was logged. This applies to actual values and to the
+// Min / Max target lines alike.
 //
 // Missing values (null) are gaps, not data: lines are NOT joined across them (connectNulls stays off), and a point that is
 // left alone between two gaps still shows as a dot so it never disappears.
 
-export type LineCurve = 'linear' | 'monotone' | 'step';
+export type LineCurve = 'monotone';
 
-/** Chart id (the `id` TrendChart / RecordTrendChart get, or the name used below) to its curve. Unlisted ids use 'linear'. */
+/** The one curve used by every line chart. */
+export const SMOOTH_CURVE: LineCurve = 'monotone';
+
+/** Chart id (the `id` TrendChart / RecordTrendChart get, or the name used below) to its curve. Unlisted ids are smooth too. */
 export const CHART_CURVE: Readonly<Record<string, LineCurve>> = {
-  weight: 'monotone',
-  waist: 'monotone',
-  body_recomposition: 'monotone',
-  sleep: 'linear',
-  recovery: 'linear',
-  workout_duration: 'linear',
-  calorie_balance: 'linear',
-  macro_actual: 'linear',
-  report_sleep: 'linear',
+  weight: SMOOTH_CURVE,
+  waist: SMOOTH_CURVE,
+  body_recomposition: SMOOTH_CURVE,
+  sleep: SMOOTH_CURVE,
+  recovery: SMOOTH_CURVE,
+  workout_duration: SMOOTH_CURVE,
+  calorie_balance: SMOOTH_CURVE,
+  macro_actual: SMOOTH_CURVE,
+  report_sleep: SMOOTH_CURVE,
+  exercise_history: SMOOTH_CURVE,
 };
 
-export const TARGET_CURVE: LineCurve = 'step';
+export const TARGET_CURVE: LineCurve = SMOOTH_CURVE;
 
-export const curveFor = (chartId: string): LineCurve => CHART_CURVE[chartId] ?? 'linear';
+export const curveFor = (chartId: string): LineCurve => CHART_CURVE[chartId] ?? SMOOTH_CURVE;
 
 /** True when the series has a real value somewhere AND an empty one somewhere else: there is at least one gap. */
 export const seriesHasGaps = (rows: ReadonlyArray<Record<string, unknown>>, key: string): boolean => {

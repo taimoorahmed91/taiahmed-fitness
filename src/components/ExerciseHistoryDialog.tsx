@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { buildExerciseHistory, type ExerciseHistoryOrigin, type ExerciseHistoryRow } from '@/lib/workoutExerciseHistory';
 import type { ExerciseAliases } from '@/lib/exerciseAliases';
 import { computeYAxis } from '@/lib/chartAxis';
+import { curveFor } from '@/lib/chartCurves';
 import { GymSession } from '@/types';
 
 interface Props {
@@ -148,8 +149,8 @@ export const ExerciseHistoryDialog = ({ exercise, sessions, aliases, origin, ret
                       <YAxis yAxisId="w" width={44} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" domain={weightAxis.domain} ticks={weightAxis.ticks} />
                       <YAxis yAxisId="v" orientation="right" width={44} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" domain={volumeAxis.domain} ticks={volumeAxis.ticks} />
                       <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
-                      <Line yAxisId="w" type="linear" dataKey="topWeight" name="Top weight (kg)" stroke="hsl(var(--chart-actual))" strokeWidth={2.5} dot={(p) => <HistoryDot key={p.key} cx={p.cx} cy={p.cy} index={p.index} payload={p.payload} total={history.length} />} isAnimationActive={false} />
-                      <Line yAxisId="v" type="linear" dataKey="volume" name="Volume (kg)" stroke="hsl(var(--chart-min))" strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+                      <Line yAxisId="w" type={curveFor('exercise_history')} dataKey="topWeight" name="Top weight (kg)" stroke="hsl(var(--chart-actual))" strokeWidth={2.5} dot={(p) => <HistoryDot key={p.key} cx={p.cx} cy={p.cy} index={p.index} payload={p.payload} total={history.length} />} isAnimationActive={false} />
+                      <Line yAxisId="v" type={curveFor('exercise_history')} dataKey="volume" name="Volume (kg)" stroke="hsl(var(--chart-min))" strokeDasharray="5 4" dot={false} isAnimationActive={false} />
                     </ComposedChart>
                   </ChartFigure>
                 )}

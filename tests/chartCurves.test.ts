@@ -6,19 +6,18 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const lines = (src: string) => src.match(/<Line [^>]*>/g) ?? [];
 
 describe('curve choice per chart (documented in src/lib/chartCurves.ts)', () => {
-  test('smooth only where the measure is continuous: weight, waist, body recomposition', () => {
-    for (const id of ['weight', 'waist', 'body_recomposition']) expect(curveFor(id)).toBe('monotone');
+  test('every chart is drawn with a smooth curve', () => {
+    for (const id of ['weight', 'waist', 'body_recomposition', 'sleep', 'recovery', 'workout_duration', 'calorie_balance', 'macro_actual', 'report_sleep', 'exercise_history', 'unlisted-chart']) {
+      expect(curveFor(id)).toBe('monotone');
+    }
   });
-  test('daily totals and scores are drawn with straight segments', () => {
-    for (const id of ['sleep', 'recovery', 'workout_duration', 'calorie_balance', 'macro_actual', 'report_sleep', 'unlisted-chart']) expect(curveFor(id)).toBe('linear');
+  test('Min / Max target lines are smooth too', () => {
+    expect(TARGET_CURVE).toBe('monotone');
   });
-  test('targets hold one value per day (step), so a gym / rest change is a step, not a slide', () => {
-    expect(TARGET_CURVE).toBe('step');
-  });
-  test('no overshooting curve type exists anywhere', () => {
-    for (const curve of [...Object.values(CHART_CURVE), TARGET_CURVE]) expect(['linear', 'monotone', 'step']).toContain(curve);
-    for (const file of ['TrendChart', 'MacroTargetChart', 'history/RecordTrendChart', 'BodyRecompositionCard', 'ReportCharts']) {
-      expect(read(`src/components/${file}.tsx`)).not.toMatch(/type="(natural|basis|cardinal|bump|monotone)"/);
+  test('the smooth curve never overshoots: only monotone is used, never straight segments or overshooting types', () => {
+    for (const curve of [...Object.values(CHART_CURVE), TARGET_CURVE]) expect(curve).toBe('monotone');
+    for (const file of ['TrendChart', 'MacroTargetChart', 'history/RecordTrendChart', 'BodyRecompositionCard', 'ReportCharts', 'ExerciseHistoryDialog']) {
+      expect(read(`src/components/${file}.tsx`)).not.toMatch(/type="(natural|basis|cardinal|bump|monotone|linear|step|stepAfter|stepBefore)"/);
     }
   });
 });
@@ -31,7 +30,7 @@ describe('every Line takes its curve from the shared rule', () => {
       expect(lines(src).every((l) => l.includes('type={curve}'))).toBe(true);
     }
   });
-  test('MacroTargetChart: actual is linear, Min and Max are steps', () => {
+  test('MacroTargetChart: actual and Min / Max take the shared smooth curve', () => {
     const ls = lines(read('src/components/MacroTargetChart.tsx'));
     expect(ls).toHaveLength(3);
     expect(ls.find((l) => l.includes('dataKey="actual"'))).toContain("type={curveFor('macro_actual')}");
@@ -41,6 +40,11 @@ describe('every Line takes its curve from the shared rule', () => {
     expect(lines(read('src/components/BodyRecompositionCard.tsx')).every((l) => l.includes('type={curve}'))).toBe(true);
     expect(read('src/components/BodyRecompositionCard.tsx')).toContain("curveFor('body_recomposition')");
     expect(read('src/components/ReportCharts.tsx')).toContain("type={curveFor('report_sleep')}");
+  });
+  test('the exercise history dialog lines use the shared smooth curve', () => {
+    const ls = lines(read('src/components/ExerciseHistoryDialog.tsx'));
+    expect(ls).toHaveLength(2);
+    expect(ls.every((l) => l.includes("type={curveFor('exercise_history')}"))).toBe(true);
   });
 });
 
