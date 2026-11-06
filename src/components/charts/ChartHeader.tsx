@@ -14,19 +14,21 @@ import { cn } from '@/lib/utils';
  *
  *   [ icon  Title                          ]   1. title
  *   [ one-line description                 ]   2. description (optional)
- *   [ 7D  14D  30D  90D  All               ]   3. control row 1: the date range, always alone
- *   [ line/bar ]  [ PDF ]  [ full screen ]     4. control row 2: line/bar (if the chart has it), then PDF
- *                                                 and full screen, always together
+ *   [ 7D  14D  30D  90D  All     [line|bar] ]   3. control row 1: the date range on the left, the line/bar switch
+ *                                                 (if the chart has it) right-aligned on the SAME row
+ *   [ PDF ]  [ full screen ]                   4. control row 2: PDF and full screen, always together
  *   [ badges / change lines (optional)     ]   5. extra full-width rows
  *
- * - Range-only charts (no line/bar): row 2 is PDF + full screen. Fixed-window charts (no range): row 1 is
+ * - Range-only charts (no line/bar): row 1 is just the range. Fixed-window charts (no range): row 1 is
  *   absent and row 2 is just full screen (+ PDF if the chart has one).
+ * - Row 1 holds range + switch. When the card is too narrow for both (a phone), the switch wraps to its own line
+ *   and stays right-aligned (`ml-auto`); nothing overflows. Keyboard and reading order: range, then switch.
  * - Nothing is ever placed beside the title: no desktop one-liner, no wrapping surprises. Rows 3 and 4 are
  *   block rows, so the result does not depend on how wide the card happens to be. Row 2 is a never-wrapping
- *   unit (about 240px at 320px wide), so PDF and full screen can never strand alone.
+ *   unit (about 150px), so PDF and full screen can never strand alone.
  * - Every control is 44px on touch screens (the shared controls carry that), and the rows may shrink and
  *   wrap inside the card, so nothing widens the page.
- * - The full-screen viewer (ChartFullscreenDialog) shows the SAME two rows in the SAME order, built from the
+ * - The full-screen viewer (ChartFullscreenDialog) shows the SAME two rows with the SAME parts, built from the
  *   same pieces with the same setters. From md up it lays row 1 and row 2 out side by side to save height;
  *   the order and grouping do not change, and it has no second full-screen button.
  * - Every chart card must decide: `viewer={{ render }}` offers the viewer (a bigger chart with the same state),
@@ -94,24 +96,34 @@ const GROUP_CLASS: Record<ControlsGroupProps['layout'], string> = {
   viewer: 'flex min-w-0 max-w-full flex-col items-start gap-2 md:flex-row md:flex-wrap md:items-center md:gap-x-3',
 };
 
+/** Row 1: the range on the left, the line/bar switch right-aligned. The switch wraps (still right-aligned) when there is no room. */
+const RANGE_ROW_CLASS: Record<ControlsGroupProps['layout'], string> = {
+  card: 'flex w-full min-w-0 max-w-full flex-wrap items-center justify-between gap-x-3 gap-y-2',
+  viewer: 'flex w-full min-w-0 max-w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 md:w-auto',
+};
+
 /**
- * Row 1: the range. Row 2 (a never-split unit): style, extra actions, PDF, full screen.
+ * Row 1: the range, with the line/bar switch right-aligned on the same row. Row 2 (a never-split unit): extra actions, PDF, full screen.
  * The card and the full-screen viewer both render this, so they always show and change the same state.
  */
 const ChartControlsGroup = ({ title, view, pdf, actions, popOut, layout }: ControlsGroupProps) => {
   const hasStyle = !!view?.style && !!view.setStyle;
-  const hasTrailing = hasStyle || !!pdf || !!actions || !!popOut;
+  const hasTrailing = !!pdf || !!actions || !!popOut;
   if (!view && !hasTrailing) return null;
   return (
     <div data-chart-controls="" data-chart-layout={layout} data-html2canvas-ignore="true" className={GROUP_CLASS[layout]}>
       {view && (
-        <div data-chart-controls-row="range" className="min-w-0 max-w-full">
+        <div data-chart-controls-row="range" className={RANGE_ROW_CLASS[layout]}>
           <ChartRangeControls range={view.range} setRange={view.setRange} extended={view.extended} label={title} />
+          {hasStyle && (
+            <div data-chart-style-slot="" className="ml-auto shrink-0">
+              <ChartStyleControl style={view.style!} setStyle={view.setStyle!} label={title} />
+            </div>
+          )}
         </div>
       )}
       {hasTrailing && (
         <div data-chart-controls-row="actions" data-chart-actions="" className="flex shrink-0 items-center gap-2">
-          {hasStyle && <ChartStyleControl style={view!.style!} setStyle={view!.setStyle!} label={title} />}
           {actions}
           {pdf && <ChartPdfButton targetRef={pdf.targetRef} title={title} subtitle={pdf.subtitle} columns={pdf.columns} rows={pdf.rows} />}
           {popOut}

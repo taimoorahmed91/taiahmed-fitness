@@ -181,18 +181,23 @@ describe('mounted: full-screen chart viewer', () => {
   const order = (root: ParentNode) => [...root.querySelectorAll('[data-chart-controls-row], [aria-label$="chart type"], [aria-label^="Download"], [data-chart-expand]')].map((e) =>
     e.hasAttribute('data-chart-controls-row') ? `row:${e.getAttribute('data-chart-controls-row')}` : e.hasAttribute('data-chart-expand') ? 'expand' : (e.getAttribute('aria-label') ?? '').startsWith('Download') ? 'pdf' : 'style');
 
-  test('control rows: every card is [range row] then [style?, PDF, full screen]; the viewer keeps the same order without a second full-screen button', async () => {
+  test('control rows: every card is [range row] then [style?, PDF, full screen]; the viewer keeps the same parts without a second full-screen button', async () => {
     const host = await charts();
     const headers = [...host.querySelectorAll('[data-chart-header]')];
     assert.equal(headers.length, 4);
-    const expectCard = { 'Weight Trend': ['row:range', 'row:actions', 'style', 'pdf', 'expand'], Sleep: ['row:range', 'row:actions', 'style', 'pdf', 'expand'], 'Calories by Time of Day': ['row:range', 'row:actions', 'pdf', 'expand'], 'Protein: Actual vs Target': ['row:range', 'row:actions', 'style', 'pdf', 'expand'] } as Record<string, string[]>;
+    const expectCard = { 'Weight Trend': ['row:range', 'style', 'row:actions', 'pdf', 'expand'], Sleep: ['row:range', 'style', 'row:actions', 'pdf', 'expand'], 'Calories by Time of Day': ['row:range', 'row:actions', 'pdf', 'expand'], 'Protein: Actual vs Target': ['row:range', 'style', 'row:actions', 'pdf', 'expand'] } as Record<string, string[]>;
     for (const h of headers) {
       const title = h.querySelector('h3')!.textContent!;
       assert.deepEqual(order(h), expectCard[title], title);
-      // Range row and actions row are siblings: the range is alone in its row, at every width.
+      // Range row and actions row are siblings: row 1 holds the four range options and (when the chart has it) the line/bar switch,
+      // right-aligned in its own slot; PDF and full screen are only in row 2.
       const rows = [...h.querySelectorAll('[data-chart-controls-row]')];
-      assert.equal(rows[0].querySelectorAll('button, [role="radio"]').length, 4, `${title}: only the four range options in row 1`);
+      const hasStyle = expectCard[title].includes('style');
+      assert.equal(rows[0].querySelectorAll('[role="radio"]').length, hasStyle ? 6 : 4, `${title}: four range options${hasStyle ? ' + the two line/bar options' : ''} in row 1`);
       assert.equal(rows[0].querySelector('[data-chart-actions]'), null);
+      assert.equal(rows[0].querySelector('[data-chart-style-slot]') !== null, hasStyle, `${title}: switch slot`);
+      if (hasStyle) assert.ok(rows[0].querySelector('[data-chart-style-slot]')!.classList.contains('ml-auto'));
+      assert.equal(rows[1].querySelector('[role="radio"]'), null, `${title}: no radio controls in the actions row`);
     }
     for (const title of ['Weight Trend', 'Calories by Time of Day']) {
       const d = await open(title);

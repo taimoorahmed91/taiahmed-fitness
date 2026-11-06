@@ -41,16 +41,18 @@ describe('ChartHeader layout contract', () => {
     assert.equal(out.includes('data-chart-controls'), false);
     assert.match(out, /Avg: 1/);
   });
-  test('range + style + PDF: one controls group, range first, then style and PDF together in the actions unit', () => {
+  test('range + style + PDF: one controls group; range and the line/bar switch share the range row (range first), PDF is in the actions unit', () => {
     const out = card(createElement(ChartHeader, { title: 'Weight Trend', view: { range: '30', setRange: noop, style: 'line', setStyle: noop }, pdf }));
     const group = controlsOf(out);
     assert.equal(out.match(/data-chart-controls=""/g)?.length, 1);
     assert.match(group, /aria-label="Weight Trend range"/);
+    const rangeRow = group.slice(group.indexOf('data-chart-controls-row="range"'), group.indexOf('data-chart-controls-row="actions"'));
     const actions = group.slice(group.indexOf('data-chart-actions'));
-    assert.match(actions, /aria-label="Weight Trend chart type"/);
+    assert.match(rangeRow, /aria-label="Weight Trend range"/);
+    assert.match(rangeRow, /aria-label="Weight Trend chart type"/);
+    assert.ok(rangeRow.indexOf('range"') < rangeRow.indexOf('chart type'), 'range before the line/bar switch (keyboard order)');
+    assert.equal(actions.includes('chart type'), false, 'the switch is not in the actions unit any more');
     assert.match(actions, /aria-label="Download Weight Trend as PDF"/);
-    assert.ok(group.indexOf('range"') < group.indexOf('data-chart-actions'), 'range before the actions unit');
-    assert.ok(actions.indexOf('chart type') < actions.indexOf('Download'), 'style before PDF');
     assert.equal(group.slice(0, group.indexOf('data-chart-actions')).includes('Download'), false, 'PDF is not outside the actions unit');
   });
   test('range-only chart: no line/bar switch, PDF still sits in the controls group', () => {
@@ -72,15 +74,16 @@ describe('ChartHeader layout contract', () => {
     // The title block (title + description) is its own block above the controls, at every width.
     assert.match(src, /<div data-chart-text="" className="min-w-0 space-y-1">/);
     assert.match(src, /data-chart-description="" className="min-w-0 text-sm text-muted-foreground"/);
-    // Card controls: a column of two rows at every width. No wrap / order / justify tricks.
+    // Card controls: a column of two rows at every width. No order tricks. Row 1 (range + switch) may wrap its switch, right-aligned.
     assert.match(src, /card: 'flex min-w-0 max-w-full flex-col items-start gap-2'/);
     // Row 2 is a never-wrapping, never-shrinking unit; row 1 may shrink inside the card.
     assert.match(src, /data-chart-controls-row="actions" data-chart-actions="" className="flex shrink-0 items-center gap-2"/);
-    assert.match(src, /data-chart-controls-row="range" className="min-w-0 max-w-full"/);
+    assert.match(src, /data-chart-controls-row="range" className=\{RANGE_ROW_CLASS\[layout\]\}/);
+    assert.match(src, /card: 'flex w-full min-w-0 max-w-full flex-wrap items-center justify-between gap-x-3 gap-y-2'/);
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '');
-    assert.equal(/\border-\d|\bsm:order|justify-between|basis-full|sm:min-h|sm:\[@media/.test(code), false, 'no ad hoc reordering or desktop one-liner');
+    assert.equal(/\border-\d|\bsm:order|basis-full|sm:min-h|sm:\[@media/.test(code), false, 'no ad hoc reordering or desktop one-liner');
     const card = /card: '([^']+)'/.exec(src)![1];
-    assert.equal(/\bwrap\b|flex-wrap|\b(sm|md|lg|xl):/.test(card), false, 'the card layout has no breakpoint or wrap variants');
+    assert.equal(/\bwrap\b|flex-wrap|\b(sm|md|lg|xl):/.test(card), false, 'the card controls column has no breakpoint or wrap variants');
     // Exactly two group instances: the card and the viewer.
     assert.equal(code.match(/<ChartControlsGroup\b/g)?.length, 2);
     assert.match(code, /layout="card"/);
@@ -168,19 +171,34 @@ const outline = (out: string) =>
 
 describe('header structure and order (exact)', () => {
   const viewer = { render: () => createElement('p') };
-  test('range + line/bar chart: title, description, range row alone, then [style, PDF, full screen]', () => {
+  test('range + line/bar chart: title, description, range row (range, then the switch), then [PDF, full screen]', () => {
     const out = card(createElement(ChartHeader, { title: 'Weight', description: 'Latest', view: { range: '30', setRange: noop, style: 'line', setStyle: noop }, pdf, viewer }));
-    assert.deepEqual(outline(out), ['title', 'description', 'row:range', 'row:actions', 'style', 'pdf', 'expand']);
+    assert.deepEqual(outline(out), ['title', 'description', 'row:range', 'style', 'row:actions', 'pdf', 'expand']);
+  });
+  test('the line/bar switch sits in the range row and is right-aligned (ml-auto slot, space between), after the range options', () => {
+    const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop, style: 'bar', setStyle: noop }, pdf, viewer }));
+    const rangeRow = out.slice(out.indexOf('data-chart-controls-row="range"'), out.indexOf('data-chart-controls-row="actions"'));
+    const rowClass = /data-chart-controls-row="range" class="([^"]*)"/.exec(rangeRow)![1];
+    for (const c of ['flex', 'w-full', 'min-w-0', 'max-w-full', 'flex-wrap', 'justify-between']) assert.ok(rowClass.split(' ').includes(c), `range row has ${c}`);
+    assert.match(rangeRow, /data-chart-style-slot="" class="ml-auto shrink-0"/);
+    assert.ok(rangeRow.indexOf('T range') < rangeRow.indexOf('data-chart-style-slot'), 'range first');
+    assert.ok(rangeRow.indexOf('data-chart-style-slot') < rangeRow.indexOf('T chart type'), 'switch inside the slot');
+    // the range-only chart has no slot at all
+    const only = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop }, pdf, viewer }));
+    assert.equal(only.includes('data-chart-style-slot'), false);
   });
   test('range-only chart: title, description, range row alone, then [PDF, full screen]', () => {
     const out = card(createElement(ChartHeader, { title: 'Meals', description: 'Share', view: { range: '30', setRange: noop }, pdf, viewer }));
     assert.deepEqual(outline(out), ['title', 'description', 'row:range', 'row:actions', 'pdf', 'expand']);
   });
-  test('the range is never in the same row as the actions', () => {
+  test('the range row never holds PDF or full screen; the actions row never holds the range or the switch', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop, style: 'bar', setStyle: noop }, pdf, viewer }));
     const rangeRow = out.slice(out.indexOf('data-chart-controls-row="range"'), out.indexOf('data-chart-controls-row="actions"'));
     assert.match(rangeRow, /T range/);
-    assert.equal(/chart type|Download|in full screen/.test(rangeRow), false);
+    assert.equal(/Download|in full screen/.test(rangeRow), false);
+    assert.match(rangeRow, /T chart type/);
+    const actionsRow = out.slice(out.indexOf('data-chart-controls-row="actions"'));
+    assert.equal(/T range|chart type/.test(actionsRow), false);
   });
   test('fixed-window chart: title, description, then one actions row with only full screen', () => {
     const out = card(createElement(ChartHeader, { title: 'Weekly', description: 'Avg', viewer }));
@@ -199,7 +217,7 @@ describe('header structure and order (exact)', () => {
     assert.deepEqual(trend.filter((p) => p !== 'style' && p !== 'description'), meal);
     assert.equal(meal.includes('style'), false);
   });
-  test('every real chart card follows the contract (title < description < range row < actions row; style, PDF, expand in that order)', () => {
+  test('every real chart card follows the contract (title < description < range row with its switch < actions row; PDF, expand in that order)', () => {
     const today = new Date().toISOString().slice(0, 10);
     const d = [{ name: 'Morning', calories: 1, count: 1 }];
     const week = Array.from({ length: 7 }, (_, i) => ({ date: `D${i}`, fullDate: `2001-01-0${i + 1}`, calories: 0 }));
@@ -213,7 +231,7 @@ describe('header structure and order (exact)', () => {
       ['weekly', html(createElement(WeeklyBarChart, { title: 'W', icon: null, data: week, valueKey: 'calories', label: 'C', unit: 'u', color: '#000' }))],
       ['delta', html(createElement(DeltaChart, { title: 'D', icon: null, unit: 'kg', entries: [], emptyText: 'x' }))],
     ];
-    const rank: Record<string, number> = { title: 0, description: 1, 'row:range': 2, 'row:actions': 3, style: 4, pdf: 5, expand: 6 };
+    const rank: Record<string, number> = { title: 0, description: 1, 'row:range': 2, style: 3, 'row:actions': 4, pdf: 5, expand: 6 };
     for (const [name, out] of cards) {
       const parts = outline(out);
       const ranks = parts.map((p) => rank[p]);

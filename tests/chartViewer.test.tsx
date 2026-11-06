@@ -29,11 +29,12 @@ describe('pop-out button in ChartHeader', () => {
     assert.match(out, /title="Full screen"/);
     assert.match(out, /aria-haspopup="dialog"/);
   });
-  test('it sits in the same actions unit as PDF and style, after PDF (so they can only wrap together)', () => {
+  test('it sits in the same actions unit as PDF, after PDF (so they can only wrap together); the line/bar switch is in the range row, not here', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop, style: 'line', setStyle: noop }, pdf, viewer }));
     assert.equal(out.match(/data-chart-actions=""/g)?.length, 1);
     const actions = actionsOf(out);
-    assert.ok(actions.indexOf('chart type') < actions.indexOf('Download T as PDF'));
+    assert.equal(actions.includes('chart type'), false);
+    assert.ok(out.indexOf('T chart type') < out.indexOf('data-chart-actions'));
     assert.ok(actions.indexOf('Download T as PDF') < actions.indexOf('Open T in full screen'));
     assert.equal(out.slice(0, out.indexOf('data-chart-actions')).includes('Open T in full screen'), false, 'not outside the actions unit');
   });

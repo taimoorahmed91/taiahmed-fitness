@@ -75,8 +75,8 @@ export const ChartRangeControls = ({ range, setRange, extended = false, label }:
     <div className="min-w-0 max-w-full" data-html2canvas-ignore="true">
       <SegmentedControl<ChartRange>
         size="sm"
-        // Compact buttons, and wrap inside the card instead of pushing the page wider. The range always sits on its
-        // own row in ChartHeader (the first control row), so it never competes with the actions for width.
+        // Compact buttons, and wrap inside the card instead of pushing the page wider. The range sits in the first
+        // control row of ChartHeader, with the line/bar switch right-aligned beside it (PDF and full screen are the second row).
         className="chart-segmented max-w-full flex-wrap [&>button]:px-2"
         ariaLabel={label ? `${label} range` : 'Chart range'}
         value={range}
@@ -94,7 +94,7 @@ interface StyleProps {
   label?: string;
 }
 
-/** Line / bar switch on its own: ChartHeader puts it first in the actions row, before PDF and full screen. */
+/** Line / bar switch on its own: ChartHeader puts it in the range row, right-aligned, after the range options. */
 export const ChartStyleControl = ({ style, setStyle, label }: StyleProps) => (
   <div className="min-w-0 max-w-full" data-html2canvas-ignore="true">
     <SegmentedControl<ChartStyle>
