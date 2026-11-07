@@ -109,13 +109,10 @@ describe('lane 3 class pairings in source', () => {
     assert.match(src, /Severity: \{note\.severity\}\/5/);
   });
 
-  test('"+N cal" chip is accent-foreground on accent, not text-primary on a tint', () => {
+  test('"+N cal" is plain text in the row summary (no tinted chip), so there is no text-on-tint contrast to fail', () => {
     const src = read('src/pages/ExtraActivities.tsx');
-    const chip = src.match(/const CALORIE_CHIP_CLASS = '([^']+)'/)?.[1] ?? '';
-    assert.match(chip, /\bbg-accent\b/);
-    assert.match(chip, /\btext-accent-foreground\b/);
-    assert.doesNotMatch(chip, /\btext-primary\b(?!-)/);
-    assert.match(src, /<Badge variant="outline" className=\{CALORIE_CHIP_CLASS\}>\+\{a\.calories\} cal<\/Badge>/);
+    assert.match(src, /`\+\$\{a\.calories\} cal`/);
+    assert.doesNotMatch(src, /CALORIE_CHIP_CLASS/);
   });
 
   test('Sleep quality chips use text-foreground on bg-muted with a label, dot and border (shared BandChip + sleepBand)', () => {

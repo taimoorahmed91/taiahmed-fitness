@@ -1,8 +1,13 @@
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
-import { useState, useMemo, useRef } from 'react';
-import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState, ICON_TOUCH_CLASS } from '@/components/layout/Page';
-import { IconButton } from '@/components/ui/icon-button';
-import { Activity, AlertCircle, Trash2, Pencil, X, Flame, Search } from 'lucide-react';
+import { useState, useMemo, useRef, type ReactNode } from 'react';
+import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState } from '@/components/layout/Page';
+import { Activity, AlertCircle, Pencil, X, Flame, Search, StickyNote } from 'lucide-react';
+import { HistoryList } from '@/components/history/HistoryGroup';
+import { HistoryRow } from '@/components/history/HistoryRow';
+import { ActionTray, HistoryAction, HistoryDeleteAction, HistoryInlineActions } from '@/components/history/ActionTray';
+import { HISTORY_LG, useMinWidth } from '@/components/history/useMinWidth';
+import { formatDay } from '@/lib/historyDates';
+import { cn } from '@/lib/utils';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/PaginationControls';
 import { Button } from '@/components/ui/button';
@@ -10,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -18,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useExtraActivities } from '@/hooks/useExtraActivities';
+import { useExtraActivities, type ExtraActivity } from '@/hooks/useExtraActivities';
 
 const INTENSITY_LABELS: Record<number, string> = {
   1: 'Very Light',
@@ -41,23 +45,6 @@ const INTENSITY_BAR: Record<number, string> = {
   5: 'bg-primary',
 };
 
-/**
- * "+N cal" chip: accent-foreground on the accent surface (9.2:1 light, 8.5:1 dark), with a brand border.
- * The old text-primary on a primary tint measured 4.2:1. The "+" and "cal" stay in the text.
- */
-const CALORIE_CHIP_CLASS = 'border-primary bg-accent text-accent-foreground';
-
-const intensityColor = (n: number) => {
-  switch (n) {
-    case 1: return 'border-primary/20 bg-primary/5 text-foreground';
-    case 2: return 'border-primary/30 bg-primary/10 text-foreground';
-    case 3: return 'border-primary/40 bg-primary/15 text-foreground';
-    case 4: return 'border-primary/50 bg-primary/20 text-foreground';
-    case 5: return 'border-primary/60 bg-primary/30 text-foreground';
-    default: return '';
-  }
-};
-
 /** Five small segments; filled ones show the level without relying on colour. Decorative: the text beside it carries the meaning. */
 const IntensityMeter = ({ level }: { level: number }) => (
   <span aria-hidden="true" className="inline-flex items-center gap-0.5">
@@ -66,6 +53,182 @@ const IntensityMeter = ({ level }: { level: number }) => (
     ))}
   </span>
 );
+
+/** Desktop columns: Date, Activity, Time, Intensity, Duration, Calories. */
+const DESKTOP_COLUMNS = 'grid w-full grid-cols-[6.5rem_minmax(0,1fr)_4.5rem_10rem_4.5rem_5.5rem] items-start gap-x-3';
+const DESKTOP_ACTIONS_WIDTH = 'w-20';
+
+const DesktopColumnHeader = () => (
+  <div aria-hidden="true" className="flex border-b py-1.5 text-xs font-medium text-muted-foreground">
+    <span className={cn(DESKTOP_COLUMNS, 'min-w-0 flex-1 px-4')}>
+      <span>Date</span>
+      <span>Activity</span>
+      <span>Time</span>
+      <span>Intensity</span>
+      <span className="text-right">Duration</span>
+      <span className="text-right">Calories</span>
+    </span>
+    {/* Same width as the chevron and the inline actions in each row. */}
+    <span className="w-6 shrink-0" />
+    <span className={cn('shrink-0', DESKTOP_ACTIONS_WIDTH)} />
+  </div>
+);
+
+const NotAvailable = () => (
+  <>
+    <span aria-hidden="true">—</span>
+    <span className="sr-only">not available</span>
+  </>
+);
+
+/** Intensity as shown in a summary: the meter, "3/5" and the word. The sr-only sentence is the accessible version. */
+const IntensitySummary = ({ level }: { level: number }) => (
+  <>
+    <span className="sr-only">Intensity {level} of 5, {INTENSITY_LABELS[level]}</span>
+    <span aria-hidden="true" className="inline-flex items-center gap-1.5">
+      <IntensityMeter level={level} />
+      <span>{level}/5</span>
+    </span>
+  </>
+);
+
+interface ExtraActivityRowProps {
+  activity: ExtraActivity;
+  desktop: boolean;
+  today: string;
+  expanded: boolean;
+  editing: boolean;
+  onExpandedChange: (open: boolean) => void;
+  onEdit: (activity: ExtraActivity) => void;
+  onDelete: (id: string) => void;
+}
+
+/**
+ * One activity, built like a Gym history row: the summary (name, date and time, key facts) is always visible and is the
+ * single disclosure button. Notes open in an animated panel; a row with no notes has nothing more to show, so on a wide
+ * screen it does not expand at all. On phones every row opens, because the Edit and Delete tray lives in the panel.
+ */
+const ExtraActivityRow = ({ activity: a, desktop, today, expanded, editing, onExpandedChange, onEdit, onDelete }: ExtraActivityRowProps) => {
+  const notes = a.notes?.trim() ?? '';
+  const hasNotes = notes.length > 0;
+  const preview = notes.split('\n').find((line) => line.trim())?.trim() ?? null;
+  const rowClass = cn(editing && 'outline outline-2 -outline-offset-2 outline-primary');
+
+  const actionList = (variant: 'tray' | 'inline') => [
+    <HistoryAction
+      key="edit"
+      variant={variant}
+      label={`Edit activity ${a.activity}`}
+      text="Edit"
+      icon={<Pencil aria-hidden="true" />}
+      onClick={() => onEdit(a)}
+    />,
+    <HistoryDeleteAction
+      key="delete"
+      variant={variant}
+      label={`Delete activity ${a.activity}`}
+      confirmationTitle="Delete activity?"
+      confirmationDescription={`Are you sure you want to delete “${a.activity}” from ${a.date}, including its notes? This cannot be undone.`}
+      onConfirm={() => onDelete(a.id)}
+    />,
+  ];
+
+  const notesDetail = (
+    <div>
+      <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <StickyNote aria-hidden="true" className="h-3.5 w-3.5" />
+        Notes
+        <span aria-hidden="true" className="h-px flex-1 bg-border" />
+      </p>
+      <p className="whitespace-pre-wrap break-words text-sm">{a.notes}</p>
+    </div>
+  );
+
+  if (desktop) {
+    return (
+      <HistoryRow
+        variant="workout"
+        className={rowClass}
+        expanded={expanded}
+        onExpandedChange={onExpandedChange}
+        reserveChevron
+        panelLabel={`Details for ${a.activity}`}
+        panel={hasNotes ? notesDetail : undefined}
+        summary={
+          <span className={DESKTOP_COLUMNS}>
+            <span className="text-sm text-muted-foreground">
+              <time dateTime={a.date}>{formatDay(a.date, today)}</time>
+            </span>
+            <span className="min-w-0">
+              <span className="block break-words text-sm font-semibold">{a.activity}</span>
+              {preview && !expanded && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{preview}</span>}
+            </span>
+            <span className="text-sm tabular-nums text-muted-foreground">{a.time || <NotAvailable />}</span>
+            <span className="text-sm tabular-nums"><IntensitySummary level={a.intensity} /> <span aria-hidden="true" className="text-muted-foreground">{INTENSITY_LABELS[a.intensity]}</span></span>
+            <span className="text-right text-sm font-medium tabular-nums">{a.duration_minutes != null ? `${a.duration_minutes} min` : <NotAvailable />}</span>
+            <span className="text-right text-sm font-semibold tabular-nums">{a.calories > 0 ? `+${a.calories} cal` : <NotAvailable />}</span>
+          </span>
+        }
+        actions={
+          <HistoryInlineActions label={`Actions for ${a.activity}`} className={DESKTOP_ACTIONS_WIDTH}>
+            {actionList('inline')}
+          </HistoryInlineActions>
+        }
+      />
+    );
+  }
+
+  // The headline numbers, as a strip of small value-over-label cells (same as the Gym rows).
+  const facts: { key: string; value: ReactNode; label: string }[] = [
+    { key: 'intensity', value: <IntensitySummary level={a.intensity} />, label: INTENSITY_LABELS[a.intensity] },
+  ];
+  if (a.duration_minutes != null) facts.push({ key: 'min', value: `${a.duration_minutes} min`, label: 'duration' });
+  if (a.calories > 0) facts.push({ key: 'cal', value: `+${a.calories}`, label: 'cal' });
+
+  return (
+    <HistoryRow
+      variant="workout"
+      className={rowClass}
+      expanded={expanded}
+      onExpandedChange={onExpandedChange}
+      panelLabel={`Details for ${a.activity}`}
+      summary={
+        <span className="block w-full min-w-0">
+          <span className="block break-words text-base font-semibold leading-snug">{a.activity}</span>
+          <span className="mt-0.5 block text-sm text-muted-foreground">
+            <time dateTime={a.date}>{formatDay(a.date, today)}</time>
+            {a.time && (
+              <>
+                {' '}
+                <span aria-hidden="true">·</span> <span className="tabular-nums">{a.time}</span>
+              </>
+            )}
+          </span>
+          <span className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2.5 tabular-nums min-[480px]:flex min-[480px]:flex-wrap min-[480px]:gap-x-5 min-[480px]:gap-y-2">
+            {facts.map((fact) => (
+              <span key={fact.key} className="block border-l-2 border-chart-2/50 pl-2 leading-tight">
+                <span className="block text-sm font-semibold">{fact.value}</span>{' '}
+                <span className="block text-xs text-muted-foreground">{fact.label}</span>
+              </span>
+            ))}
+          </span>
+          {preview && !expanded && (
+            <span className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <StickyNote aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 truncate">{preview}</span>
+            </span>
+          )}
+        </span>
+      }
+      panel={
+        <div className="space-y-4">
+          {hasNotes && notesDetail}
+          <ActionTray label={`Actions for ${a.activity}`}>{actionList('tray')}</ActionTray>
+        </div>
+      }
+    />
+  );
+};
 
 const FieldError = ({ id, message }: { id: string; message?: string }) =>
   message ? (
@@ -154,6 +317,16 @@ const ExtraActivities = () => {
       setSaving(false);
     }
   };
+
+  const isDesktop = useMinWidth(HISTORY_LG, true);
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
+  const toggleExpanded = (id: string, open: boolean) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
 
   const [search, setSearch] = useState('');
   const [from, setFrom] = useState('');
@@ -383,59 +556,48 @@ const ExtraActivities = () => {
             </div>
             <p className="text-xs text-muted-foreground">Pick only "From" for a single day, or both for a range.</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0">
             {loading ? (
-              <PageLoading label="Loading activities" rows={3} />
+              <div className="px-4 sm:px-6"><PageLoading label="Loading activities" rows={3} /></div>
             ) : filtered.length === 0 ? (
-              <PageEmptyState
-                icon={Activity}
-                title={activities.length === 0 ? 'No extra activities logged yet' : 'No activities match your filters'}
-                description={activities.length === 0 ? 'Log your first activity above.' : 'Try a different search or date range.'}
-              />
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {paginatedItems.map((a) => (
-                  <div key={a.id} className={`border rounded-lg p-3 flex items-start justify-between gap-3 ${editingId === a.id ? 'border-primary' : ''}`}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{a.activity}</span>
-                        <Badge variant="outline" className={intensityColor(a.intensity)}>
-                          <IntensityMeter level={a.intensity} />
-                          <span className="ml-1.5">Intensity {a.intensity} of 5 · {INTENSITY_LABELS[a.intensity]}</span>
-                        </Badge>
-                        {a.duration_minutes != null && (
-                          <Badge variant="outline">{a.duration_minutes} min</Badge>
-                        )}
-                        {a.calories > 0 && (
-                          <Badge variant="outline" className={CALORIE_CHIP_CLASS}>+{a.calories} cal</Badge>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {a.date}{a.time ? ` · ${a.time}` : ''}
-                      </div>
-                      {a.notes && <p className="text-sm mt-2 whitespace-pre-wrap">{a.notes}</p>}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <IconButton label={`Edit activity ${a.activity}`} tooltip onClick={() => handleEdit(a)}>
-                        <Pencil />
-                      </IconButton>
-                      <ConfirmDeleteButton size="icon" variant="ghost" className={ICON_TOUCH_CLASS} onConfirm={() => deleteActivity(a.id)} confirmationTitle="Delete activity?" confirmationDescription={`Are you sure you want to delete “${a.activity}” from ${a.date}, including its notes? This cannot be undone.`} aria-label={`Delete activity ${a.activity}`}>
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </ConfirmDeleteButton>
-                    </div>
-                  </div>
-                ))}
+              <div className="px-4 sm:px-6">
+                <PageEmptyState
+                  icon={Activity}
+                  title={activities.length === 0 ? 'No extra activities logged yet' : 'No activities match your filters'}
+                  description={activities.length === 0 ? 'Log your first activity above.' : 'Try a different search or date range.'}
+                />
               </div>
+            ) : (
+              <>
+                {isDesktop && <DesktopColumnHeader />}
+                <HistoryList variant="workout" className="border-b">
+                  {paginatedItems.map((a) => (
+                    <ExtraActivityRow
+                      key={a.id}
+                      activity={a}
+                      desktop={isDesktop}
+                      today={today}
+                      expanded={expandedIds.has(a.id)}
+                      editing={editingId === a.id}
+                      onExpandedChange={(open) => toggleExpanded(a.id, open)}
+                      onEdit={handleEdit}
+                      onDelete={deleteActivity}
+                    />
+                  ))}
+                </HistoryList>
+              </>
             )}
             {!loading && (
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                onPageChange={goToPage}
-                hasNextPage={hasNextPage}
-                hasPrevPage={hasPrevPage}
-              />
+              <div className="px-4 pb-1 sm:px-6">
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  onPageChange={goToPage}
+                  hasNextPage={hasNextPage}
+                  hasPrevPage={hasPrevPage}
+                />
+              </div>
             )}
           </CardContent>
         </Card>

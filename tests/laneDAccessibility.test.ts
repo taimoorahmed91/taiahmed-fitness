@@ -108,7 +108,7 @@ describe('semantic colours and non-colour cues', () => {
   test('intensity shows number, word and a meter, not only a tint', () => {
     const src = read('src/pages/ExtraActivities.tsx');
     assert.match(src, /IntensityMeter/);
-    assert.match(src, /Intensity \{a\.intensity\} of 5/);
+    assert.match(src, /Intensity \{level\} of 5, \{INTENSITY_LABELS\[level\]\}/);
   });
   test('recovery adds a word band (High / Medium / Low) next to the number, in a chip that is never colour-only', () => {
     const lib = read('src/lib/bodyHistory.ts');
