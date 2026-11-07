@@ -59,7 +59,7 @@ function FilterDisclosure({
           )}
           <ChevronDown
             aria-hidden="true"
-            className={cn("transition-transform duration-200 motion-reduce:transition-none", open && "rotate-180")}
+            className={cn("transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none", open && "rotate-180")}
           />
         </Button>
       </div>

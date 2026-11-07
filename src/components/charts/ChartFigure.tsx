@@ -76,7 +76,7 @@ export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEI
           onClick={() => setSummaryOpen((v) => !v)}
           className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 font-medium underline-offset-4 [@media(hover:hover)]:hover:text-foreground [@media(hover:hover)]:hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11"
         >
-          <ChevronDown aria-hidden="true" className={cn('h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none', summaryOpen && 'rotate-180')} />
+          <ChevronDown aria-hidden="true" className={cn('h-3.5 w-3.5 transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none', summaryOpen && 'rotate-180')} />
           Chart summary
         </button>
         <CollapsePanel id={`${id}-summary-panel`} open={summaryOpen}>

@@ -129,7 +129,7 @@ export const WorkoutExerciseCard = memo((props: WorkoutExerciseCardProps) => {
                 )}
               </span>
             </span>
-            <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none', expanded && 'rotate-180')} aria-hidden="true" />
+            <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none', expanded && 'rotate-180')} aria-hidden="true" />
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>

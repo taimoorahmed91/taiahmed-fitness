@@ -95,7 +95,7 @@ export const GoalsCard = () => {
             aria-label={showForm ? 'Close new goal form' : 'Add goal'}
             className="[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
           >
-            <Plus className={cn('h-4 w-4 transition-transform duration-200 motion-reduce:transition-none', showForm && 'rotate-45')} aria-hidden="true" />
+            <Plus className={cn('h-4 w-4 transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none', showForm && 'rotate-45')} aria-hidden="true" />
           </Button>
         </CollapsibleTrigger>
       </CardHeader>

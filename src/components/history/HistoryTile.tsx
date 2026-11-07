@@ -109,7 +109,7 @@ export const HistoryTile = ({ tone, tint, summary, panel, expanded = false, onEx
             <ChevronDown
               aria-hidden="true"
               className={cn(
-                'absolute right-2.5 top-3 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
+                'absolute right-2.5 top-3 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none',
                 expanded && 'rotate-180',
               )}
             />
@@ -122,7 +122,7 @@ export const HistoryTile = ({ tone, tint, summary, panel, expanded = false, onEx
       </div>
       {expandable && (
         <CollapsibleContent role={panelLabel ? 'group' : undefined} aria-label={panelLabel} className="border-t border-dashed border-border">
-          <div className="px-3 pb-3 pt-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200">{panel}</div>
+          <div className="px-3 pb-3 pt-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-[400ms]">{panel}</div>
         </CollapsibleContent>
       )}
     </li>

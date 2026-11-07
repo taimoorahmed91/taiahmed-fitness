@@ -706,7 +706,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
               className="h-11 w-11 shrink-0"
               onClick={() => setShowSettings((s) => !s)}
             >
-              <Settings2 aria-hidden="true" className={cn('transition-transform duration-200 motion-reduce:transition-none', showSettings && 'rotate-90')} />
+              <Settings2 aria-hidden="true" className={cn('transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none', showSettings && 'rotate-90')} />
             </IconButton>
           </div>
           <DialogDescription className="sr-only">

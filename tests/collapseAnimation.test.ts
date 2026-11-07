@@ -10,8 +10,8 @@ describe('collapsible animation foundation', () => {
   test('tailwind has collapsible-down / collapsible-up on the Radix collapsible height variable', () => {
     assert.match(tw, /'collapsible-down':\s*\{[\s\S]*?--radix-collapsible-content-height/);
     assert.match(tw, /'collapsible-up':\s*\{[\s\S]*?--radix-collapsible-content-height/);
-    assert.match(tw, /'collapsible-down': 'collapsible-down 0\.22s/);
-    assert.match(tw, /'collapsible-up': 'collapsible-up 0\.2s/);
+    assert.match(tw, /'collapsible-down': 'collapsible-down 0\.4s/);
+    assert.match(tw, /'collapsible-up': 'collapsible-up 0\.4s/);
   });
   test('the keyframes clip only while animating (no static overflow-hidden, so focus rings are never cut off)', () => {
     assert.match(tw, /'collapsible-down':\s*\{[\s\S]*?overflow: 'hidden'/);

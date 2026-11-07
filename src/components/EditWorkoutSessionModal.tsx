@@ -680,7 +680,7 @@ export const EditWorkoutSessionModal = ({
                             {(ex.seq ?? index + 1)}. {ex.name}
                           </span>
                         </span>
-                        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none', openEx && 'rotate-180')} />
+                        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none', openEx && 'rotate-180')} />
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>

@@ -58,7 +58,7 @@ export const ValueHistory = ({ rows, unit, label }: ValueHistoryProps) => {
             >
               <ChevronDown
                 aria-hidden="true"
-                className="transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]/history:rotate-180"
+                className="transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none group-data-[state=open]/history:rotate-180"
               />
               <span className="group-data-[state=open]/history:hidden">Show {earlier.length} earlier</span>
               <span className="hidden group-data-[state=open]/history:inline">Hide earlier</span>

@@ -126,8 +126,8 @@ export default {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-  			'collapsible-down': 'collapsible-down 0.22s cubic-bezier(0.22, 1, 0.36, 1)',
-  			'collapsible-up': 'collapsible-up 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+  			'collapsible-down': 'collapsible-down 0.4s cubic-bezier(0.65, 0, 0.35, 1)',
+  			'collapsible-up': 'collapsible-up 0.4s cubic-bezier(0.65, 0, 0.35, 1)'
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',

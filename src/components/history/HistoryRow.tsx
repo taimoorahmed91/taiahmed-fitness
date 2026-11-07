@@ -92,7 +92,7 @@ export const HistoryRow = ({
               aria-hidden="true"
               className={cn(
                 centerChevron ? 'self-center' : 'mt-1',
-                'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
+                'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none',
                 expanded && cn('rotate-180', variant !== 'default' && style.text),
               )}
             />
@@ -108,7 +108,7 @@ export const HistoryRow = ({
       </div>
       {expandable && (
         <CollapsibleContent role={panelLabel ? 'group' : undefined} aria-label={panelLabel} className={style.panel}>
-          <div className="px-3 pb-3 pt-3 sm:px-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200">{panel}</div>
+          <div className="px-3 pb-3 pt-3 sm:px-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-[400ms]">{panel}</div>
         </CollapsibleContent>
       )}
     </li>

@@ -37,7 +37,7 @@ export const TrendSection = ({ label = 'Trend', hint, open, onOpenChange, childr
       >
         <span className="text-base font-semibold">{label}</span>
         {hint && <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{hint}</span>}
-        <ChevronDown aria-hidden="true" className={cn('ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none', open && 'rotate-180')} />
+        <ChevronDown aria-hidden="true" className={cn('ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none', open && 'rotate-180')} />
       </button>
       <CollapsePanel
         id={panelId}

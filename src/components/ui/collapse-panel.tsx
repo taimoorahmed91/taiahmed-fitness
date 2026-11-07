@@ -54,7 +54,7 @@ const CollapsePanel = React.forwardRef<HTMLDivElement, CollapsePanelProps>(
         ref={ref}
         data-state={open ? "open" : "closed"}
         className={cn(
-          "grid transition-[grid-template-rows,margin-top,visibility] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          "grid transition-[grid-template-rows,margin-top,visibility] duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none",
           open ? "visible grid-rows-[1fr]" : "invisible grid-rows-[0fr]",
           open ? openClassName : closedClassName,
           always?.outer,

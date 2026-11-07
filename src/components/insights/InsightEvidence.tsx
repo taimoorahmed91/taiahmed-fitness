@@ -230,7 +230,7 @@ export const InsightEvidence = ({ title, evidence, staleSources = [], onSelectDa
             type="button"
             className="mt-1 -ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
           >
-            <ChevronDown aria-hidden="true" className={cn('h-4 w-4 transition-transform duration-200 motion-reduce:transition-none', open && 'rotate-180')} />
+            <ChevronDown aria-hidden="true" className={cn('h-4 w-4 transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none', open && 'rotate-180')} />
             {open ? 'Hide evidence' : 'Show evidence'}
             <span className="sr-only"> for {title}</span>
           </button>

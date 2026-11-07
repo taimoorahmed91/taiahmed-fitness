@@ -221,7 +221,7 @@ const WhoopData = () => {
                   </Badge>
                   <span className="ml-auto flex items-center gap-1 text-xs font-normal text-muted-foreground">
                     <span className="group-data-[state=open]:hidden">Tap to edit</span>
-                    <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]:rotate-180" />
+                    <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none group-data-[state=open]:rotate-180" />
                   </span>
                 </CardTitle>
                 <CardDescription>
