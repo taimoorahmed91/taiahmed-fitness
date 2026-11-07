@@ -58,7 +58,7 @@ export const ValueHistory = ({ rows, unit, label }: ValueHistoryProps) => {
             >
               <ChevronDown
                 aria-hidden="true"
-                className="transition-transform motion-reduce:transition-none group-data-[state=open]/history:rotate-180"
+                className="transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]/history:rotate-180"
               />
               <span className="group-data-[state=open]/history:hidden">Show {earlier.length} earlier</span>
               <span className="hidden group-data-[state=open]/history:inline">Hide earlier</span>
@@ -69,7 +69,8 @@ export const ValueHistory = ({ rows, unit, label }: ValueHistoryProps) => {
       </div>
       {earlier.length > 0 && (
         <CollapsibleContent>
-          <ol aria-label={`${label}: earlier values, newest first`} className="relative ml-2 mt-3 space-y-3 border-l-2 border-border pl-4">
+          <div className="pt-3">
+          <ol aria-label={`${label}: earlier values, newest first`} className="relative ml-2 space-y-3 border-l-2 border-border pl-4">
             {visible.map((row) => (
               <li key={row.id} className="relative flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                 <span aria-hidden="true" className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-muted-foreground" />
@@ -84,6 +85,7 @@ export const ValueHistory = ({ rows, unit, label }: ValueHistoryProps) => {
             </Button>
           )}
           <p className="mt-2 text-xs">Dates are shown in UTC.</p>
+          </div>
         </CollapsibleContent>
       )}
     </Collapsible>

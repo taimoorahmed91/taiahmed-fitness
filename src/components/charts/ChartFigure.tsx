@@ -1,5 +1,8 @@
-import { ReactElement, ReactNode, useId } from 'react';
+import { ReactElement, ReactNode, useId, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { ResponsiveContainer } from 'recharts';
+import { CollapsePanel } from '@/components/ui/collapse-panel';
+import { cn } from '@/lib/utils';
 import { CHART_HEIGHT } from '@/lib/chartTheme';
 import { EXPANDED_CHART_MIN_HEIGHT } from '@/lib/chartViewer';
 
@@ -41,6 +44,7 @@ const cell = (value: unknown) => (value == null || value === '' ? '--' : typeof 
  */
 export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEIGHT, expanded = false, className, afterPlot, children }: ChartFigureProps) => {
   const id = useId();
+  const [summaryOpen, setSummaryOpen] = useState(false);
   // The card's screen-reader table is capped (it sits in every card). The full-screen viewer's is not: it never drops a row.
   // Neither is the source of the viewer's visible Table or CSV: those read the chart's complete ChartViewerDataset.
   const allRows = table ? table.rows : [];
@@ -62,13 +66,23 @@ export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEI
       )}
       {afterPlot}
       {/* The same summary screen readers get, available to everyone on demand. Closed by default so
-          it never pushes the chart around; aria-describedby still reads it while collapsed. */}
-      <details data-chart-summary data-html2canvas-ignore="true" className="chart-footer mt-2 text-xs text-muted-foreground">
-        <summary className="inline-flex min-h-8 cursor-pointer items-center rounded-sm px-1 font-medium underline-offset-4 [@media(hover:hover)]:hover:text-foreground [@media(hover:hover)]:hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11">
+          it never pushes the chart around. The text stays mounted while closed (CollapsePanel only slides it shut), so
+          aria-describedby still reads it. */}
+      <div data-chart-summary data-html2canvas-ignore="true" className="chart-footer mt-2 text-xs text-muted-foreground">
+        <button
+          type="button"
+          aria-expanded={summaryOpen}
+          aria-controls={`${id}-summary-panel`}
+          onClick={() => setSummaryOpen((v) => !v)}
+          className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 font-medium underline-offset-4 [@media(hover:hover)]:hover:text-foreground [@media(hover:hover)]:hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11"
+        >
+          <ChevronDown aria-hidden="true" className={cn('h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none', summaryOpen && 'rotate-180')} />
           Chart summary
-        </summary>
-        <p id={`${id}-summary`} className="px-1 pb-1 pt-1 leading-relaxed">{summary}</p>
-      </details>
+        </button>
+        <CollapsePanel id={`${id}-summary-panel`} open={summaryOpen}>
+          <p id={`${id}-summary`} className="px-1 pb-1 pt-1 leading-relaxed">{summary}</p>
+        </CollapsePanel>
+      </div>
       {table && rows.length > 0 && (
         <div className="sr-only" data-html2canvas-ignore="true">
           <table>

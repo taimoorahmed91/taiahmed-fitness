@@ -208,16 +208,18 @@ describe('F55 chart empty-state action contract', () => {
 
 describe('F21 chart summary visible on demand', () => {
   const src = read('src/components/charts/ChartFigure.tsx');
-  test('summary sits in a closed <details> that is also the aria-describedby target', () => {
-    assert.match(src, /<details data-chart-summary/);
-    assert.equal(/<details[^>]*\bopen\b/.test(src), false);
-    assert.match(src, /<summary [^>]*>\s*Chart summary\s*<\/summary>/);
+  test('summary sits in a collapsed, always-mounted panel that is also the aria-describedby target', () => {
+    assert.match(src, /<div data-chart-summary/);
+    assert.match(src, /useState\(false\)/);
+    assert.match(src, /aria-expanded=\{summaryOpen\}/);
+    assert.match(src, /<CollapsePanel [^>]*open=\{summaryOpen\}/);
+    assert.match(src, /<button[^>]*>[\s\S]*?Chart summary\s*<\/button>/);
     assert.match(src, /<p id=\{`\$\{id\}-summary`\}[^>]*>\{summary\}<\/p>/);
     assert.match(src, /aria-describedby=\{`\$\{id\}-summary`\}/);
   });
   test('the summary toggle meets the 44px touch target and is left out of PDFs', () => {
     assert.match(src, /\[@media\(pointer:coarse\)\]:min-h-11/);
-    assert.match(src, /<details data-chart-summary data-html2canvas-ignore="true"/);
+    assert.match(src, /<div data-chart-summary data-html2canvas-ignore="true" className="chart-footer/);
   });
   test('the screen-reader data table is kept and the full table is not dumped on screen', () => {
     assert.match(src, /<div className="sr-only" data-html2canvas-ignore="true">\s*<table>/);

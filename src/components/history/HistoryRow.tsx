@@ -1,6 +1,7 @@
-import { useId, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HISTORY_VARIANTS, type HistoryVariant } from '@/components/history/historyVariants';
 
 /**
@@ -56,11 +57,13 @@ export const HistoryRow = ({
   summaryClassName,
   rowId,
 }: HistoryRowProps) => {
-  const panelId = useId();
   const expandable = panel !== undefined && panel !== null && panel !== false;
   const style = HISTORY_VARIANTS[variant];
 
   return (
+    // The <li> is the Collapsible root (asChild), so the DOM shape stays li > div > button[aria-expanded]
+    // that focusHistoryRow looks for; the panel is the li's next child.
+    <Collapsible asChild open={expandable && expanded} onOpenChange={onExpandedChange}>
     <li
       data-history-row={rowId}
       tabIndex={rowId && !expandable ? -1 : undefined}
@@ -73,11 +76,9 @@ export const HistoryRow = ({
     >
       <div className="flex items-start">
         {expandable ? (
+          <CollapsibleTrigger asChild>
           <button
             type="button"
-            aria-expanded={expanded}
-            aria-controls={panelId}
-            onClick={() => onExpandedChange?.(!expanded)}
             className={cn(
               'press [--press-scale:0.99] flex min-h-11 min-w-0 flex-1 items-start gap-2 py-2.5 text-left',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
@@ -91,11 +92,12 @@ export const HistoryRow = ({
               aria-hidden="true"
               className={cn(
                 centerChevron ? 'self-center' : 'mt-1',
-                'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none',
+                'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
                 expanded && cn('rotate-180', variant !== 'default' && style.text),
               )}
             />
           </button>
+          </CollapsibleTrigger>
         ) : (
           <div className={cn('flex min-h-11 min-w-0 flex-1 items-start gap-2 py-2.5', PAD, summaryClassName)}>
             <span className="flex min-w-0 flex-1 items-start">{summary}</span>
@@ -105,17 +107,12 @@ export const HistoryRow = ({
         {actions}
       </div>
       {expandable && (
-        <div
-          id={panelId}
-          role={panelLabel ? 'group' : undefined}
-          aria-label={panelLabel}
-          hidden={!expanded}
-          className={cn('px-3 pb-3 pt-3 sm:px-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-150', style.panel)}
-        >
-          {expanded ? panel : null}
-        </div>
+        <CollapsibleContent role={panelLabel ? 'group' : undefined} aria-label={panelLabel} className={style.panel}>
+          <div className="px-3 pb-3 pt-3 sm:px-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200">{panel}</div>
+        </CollapsibleContent>
       )}
     </li>
+    </Collapsible>
   );
 };
 

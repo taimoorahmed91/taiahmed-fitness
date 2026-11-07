@@ -194,6 +194,12 @@ describe('WHOOP page: failed first loads are never "0 entries" or "No WHOOP data
     await mount();
     expect(text()).toContain('Not checked');
     expect(text()).not.toContain('Not set');
+    // The URL form lives in a collapsible card: closed, its body is not mounted. Open it first.
+    const trigger = [...env.window.document.querySelectorAll('button[aria-expanded]')]
+      .find((b: HTMLElement) => b.textContent?.includes('WHOOP API URL')) as HTMLElement;
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    await act(async () => { click(env.window, trigger); await sleep(40); });
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
     const save = [...env.window.document.querySelectorAll('button')].find((b: HTMLElement) => b.textContent?.includes('Save URL')) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     behaviour.fittrack_user_settings = ok({ whoop_api_url: 'https://example.com/whoop' });

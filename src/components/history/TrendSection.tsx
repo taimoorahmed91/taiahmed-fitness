@@ -1,12 +1,14 @@
 import { useId, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CollapsePanel } from '@/components/ui/collapse-panel';
 
 /**
  * Where a page's trend chart sits, next to its history.
  *
  *  - Phone (under 768px): a collapsed "Trend" disclosure above the history (the log form stays first). The chart stays
- *    mounted while it is closed, so its selected point, range and style are never lost; it is only hidden.
+ *    mounted while it is closed, so its selected point, range and style are never lost; the panel only slides shut
+ *    (CollapsePanel: height animation, children stay mounted).
  *  - 768px and wider: no disclosure, the chart is always open, full width, directly above the history list. The list's
  *    Date / Value / Change / Notes columns need the full page width, so the two are stacked rather than side by side.
  *
@@ -35,11 +37,19 @@ export const TrendSection = ({ label = 'Trend', hint, open, onOpenChange, childr
       >
         <span className="text-base font-semibold">{label}</span>
         {hint && <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{hint}</span>}
-        <ChevronDown aria-hidden="true" className={cn('ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none', open && 'rotate-180')} />
+        <ChevronDown aria-hidden="true" className={cn('ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none', open && 'rotate-180')} />
       </button>
-      <div id={panelId} data-trend-panel="" className={cn('min-w-0', open ? 'mt-3 md:mt-0' : 'max-md:hidden')}>
+      <CollapsePanel
+        id={panelId}
+        data-trend-panel=""
+        open={open}
+        alwaysOpenFrom="md"
+        className="min-w-0"
+        openClassName="mt-3 md:mt-0"
+        closedClassName="mt-0"
+      >
         {children}
-      </div>
+      </CollapsePanel>
     </div>
   );
 };

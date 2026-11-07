@@ -1,7 +1,8 @@
-import { useId, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Minus } from 'lucide-react';
 import type { DeltaTint, DeltaTone } from '@/lib/bodyHistory';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 /**
  * The tile layout for Weight and Waist history: each entry is a small box in a grid (2 across on a phone, 3 on a
@@ -80,10 +81,11 @@ export interface HistoryTileProps {
 }
 
 export const HistoryTile = ({ tone, tint, summary, panel, expanded = false, onExpandedChange, actions, panelLabel, selected, rowId }: HistoryTileProps) => {
-  const panelId = useId();
   const expandable = panel !== undefined && panel !== null && panel !== false;
 
   return (
+    // The <li> is the Collapsible root (asChild): li > div > button[aria-expanded] is what focusHistoryRow queries.
+    <Collapsible asChild open={expandable && expanded} onOpenChange={onExpandedChange}>
     <li
       data-history-row={rowId}
       data-tone={tone}
@@ -98,39 +100,33 @@ export const HistoryTile = ({ tone, tint, summary, panel, expanded = false, onEx
     >
       <div className="flex flex-col">
         {expandable ? (
+          <CollapsibleTrigger asChild>
           <button
             type="button"
-            aria-expanded={expanded}
-            aria-controls={panelId}
-            onClick={() => onExpandedChange?.(!expanded)}
             className="press [--press-scale:0.98] relative flex min-h-11 w-full min-w-0 flex-col rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             {summary}
             <ChevronDown
               aria-hidden="true"
               className={cn(
-                'absolute right-2.5 top-3 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none',
+                'absolute right-2.5 top-3 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
                 expanded && 'rotate-180',
               )}
             />
           </button>
+          </CollapsibleTrigger>
         ) : (
           <div className="min-h-11 min-w-0 p-3">{summary}</div>
         )}
         {actions}
       </div>
       {expandable && (
-        <div
-          id={panelId}
-          role={panelLabel ? 'group' : undefined}
-          aria-label={panelLabel}
-          hidden={!expanded}
-          className="border-t border-dashed border-border px-3 pb-3 pt-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-150"
-        >
-          {expanded ? panel : null}
-        </div>
+        <CollapsibleContent role={panelLabel ? 'group' : undefined} aria-label={panelLabel} className="border-t border-dashed border-border">
+          <div className="px-3 pb-3 pt-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200">{panel}</div>
+        </CollapsibleContent>
       )}
     </li>
+    </Collapsible>
   );
 };
 

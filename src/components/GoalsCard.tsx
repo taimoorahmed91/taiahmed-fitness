@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -80,25 +81,28 @@ export const GoalsCard = () => {
   }
 
   return (
+    <Collapsible asChild open={showForm} onOpenChange={setShowForm}>
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Target className="h-5 w-5 text-primary" />
           Goals
         </CardTitle>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={showForm ? 'Close new goal form' : 'Add goal'}
-          aria-expanded={showForm}
-          className="[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
-          onClick={() => setShowForm(!showForm)}
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-        </Button>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={showForm ? 'Close new goal form' : 'Add goal'}
+            className="[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+          >
+            <Plus className={cn('h-4 w-4 transition-transform duration-200 motion-reduce:transition-none', showForm && 'rotate-45')} aria-hidden="true" />
+          </Button>
+        </CollapsibleTrigger>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {showForm && (
+      <CardContent>
+        {/* The gap under the form lives inside the panel (pb-4), so it opens and closes with it. */}
+        <CollapsibleContent>
+          <div className="pb-4">
           <form onSubmit={handleSubmit} className="space-y-3 p-3 border rounded-lg bg-muted/50">
             <div className="grid grid-cols-2 gap-2">
               <Select value={goalType} onValueChange={(v) => setGoalType(v as 'weekly' | 'monthly')}>
@@ -195,7 +199,8 @@ export const GoalsCard = () => {
               <Button type="submit" size="sm">Add</Button>
             </div>
           </form>
-        )}
+          </div>
+        </CollapsibleContent>
 
         {goalsProgress.length === 0 ? (
           <p className="text-muted-foreground text-center py-4">
@@ -262,5 +267,6 @@ export const GoalsCard = () => {
         )}
       </CardContent>
     </Card>
+    </Collapsible>
   );
 };

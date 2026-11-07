@@ -4,6 +4,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -700,10 +702,11 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             <IconButton
               label="Rest timer settings"
               aria-expanded={showSettings}
+              aria-controls="rest-timer-settings"
               className="h-11 w-11 shrink-0"
               onClick={() => setShowSettings((s) => !s)}
             >
-              <Settings2 aria-hidden="true" />
+              <Settings2 aria-hidden="true" className={cn('transition-transform duration-200 motion-reduce:transition-none', showSettings && 'rotate-90')} />
             </IconButton>
           </div>
           <DialogDescription className="sr-only">
@@ -740,13 +743,19 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
           {/* Not shown while saving is failing: that badge's wording promises a save that is not happening. */}
           {!persistFailure && <OfflineBadge message="Offline · workout is saving on this device" className="self-center" />}
 
-          {showSettings && (
-            <TimerSettingsPanel
-              settings={timerSettings}
-              onSave={handleSaveSettings}
-              onClose={() => setShowSettings(false)}
-            />
-          )}
+          {/* The root is always in the flow (even closed), so it drops the space-y margin (!mt-0) and the 8px gap
+              above the panel is inner padding (pt-2): the gap opens and closes with the panel instead of popping in. */}
+          <Collapsible open={showSettings} onOpenChange={setShowSettings} className="!mt-0">
+            <CollapsibleContent id="rest-timer-settings">
+              <div className="pt-2">
+                <TimerSettingsPanel
+                  settings={timerSettings}
+                  onSave={handleSaveSettings}
+                  onClose={() => setShowSettings(false)}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {ready && displayOrder.map(({ exercise, index }) => (
             <WorkoutExerciseCard

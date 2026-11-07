@@ -254,6 +254,12 @@ export const EditWorkoutSessionModal = ({
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const savingRef = useRef(false);
+  const newExerciseInputRef = useRef<HTMLInputElement>(null);
+  // Focus the new-exercise field when its panel opens. preventScroll: the panel is still growing (clipped), and a
+  // plain autoFocus could scroll that clipped box and leave it offset.
+  useEffect(() => {
+    if (showAddExercise) newExerciseInputRef.current?.focus({ preventScroll: true });
+  }, [showAddExercise]);
   // Track which fields the user edited in this session — those get the green border
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -607,34 +613,38 @@ export const EditWorkoutSessionModal = ({
                 variant="outline"
                 size="touch"
                 aria-expanded={showAddExercise}
+                aria-controls="ew-add-exercise"
                 onClick={() => setShowAddExercise((s) => !s)}
               >
                 <Plus aria-hidden="true" /> Add exercise
               </Button>
             </div>
 
-            {showAddExercise && (
-              <div className="flex gap-2">
-                <Input
-                  aria-label="New exercise name"
-                  className="h-11 min-w-0 flex-1"
-                  placeholder="Exercise name"
-                  enterKeyHint="done"
-                  autoFocus
-                  value={newExerciseName}
-                  onChange={(e) => setNewExerciseName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addExercise();
-                    }
-                  }}
-                />
-                <Button type="button" size="touch" onClick={addExercise} disabled={!newExerciseName.trim()}>
-                  Add
-                </Button>
-              </div>
-            )}
+            {/* !mt-0 on the always-present root + pt-2 inside: the 8px gap opens and closes with the panel. */}
+            <Collapsible open={showAddExercise} onOpenChange={setShowAddExercise} className="!mt-0">
+              <CollapsibleContent id="ew-add-exercise">
+                <div className="flex gap-2 pt-2">
+                  <Input
+                    ref={newExerciseInputRef}
+                    aria-label="New exercise name"
+                    className="h-11 min-w-0 flex-1"
+                    placeholder="Exercise name"
+                    enterKeyHint="done"
+                    value={newExerciseName}
+                    onChange={(e) => setNewExerciseName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addExercise();
+                      }
+                    }}
+                  />
+                  <Button type="button" size="touch" onClick={addExercise} disabled={!newExerciseName.trim()}>
+                    Add
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {parsed.exercises.length === 0 && !showAddExercise && (
               <p className="py-3 text-center text-sm text-muted-foreground">
@@ -670,10 +680,11 @@ export const EditWorkoutSessionModal = ({
                             {(ex.seq ?? index + 1)}. {ex.name}
                           </span>
                         </span>
-                        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none', openEx && 'rotate-180')} />
+                        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none', openEx && 'rotate-180')} />
                       </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-3 p-3 pt-0">
+                    <CollapsibleContent>
+                      <div className="space-y-3 p-3 pt-0">
                       <div className="space-y-2">
                         <Label htmlFor={`ew-name-${index}`} className="text-xs">Exercise name</Label>
                         <Input
@@ -733,6 +744,7 @@ export const EditWorkoutSessionModal = ({
                           <Trash2 aria-hidden="true" />
                           Remove
                         </ConfirmDeleteButton>
+                      </div>
                       </div>
                     </CollapsibleContent>
                   </div>

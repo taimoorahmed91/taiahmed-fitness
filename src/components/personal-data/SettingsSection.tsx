@@ -86,7 +86,7 @@ export const SettingsSection = ({
                 </span>
                 <ChevronDown
                   aria-hidden="true"
-                  className="shrink-0 transition-transform motion-reduce:transition-none group-data-[state=open]/section:rotate-180"
+                  className="shrink-0 transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]/section:rotate-180"
                 />
               </Button>
             </CollapsibleTrigger>

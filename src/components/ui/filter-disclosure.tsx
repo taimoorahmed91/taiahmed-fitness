@@ -2,6 +2,7 @@ import * as React from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CollapsePanel } from "@/components/ui/collapse-panel";
 import { cn } from "@/lib/utils";
 
 export interface FilterDisclosureProps {
@@ -21,6 +22,7 @@ export interface FilterDisclosureProps {
 /**
  * Phones: the filters hide behind one "Filters (2)" button, so the list stays on screen.
  * From `sm` up the panel is always open and the button disappears.
+ * On phones the panel slides open and shut; its children stay mounted (one set of inputs, state never duplicated).
  */
 function FilterDisclosure({
   activeCount,
@@ -34,7 +36,7 @@ function FilterDisclosure({
   const panelId = React.useId();
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={className}>
       <div className="flex items-center gap-2">
         {leading && <div className="min-w-0 flex-1">{leading}</div>}
         <Button
@@ -57,13 +59,20 @@ function FilterDisclosure({
           )}
           <ChevronDown
             aria-hidden="true"
-            className={cn("transition-transform motion-reduce:transition-none", open && "rotate-180")}
+            className={cn("transition-transform duration-200 motion-reduce:transition-none", open && "rotate-180")}
           />
         </Button>
       </div>
-      <div id={panelId} className={cn("space-y-3", open ? "block" : "hidden", "sm:block")}>
+      <CollapsePanel
+        id={panelId}
+        open={open}
+        alwaysOpenFrom="sm"
+        openClassName="mt-3"
+        closedClassName="mt-0 sm:mt-3"
+        innerClassName="space-y-3"
+      >
         {children}
-      </div>
+      </CollapsePanel>
     </div>
   );
 }

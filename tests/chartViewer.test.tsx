@@ -118,7 +118,7 @@ describe('ChartFigure in the viewer', () => {
   });
   test('summary is still available on demand and ids are instance based (card and viewer never share one)', () => {
     const a = figure(false);
-    assert.match(a, /<details data-chart-summary/);
+    assert.match(a, /<div data-chart-summary/);
     assert.match(read('src/components/charts/ChartFigure.tsx'), /const id = useId\(\)/);
   });
 });

@@ -71,8 +71,10 @@ describe('history lists: shared rules', () => {
 describe('history lists: row structure', () => {
   const row = read('src/components/history/HistoryRow.tsx');
   test('the summary is one disclosure button with expanded state, controls and a 44px target', () => {
-    assert.match(row, /aria-expanded=\{expanded\}/);
-    assert.match(row, /aria-controls=\{panelId\}/);
+    // Radix Collapsible supplies aria-expanded and aria-controls on the trigger; the <li> is the root (asChild).
+    assert.match(row, /<Collapsible asChild open=\{expandable && expanded\}/);
+    assert.match(row, /<CollapsibleTrigger asChild>\s*<button/);
+    assert.match(row, /<CollapsibleContent /);
     assert.match(row, /min-h-11/);
     assert.match(row, /focus-visible:ring-2/);
   });

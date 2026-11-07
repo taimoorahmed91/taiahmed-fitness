@@ -154,12 +154,13 @@ describe('mounted: trend chart <-> history list (Weight, Sleep)', () => {
       const button = trendButton()!;
       assert.equal(text(button).startsWith('Trend'), true);
       assert.equal(button.getAttribute('aria-expanded'), 'false');
-      assert.ok(q('[data-trend-panel]')!.className.includes('max-md:hidden'), 'closed on phones');
+      assert.equal(q('[data-trend-panel]')!.getAttribute('data-state'), 'closed', 'closed on phones');
+      assert.ok(q('[data-trend-panel]')!.className.includes('md:grid-rows-[1fr]'), 'but always open from md up');
       assert.equal(doc().getElementById(button.getAttribute('aria-controls')!), q('[data-trend-panel]'));
       assert.ok(q('[data-record-trend-chart="weight"]'), 'the chart stays mounted while collapsed');
       await clickEl(button);
       assert.equal(button.getAttribute('aria-expanded'), 'true');
-      assert.ok(!q('[data-trend-panel]')!.className.includes('max-md:hidden'));
+      assert.equal(q('[data-trend-panel]')!.getAttribute('data-state'), 'open');
     });
 
     test('uses the Dashboard chart id, so its saved range and style are the same preference', async () => {
@@ -396,9 +397,9 @@ describe('mounted: trend chart <-> history list (Weight, Sleep)', () => {
     test('no disclosure button is needed: the chart is simply open; Show on chart is an inline icon action', async () => {
       desktop = true;
       await mountPage('Weight');
-      // The same markup serves both: the closed state only hides the panel BELOW md (max-md:hidden), and the button is md:hidden.
+      // The same markup serves both: the closed state only collapses the panel BELOW md (the md:grid-rows/md:visible classes keep it open from md up), and the button is md:hidden.
       assert.equal(trendButton()!.getAttribute('aria-expanded'), 'false');
-      assert.ok(q('[data-trend-panel]')!.className.includes('max-md:hidden'));
+      assert.ok(q('[data-trend-panel]')!.className.includes('md:grid-rows-[1fr]') && q('[data-trend-panel]')!.className.includes('md:visible'));
       assert.ok(!/(^|\s)hidden(\s|$)/.test(q('[data-trend-panel]')!.className), 'never hidden outright');
       assert.ok(trendButton()!.className.includes('md:hidden'));
       await clickEl(hit(iso(130)));

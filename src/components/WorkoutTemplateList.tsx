@@ -7,6 +7,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Trash2, Play, ClipboardList, Pencil, Plus, Search, Trophy, History, Clock, Repeat, Pin } from 'lucide-react';
 import { WorkoutTemplateForm } from '@/components/WorkoutTemplateForm';
@@ -140,7 +141,8 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
           {filtered.map((t) => {
             const s = stats.get(t.id)!;
             const isOpen = expanded.has(t.id);
-            const shown = isOpen ? t.exercises : t.exercises.slice(0, 4);
+            const firstFour = t.exercises.slice(0, 4);
+            const rest = t.exercises.slice(4);
             return (
               <Card key={t.id} className="flex flex-col shadow-md">
                 <CardContent className="flex flex-col flex-1 gap-3 pt-5">
@@ -163,24 +165,35 @@ export const WorkoutTemplateList = ({ templates, sessions, onCreate, onDelete, o
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{s.count ? `avg ${s.avg} min` : 'no avg yet'}</span>
                     <span className="flex items-center gap-1"><History className="h-3 w-3" />{s.last ? daysAgo(s.last) : 'never run'}</span>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {shown.map((ex, i) => (
-                      <span key={i} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">{ex}</span>
-                    ))}
-                    {t.exercises.length > 4 && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        onClick={() => toggle(t.id)}
-                        aria-expanded={isOpen}
-                        aria-label={isOpen ? `Show fewer exercises in ${t.name}` : `Show all ${t.exercises.length} exercises in ${t.name}`}
-                        className="h-auto px-1 py-0 text-xs"
-                      >
-                        {isOpen ? 'Show less' : `+${t.exercises.length - 4} more`}
-                      </Button>
+                  <Collapsible open={isOpen} onOpenChange={() => toggle(t.id)}>
+                    <div className="flex flex-wrap gap-1">
+                      {firstFour.map((ex, i) => (
+                        <span key={i} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">{ex}</span>
+                      ))}
+                      {rest.length > 0 && (
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            aria-label={isOpen ? `Show fewer exercises in ${t.name}` : `Show all ${t.exercises.length} exercises in ${t.name}`}
+                            className="h-auto px-1 py-0 text-xs"
+                          >
+                            {isOpen ? 'Show less' : `+${rest.length} more`}
+                          </Button>
+                        </CollapsibleTrigger>
+                      )}
+                    </div>
+                    {rest.length > 0 && (
+                      <CollapsibleContent>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {rest.map((ex, i) => (
+                            <span key={i + 4} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">{ex}</span>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
                     )}
-                  </div>
+                  </Collapsible>
                   <div className="flex items-center gap-1 mt-auto pt-2">
                     <Button className="flex-1" onClick={() => onStart(t)}><Play className="h-4 w-4 mr-1" />Start Workout</Button>
                     <IconButton label={`Edit template ${t.name}`} tooltip onClick={() => onEdit(t)}>

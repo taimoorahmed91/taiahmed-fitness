@@ -132,7 +132,7 @@ describe('mounted: macro target chart style', () => {
     const bar = await mount();
     assert.deepEqual(ticks(bar), lt, 'the same axis in Bar mode');
     assert.equal(/Axis starts at/.test(caption(bar)), false);
-    assert.equal(/not zero/.test(bar.querySelector('details p')!.textContent ?? ''), false);
+    assert.equal(/not zero/.test(bar.querySelector('[data-chart-summary] p')!.textContent ?? ''), false);
   });
 
   test('a persisted Bar choice opens the full-screen viewer with all three as bars; switching to Line there changes all three, and the card follows', async () => {

@@ -7,6 +7,7 @@ import {
   type SleepNutritionEvidence,
 } from '@/lib/crossMetricIntelligence';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 /**
  * "Show evidence" disclosure for a cross-metric insight: how the days were split, which dates sit in each
@@ -215,7 +216,6 @@ const SleepNutritionBody = ({ ev, onSelectDate }: { ev: SleepNutritionEvidence; 
 
 export const InsightEvidence = ({ title, evidence, staleSources = [], onSelectDate, className }: InsightEvidenceProps) => {
   const [open, setOpen] = useState(false);
-  const panelId = useId();
   return (
     <div className={cn('min-w-0', className)} data-testid={`insight-evidence-${evidence.kind}`}>
       {staleSources.length > 0 && (
@@ -224,22 +224,25 @@ export const InsightEvidence = ({ title, evidence, staleSources = [], onSelectDa
           <span>May be out of date: the latest refresh of {staleSources.join(' and ')} failed, so this uses the last data that loaded.</span>
         </p>
       )}
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(v => !v)}
-        className="mt-1 -ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
-      >
-        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')} />
-        {open ? 'Hide evidence' : 'Show evidence'}
-        <span className="sr-only"> for {title}</span>
-      </button>
-      <div id={panelId} hidden={!open} role="region" aria-label={`Evidence for ${title}`} className="space-y-3 border-t pt-3">
-        {open && (evidence.kind === 'recovery_vs_gym'
-          ? <RecoveryGymBody ev={evidence} onSelectDate={onSelectDate} />
-          : <SleepNutritionBody ev={evidence} onSelectDate={onSelectDate} />)}
-      </div>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="mt-1 -ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
+          >
+            <ChevronDown aria-hidden="true" className={cn('h-4 w-4 transition-transform duration-200 motion-reduce:transition-none', open && 'rotate-180')} />
+            {open ? 'Hide evidence' : 'Show evidence'}
+            <span className="sr-only"> for {title}</span>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent role="region" aria-label={`Evidence for ${title}`} className="border-t">
+          <div className="space-y-3 pt-3">
+            {evidence.kind === 'recovery_vs_gym'
+              ? <RecoveryGymBody ev={evidence} onSelectDate={onSelectDate} />
+              : <SleepNutritionBody ev={evidence} onSelectDate={onSelectDate} />}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };

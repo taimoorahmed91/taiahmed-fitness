@@ -2,12 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState } from '@/components/layout/Page';
 import { useWhoopData } from '@/hooks/useWhoopData';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, RefreshCw, Activity, Heart, Moon, Flame, Link as LinkIcon } from 'lucide-react';
+import { AlertCircle, ChevronDown, RefreshCw, Activity, Heart, Moon, Flame, Link as LinkIcon } from 'lucide-react';
 import { WhoopHistoryList, whoopDateLabel, whoopLatestCards, type LatestReading } from '@/components/history/WhoopHistoryList';
 import { useSharedTableState } from '@/lib/sharedTable';
 import { tableView } from '@/components/feedback/tableView';
@@ -210,21 +211,25 @@ const WhoopData = () => {
       {/* WHOOP API URL config */}
       <PageSection title="WHOOP connection" hideTitle>
         <Card>
-          <details className="group">
-            <summary className="cursor-pointer list-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Collapsible className="group">
+            <CollapsibleTrigger className="block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <CardHeader className="pb-2">
                 <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
                   <LinkIcon className="h-4 w-4" aria-hidden="true" /> WHOOP API URL
                   <Badge variant={urlState === 'ready' && savedUrl ? 'default' : 'outline'} className="ml-1">
                     {urlState === 'loading' ? 'Checking…' : urlState === 'error' ? 'Not checked' : savedUrl ? 'Connected' : 'Not set'}
                   </Badge>
-                  <span className="ml-auto text-xs font-normal text-muted-foreground group-open:hidden">Tap to edit</span>
+                  <span className="ml-auto flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                    <span className="group-data-[state=open]:hidden">Tap to edit</span>
+                    <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]:rotate-180" />
+                  </span>
                 </CardTitle>
                 <CardDescription>
                   Paste the WHOOP data endpoint URL used by Sync Now.
                 </CardDescription>
               </CardHeader>
-            </summary>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             <CardContent className="space-y-3">
               {urlState === 'error' && (
                 <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -267,7 +272,8 @@ const WhoopData = () => {
                 </Button>
               </div>
             </CardContent>
-          </details>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       </PageSection>
 

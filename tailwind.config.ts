@@ -98,11 +98,36 @@ export default {
   				to: {
   					height: '0'
   				}
+  			},
+  			// overflow is set inside the keyframes (not as a static class) so content is
+  			// only clipped while the height is animating; at rest, focus rings and
+  			// popovers inside the panel are never cut off.
+  			'collapsible-down': {
+  				from: {
+  					height: '0',
+  					overflow: 'hidden'
+  				},
+  				to: {
+  					height: 'var(--radix-collapsible-content-height)',
+  					overflow: 'hidden'
+  				}
+  			},
+  			'collapsible-up': {
+  				from: {
+  					height: 'var(--radix-collapsible-content-height)',
+  					overflow: 'hidden'
+  				},
+  				to: {
+  					height: '0',
+  					overflow: 'hidden'
+  				}
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'collapsible-down': 'collapsible-down 0.22s cubic-bezier(0.22, 1, 0.36, 1)',
+  			'collapsible-up': 'collapsible-up 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',

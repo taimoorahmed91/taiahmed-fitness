@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, RefreshCw, Search, Filter, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { FileText, RefreshCw, Search, Filter, ChevronDown, Clock } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState } from '@/components/layout/Page';
 import { IconButton } from '@/components/ui/icon-button';
 import { format } from 'date-fns';
@@ -239,19 +240,20 @@ const ActivityLogs = () => {
               ) : (
                 <div className="space-y-2">
                   {filteredLogs.map((log) => (
-                    <div
+                    <Collapsible
                       key={log.id}
+                      open={expandedLog === log.id}
+                      onOpenChange={(open) => setExpandedLog(open ? log.id : null)}
                       className={`rounded-lg border p-3 transition-colors hover:bg-muted/50 ${
                         log.status === 'error' ? 'border-destructive/30 bg-destructive/5' : ''
                       }`}
                     >
+                      <CollapsibleTrigger asChild>
                       <div
                         role="button"
                         tabIndex={0}
-                        aria-expanded={expandedLog === log.id}
                         aria-label={`${log.category.replace('_', ' ')} ${log.action}, ${format(new Date(log.created_at), 'MMM d, HH:mm:ss')}${log.status === 'error' ? ', error' : ''}`}
                         className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
@@ -275,30 +277,32 @@ const ActivityLogs = () => {
                             <Clock className="h-3 w-3" />
                             {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
                           </div>
-                          {expandedLog === log.id ? (
-                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          )}
+                          <ChevronDown
+                            aria-hidden="true"
+                            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${expandedLog === log.id ? 'rotate-180' : ''}`}
+                          />
                         </div>
                       </div>
+                      </CollapsibleTrigger>
 
-                      {expandedLog === log.id && (
-                        <div className="mt-3 pt-3 border-t space-y-2">
-                          {log.error_message && (
-                            <div className="text-sm text-destructive">
-                              <strong>Error:</strong> {log.error_message}
-                            </div>
-                          )}
-                          <pre className="text-xs bg-muted/50 rounded p-3 overflow-x-auto whitespace-pre-wrap font-mono">
-                            {formatDetails(log.details)}
-                          </pre>
-                          <p className="text-xs text-muted-foreground">
-                            Full timestamp: {format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss.SSS')}
-                          </p>
+                      <CollapsibleContent>
+                        <div className="pt-3">
+                          <div className="space-y-2 border-t pt-3">
+                            {log.error_message && (
+                              <div className="text-sm text-destructive">
+                                <strong>Error:</strong> {log.error_message}
+                              </div>
+                            )}
+                            <pre className="text-xs bg-muted/50 rounded p-3 overflow-x-auto whitespace-pre-wrap font-mono">
+                              {formatDetails(log.details)}
+                            </pre>
+                            <p className="text-xs text-muted-foreground">
+                              Full timestamp: {format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss.SSS')}
+                            </p>
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   ))}
                 </div>
               )}
