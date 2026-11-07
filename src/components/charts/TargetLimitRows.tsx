@@ -9,11 +9,11 @@ const Row = ({ kind, value, current, unit }: { kind: 'min' | 'max'; value: numbe
   const meta = kind === 'min' ? STATUS_META.within : STATUS_META.over;
   const { text, pct } = describeLimit(current, value, kind, unit);
   return (
-    <div className={cn('flex items-center gap-2 rounded-md border px-3 py-2 text-sm', meta.border, meta.tint)}>
+    <div className={cn('flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md border px-3 py-2 text-sm', meta.border, meta.tint)}>
       <span className="text-muted-foreground">
         {kind === 'min' ? 'Min' : 'Max'} <span className={cn('font-semibold', meta.text)}><AnimatedNumber value={Math.round(value)} format={formatWhole} /> {unit}</span>
       </span>
-      <span className={cn('ml-auto text-right font-medium tabular-nums', meta.text)}>{text}</span>
+      <span className={cn('ml-auto whitespace-nowrap text-right font-medium tabular-nums', meta.text)}>{text}</span>
       <span className="min-w-[2ch] text-right font-semibold tabular-nums"><AnimatedNumber value={pct} suffix="%" /></span>
     </div>
   );

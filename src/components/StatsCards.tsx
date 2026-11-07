@@ -152,7 +152,7 @@ export const StatsCards = ({
   let workoutTitle: string;
   let workoutSubtitle: string;
   if (didWorkoutToday) {
-    workoutTitle = 'You did workout today';
+    workoutTitle = 'Workout done today';
     workoutSubtitle = 'Rest now!';
   } else if (isWorkoutDay) {
     workoutTitle = 'Today is a workout day';
@@ -163,7 +163,7 @@ export const StatsCards = ({
       : 'Get moving!';
   } else if (missedYesterdayWorkout) {
     workoutTitle = 'You missed a workout day';
-    workoutSubtitle = 'Try to recompensate today';
+    workoutSubtitle = 'Try to make up for it today';
   } else {
     workoutTitle = 'Rest day';
     workoutSubtitle = 'Recover and recharge';

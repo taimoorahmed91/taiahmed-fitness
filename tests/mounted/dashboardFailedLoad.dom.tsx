@@ -146,7 +146,7 @@ describe('Dashboard: failed first loads are never zeros, empties, targets, remin
   };
 
   const claimsText = ['No meals logged today', 'Rest day', 'Today is a workout day', 'Get moving', 'Measure your weight today', 'Measure your waist today',
-    'Not synced yet today', 'Next measurement in', 'You did workout today', 'On track'];
+    'Not synced yet today', 'Next measurement in', 'Workout done today', 'On track'];
   const noClaims = () => { for (const c of claimsText) expect(text()).not.toContain(c); };
   const claimBlocks = ['calorie-goal', 'protein-target', 'carb-target', 'yesterday', 'meal-timing', 'recovery-chart', 'macro-chart', 'workout-chart', 'balance-chart', 'weight-chart', 'waist-chart', 'sleep-chart', 'insights-card'];
 
@@ -204,7 +204,7 @@ describe('Dashboard: failed first loads are never zeros, empties, targets, remin
     await mount();
     expect(text()).toContain('Reminder paused');
     expect(text()).toContain("Couldn't load your workouts");
-    for (const c of ['Rest day', 'Today is a workout day', 'Get moving', 'You did workout today', 'You missed a workout day']) expect(text()).not.toContain(c);
+    for (const c of ['Rest day', 'Today is a workout day', 'Get moving', 'Workout done today', 'You missed a workout day']) expect(text()).not.toContain(c);
     expect(links()).not.toContain('/gym');
     for (const id of ['calorie-goal', 'yesterday', 'macro-chart', 'workout-chart', 'insights-card']) expect(has(id)).toBe(false);
     // Weight / waist / WHOOP tiles do not need workouts.

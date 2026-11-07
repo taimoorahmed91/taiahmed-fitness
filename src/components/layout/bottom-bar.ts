@@ -26,6 +26,23 @@ export const BOTTOM_BAR_MEDIA_QUERY = '(max-width: 639.98px)';
 /** Padding that keeps the last bit of page content clear of the bar and the home indicator. */
 export const BOTTOM_BAR_CLEARANCE = `calc(var(${BOTTOM_BAR_VAR}, 0px) + env(safe-area-inset-bottom))`;
 
+/** Air between the top of the dock's raised active item and the bottom edge of a toast, in rem. */
+export const TOAST_DOCK_GAP_REM = 0.5;
+
+/**
+ * Where the bottom edge of a toast sits on phones: above everything the dock occupies (`--bottom-bar-height` =
+ * BOTTOM_BAR_HEIGHT_REM, so it includes the raised active item), above the home-indicator safe area (added once here),
+ * plus a small gap. The variable falls back to 0 where there is no dock (Welcome, sign-in, `sm` and up), so toasts
+ * sit at the normal distance there.
+ */
+export const BOTTOM_BAR_TOAST_OFFSET = `calc(var(${BOTTOM_BAR_VAR}, 0px) + env(safe-area-inset-bottom) + ${TOAST_DOCK_GAP_REM}rem)`;
+
+/**
+ * The same clearance for the band between Sonner's phone breakpoint (600px) and the dock's (640px), and for wider
+ * screens, where the variable is 0 and this equals Sonner's own 32px default.
+ */
+export const BOTTOM_BAR_TOAST_OFFSET_WIDE = `calc(var(${BOTTOM_BAR_VAR}, 0px) + env(safe-area-inset-bottom) + 2rem)`;
+
 /**
  * Declares the variable for the layout subtree with plain CSS, so the first
  * paint is already correct. Written out in full so Tailwind can see the classes.

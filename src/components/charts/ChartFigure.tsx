@@ -13,8 +13,14 @@ interface ChartFigureProps {
   title: string;
   /** Plain-language description of the data. Read by screen readers. */
   summary: string;
-  /** Small visible line under the title: units, period, how to read it. */
+  /** Small visible line above the plot. Keep it to ONE short line: units, period, a non-zero axis start. */
   caption?: ReactNode;
+  /**
+   * Longer "how to read this" sentences (what a blank day means, that a point can be selected, what a colour stands for,
+   * how many days have more than one entry). They live in the "Chart summary" panel under the plot and are read out by
+   * screen readers with the summary, so the caption stays one line and nothing is lost.
+   */
+  howToRead?: string[];
   /** Optional full data, exposed to screen readers as a table. */
   table?: { columns: ChartTableColumn[]; rows: Record<string, unknown>[] };
   height?: number;
@@ -42,7 +48,7 @@ const cell = (value: unknown) => (value == null || value === '' ? '--' : typeof 
  * table for screen readers, an optional visible caption, and the responsive
  * container. The visual chart itself stays unchanged.
  */
-export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEIGHT, expanded = false, className, afterPlot, children }: ChartFigureProps) => {
+export const ChartFigure = ({ title, summary, caption, howToRead, table, height = CHART_HEIGHT, expanded = false, className, afterPlot, children }: ChartFigureProps) => {
   const id = useId();
   const [summaryOpen, setSummaryOpen] = useState(false);
   // The card's screen-reader table is capped (it sits in every card). The full-screen viewer's is not: it never drops a row.
@@ -50,9 +56,11 @@ export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEI
   const allRows = table ? table.rows : [];
   const rows = expanded ? allRows : allRows.slice(-MAX_TABLE_ROWS);
   const truncated = rows.length < allRows.length;
+  const notes = (howToRead ?? []).filter(Boolean);
+  const describedBy = notes.length > 0 ? `${id}-summary ${id}-reading` : `${id}-summary`;
   return (
     // useId makes these ids unique per mounted figure, so the card and the full-screen viewer can be on screen together.
-    <figure aria-labelledby={`${id}-label`} aria-describedby={`${id}-summary`} className={expanded ? 'm-0 flex flex-1 flex-col' : className ?? 'm-0'} data-chart-expanded={expanded ? '' : undefined}>
+    <figure aria-labelledby={`${id}-label`} aria-describedby={describedBy} className={expanded ? 'm-0 flex flex-1 flex-col' : className ?? 'm-0'} data-chart-expanded={expanded ? '' : undefined}>
       <figcaption id={`${id}-label`} className="sr-only">{title}</figcaption>
       {caption && <p className="mb-2 text-xs text-muted-foreground">{caption}</p>}
       {expanded ? (
@@ -81,6 +89,12 @@ export const ChartFigure = ({ title, summary, caption, table, height = CHART_HEI
         </button>
         <CollapsePanel id={`${id}-summary-panel`} open={summaryOpen}>
           <p id={`${id}-summary`} className="px-1 pb-1 pt-1 leading-relaxed">{summary}</p>
+          {notes.length > 0 && (
+            <p id={`${id}-reading`} data-chart-reading="" className="px-1 pb-1 leading-relaxed">
+              <span className="font-medium text-foreground">How to read this: </span>
+              {notes.join(' ')}
+            </p>
+          )}
         </CollapsePanel>
       </div>
       {table && rows.length > 0 && (

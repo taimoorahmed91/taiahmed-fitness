@@ -76,6 +76,16 @@ describe('mounted: full-screen chart viewer', () => {
   const dialog = () => doc().querySelector('[role="dialog"]') as HTMLElement | null;
   const expandButton = (title: string) => doc().querySelector(`button[aria-label="Open ${title} in full screen"]`) as HTMLButtonElement;
   const open = async (title: string) => { await act(async () => click(env.window, expandButton(title))); await flush(10); return dialog()!; };
+  const menuTrigger = (title: string) => doc().querySelector(`button[aria-label="More chart actions for ${title}"]`) as HTMLButtonElement;
+  /** Opens a card's "More chart actions" menu from the keyboard (Enter on the focused button), as a keyboard user would. */
+  const openMenu = async (title: string) => {
+    const trigger = menuTrigger(title);
+    assert.ok(trigger, `${title}: menu button`);
+    trigger.focus();
+    await act(async () => { trigger.dispatchEvent(new env.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); });
+    await flush(10);
+    return [...doc().querySelectorAll('[role="menuitem"]')] as HTMLElement[];
+  };
   const checked = (root: ParentNode, group: string) => root.querySelector(`[aria-label="${group}"] [role="radio"][aria-checked="true"]`)?.getAttribute('aria-label') ?? null;
   const pick = async (root: ParentNode, group: string, label: string) => {
     const radio = root.querySelector(`[aria-label="${group}"] [role="radio"][aria-label="${label}"]`) as HTMLElement;
@@ -163,46 +173,68 @@ describe('mounted: full-screen chart viewer', () => {
     assert.equal(doc().querySelectorAll('[data-chart-plot]').length, 1, 'cards keep their fixed height');
   });
 
-  test('pop-out and PDF sit in one actions unit on the card; the viewer has PDF but no second pop-out; all excluded from PDF capture', async () => {
+  test('pop-out and the "More chart actions" menu sit beside the title on the card; the viewer has the visible PDF button but no second pop-out or menu; all excluded from PDF capture', async () => {
     const host = await charts();
     const actions = host.querySelector('[data-chart-header] [data-chart-actions]')!;
-    assert.ok(actions.querySelector('[aria-label="Download Weight Trend as PDF"]'));
+    assert.ok(actions.querySelector('[aria-label="More chart actions for Weight Trend"]'));
     assert.ok(actions.querySelector('[aria-label="Open Weight Trend in full screen"]'));
+    assert.equal(actions.querySelector('[aria-label="Download Weight Trend as PDF"]'), null, 'no visible PDF button on the card any more');
     assert.equal(actions.querySelector('[data-chart-expand]')?.getAttribute('data-html2canvas-ignore'), 'true');
-    assert.equal(actions.closest('[data-chart-controls]')?.getAttribute('data-html2canvas-ignore'), 'true');
+    assert.equal(actions.querySelector('[data-chart-menu]')?.getAttribute('data-html2canvas-ignore'), 'true');
+    assert.equal(actions.getAttribute('data-html2canvas-ignore'), 'true');
+    // The title and the actions share one row (the actions are next to the heading, not in the controls group).
+    assert.equal(actions.closest('[data-chart-controls]'), null);
+    assert.equal(actions.previousElementSibling?.tagName, 'H3');
     const d = await open('Weight Trend');
     assert.ok(d.querySelector('[data-chart-controls] [data-chart-actions] [aria-label="Download Weight Trend as PDF"]'));
     assert.equal(d.querySelector('[data-chart-expand]'), null);
+    assert.equal(d.querySelector('[data-chart-menu]'), null);
     assert.equal(d.querySelector('[data-chart-controls]')?.getAttribute('data-html2canvas-ignore'), 'true');
     assert.equal(d.querySelector('[aria-label="Close full screen view"]')?.getAttribute('data-html2canvas-ignore'), 'true');
   });
 
-  /** Ordered parts of a controls group, read from the live DOM. */
-  const order = (root: ParentNode) => [...root.querySelectorAll('[data-chart-controls-row], [aria-label$="chart type"], [aria-label^="Download"], [data-chart-expand]')].map((e) =>
-    e.hasAttribute('data-chart-controls-row') ? `row:${e.getAttribute('data-chart-controls-row')}` : e.hasAttribute('data-chart-expand') ? 'expand' : (e.getAttribute('aria-label') ?? '').startsWith('Download') ? 'pdf' : 'style');
+  test('the card menu is keyboard operable: Enter opens it, it offers PDF and CSV, Escape closes it and focus returns to its button', async () => {
+    await charts();
+    const items = await openMenu('Weight Trend');
+    assert.deepEqual(items.map((i) => i.textContent?.trim()), ['Download PDF', 'Download CSV']);
+    assert.equal(menuTrigger('Weight Trend').getAttribute('aria-expanded'), 'true');
+    assert.equal(menuTrigger('Weight Trend').getAttribute('aria-haspopup'), 'menu');
+    const menu = doc().querySelector('[role="menu"]') as HTMLElement;
+    await act(async () => { menu.dispatchEvent(new env.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); });
+    await flush(30);
+    assert.equal(doc().querySelector('[role="menu"]'), null);
+    assert.equal(doc().activeElement, menuTrigger('Weight Trend'));
+  });
 
-  test('control rows: every card is [range row] then [style?, PDF, full screen]; the viewer keeps the same parts without a second full-screen button', async () => {
+  /** Ordered parts of a card header (title actions, then the range row), read from the live DOM. */
+  const cardOrder = (root: ParentNode) => [...root.querySelectorAll('[data-chart-controls-row], [aria-label$="chart type"], [data-chart-menu], [data-chart-expand]')].map((e) =>
+    e.hasAttribute('data-chart-controls-row') ? `row:${e.getAttribute('data-chart-controls-row')}` : e.hasAttribute('data-chart-expand') ? 'expand' : e.hasAttribute('data-chart-menu') ? 'menu' : 'style');
+  /** Ordered parts of the viewer's controls group. */
+  const viewerOrder = (root: ParentNode) => [...root.querySelectorAll('[data-chart-controls-row], [aria-label$="chart type"], [aria-label^="Download"]')].map((e) =>
+    e.hasAttribute('data-chart-controls-row') ? `row:${e.getAttribute('data-chart-controls-row')}` : (e.getAttribute('aria-label') ?? '').startsWith('Download') ? 'pdf' : 'style');
+
+  test('control rows: every card is [full screen, menu] beside the title, then ONE range row (+ switch); the viewer keeps the range row plus a PDF row without a second full-screen button', async () => {
     const host = await charts();
     const headers = [...host.querySelectorAll('[data-chart-header]')];
     assert.equal(headers.length, 4);
-    const expectCard = { 'Weight Trend': ['row:range', 'style', 'row:actions', 'pdf', 'expand'], Sleep: ['row:range', 'style', 'row:actions', 'pdf', 'expand'], 'Calories by Time of Day': ['row:range', 'row:actions', 'pdf', 'expand'], 'Protein: Actual vs Target': ['row:range', 'style', 'row:actions', 'pdf', 'expand'] } as Record<string, string[]>;
+    const expectCard = { 'Weight Trend': ['expand', 'menu', 'row:range', 'style'], Sleep: ['expand', 'menu', 'row:range', 'style'], 'Calories by Time of Day': ['expand', 'menu', 'row:range'], 'Protein: Actual vs Target': ['expand', 'menu', 'row:range', 'style'] } as Record<string, string[]>;
     for (const h of headers) {
       const title = h.querySelector('h3')!.textContent!;
-      assert.deepEqual(order(h), expectCard[title], title);
-      // Range row and actions row are siblings: row 1 holds the four range options and (when the chart has it) the line/bar switch,
-      // right-aligned in its own slot; PDF and full screen are only in row 2.
+      assert.deepEqual(cardOrder(h), expectCard[title], title);
+      // One control row: the four range options and (when the chart has it) the line/bar switch, right-aligned in its own slot.
       const rows = [...h.querySelectorAll('[data-chart-controls-row]')];
       const hasStyle = expectCard[title].includes('style');
-      assert.equal(rows[0].querySelectorAll('[role="radio"]').length, hasStyle ? 6 : 4, `${title}: four range options${hasStyle ? ' + the two line/bar options' : ''} in row 1`);
+      assert.equal(rows.length, 1, `${title}: the card has a single control row`);
+      assert.equal(rows[0].querySelectorAll('[role="radio"]').length, hasStyle ? 6 : 4, `${title}: four range options${hasStyle ? ' + the two line/bar options' : ''}`);
       assert.equal(rows[0].querySelector('[data-chart-actions]'), null);
       assert.equal(rows[0].querySelector('[data-chart-style-slot]') !== null, hasStyle, `${title}: switch slot`);
       if (hasStyle) assert.ok(rows[0].querySelector('[data-chart-style-slot]')!.classList.contains('ml-auto'));
-      assert.equal(rows[1].querySelector('[role="radio"]'), null, `${title}: no radio controls in the actions row`);
     }
+    const expectViewer = { 'Weight Trend': ['row:range', 'style', 'row:actions', 'pdf'], 'Calories by Time of Day': ['row:range', 'row:actions', 'pdf'] } as Record<string, string[]>;
     for (const title of ['Weight Trend', 'Calories by Time of Day']) {
       const d = await open(title);
       assert.equal(d.querySelector('[data-chart-controls]')?.getAttribute('data-chart-layout'), 'viewer');
-      assert.deepEqual(order(d.querySelector('[data-chart-controls]')!), expectCard[title].filter((p) => p !== 'expand'), `${title} viewer`);
+      assert.deepEqual(viewerOrder(d.querySelector('[data-chart-controls]')!), expectViewer[title], `${title} viewer`);
       await act(async () => click(env.window, d.querySelector('[aria-label="Close full screen view"]')!));
       await flush(30);
     }
@@ -254,7 +286,9 @@ describe('mounted: full-screen chart viewer', () => {
 
   test('PDF from the viewer captures the viewer chart; PDF from the card still captures the card', async () => {
     const host = await charts();
-    const cardPdf = host.querySelector('[aria-label="Download Weight Trend as PDF"]') as HTMLElement;
+    const items = await openMenu('Weight Trend');
+    const cardPdf = items.find((i) => i.textContent?.trim() === 'Download PDF')!;
+    assert.ok(cardPdf, 'the card offers PDF in its menu');
     await act(async () => click(env.window, cardPdf));
     await flush(80);
     assert.equal(captured.length, 1);

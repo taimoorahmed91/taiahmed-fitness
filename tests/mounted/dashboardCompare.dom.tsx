@@ -236,7 +236,7 @@ describe('mounted: Dashboard A / B Compare (Weight Trend and Sleep)', () => {
       await choose(iso(0), 'b');
       assert.equal(pickText('a'), `A: ${short(iso(3))} · 80.9 kg`, 'w-3a (80.9), not w-3b (81.2)');
       assert.equal(openCompare()!.getAttribute('href'), '/compare?category=weight&a=w-3a&b=w-0');
-      assert.match(text(q('figcaption + p', viewer()!) ?? q('figure', viewer()!)), /1 day has more than one entry \(one is plotted\)/);
+      assert.match(text(q('[data-chart-reading]', viewer()!) ?? q('figure', viewer()!)), /1 day has more than one entry \(one is plotted\)/);
     });
 
     test('set A then B, B older than A stays B; third pick replaces only its slot; Swap and Clear work', async () => {

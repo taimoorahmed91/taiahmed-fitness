@@ -844,7 +844,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
             confirmLabel="Yes, discard workout"
             className="px-2 text-destructive hover:text-destructive"
           >
-            Cancel Workout
+            Discard workout
           </ConfirmDeleteButton>
           <Button variant="outline" size="touch" onClick={requestClose} className="h-auto min-h-11 whitespace-normal px-2 py-1 leading-tight">
             Pause & Resume Later

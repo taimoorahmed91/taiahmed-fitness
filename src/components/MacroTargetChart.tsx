@@ -108,7 +108,7 @@ export const MacroTargetChart = ({ data, title, unit, storageKey, metric, status
         ? <ChartEmptyState action={NO_DATA.meals.action}>{NO_DATA.meals.message}</ChartEmptyState>
         : <ChartEmptyState>No intake data in this period. Try a wider date range.</ChartEmptyState>
     ) : (
-      <ChartFigure expanded={expanded} title={title} summary={summaryText} caption={`Values in ${unit} · ${period}${hasUnobserved ? ' · Blank = not fully logged' : ''}${selectable ? ` · Select a ${style === 'bar' ? 'bar' : 'point'} of actual intake for its day` : ''}`} table={{ columns, rows: shown }} afterPlot={expanded ? undefined : <><ChartDayReadout selection={selection} /><ChartCompareCardStrip compare={compare} /></>}>
+      <ChartFigure expanded={expanded} title={title} summary={summaryText} caption={`Values in ${unit} · ${period}`} howToRead={[hasUnobserved ? 'Blank days are not fully logged, so they have no actual intake (they are not zero).' : '', selectable ? `Select a ${style === 'bar' ? 'bar' : 'point'} of actual intake to open that day.` : '']} table={{ columns, rows: shown }} afterPlot={expanded ? undefined : <><ChartDayReadout selection={selection} /><ChartCompareCardStrip compare={compare} /></>}>
         <ComposedChart accessibilityLayer data={shown} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" tickFormatter={formatChartDate} {...chartXAxisFor(shown.length, expanded)} />

@@ -72,7 +72,8 @@ export const DeltaChart = ({ title, icon, unit, entries, emptyText, emptyAction 
         title={title}
         summary={description}
         height={200}
-        caption={`Change in ${unit} between measurements · bars below zero are drops (green), above are rises (red)`}
+        caption={`Change in ${unit} between measurements`}
+        howToRead={['Bars below zero are drops (green); bars above zero are rises (red).']}
         table={{ columns: [{ key: 'isoDate', label: 'Date' }, { key: 'delta', label: `Change (${unit})` }, { key: 'days', label: 'Days' }, { key: 'perWeek', label: `Per week (${unit})` }], rows: points as unknown as Record<string, unknown>[] }}
       >
         <BarChart accessibilityLayer data={points} margin={CHART_MARGIN}>

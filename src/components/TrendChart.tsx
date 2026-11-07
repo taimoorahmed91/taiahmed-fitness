@@ -122,7 +122,12 @@ export const TrendChart = ({ id, title, icon, data, series, unit, defaultStyle, 
         expanded={expanded}
         title={title}
         summary={summaryText}
-        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}${notesMap ? ' · \u25C6 marks a day with a note' : ''}${selectable ? ` · Select a ${view.style === 'bar' ? 'bar' : 'point'} for its day` : ''}${moreThanOne > 0 ? ` · ${moreThanOne} ${moreThanOne === 1 ? 'day has' : 'days have'} more than one entry (one is plotted)` : ''}`}
+        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}`}
+        howToRead={[
+          notesMap ? '\u25C6 marks a day with a note.' : '',
+          selectable ? `Select a ${view.style === 'bar' ? 'bar' : 'point'} to open that day.` : '',
+          moreThanOne > 0 ? `${moreThanOne} ${moreThanOne === 1 ? 'day has' : 'days have'} more than one entry (one is plotted).` : '',
+        ]}
         table={{ columns: pdfColumns, rows: shown }}
         afterPlot={expanded ? undefined : <><ChartDayReadout selection={selection} /><ChartCompareCardStrip compare={compare} /></>}
       >

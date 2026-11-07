@@ -55,7 +55,10 @@ describe('meal quick-add chips', () => {
     assert.match(src, /role="group" aria-labelledby="meal-quick-add-heading"/);
     assert.equal((src.match(/h-11 /g) ?? []).length >= 2, true);
     assert.match(src, /aria-pressed=\{fav\}/);
-    assert.match(src, /fill-primary/);
+    // The pinned look (filled, tilted pin) comes from the shared icon; the chip itself is tinted.
+    assert.match(src, /<QuickAddPinIcon pinned=\{fav\} \/>/);
+    assert.match(read('src/components/QuickAddPinIcon.tsx'), /pinned \? 'fill-primary -rotate-45'/);
+    assert.match(src, /fav \? 'border-primary\/50 bg-primary\/10'/);
   });
   test('use shared Button / IconButton, not stray <Label> without a control', () => {
     assert.match(src, /<IconButton/);

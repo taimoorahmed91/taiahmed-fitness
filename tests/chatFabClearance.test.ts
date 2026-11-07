@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { BOTTOM_BAR_CLEARANCE, BOTTOM_BAR_HEIGHT_REM, BOTTOM_BAR_VAR_CLASS } from '../src/components/layout/bottom-bar';
+import {
+  BOTTOM_BAR_CLEARANCE,
+  BOTTOM_BAR_HEIGHT_REM,
+  BOTTOM_BAR_TOAST_OFFSET,
+  BOTTOM_BAR_TOAST_OFFSET_WIDE,
+  BOTTOM_BAR_VAR_CLASS,
+  TOAST_DOCK_GAP_REM,
+} from '../src/components/layout/bottom-bar';
 import {
   CHAT_FAB_AIR_REM,
   CHAT_FAB_CLEARANCE,
@@ -86,5 +93,32 @@ describe('HowTo video iframe', () => {
     const names = [...iframe.matchAll(/^\s+([A-Za-z-]+)(?:=|\s*$)/gm)].map((m) => m[1]);
     expect(names.length).toBeGreaterThan(0);
     expect(new Set(names).size).toBe(names.length);
+  });
+});
+
+describe('toast clearance above the dock', () => {
+  const sonner = read('src/components/ui/sonner.tsx');
+  test('the phone offset is built from the shared bottom bar variable, the safe area (once) and a small gap', () => {
+    expect(BOTTOM_BAR_TOAST_OFFSET).toBe(
+      `calc(var(--bottom-bar-height, 0px) + env(safe-area-inset-bottom) + ${TOAST_DOCK_GAP_REM}rem)`,
+    );
+    expect(BOTTOM_BAR_TOAST_OFFSET.match(/safe-area-inset-bottom/g)?.length).toBe(1);
+    expect(TOAST_DOCK_GAP_REM).toBeGreaterThan(0);
+    expect(TOAST_DOCK_GAP_REM).toBeLessThanOrEqual(1);
+  });
+  test('Toaster uses the shared values, not a hand-written number', () => {
+    expect(sonner).toContain('BOTTOM_BAR_TOAST_OFFSET');
+    expect(sonner).toContain('mobileOffset={{ bottom: BOTTOM_BAR_TOAST_OFFSET }}');
+    expect(sonner).toContain('offset={{ bottom: BOTTOM_BAR_TOAST_OFFSET_WIDE }}');
+    expect(sonner).not.toMatch(/4\.5rem|4rem tall/);
+    expect(BOTTOM_BAR_TOAST_OFFSET_WIDE).toContain('--bottom-bar-height');
+  });
+  test('by viewport, a toast bottom edge is above the dock including its raised active item (and the home indicator)', () => {
+    // With the variable published (phones) the offset is bar + safe + gap; where there is no dock the variable is 0.
+    const toastBottomPx = (barRem: number, safePx: number) => barRem * REM + safePx + TOAST_DOCK_GAP_REM * REM;
+    for (const safe of [0, 34]) {
+      expect(toastBottomPx(BOTTOM_BAR_HEIGHT_REM, safe)).toBeGreaterThan((BOTTOM_BAR_HEIGHT_REM * REM) + safe);
+    }
+    expect(toastBottomPx(0, 0)).toBe(TOAST_DOCK_GAP_REM * REM);
   });
 });

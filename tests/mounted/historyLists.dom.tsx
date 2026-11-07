@@ -154,8 +154,13 @@ describe('mounted: grouped Meals and Gym history', () => {
       // Quick add is a toggle with aria-pressed, and keeps the exact pin label.
       const pin = () => byLabel('Pin Chicken rice bowl to quick add')!;
       assert.equal(pin().getAttribute('aria-pressed'), 'false');
+      // A Pin icon (outline while not pinned), the same treatment as the Quick add chips.
+      assert.ok(pin().querySelector('svg.lucide-pin'), 'pin icon');
+      assert.equal(pin().querySelector('svg.lucide-zap'), null, 'no lightning bolt');
+      assert.doesNotMatch(pin().querySelector('svg.lucide-pin')!.getAttribute('class') ?? '', /fill-primary|-rotate-45/);
       await clickEl(pin());
       assert.equal(pin().getAttribute('aria-pressed'), 'true');
+      assert.match(pin().querySelector('svg.lucide-pin')!.getAttribute('class') ?? '', /fill-primary[^"]*-rotate-45|-rotate-45[^"]*fill-primary/, 'filled and tilted when pinned');
       assert.match(text(disclosure('Chicken rice bowl')), /pinned to quick add/);
 
       await clickEl(disclosure('Chicken rice bowl'));

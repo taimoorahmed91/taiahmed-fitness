@@ -183,7 +183,7 @@ describe('mounted: macro target chart style', () => {
     // The data sentences are identical in both modes (the axis always starts at 0, so there is no axis note).
     assert.equal(host.querySelector('[data-chart-summary] p')!.textContent, summaryLine);
     assert.match(summaryLine!, /Min target/);
-    assert.ok(host.querySelector('[aria-label="Download Protein: Actual vs Target as PDF"]'));
+    assert.ok(host.querySelector('[aria-label="More chart actions for Protein: Actual vs Target"]'), 'PDF and CSV are offered from the card menu');
   });
 
   test('tooltip shows truthful labels, units and no row for a missing target', async () => {

@@ -88,7 +88,7 @@ export const BodyRecompositionCard = ({ weight, waist, status }: { weight: Entry
         ? <ChartEmptyState action={NO_DATA.body.action} secondaryAction={NO_DATA.body.secondaryAction}>{NO_DATA.body.message}</ChartEmptyState>
         : <ChartEmptyState>No weight or waist entries in this period. Try a wider date range.</ChartEmptyState>
     ) : (
-      <ChartFigure expanded={expanded} title={title} summary={summary} height={260} caption={`Left axis: weight in ${UNIT_LABEL.kilograms} (solid) · Right axis: waist in ${UNIT_LABEL.centimeters} (dashed) · ${period}`} table={{ columns, rows: data }} afterPlot={expanded ? undefined : <ChartCompareCardStrip compare={compare} />}>
+      <ChartFigure expanded={expanded} title={title} summary={summary} height={260} caption={`Weight ${UNIT_LABEL.kilograms} (solid, left) · Waist ${UNIT_LABEL.centimeters} (dashed, right)`} howToRead={[`The left axis is weight in ${UNIT_LABEL.kilograms} (solid line); the right axis is waist in ${UNIT_LABEL.centimeters} (dashed line). Period: ${period}.`]} table={{ columns, rows: data }} afterPlot={expanded ? undefined : <ChartCompareCardStrip compare={compare} />}>
         <ComposedChart accessibilityLayer data={data} margin={CHART_MARGIN}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="date" tickFormatter={chartDateLabel} {...chartXAxisFor(data.length, expanded)} />

@@ -224,7 +224,7 @@ export const ChartFullscreenDialog = ({ title, icon, description, controls, capt
   </DialogContent>
 );
 
-/** The pop-out button. Always labelled "Open <title> in full screen", 44px wide like the PDF button, never in a PDF. */
+/** The pop-out button, beside the card's title. Always labelled "Open <title> in full screen", 32px on a mouse and 44px on touch, never in a PDF. */
 export const ChartExpandButton = forwardRef<HTMLButtonElement, { title: string } & Omit<ComponentPropsWithoutRef<typeof Button>, 'title'>>(
   ({ title, className, ...props }, ref) => (
     <Button
@@ -232,7 +232,7 @@ export const ChartExpandButton = forwardRef<HTMLButtonElement, { title: string }
       type="button"
       variant="outline"
       size="sm"
-      className={`chart-action min-w-11 shrink-0 px-0 ${className ?? ''}`.trim()}
+      className={`chart-action h-8 w-8 min-w-0 shrink-0 px-0 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 ${className ?? ''}`.trim()}
       aria-label={`Open ${title} in full screen`}
       title="Full screen"
       data-chart-expand=""

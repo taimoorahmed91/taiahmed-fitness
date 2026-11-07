@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { ToggleChip } from '@/components/ui/toggle-chip';
 import { FilterDisclosure } from '@/components/ui/filter-disclosure';
 import { Input } from '@/components/ui/input';
-import { Pencil, Search, X, Copy, Zap } from 'lucide-react';
+import { Pencil, Search, X, Copy } from 'lucide-react';
+import { QuickAddPinIcon } from '@/components/QuickAddPinIcon';
+import { QUICK_ADD_PIN_FOCUS, quickAddPinLabel, quickAddPinTooltip } from '@/lib/quickAddPin';
 import { useMealFavorites } from '@/hooks/useMealFavorites';
 import { SortControl } from '@/components/SortControl';
 import { MealNutrientFilter } from '@/components/MealNutrientFilter';
@@ -348,12 +350,12 @@ const MacroCell = ({ value, label }: { value: number | null | undefined; label: 
 );
 
 /**
- * A meal pinned to Quick add. Says so in words (with a filled bolt and a border), so it never depends on colour.
+ * A meal pinned to Quick add. Says so in words (with a filled pin and a border), so it never depends on colour.
  * Screen readers get the same words they always did.
  */
 const PinnedBadge = ({ className }: { className?: string }) => (
   <span className={cn('inline-flex items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 align-middle text-xs font-medium leading-none text-foreground', className)}>
-    <Zap aria-hidden="true" className="h-3 w-3 shrink-0 fill-primary text-primary" />
+    <QuickAddPinIcon pinned className="h-3 w-3 shrink-0 text-primary" />
     <span aria-hidden="true">Quick add</span>
     <span className="sr-only"> (pinned to quick add)</span>
   </span>
@@ -406,12 +408,13 @@ const MealRow = ({ meal, desktop, showDate, today, expanded, onExpandedChange, f
     <HistoryAction
       key="pin"
       variant={variant}
-      label={`Pin ${meal.food} to quick add`}
+      label={quickAddPinLabel(meal.food)}
       text="Quick add"
-      tooltip={favorite ? 'Remove from quick add' : 'Add to quick add'}
+      tooltip={quickAddPinTooltip(favorite)}
       pressed={favorite}
-      icon={<Zap aria-hidden="true" className={favorite ? 'fill-primary text-primary' : variant === 'inline' ? 'text-muted-foreground' : undefined} />}
+      icon={<QuickAddPinIcon pinned={favorite} className={favorite ? 'text-primary' : variant === 'inline' ? 'text-muted-foreground' : undefined} />}
       onClick={onToggleFavorite}
+      className={QUICK_ADD_PIN_FOCUS}
     />,
     <HistoryAction
       key="edit"

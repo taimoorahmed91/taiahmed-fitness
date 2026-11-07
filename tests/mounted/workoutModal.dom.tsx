@@ -158,7 +158,7 @@ describe('mounted: ActiveWorkoutModal recovery', () => {
     expect(readSlot(storage()).kind).toBe('draft');
 
     env.window.Storage.prototype.removeItem = () => { throw new Error('blocked'); };
-    await act(async () => click(env.window, byText('Cancel Workout')!));
+    await act(async () => click(env.window, byText('Discard workout')!));
     await flush(400);
     await act(async () => click(env.window, byText('Yes, discard workout')!));
     await flush(30);

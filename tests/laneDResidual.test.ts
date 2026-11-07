@@ -126,7 +126,8 @@ describe('labels in lists', () => {
     assert.match(src, /DialogDescription/);
   });
   test('MealList quick-add toggle label matches the form chips', () => {
-    assert.match(read('src/components/MealList.tsx'), /Pin \$\{meal\.food\} to quick add/);
+    assert.match(read('src/components/MealList.tsx'), /quickAddPinLabel\(meal\.food\)/);
+    assert.match(read('src/lib/quickAddPin.ts'), /Pin \$\{food\} to quick add/);
   });
   test('Pagination keeps named prev/next and numbered page buttons', () => {
     const src = read('src/components/PaginationControls.tsx');

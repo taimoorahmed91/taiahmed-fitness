@@ -14,8 +14,8 @@ import { ReportCharts } from '../src/components/ReportCharts';
 import { WeeklyBarChart } from '../src/components/charts/WeeklyBarChart';
 import { DeltaChart } from '../src/components/charts/DeltaChart';
 
-// One header for every chart card: title (with its heading level), range / style controls and the PDF
-// button, in one place. These tests pin the contract and fail if a chart lays its own header out again.
+// One header for every chart card: title (with its heading level) with the pop-out and the "More chart actions" menu (PDF, CSV)
+// beside it, then the range / style controls. These tests pin the contract and fail if a chart lays its own header out again.
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const html = (node: ReactElement) => renderToStaticMarkup(createElement(MemoryRouter, null, node));
@@ -41,33 +41,44 @@ describe('ChartHeader layout contract', () => {
     assert.equal(out.includes('data-chart-controls'), false);
     assert.match(out, /Avg: 1/);
   });
-  test('range + style + PDF: one controls group; range and the line/bar switch share the range row (range first), PDF is in the actions unit', () => {
+  test('range + style + PDF: one controls group (range row only); range and the line/bar switch share the row (range first); PDF is in the menu beside the title', () => {
     const out = card(createElement(ChartHeader, { title: 'Weight Trend', view: { range: '30', setRange: noop, style: 'line', setStyle: noop }, pdf }));
     const group = controlsOf(out);
     assert.equal(out.match(/data-chart-controls=""/g)?.length, 1);
     assert.match(group, /aria-label="Weight Trend range"/);
-    const rangeRow = group.slice(group.indexOf('data-chart-controls-row="range"'), group.indexOf('data-chart-controls-row="actions"'));
-    const actions = group.slice(group.indexOf('data-chart-actions'));
-    assert.match(rangeRow, /aria-label="Weight Trend range"/);
-    assert.match(rangeRow, /aria-label="Weight Trend chart type"/);
-    assert.ok(rangeRow.indexOf('range"') < rangeRow.indexOf('chart type'), 'range before the line/bar switch (keyboard order)');
-    assert.equal(actions.includes('chart type'), false, 'the switch is not in the actions unit any more');
-    assert.match(actions, /aria-label="Download Weight Trend as PDF"/);
-    assert.equal(group.slice(0, group.indexOf('data-chart-actions')).includes('Download'), false, 'PDF is not outside the actions unit');
+    assert.equal(group.includes('data-chart-controls-row="actions"'), false, 'the card has no second control row any more');
+    assert.match(group, /data-chart-controls-row="range"/);
+    assert.match(group, /aria-label="Weight Trend range"[^]*aria-label="Weight Trend chart type"/);
+    assert.ok(group.indexOf('range"') < group.indexOf('chart type'), 'range before the line/bar switch (keyboard order)');
+    assert.equal(group.includes('Download'), false, 'no visible PDF button inside the controls group');
+    // The menu sits beside the title, before the controls, labelled with the chart name.
+    assert.match(out, /aria-label="More chart actions for Weight Trend"[^]*data-chart-controls=""/);
+    assert.match(out, /aria-haspopup="menu"/);
   });
-  test('range-only chart: no line/bar switch, PDF still sits in the controls group', () => {
+  test('range-only chart: no line/bar switch, the PDF menu still sits beside the title', () => {
     const out = card(createElement(ChartHeader, { title: 'Meal times', view: { range: '7', setRange: noop }, pdf }));
     assert.equal(out.includes('chart type'), false);
-    assert.match(controlsOf(out), /Download Meal times as PDF/);
+    assert.match(out, /aria-label="More chart actions for Meal times"/);
+    assert.ok(out.indexOf('More chart actions') < out.indexOf('data-chart-controls'));
   });
   test('a style without its setter is not drawn (range-only stays range-only)', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop, style: 'line' } }));
     assert.equal(out.includes('chart type'), false);
   });
-  test('the controls group is excluded from PDF capture, and the PDF button keeps its label and tooltip', () => {
+  test('the controls group and the title actions are excluded from PDF capture; the PDF button of the viewer keeps its label and tooltip', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop }, pdf }));
     assert.match(out, /data-chart-controls="" data-chart-layout="card" data-html2canvas-ignore="true"/);
-    assert.match(out, /aria-label="Download T as PDF" title="Download PDF" data-html2canvas-ignore="true"/);
+    assert.match(out, /data-chart-actions="" data-html2canvas-ignore="true"/);
+    assert.match(out, /data-chart-menu="" data-html2canvas-ignore="true" aria-label="More chart actions for T"/);
+    assert.match(read('src/components/ChartPdfButton.tsx'), /aria-label=\{`Download \$\{title\} as PDF`\} title="Download PDF" data-html2canvas-ignore="true"/);
+  });
+  test('the menu offers PDF and (with a dataset) CSV, is a Radix menu and is only drawn when there is something to export', () => {
+    const src = read('src/components/charts/ChartActionsMenu.tsx');
+    assert.match(src, /from '@\/components\/ui\/dropdown-menu'/);
+    assert.match(src, /aria-label=\{`More chart actions for \$\{title\}`\}/);
+    assert.match(src, /Download PDF/);
+    assert.match(src, /Download CSV/);
+    assert.equal(card(createElement(ChartHeader, { title: 'T', viewer: { render: () => createElement('p') } })).includes('More chart actions'), false, 'pop-out only: no menu');
   });
   test('one responsive contract: block rows, nothing beside the title, no width-dependent ordering', () => {
     const src = read('src/components/charts/ChartHeader.tsx');
@@ -116,7 +127,8 @@ describe('every chart card is migrated to ChartHeader', () => {
     const out = html(createElement(TrendChart, { ...props, id: 'workout_duration', title: 'Workout Duration', data: [row], defaultStyle: 'bar', summary: () => 'Total: 1' }));
     assert.match(out, /data-chart-header/);
     const group = controlsGroup(out);
-    assert.match(group, /Workout Duration range[^]*Workout Duration chart type[^]*Download Workout Duration as PDF/);
+    assert.match(group, /Workout Duration range[^]*Workout Duration chart type/);
+    assert.match(out, /More chart actions for Workout Duration/);
     assert.match(out, /Total: 1/);
   });
   test('TrendChart with extended ranges offers All inside the same group', () => {
@@ -125,21 +137,24 @@ describe('every chart card is migrated to ChartHeader', () => {
   });
   test('MacroTargetChart (calories / protein / carbs targets): range + style + PDF together', () => {
     const out = html(createElement(MacroTargetChart, { title: 'Protein: Actual vs Target', unit: 'g', data: [{ date: row.date, actual: 1, min: null, max: null }] }));
-    assert.match(controlsGroup(out), /Protein: Actual vs Target range[^]*chart type[^]*Download Protein: Actual vs Target as PDF/);
+    assert.match(controlsGroup(out), /Protein: Actual vs Target range[^]*chart type/);
+    assert.match(out, /More chart actions for Protein: Actual vs Target/);
   });
   test('MealTimeChart: range-only + PDF together', () => {
     const d = [{ name: 'Morning', calories: 1, count: 1 }];
     const out = html(createElement(MealTimeChart, { data7: d, data14: d, data30: d, data90: d }));
-    assert.match(controlsGroup(out), /Calories by Time of Day range[^]*Download/);
+    assert.match(controlsGroup(out), /Calories by Time of Day range/);
+    assert.match(out, /More chart actions for Calories by Time of Day/);
     assert.equal(out.includes('chart type'), false);
   });
   test('BodyRecompositionCard: range-only + PDF together, badges and message stay under the band', () => {
     const out = html(createElement(BodyRecompositionCard, { weight: [{ date: row.date, value: 80 }], waist: [] }));
-    assert.match(controlsGroup(out), /Body Recomposition Index range[^]*Download/);
+    assert.match(controlsGroup(out), /Body Recomposition Index range/);
+    assert.match(out, /More chart actions for Body Recomposition Index/);
     assert.equal(out.includes('chart type'), false);
     assert.ok(out.indexOf('Δ Weight') > out.indexOf('data-chart-controls'));
   });
-  test('fixed-window charts (WeeklyBarChart, DeltaChart, ReportCharts) use the header; their only control is the full-screen button', () => {
+  test('fixed-window charts (WeeklyBarChart, DeltaChart, ReportCharts) use the header; they have no range or line/bar controls and no PDF, just the full-screen button beside the title', () => {
     const week = Array.from({ length: 7 }, (_, i) => ({ date: `D${i}`, fullDate: `2001-01-0${i + 1}`, calories: 0 }));
     const outs = [
       html(createElement(WeeklyBarChart, { title: 'Weekly Calories', icon: null, data: week, valueKey: 'calories', label: 'Calories', unit: 'kcal', color: '#000' })),
@@ -148,7 +163,8 @@ describe('every chart card is migrated to ChartHeader', () => {
     ];
     for (const out of outs) {
       assert.match(out, /data-chart-header/);
-      assert.match(controlsOf(out), /data-chart-expand/);
+      assert.match(out, /data-chart-actions=""[^]*data-chart-expand/);
+      assert.equal(out.includes('data-chart-controls'), false, 'no controls group: the title row is the whole header');
       assert.equal(out.includes('Download'), false, 'no PDF here');
       assert.equal(out.includes('range"'), false, 'no range switch');
       assert.equal(out.includes('chart type'), false, 'no line/bar switch');
@@ -159,25 +175,25 @@ describe('every chart card is migrated to ChartHeader', () => {
 
 /** The header as an ordered list of its parts, read from the markup, so order and grouping are exact. */
 const outline = (out: string) =>
-  [...out.matchAll(/<h3\b|data-chart-description=""|data-chart-controls-row="(range|actions)"|aria-label="[^"]*chart type"|aria-label="Download [^"]*PDF"|aria-label="Open [^"]*in full screen"/g)].map((m) => {
+  [...out.matchAll(/<h3\b|data-chart-description=""|data-chart-controls-row="(range|actions)"|aria-label="[^"]*chart type"|aria-label="More chart actions[^"]*"|aria-label="Open [^"]*in full screen"/g)].map((m) => {
     const t = m[0];
     if (t === '<h3') return 'title';
     if (t.startsWith('data-chart-description')) return 'description';
     if (t.startsWith('data-chart-controls-row')) return `row:${m[1]}`;
     if (t.includes('chart type')) return 'style';
-    if (t.includes('Download')) return 'pdf';
+    if (t.includes('More chart actions')) return 'menu';
     return 'expand';
   });
 
 describe('header structure and order (exact)', () => {
   const viewer = { render: () => createElement('p') };
-  test('range + line/bar chart: title, description, range row (range, then the switch), then [PDF, full screen]', () => {
+  test('range + line/bar chart: title, [full screen, menu] beside it, description, then the range row (range, then the switch)', () => {
     const out = card(createElement(ChartHeader, { title: 'Weight', description: 'Latest', view: { range: '30', setRange: noop, style: 'line', setStyle: noop }, pdf, viewer }));
-    assert.deepEqual(outline(out), ['title', 'description', 'row:range', 'style', 'row:actions', 'pdf', 'expand']);
+    assert.deepEqual(outline(out), ['title', 'expand', 'menu', 'description', 'row:range', 'style']);
   });
   test('the line/bar switch sits in the range row and is right-aligned (ml-auto slot, space between), after the range options', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop, style: 'bar', setStyle: noop }, pdf, viewer }));
-    const rangeRow = out.slice(out.indexOf('data-chart-controls-row="range"'), out.indexOf('data-chart-controls-row="actions"'));
+    const rangeRow = out.slice(out.indexOf('data-chart-controls-row="range"'));
     const rowClass = /data-chart-controls-row="range" class="([^"]*)"/.exec(rangeRow)![1];
     for (const c of ['flex', 'w-full', 'min-w-0', 'max-w-full', 'flex-wrap', 'justify-between']) assert.ok(rowClass.split(' ').includes(c), `range row has ${c}`);
     assert.match(rangeRow, /data-chart-style-slot="" class="ml-auto shrink-0"/);
@@ -187,22 +203,22 @@ describe('header structure and order (exact)', () => {
     const only = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop }, pdf, viewer }));
     assert.equal(only.includes('data-chart-style-slot'), false);
   });
-  test('range-only chart: title, description, range row alone, then [PDF, full screen]', () => {
+  test('range-only chart: title, [full screen, menu], description, then the range row alone', () => {
     const out = card(createElement(ChartHeader, { title: 'Meals', description: 'Share', view: { range: '30', setRange: noop }, pdf, viewer }));
-    assert.deepEqual(outline(out), ['title', 'description', 'row:range', 'row:actions', 'pdf', 'expand']);
+    assert.deepEqual(outline(out), ['title', 'expand', 'menu', 'description', 'row:range']);
   });
-  test('the range row never holds PDF or full screen; the actions row never holds the range or the switch', () => {
+  test('the range row never holds the menu or full screen; the title actions never hold the range or the switch', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop, style: 'bar', setStyle: noop }, pdf, viewer }));
-    const rangeRow = out.slice(out.indexOf('data-chart-controls-row="range"'), out.indexOf('data-chart-controls-row="actions"'));
+    const rangeRow = out.slice(out.indexOf('data-chart-controls-row="range"'));
     assert.match(rangeRow, /T range/);
-    assert.equal(/Download|in full screen/.test(rangeRow), false);
+    assert.equal(/More chart actions|Download|in full screen/.test(rangeRow), false);
     assert.match(rangeRow, /T chart type/);
-    const actionsRow = out.slice(out.indexOf('data-chart-controls-row="actions"'));
-    assert.equal(/T range|chart type/.test(actionsRow), false);
+    const actions = out.slice(out.indexOf('data-chart-actions'), out.indexOf('data-chart-controls'));
+    assert.equal(/T range|chart type/.test(actions), false);
   });
-  test('fixed-window chart: title, description, then one actions row with only full screen', () => {
+  test('fixed-window chart: title, [full screen] beside it, description, and no control row at all', () => {
     const out = card(createElement(ChartHeader, { title: 'Weekly', description: 'Avg', viewer }));
-    assert.deepEqual(outline(out), ['title', 'description', 'row:actions', 'expand']);
+    assert.deepEqual(outline(out), ['title', 'expand', 'description']);
   });
   test('title and description come before every control, and extra rows (badges) come after them', () => {
     const out = card(createElement(ChartHeader, { title: 'T', description: 'D', view: { range: '7', setRange: noop }, pdf, viewer }, createElement('p', null, 'BADGES')));
@@ -213,11 +229,11 @@ describe('header structure and order (exact)', () => {
     const d = [{ name: 'Morning', calories: 1, count: 1 }];
     const meal = outline(html(createElement(MealTimeChart, { data7: d, data14: d, data30: d, data90: d })));
     const trend = outline(html(createElement(TrendChart, { id: 'x', title: 'X', icon: null, unit: 'u', empty: 'e', series: [{ key: 'v', label: 'V', color: '#000' }], data: [{ date: new Date().toISOString().slice(0, 10), v: 1 }], summary: () => 'S' })));
-    assert.deepEqual(meal, ['title', 'row:range', 'row:actions', 'pdf', 'expand']);
+    assert.deepEqual(meal, ['title', 'expand', 'menu', 'row:range']);
     assert.deepEqual(trend.filter((p) => p !== 'style' && p !== 'description'), meal);
     assert.equal(meal.includes('style'), false);
   });
-  test('every real chart card follows the contract (title < description < range row with its switch < actions row; PDF, expand in that order)', () => {
+  test('every real chart card follows the contract (title < full screen < menu < description < range row < switch)', () => {
     const today = new Date().toISOString().slice(0, 10);
     const d = [{ name: 'Morning', calories: 1, count: 1 }];
     const week = Array.from({ length: 7 }, (_, i) => ({ date: `D${i}`, fullDate: `2001-01-0${i + 1}`, calories: 0 }));
@@ -231,21 +247,22 @@ describe('header structure and order (exact)', () => {
       ['weekly', html(createElement(WeeklyBarChart, { title: 'W', icon: null, data: week, valueKey: 'calories', label: 'C', unit: 'u', color: '#000' }))],
       ['delta', html(createElement(DeltaChart, { title: 'D', icon: null, unit: 'kg', entries: [], emptyText: 'x' }))],
     ];
-    const rank: Record<string, number> = { title: 0, description: 1, 'row:range': 2, style: 3, 'row:actions': 4, pdf: 5, expand: 6 };
+    const rank: Record<string, number> = { title: 0, expand: 1, menu: 2, description: 3, 'row:range': 4, style: 5 };
     for (const [name, out] of cards) {
       const parts = outline(out);
       const ranks = parts.map((p) => rank[p]);
       assert.deepEqual(ranks, [...ranks].sort((a, b) => a - b), `${name}: ${parts.join(' > ')}`);
-      assert.equal(parts.at(-1), 'expand', name);
+      assert.equal(parts[0], 'title', name);
+      assert.equal(parts.includes('expand'), true, `${name}: has the pop-out`);
       assert.equal(new Set(parts).size, parts.length, `${name}: no part twice`);
-      assert.equal(parts.includes('row:range') ? parts.indexOf('row:range') < parts.indexOf('row:actions') : true, true, name);
+      assert.equal(parts.includes('row:actions'), false, `${name}: no second control row on the card`);
     }
   });
-  test('the viewer shows the same two rows in the same order, and no second full-screen button (source)', () => {
+  test('the viewer shows the same range row plus a PDF row, and no second full-screen button or menu (source)', () => {
     const src = read('src/components/charts/ChartHeader.tsx');
     const viewerUse = src.slice(src.indexOf('<ChartFullscreenDialog'));
     assert.match(viewerUse, /<ChartControlsGroup title=\{title\} view=\{view\} pdf=\{pdf && \{ \.\.\.pdf, targetRef: viewerCaptureRef \}\} actions=\{actions\} layout="viewer" \/>/);
-    assert.equal(/popOut=/.test(viewerUse), false, 'the viewer never gets popOut');
+    assert.equal(/popOut|ChartActionsMenu/.test(viewerUse), false, 'the viewer never gets the pop-out or the menu');
   });
 });
 

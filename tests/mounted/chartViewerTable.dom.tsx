@@ -286,7 +286,13 @@ describe('mounted: viewer Chart | Table and CSV', () => {
     const host = await mountWeight();
     const trigger = host.querySelector('button[aria-label="Open Weight Trend in full screen"]') as HTMLElement;
     trigger.focus();
-    await act(async () => click(env.window, host.querySelector('[aria-label="Download Weight Trend as PDF"]')!));
+    // The card's PDF lives in its "More chart actions" menu (opened here from the keyboard).
+    const menuButton = host.querySelector('[aria-label="More chart actions for Weight Trend"]') as HTMLElement;
+    menuButton.focus();
+    await act(async () => { menuButton.dispatchEvent(new env.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); });
+    await flush(10);
+    const pdfItem = [...doc().querySelectorAll('[role="menuitem"]')].find((i) => i.textContent?.trim() === 'Download PDF')!;
+    await act(async () => click(env.window, pdfItem));
     await flush(60);
     assert.equal(captured.length, 1);
     assert.ok(captured[0].querySelector('[data-chart-header]'), 'card PDF captures the card');

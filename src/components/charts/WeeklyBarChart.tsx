@@ -60,7 +60,8 @@ export const WeeklyBarChart = ({ title, icon, data, valueKey, label, unit, color
         expanded={expanded}
         title={title}
         summary={summary}
-        caption={`Values in ${unit} · Last 7 days${notesMap ? ' · \u25C6 marks a day with a note' : ''}`}
+        caption={`Values in ${unit} · Last 7 days`}
+        howToRead={[notesMap ? '\u25C6 marks a day with a note.' : '']}
         table={{ columns: [{ key: 'fullDate', label: 'Date' }, { key: valueKey, label: `${label} (${unit})` }], rows: data }}
       >
         <BarChart accessibilityLayer data={data} margin={{ ...CHART_MARGIN, top: 20 }}>

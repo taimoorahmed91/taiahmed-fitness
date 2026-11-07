@@ -29,38 +29,39 @@ describe('pop-out button in ChartHeader', () => {
     assert.match(out, /title="Full screen"/);
     assert.match(out, /aria-haspopup="dialog"/);
   });
-  test('it sits in the same actions unit as PDF, after PDF (so they can only wrap together); the line/bar switch is in the range row, not here', () => {
+  test('it sits beside the title with the "More chart actions" menu (full screen first, then the menu); the range row and the line/bar switch are below it, not here', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop, style: 'line', setStyle: noop }, pdf, viewer }));
     assert.equal(out.match(/data-chart-actions=""/g)?.length, 1);
-    const actions = actionsOf(out);
+    const actions = actionsOf(out).slice(0, actionsOf(out).indexOf('data-chart-controls'));
     assert.equal(actions.includes('chart type'), false);
-    assert.ok(out.indexOf('T chart type') < out.indexOf('data-chart-actions'));
-    assert.ok(actions.indexOf('Download T as PDF') < actions.indexOf('Open T in full screen'));
-    assert.equal(out.slice(0, out.indexOf('data-chart-actions')).includes('Open T in full screen'), false, 'not outside the actions unit');
+    assert.ok(out.indexOf('data-chart-actions') < out.indexOf('T chart type'));
+    assert.ok(actions.indexOf('Open T in full screen') < actions.indexOf('More chart actions for T'));
+    assert.ok(out.indexOf('<h3') < out.indexOf('Open T in full screen'), 'beside the title, after it in the DOM');
   });
   test('range-only chart keeps no line/bar switch when it gains the pop-out', () => {
     const out = card(createElement(ChartHeader, { title: 'Meal times', view: { range: '7', setRange: noop }, pdf, viewer }));
     assert.equal(out.includes('chart type'), false);
-    assert.match(actionsOf(out), /Download Meal times as PDF[^]*Open Meal times in full screen/);
+    assert.match(actionsOf(out), /Open Meal times in full screen[^]*More chart actions for Meal times/);
   });
-  test('a chart with no controls at all still gets its pop-out inside a controls group', () => {
+  test('a chart with no controls at all still gets its pop-out beside the title (and no controls group)', () => {
     const out = card(createElement(ChartHeader, { title: 'Weekly Calories', viewer }));
-    assert.match(out, /data-chart-controls="" data-chart-layout="card" data-html2canvas-ignore="true"/);
+    assert.equal(out.includes('data-chart-controls'), false);
     assert.match(actionsOf(out), /Open Weekly Calories in full screen/);
     assert.equal(out.includes('Download'), false);
+    assert.equal(out.includes('More chart actions'), false, 'nothing to export, so no menu');
   });
-  test('opt-out is explicit: viewer={false} draws no pop-out (and nothing else changes)', () => {
+  test('opt-out is explicit: viewer={false} draws no pop-out (the export menu stays)', () => {
     const out = card(createElement(ChartHeader, { title: 'T', view: { range: '7', setRange: noop }, pdf, viewer: false }));
     assert.equal(out.includes('in full screen'), false);
-    assert.match(out, /Download T as PDF/);
+    assert.match(out, /More chart actions for T/);
     assert.equal(card(createElement(ChartHeader, { title: 'T', viewer: false })).includes('data-chart-controls'), false);
   });
-  test('the pop-out is excluded from PDF capture and is 44px wide like the PDF button; it is never a nested control', () => {
+  test('the pop-out is excluded from PDF capture and is 32px on a mouse and 44px on touch; it is never a nested control', () => {
     const out = card(createElement(ChartHeader, { title: 'T', viewer }));
     assert.match(out, /data-chart-expand="" data-html2canvas-ignore="true"/);
     const src = read('src/components/charts/ChartFullscreenDialog.tsx');
-    assert.match(src, /min-w-11 shrink-0 px-0/);
-    assert.match(src, /variant="outline"\s+size="sm"/, 'same Button size as PDF, which is 44px tall on touch screens');
+    assert.match(src, /h-8 w-8 min-w-0 shrink-0 px-0 \[@media\(pointer:coarse\)\]:h-11 \[@media\(pointer:coarse\)\]:w-11/);
+    assert.match(src, /variant="outline"\s+size="sm"/, 'same Button size as the menu button');
     assert.match(read('src/components/ui/button.tsx'), /sm: "h-9 rounded-md px-3 \[@media\(pointer:coarse\)\]:min-h-11"/);
   });
   test('the viewer is closed by default: nothing of it is in the card markup', () => {

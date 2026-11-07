@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWallClock } from '@/hooks/useWallClock';
 import { deriveFreshness } from '@/lib/refreshState';
@@ -15,14 +15,19 @@ interface DataFreshnessProps {
   /** Auto-refresh interval; data older than this plus a 5 minute grace counts as stale. */
   intervalMs: number;
   onRetry: () => void;
+  /**
+   * Adds a quiet "Refresh" button to the normal state ("Updated 14:32 · Refresh"). It must start the same single-flight
+   * batch as the automatic refresh (the page's refetchAll), so a manual and an automatic refresh can never overlap.
+   */
+  onRefresh?: () => void;
   className?: string;
 }
 
 const formatTime = (date: Date) =>
-  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
 /**
- * "Updated 14:32:05" with a calm refreshing state and a stale state that offers Retry.
+ * "Updated 14:32 · Refresh" with a calm refreshing state and a stale state that offers Retry.
  *
  * Screen readers: the visible time is NOT live (it would be read out on every
  * refresh). Only a short state sentence is, and it is empty while all is well.
@@ -37,6 +42,7 @@ export const DataFreshness = ({
   lastFinishedAt,
   intervalMs,
   onRetry,
+  onRefresh,
   className,
 }: DataFreshnessProps) => {
   const now = useWallClock(true, 30_000);
@@ -81,6 +87,15 @@ export const DataFreshness = ({
           <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
           Refreshing…
         </span>
+      )}
+      {onRefresh && status === 'fresh' && (
+        <>
+          <span aria-hidden="true">·</span>
+          <Button type="button" variant="ghost" size="sm" data-refresh-data="" className="-ml-1.5 h-8 gap-1.5 px-2 text-primary [&_svg]:size-3.5" onClick={onRefresh}>
+            <RefreshCw aria-hidden="true" />
+            Refresh<span className="sr-only"> dashboard data</span>
+          </Button>
+        </>
       )}
       {(status === 'stale' || status === 'unavailable') && (
         <span className="inline-flex items-center gap-2">

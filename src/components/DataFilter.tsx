@@ -1,7 +1,6 @@
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { IconButton } from '@/components/ui/icon-button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +18,45 @@ interface DataFilterProps {
   onDateRangeChange?: (range: DateRange) => void;
   showDateRange?: boolean;
 }
+
+interface DateFieldProps {
+  label: 'From' | 'To';
+  value?: Date;
+  onSelect: (date: Date | undefined) => void;
+  disabled?: (date: Date) => boolean;
+}
+
+/** One end of the custom range: a small visible label on top, and a date button whose accessible name always starts with it. */
+const DateField = ({ label, value, onSelect, disabled }: DateFieldProps) => {
+  const shown = value ? format(value, 'MMM d, yyyy') : 'Pick a date';
+  return (
+    <div className="min-w-0 space-y-1 sm:w-44">
+      <span aria-hidden="true" className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            aria-label={`${label} date: ${value ? shown : 'not set'}`}
+            className={cn('w-full min-w-0 justify-start text-left font-normal', !value && 'text-muted-foreground')}
+          >
+            <CalendarIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 truncate">{shown}</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={onSelect}
+            disabled={disabled}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
 
 export const DataFilter = ({
   searchQuery,
@@ -66,63 +104,32 @@ export const DataFilter = ({
       </div>
 
       {showDateRange && (timeFilter === 'custom' || hasCustomRange) && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'w-[140px] justify-start text-left font-normal',
-                  !dateRange?.from && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : 'From'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dateRange?.from}
-                onSelect={(date) =>
-                  onDateRangeChange?.({ from: date, to: dateRange?.to })
-                }
-                initialFocus
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-          <span className="text-muted-foreground">to</span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'w-[140px] justify-start text-left font-normal',
-                  !dateRange?.to && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.to ? format(dateRange.to, 'MMM d, yyyy') : 'To'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dateRange?.to}
-                onSelect={(date) =>
-                  onDateRangeChange?.({ from: dateRange?.from, to: date })
-                }
-                disabled={(date) => dateRange?.from ? date < dateRange.from : false}
-                initialFocus
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-3">
+          <DateField
+            label="From"
+            value={dateRange?.from}
+            onSelect={(date) => onDateRangeChange?.({ from: date, to: dateRange?.to })}
+          />
+          <DateField
+            label="To"
+            value={dateRange?.to}
+            onSelect={(date) => onDateRangeChange?.({ from: dateRange?.from, to: date })}
+            disabled={(date) => (dateRange?.from ? date < dateRange.from : false)}
+          />
           {hasCustomRange && (
-            <IconButton label="Clear date range" tooltip onClick={clearDateRange}>
-              <X />
-            </IconButton>
+            // A labelled button on phones (it would float alone on its own row as a bare icon); icon only from sm up.
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label="Clear date range"
+              title="Clear date range"
+              onClick={clearDateRange}
+              className="col-span-2 justify-self-start px-2 text-muted-foreground sm:col-span-1 sm:w-10 sm:justify-self-auto sm:px-0 [@media(pointer:coarse)]:sm:w-11"
+            >
+              <X aria-hidden="true" />
+              <span className="sm:sr-only">Clear dates</span>
+            </Button>
           )}
         </div>
       )}

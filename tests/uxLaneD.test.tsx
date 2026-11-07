@@ -37,10 +37,39 @@ describe('F26/F27 dashboard order', () => {
     before(src, '<CarbTargetCard', '<StatsCards');
     before(src, '<StatsCards', 'Meals{mealsView');
   });
-  test('the previous-day snapshot sits in the header, before the Today section; the meal list stays before the charts row and trends', () => {
-    before(src, '<PreviousDaySnapshot', '<PageSection title="Today"');
+  test('the previous-day snapshot is a card in the Today grid (under the targets, before the reminder tiles); the meal list stays before the charts row and trends', () => {
+    before(src, '<PageSection title="Today"', '<PreviousDaySnapshot');
+    before(src, '<CarbTargetCard', '<PreviousDaySnapshot');
+    before(src, '<PreviousDaySnapshot', '<StatsCards');
     before(src, 'Meals{mealsView', '<MealTimeChart');
     before(src, '<MealTimeChart', '<PageSection title="Trends"');
+  });
+});
+
+describe('dashboard hierarchy', () => {
+  const src = read('src/pages/Dashboard.tsx');
+  test('Calories, Protein and Carbs are one group; the reminder settings sit outside it', () => {
+    const group = src.slice(src.indexOf("Today&apos;s targets"), src.indexOf('<StatsCards'));
+    for (const card of ['<CalorieGoalProgress', '<ProteinTargetCard', '<CarbTargetCard']) assert.ok(group.includes(card), card);
+    assert.equal(group.includes('<WeightIntervalSetting'), false, 'settings are not part of the targets group');
+    before(src, '<StatsCards', '<WeightIntervalSetting');
+  });
+  test('the page header is the title plus one freshness / refresh line: no snapshot or countdown in it, and a single-flight refresh', () => {
+    const header = src.slice(src.indexOf('<PageHeader'), src.indexOf('<LoadingAnnouncement'));
+    assert.equal(header.includes('PreviousDaySnapshot'), false);
+    assert.equal(header.includes('ResetCountdown'), false);
+    assert.match(header, /<DataFreshness[^]*onRefresh=\{retryDashboard\}/);
+    assert.match(src, /const retryDashboard = useCallback\(async \(\) => \{[^]*await refetchAll\(\);/);
+  });
+  test('the reset countdown shows hours and minutes with the timezone written out, inside the content', () => {
+    assert.match(src, /\(at 00:00 UTC\)/);
+    assert.equal(/title="Daily data resets at 00:00 UTC"/.test(src), false);
+    assert.match(src, /setInterval\(\(\) => setLabel\(compute\(\)\), 30_000\)/);
+  });
+  test('the macro trend charts go three across only from xl', () => {
+    assert.match(src, /grid gap-6 lg:grid-cols-2 xl:grid-cols-3/);
+    const macroGrid = /<div className="(grid gap-6 lg:grid-cols-2 xl:grid-cols-3[^"]*)">/.exec(src)![1];
+    assert.equal(/\blg:grid-cols-3\b/.test(macroGrid), false);
   });
 });
 
@@ -215,7 +244,8 @@ describe('F21 chart summary visible on demand', () => {
     assert.match(src, /<CollapsePanel [^>]*open=\{summaryOpen\}/);
     assert.match(src, /<button[^>]*>[\s\S]*?Chart summary\s*<\/button>/);
     assert.match(src, /<p id=\{`\$\{id\}-summary`\}[^>]*>\{summary\}<\/p>/);
-    assert.match(src, /aria-describedby=\{`\$\{id\}-summary`\}/);
+    assert.match(src, /aria-describedby=\{describedBy\}/);
+    assert.match(src, /const describedBy = notes\.length > 0 \? `\$\{id\}-summary \$\{id\}-reading` : `\$\{id\}-summary`;/);
   });
   test('the summary toggle meets the 44px touch target and is left out of PDFs', () => {
     assert.match(src, /\[@media\(pointer:coarse\)\]:min-h-11/);

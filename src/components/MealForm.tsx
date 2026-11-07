@@ -5,7 +5,9 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Utensils, Zap } from 'lucide-react';
+import { AlertCircle, Utensils } from 'lucide-react';
+import { QuickAddPinIcon } from '@/components/QuickAddPinIcon';
+import { QUICK_ADD_PIN_FOCUS, quickAddPinLabel, quickAddPinTooltip } from '@/lib/quickAddPin';
 import { cn } from '@/lib/utils';
 
 import { useMealFavorites } from '@/hooks/useMealFavorites';
@@ -246,7 +248,7 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] 
               Quick add
             </p>
             <p id="meal-quick-add-help" className="text-xs text-muted-foreground">
-              Tap a meal to fill the form. The lightning button (filled = pinned) removes it from this list.
+              Tap a meal to fill the form. Pinned meals (filled pin) stay in this list; tap the pin again to unpin one.
             </p>
             <ul aria-describedby="meal-quick-add-help" className="flex flex-wrap gap-2">
               {quickMeals.map(({ key, meal, fav }) => (
@@ -262,15 +264,17 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] 
                     variant="ghost"
                     onClick={() => quickFill(meal)}
                     title={`${meal.food} · ${meal.calories} cal`}
-                    className="h-11 min-w-0 max-w-[14rem] justify-start rounded-none rounded-l-full pl-4 pr-2 text-left"
+                    className="h-11 min-w-0 max-w-[14rem] justify-start rounded-none rounded-l-full pl-4 pr-2 text-left focus-visible:ring-inset focus-visible:ring-offset-0"
                   >
                     <span className="min-w-0 truncate">{meal.food}</span>
                     <span className="shrink-0 text-muted-foreground">
                       · {meal.calories}<span className="sr-only"> calories. Fill the form with this meal.</span>
                     </span>
                   </Button>
+                  {/* One stable accessible name with aria-pressed (pressed = pinned); the tooltip says what the next tap does. */}
                   <IconButton
-                    label={`Pin ${meal.food} to quick add`}
+                    label={quickAddPinLabel(meal.food)}
+                    tooltip={quickAddPinTooltip(fav)}
                     aria-pressed={fav}
                     onClick={() => {
                       toggleFavorite(meal.food);
@@ -278,11 +282,11 @@ export const MealForm = ({ onSubmit, prefillData, onPrefillConsumed, meals = [] 
                       quickAddHeadingRef.current?.focus();
                     }}
                     className={cn(
-                      'h-11 w-11 rounded-none rounded-r-full border-l',
+                      'h-11 w-11 rounded-none rounded-r-full border-l', QUICK_ADD_PIN_FOCUS,
                       fav ? 'border-primary/50 text-primary' : 'border-border text-muted-foreground',
                     )}
                   >
-                    <Zap aria-hidden="true" className={cn('h-4 w-4', fav && 'fill-primary')} />
+                    <QuickAddPinIcon pinned={fav} />
                   </IconButton>
                 </li>
               ))}

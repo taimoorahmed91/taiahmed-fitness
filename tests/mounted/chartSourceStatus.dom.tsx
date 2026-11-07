@@ -212,7 +212,12 @@ describe('mounted: chart source status', () => {
 
     test('PDF: unobserved days print "--", the explicit zero prints 0', async () => {
       const rows = await mountMacro();
-      await clickEl(q('[aria-label="Download Protein: Actual vs Target as PDF"]'));
+      // The card's PDF lives in its "More chart actions" menu (opened here from the keyboard).
+      const menuButton = q('[aria-label="More chart actions for Protein: Actual vs Target"]') as HTMLElement;
+      menuButton.focus();
+      await act(async () => { menuButton.dispatchEvent(new env.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); });
+      await flush(10);
+      await clickEl([...env.window.document.querySelectorAll('[role="menuitem"]')].find((i: Element) => i.textContent?.trim() === 'Download PDF'));
       await flush(80);
       const at = (i: number) => pdfTexts.indexOf(rows[i].date);
       assert.ok(at(0) >= 0, 'rows were written');

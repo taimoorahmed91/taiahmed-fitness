@@ -4,6 +4,7 @@ import { ChartPdfButton, type PdfColumn } from '@/components/ChartPdfButton';
 import { ChartRangeControls, ChartStyleControl, type ChartRange, type ChartStyle } from '@/components/ChartViewControls';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { ChartExpandButton, ChartFullscreenDialog, type ChartViewerSpec } from '@/components/charts/ChartFullscreenDialog';
+import { ChartActionsMenu } from '@/components/charts/ChartActionsMenu';
 import { cn } from '@/lib/utils';
 
 /**
@@ -12,25 +13,23 @@ import { cn } from '@/lib/utils';
  *
  * ONE layout, at every width, for every chart (a third-width, half-width or full-width card all look alike):
  *
- *   [ icon  Title                          ]   1. title
- *   [ one-line description                 ]   2. description (optional)
- *   [ 7D  14D  30D  90D  All     [line|bar] ]   3. control row 1: the date range on the left, the line/bar switch
- *                                                 (if the chart has it) right-aligned on the SAME row
- *   [ PDF ]  [ full screen ]                   4. control row 2: PDF and full screen, always together
- *   [ badges / change lines (optional)     ]   5. extra full-width rows
+ *   [ icon  Title                     [expand] [...] ]   1. title row: the title, with the pop-out (full screen) button and the
+ *                                                          "More chart actions" menu (PDF, CSV) right beside it
+ *   [ one-line description                          ]   2. description (optional)
+ *   [ 7D  14D  30D  90D  All          [line|bar]    ]   3. control row: the date range on the left, the line/bar switch
+ *                                                          (if the chart has it) right-aligned on the SAME row
+ *   [ badges / change lines (optional)              ]   4. extra full-width rows
  *
- * - Range-only charts (no line/bar): row 1 is just the range. Fixed-window charts (no range): row 1 is
- *   absent and row 2 is just full screen (+ PDF if the chart has one).
- * - Row 1 holds range + switch. When the card is too narrow for both (a phone), the switch wraps to its own line
- *   and stays right-aligned (`ml-auto`); nothing overflows. Keyboard and reading order: range, then switch.
- * - Nothing is ever placed beside the title: no desktop one-liner, no wrapping surprises. Rows 3 and 4 are
- *   block rows, so the result does not depend on how wide the card happens to be. Row 2 is a never-wrapping
- *   unit (about 150px), so PDF and full screen can never strand alone.
- * - Every control is 44px on touch screens (the shared controls carry that), and the rows may shrink and
- *   wrap inside the card, so nothing widens the page.
- * - The full-screen viewer (ChartFullscreenDialog) shows the SAME two rows with the SAME parts, built from the
- *   same pieces with the same setters. From md up it lays row 1 and row 2 out side by side to save height;
- *   the order and grouping do not change, and it has no second full-screen button.
+ * - Range-only charts (no line/bar): the control row is just the range. Fixed-window charts (no range): there is no control
+ *   row, the title row is the whole header.
+ * - The exports are not buttons on the card any more: PDF and CSV live in the menu (Radix DropdownMenu, labelled
+ *   "More chart actions for <title>", keyboard operable), so a card keeps only what is used all the time in view.
+ * - The control row may shrink and wrap inside the card (the switch wraps, still right-aligned), so nothing widens the page.
+ *   Keyboard and reading order: title, expand, menu, range, then switch.
+ * - Every control is 44px on touch screens (the shared controls carry that).
+ * - The full-screen viewer (ChartFullscreenDialog) is unchanged: it shows the range / switch row and a row with the visible
+ *   PDF button, built from the same pieces with the same setters. From md up it lays the two rows out side by side to save
+ *   height; it has no second full-screen button and no menu.
  * - Every chart card must decide: `viewer={{ render }}` offers the viewer (a bigger chart with the same state),
  *   `viewer={false}` opts out on purpose.
  * - The controls are data-html2canvas-ignore: exported PDFs show the title, not the buttons.
@@ -85,9 +84,7 @@ interface ControlsGroupProps {
   view?: ChartHeaderView;
   pdf?: ChartHeaderPdf;
   actions?: ReactNode;
-  /** The pop-out button. Only the card has it; inside the viewer it would open itself. */
-  popOut?: ReactNode;
-  /** 'card': two stacked rows at every width. 'viewer': the same two rows, side by side from md up. */
+  /** 'card': the range row only (the exports and the pop-out sit in the title row). 'viewer': the same range row plus a row with the visible PDF button, side by side from md up. */
   layout: 'card' | 'viewer';
 }
 
@@ -103,12 +100,13 @@ const RANGE_ROW_CLASS: Record<ControlsGroupProps['layout'], string> = {
 };
 
 /**
- * Row 1: the range, with the line/bar switch right-aligned on the same row. Row 2 (a never-split unit): extra actions, PDF, full screen.
+ * The range, with the line/bar switch right-aligned on the same row. The viewer adds a second row (a never-split unit) with the
+ * extra actions and the visible PDF button; on the card those live in the title row (expand button + "More chart actions" menu).
  * The card and the full-screen viewer both render this, so they always show and change the same state.
  */
-const ChartControlsGroup = ({ title, view, pdf, actions, popOut, layout }: ControlsGroupProps) => {
+const ChartControlsGroup = ({ title, view, pdf, actions, layout }: ControlsGroupProps) => {
   const hasStyle = !!view?.style && !!view.setStyle;
-  const hasTrailing = !!pdf || !!actions || !!popOut;
+  const hasTrailing = layout === 'viewer' && (!!pdf || !!actions);
   if (!view && !hasTrailing) return null;
   return (
     <div data-chart-controls="" data-chart-layout={layout} data-html2canvas-ignore="true" className={GROUP_CLASS[layout]}>
@@ -126,7 +124,6 @@ const ChartControlsGroup = ({ title, view, pdf, actions, popOut, layout }: Contr
         <div data-chart-controls-row="actions" data-chart-actions="" className="flex shrink-0 items-center gap-2">
           {actions}
           {pdf && <ChartPdfButton targetRef={pdf.targetRef} title={title} subtitle={pdf.subtitle} columns={pdf.columns} rows={pdf.rows} />}
-          {popOut}
         </div>
       )}
     </div>
@@ -141,20 +138,29 @@ export const ChartHeader = ({ title, icon, description, view, pdf, actions, view
       <ChartExpandButton title={title} />
     </DialogTrigger>
   ) : null;
+  const menu = pdf || (viewer && viewer.dataset) ? <ChartActionsMenu title={title} pdf={pdf} dataset={viewer ? viewer.dataset : undefined} /> : null;
+  const hasTitleActions = !!actions || !!popOut || !!menu;
   return (
-    // Dialog is state only (it draws nothing itself): the trigger sits in the actions row, the viewer portals to <body>.
+    // Dialog is state only (it draws nothing itself): the trigger sits in the title row, the viewer portals to <body>.
     <Dialog>
       <CardHeader className={cn('space-y-3 pb-2', className)} data-chart-header="">
         <div data-chart-text="" className="min-w-0 space-y-1">
-          <div className="flex items-center">
-            <CardTitle className="flex min-w-0 items-center gap-2 leading-tight">
+          <div className="flex items-start justify-between gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2 pt-1 leading-tight">
               {icon && <span aria-hidden="true" className="contents">{icon}</span>}
               {title}
             </CardTitle>
+            {hasTitleActions && (
+              <div data-chart-actions="" data-html2canvas-ignore="true" className="-mt-0.5 flex shrink-0 items-center gap-1.5">
+                {actions}
+                {popOut}
+                {menu}
+              </div>
+            )}
           </div>
           {description && <div data-chart-description="" className="min-w-0 text-sm text-muted-foreground">{description}</div>}
         </div>
-        <ChartControlsGroup title={title} view={view} pdf={pdf} actions={actions} popOut={popOut} layout="card" />
+        <ChartControlsGroup title={title} view={view} layout="card" />
         {children}
       </CardHeader>
       {viewer && (

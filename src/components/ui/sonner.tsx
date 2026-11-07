@@ -1,5 +1,6 @@
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, toast } from "sonner";
+import { BOTTOM_BAR_TOAST_OFFSET, BOTTOM_BAR_TOAST_OFFSET_WIDE } from "@/components/layout/bottom-bar";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -12,8 +13,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       // A close button lets people dismiss a message they have not finished reading.
       closeButton
-      // On phones the fixed bottom navigation is 4rem tall; keep toasts (and their Undo) above it.
-      mobileOffset={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom))" }}
+      // On phones the floating dock (glass body plus the raised active item, 5.75rem) sits at the bottom. The offsets come from the
+      // shared bottom-bar values (components/layout/bottom-bar.ts), so toasts and their Undo clear the whole dock and the safe area.
+      mobileOffset={{ bottom: BOTTOM_BAR_TOAST_OFFSET }}
+      offset={{ bottom: BOTTOM_BAR_TOAST_OFFSET_WIDE }}
       toastOptions={{
         classNames: {
           // Sonner already switches its own animation off for prefers-reduced-motion; the extra

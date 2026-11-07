@@ -691,9 +691,10 @@ describe('mounted: chart day selection', () => {
       assert.deepEqual(all('g[data-chart-point]', host).map((g) => g.getAttribute('data-chart-point')), [rows[1].date]);
     });
 
-    test('caption says blank means not fully logged', async () => {
+    test('the chart summary explains that a blank day is not fully logged (the one-line caption stays short)', async () => {
       const host = await mountFixture();
-      assert.match(text(q('figure > p', host)), /Blank = not fully logged/);
+      assert.match(text(q('[data-chart-reading]', host)), /Blank days are not fully logged/);
+      assert.doesNotMatch(text(q('figure > p', host)), /Blank|Select a/, 'the caption is only units and period');
     });
 
     test('bar: bars of unobserved days select nothing; the explicit-zero day can still be selected', async () => {

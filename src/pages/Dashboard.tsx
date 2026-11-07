@@ -64,6 +64,10 @@ const shiftISODateByDays = (isoDate: string, days: number) => {
   return date.toISOString().split('T')[0];
 };
 
+/**
+ * "Daily totals reset in 05:32 (at 00:00 UTC)". Hours and minutes only (it re-reads every 30 seconds, so nothing ticks
+ * every second), with the timezone written out so it never needs a hover tooltip. Lives in the Today block, not the header.
+ */
 const ResetCountdown = () => {
   const compute = () => {
     const now = new Date();
@@ -71,22 +75,20 @@ const ResetCountdown = () => {
     const ms = Math.max(0, next - now.getTime());
     const h = Math.floor(ms / 3_600_000);
     const m = Math.floor((ms % 3_600_000) / 60_000);
-    const s = Math.floor((ms % 60_000) / 1000);
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   };
   const [label, setLabel] = useState(compute);
   useEffect(() => {
-    const id = setInterval(() => setLabel(compute()), 1000);
+    const id = setInterval(() => setLabel(compute()), 30_000);
     return () => clearInterval(id);
   }, []);
   return (
-    <div
-      className="flex items-center gap-2 text-sm text-muted-foreground shrink-0"
-      title="Daily data resets at 00:00 UTC"
-    >
+    <p className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
       <Clock className="h-4 w-4" aria-hidden="true" />
-      <span>Resets in <span className="font-mono font-semibold text-foreground">{label}</span></span>
-    </div>
+      <span>
+        Daily totals reset in <span className="font-mono font-semibold text-foreground">{label}</span> (at 00:00 UTC)
+      </span>
+    </p>
   );
 };
 
@@ -314,46 +316,21 @@ const Dashboard = () => {
     <PageContainer>
       <PageHeader
         title="Dashboard"
-        description="Track your nutrition and fitness progress"
+        // The tagline is only shown from sm up: on a phone the header is the title and one "Updated 14:32 · Refresh" line.
+        description={<span className="hidden sm:inline">Track your nutrition and fitness progress</span>}
         actions={
-          // The previous-day snapshot sits beside the reset countdown and refresh status (wraps under them on a phone).
-          <div className="flex w-full min-w-0 flex-wrap items-start gap-x-6 gap-y-3 sm:w-auto sm:justify-end">
-            {yesterdayView === 'loading' ? (
-              <Skeleton aria-hidden="true" className="h-[4.25rem] w-full sm:w-[28rem]" />
-            ) : yesterdayView === 'error' ? (
-              <div role="status" className="panel-surface w-full rounded-lg border px-3 py-2.5 sm:w-[28rem]">
-                <p className="flex items-center gap-2 text-sm font-medium">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-chart-warn" aria-hidden="true" />
-                  Yesterday&apos;s summary is paused
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{dashboardPausedText(sections.yesterday.missing)}</p>
-              </div>
-            ) : (
-              <div className="w-full min-w-0 sm:w-[28rem]">
-                <PreviousDaySnapshot
-                  date={yesterdayStr}
-                  mealCount={yesterdayMealCount}
-                  calories={yesterdayCalories}
-                  goal={yesterdayGoal}
-                  goalMax={yesterdayGoalMax}
-                  dayType={yesterdayAuto ? (yesterdayWorkedOut ? 'gym' : 'rest') : undefined}
-                  extraCalories={yesterdayExtra}
-                />
-              </div>
-            )}
-            <div className="flex flex-col gap-2 sm:items-end">
-              <ResetCountdown />
-              <DataFreshness
-                fetchedAt={lastFetchedAt}
-                loading={mealsLoading}
-                refreshing={isRefreshing}
-                lastStartedAt={lastStartedAt}
-                lastFinishedAt={lastFinishedAt}
-                intervalMs={REFRESH_INTERVAL_MS}
-                onRetry={retryDashboard}
-              />
-            </div>
-          </div>
+          <DataFreshness
+            fetchedAt={lastFetchedAt}
+            loading={mealsLoading}
+            refreshing={isRefreshing}
+            lastStartedAt={lastStartedAt}
+            lastFinishedAt={lastFinishedAt}
+            intervalMs={REFRESH_INTERVAL_MS}
+            onRetry={retryDashboard}
+            // The same single-flight batch as the timer and the header's "Refresh data": a second tap joins the run in progress.
+            onRefresh={retryDashboard}
+            className="sm:justify-end"
+          />
         }
       />
       <LoadingAnnouncement loading={pageLoading} label="Loading dashboard" />
@@ -369,42 +346,66 @@ const Dashboard = () => {
       {/* Every chart keeps its own saved date range (and line/bar choice). There is no page-wide range. */}
       <div aria-busy={pageLoading || isRefreshing} className="space-y-6">
         <PageSection title="Today" hideTitle className="space-y-6">
-          {/* Order matters: today's targets, then reminders you can act on, then the raw meal list. */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {gate('calorieToday', 'Calorie target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
-              <CalorieGoalProgress
-                current={getTodayCalories()}
-                goal={effectiveGoal}
-                goalMax={effectiveGoalMax}
-                autoMode={autoMode}
-                dayType={autoMode ? (isGymDay ? 'gym' : 'rest') : undefined}
-              />
-            ))}
-            {gate('measurementSettings', 'Measurement reminders are paused', <CardSkeleton bodyClassName="h-32" />, () => (
-              <WeightIntervalSetting
-                interval={settings.weight_measurement_interval}
-                onIntervalChange={updateWeightInterval}
-                waistInterval={settings.waist_measurement_interval}
-                onWaistIntervalChange={updateWaistInterval}
-              />
-            ))}
-            {gate('proteinTarget', 'Protein target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
-              <ProteinTargetCard
-                multiplier={personalData.protein_multiplier}
-                multiplierMax={personalData.protein_multiplier_max}
-                currentWeight={weightEntries[0]?.weight ?? null}
-                todayProtein={getTodayProtein()}
-              />
-            ))}
-            {gate('carbTarget', 'Carb target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
-              <CarbTargetCard
-                multiplier={personalData.carb_multiplier}
-                multiplierMax={personalData.carb_multiplier_max}
-                currentWeight={weightEntries[0]?.weight ?? null}
-                todayCarbs={getTodayCarbs()}
-              />
-            ))}
+          {/* Order matters: today's targets (Calories, Protein and Carbs stay together as one group), then yesterday, then reminders
+              you can act on, then the raw meal list, then the reminder settings. */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              <h3 className="text-base font-semibold tracking-tight">Today&apos;s targets</h3>
+              <ResetCountdown />
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {gate('calorieToday', 'Calorie target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
+                <CalorieGoalProgress
+                  current={getTodayCalories()}
+                  goal={effectiveGoal}
+                  goalMax={effectiveGoalMax}
+                  autoMode={autoMode}
+                  dayType={autoMode ? (isGymDay ? 'gym' : 'rest') : undefined}
+                />
+              ))}
+              {gate('proteinTarget', 'Protein target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
+                <ProteinTargetCard
+                  multiplier={personalData.protein_multiplier}
+                  multiplierMax={personalData.protein_multiplier_max}
+                  currentWeight={weightEntries[0]?.weight ?? null}
+                  todayProtein={getTodayProtein()}
+                />
+              ))}
+              {gate('carbTarget', 'Carb target is paused', <CardSkeleton bodyClassName="h-32" />, () => (
+                <CarbTargetCard
+                  multiplier={personalData.carb_multiplier}
+                  multiplierMax={personalData.carb_multiplier_max}
+                  currentWeight={weightEntries[0]?.weight ?? null}
+                  todayCarbs={getTodayCarbs()}
+                />
+              ))}
+            </div>
           </div>
+
+          {/* Yesterday is a normal full-width card in the grid, right under today's targets (it used to live in the page header). */}
+          {yesterdayView === 'loading' ? (
+            <Skeleton aria-hidden="true" className="h-[4.25rem] w-full" />
+          ) : yesterdayView === 'error' ? (
+            <div role="status" className="panel-surface w-full rounded-lg border px-3 py-2.5">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-chart-warn" aria-hidden="true" />
+                Yesterday&apos;s summary is paused
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{dashboardPausedText(sections.yesterday.missing)}</p>
+            </div>
+          ) : (
+            <div className="w-full min-w-0">
+              <PreviousDaySnapshot
+                date={yesterdayStr}
+                mealCount={yesterdayMealCount}
+                calories={yesterdayCalories}
+                goal={yesterdayGoal}
+                goalMax={yesterdayGoalMax}
+                dayType={yesterdayAuto ? (yesterdayWorkedOut ? 'gym' : 'rest') : undefined}
+                extraCalories={yesterdayExtra}
+              />
+            </div>
+          )}
 
           <StatsCards
             weightMeasurementInterval={settings.weight_measurement_interval}
@@ -482,7 +483,17 @@ const Dashboard = () => {
             </Card>
           )}
 
-          {/* Two charts share the row (the previous-day summary moved up to the header). */}
+          {/* The reminder settings are settings, not targets: they sit below the meal list, outside the Calories / Protein / Carbs group. */}
+          {gate('measurementSettings', 'Measurement reminders are paused', <CardSkeleton bodyClassName="h-32" />, () => (
+            <WeightIntervalSetting
+              interval={settings.weight_measurement_interval}
+              onIntervalChange={updateWeightInterval}
+              waistInterval={settings.waist_measurement_interval}
+              onWaistIntervalChange={updateWaistInterval}
+            />
+          ))}
+
+          {/* Two charts share the row. */}
           <div className="grid lg:grid-cols-2 gap-6">
             {gate('mealTiming', 'Meal timing is paused', <CardSkeleton />, () => (
               <MealTimeChart status={sections.mealTiming.chartStatus} data7={getMealsByTimeOfDay(7)} data14={getMealsByTimeOfDay(14)} data30={getMealsByTimeOfDay(30)} data90={getMealsByTimeOfDay(90)} />
@@ -492,7 +503,9 @@ const Dashboard = () => {
         </PageSection>
 
         <PageSection title="Trends" className="space-y-6">
-          <div className="grid lg:grid-cols-3 gap-6">
+          {/* Three charts across only from xl: each card holds a title, the range + line/bar row and a legend, which need about 340px. At lg
+              (two columns) the third chart takes the whole row instead of squeezing three into 300px cards. */}
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3 lg:[&>*:nth-child(3)]:col-span-2 xl:[&>*:nth-child(3)]:col-span-1">
             {sections.macroTrends.view === 'ready' ? (
               <>
                 <MacroTargetChart status={sections.macroTrends.chartStatus} data={macroComparisonData.calories} title="Calories: Actual vs Target" unit="cal" metric="calories" />
@@ -501,7 +514,7 @@ const Dashboard = () => {
               </>
             ) : sections.macroTrends.view === 'error' ? (
               <SectionUnavailable
-                className="lg:col-span-3"
+                className="lg:col-span-2 xl:col-span-3"
                 title="Target charts are paused"
                 description={dashboardPausedText(sections.macroTrends.missing)}
                 minHeightClassName="min-h-[16rem]"

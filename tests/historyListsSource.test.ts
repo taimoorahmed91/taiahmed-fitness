@@ -146,8 +146,10 @@ describe('history lists: visual system', () => {
 
 describe('history lists: wiring', () => {
   test('MealList keeps the exact pin label the quick-add chips use', () => {
-    assert.match(read('src/components/MealList.tsx'), /`Pin \$\{meal\.food\} to quick add`/);
-    assert.match(read('src/components/MealForm.tsx'), /`Pin \$\{meal\.food\} to quick add`/);
+    // Both build the name with the one shared helper, so they cannot drift apart.
+    assert.match(read('src/components/MealList.tsx'), /label=\{quickAddPinLabel\(meal\.food\)\}/);
+    assert.match(read('src/components/MealForm.tsx'), /label=\{quickAddPinLabel\(meal\.food\)\}/);
+    assert.match(read('src/lib/quickAddPin.ts'), /`Pin \$\{food\} to quick add`/);
   });
   test('MealList: filters turn day totals into "N of M shown"; calorie sort is flat', () => {
     const src = read('src/components/MealList.tsx');

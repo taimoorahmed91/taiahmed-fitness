@@ -32,6 +32,8 @@ export const WeightIntervalSetting = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Side by side from md up, so the full-width settings card stays short instead of stacking two selects in a tall block. */}
+        <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium md:text-xs md:uppercase md:tracking-wider md:text-muted-foreground">
             <Scale className="h-4 w-4 text-muted-foreground" />
@@ -64,6 +66,7 @@ export const WeightIntervalSetting = ({
               ))}
             </SelectContent>
           </Select>
+        </div>
         </div>
 
         <p className="text-xs text-muted-foreground">

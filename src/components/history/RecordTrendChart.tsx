@@ -250,7 +250,11 @@ export const RecordTrendChart = ({ id, title, icon, data, series, unit, defaultS
         expanded={expanded}
         title={title}
         summary={summaryText}
-        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}${selectable ? ` · Select a ${view.style === 'bar' ? 'bar' : 'point'} for its day` : ''}${ambiguousDays > 0 ? ` · ${ambiguousDays} ${ambiguousDays === 1 ? 'day has' : 'days have'} more than one entry (one is plotted)` : ''}`}
+        caption={`${unit ? `Values in ${unit} · ` : ''}${period}${axisNote ? ` · ${axisNote}` : ''}`}
+        howToRead={[
+          selectable ? `Select a ${view.style === 'bar' ? 'bar' : 'point'} to open that day.` : '',
+          ambiguousDays > 0 ? `${ambiguousDays} ${ambiguousDays === 1 ? 'day has' : 'days have'} more than one entry (one is plotted).` : '',
+        ]}
         table={{ columns: pdfColumns, rows: shown }}
         afterPlot={expanded ? undefined : <><ChartDayReadout selection={selection} />{linkBar}<ChartCompareCardStrip compare={compare} /></>}
       >
