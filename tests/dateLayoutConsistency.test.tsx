@@ -15,7 +15,7 @@ const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' '
 
 const originalTz = process.env.TZ;
 beforeAll(() => {
-  // Poland: 00:30 on Nov 1 local is still 23:30 on Oct 31 UTC.
+  // Poland: 00:30 on 01/11 local is still 23:30 on 31/10 UTC.
   process.env.TZ = 'Europe/Warsaw';
 });
 afterAll(() => {
@@ -28,7 +28,7 @@ describe('UTC midnight boundary (Poland vs UTC)', () => {
   const justBeforeUtcMidnight = new Date('2026-10-31T23:30:00Z');
 
   test('the test setup really has a local/UTC day mismatch', () => {
-    expect(justBeforeUtcMidnight.getDate()).toBe(1); // local day is Nov 1
+    expect(justBeforeUtcMidnight.getDate()).toBe(1); // local day is 01/11
     expect(justBeforeUtcMidnight.toISOString().slice(0, 10)).toBe('2026-10-31');
   });
 
@@ -39,20 +39,20 @@ describe('UTC midnight boundary (Poland vs UTC)', () => {
 
   test('yesterday is the UTC day before, including across a DST change', () => {
     expect(yesterdayIso('2026-11-01')).toBe('2026-10-31');
-    expect(yesterdayIso('2026-10-26')).toBe('2026-10-25'); // Poland leaves summer time on Oct 25
+    expect(yesterdayIso('2026-10-26')).toBe('2026-10-25'); // Poland leaves summer time on 25/10
     expect(yesterdayIso('2026-03-01')).toBe('2026-02-28');
   });
 
   test('long day label shows the exact calendar day', () => {
-    expect(formatLongDay('2026-10-30')).toBe('Friday, Oct 30');
+    expect(formatLongDay('2026-10-30')).toBe('Friday, 30/10');
     expect(formatLongDay('not-a-date')).toBe('not-a-date');
   });
 
   test('PreviousDaySnapshot label comes from the passed UTC date, with or without meals', () => {
     const logged = renderToStaticMarkup(createElement(PreviousDaySnapshot, { calories: 1800, mealCount: 2, goal: 2000, date: '2026-10-30' }));
-    expect(text(logged)).toContain('Friday, Oct 30');
+    expect(text(logged)).toContain('Friday, 30/10');
     const none = renderToStaticMarkup(createElement(PreviousDaySnapshot, { calories: 0, mealCount: 0, goal: 2000, date: '2026-10-30' }));
-    expect(text(none)).toContain('Friday, Oct 30');
+    expect(text(none)).toContain('Friday, 30/10');
   });
 
   test('Weight, Waist and Sleep default their form date through the shared UTC helper', () => {
@@ -136,13 +136,13 @@ describe('Gym: Personal Records header and dates', () => {
   });
 
   test('"Set on" shows a human UTC date, not raw ISO', () => {
-    expect(text(records)).toContain('Set on Fri, Oct 30 (yesterday)');
-    expect(text(records)).toContain('Set on Sun, Jan 5, 2025');
+    expect(text(records)).toContain('Set on Fri, 30/10 (yesterday)');
+    expect(text(records)).toContain('Set on Sun, 05/01/2025');
     expect(records).not.toMatch(/Set on\s*2026-/);
   });
 
   test('"Last workout" shows a human UTC date, not raw ISO', () => {
-    expect(text(overview)).toContain('Fri, Oct 30');
+    expect(text(overview)).toContain('Fri, 30/10');
     expect(overview).not.toMatch(/>\s*2026-10-30/);
     expect(overview).not.toContain('title="2026-');
   });

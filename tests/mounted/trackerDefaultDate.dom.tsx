@@ -68,7 +68,7 @@ describe('mounted: tracker default date and overview layout', () => {
   for (const t of pages) {
     test(`${t.name}: the date field is the UTC day at 00:30 Poland time (23:30 UTC the day before)`, async () => {
       setSystemTime(new Date('2026-10-31T23:30:00Z'));
-      assert.equal(new Date().getDate(), 1, 'local day is Nov 1 in this test');
+      assert.equal(new Date().getDate(), 1, 'local day is 01/11 in this test');
       const Page = (await t.page()).default;
       await mount(React.createElement(Page));
       const input = env.window.document.querySelector('input[type="date"]') as HTMLInputElement;

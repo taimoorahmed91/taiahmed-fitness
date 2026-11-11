@@ -202,14 +202,14 @@ describe('A and B slots: toggle, replace, swap, duplicates, reconcile (shared wi
 
   test('announcements: single-series charts name the value, multi-series name the day, neutral and in the shared words', () => {
     const series = pointSeries(dataset);
-    assert.equal(describePointPick(p1, series), '2026-10-01'.replace('2026-10-01', 'Oct 1, 2026'));
+    assert.equal(describePointPick(p1, series), '2026-10-01'.replace('2026-10-01', '01/10/2026'));
     const weight = createChartDataset({ name: 'W', period: 'p', rows: [{ date: '2026-10-01', weight: 80.9 }] as Row[], columns: [{ key: 'date', label: 'Date' }, { key: 'weight', label: 'Weight', unit: 'kg' }], pointCompare: { kind: 'date', seriesKeys: ['weight'], noun: 'day', nounPlural: 'days' } });
     const wp = comparePoints(weight)[0];
-    assert.equal(describePointPick(wp, pointSeries(weight)), 'Oct 1, 2026, 80.9 kg');
+    assert.equal(describePointPick(wp, pointSeries(weight)), '01/10/2026, 80.9 kg');
     assert.equal(pointInlineValue(wp, pointSeries(weight)), '80.9 kg');
     assert.equal(pointInlineValue(p1, series), null);
     const outcome = togglePick(EMPTY_PICKS, 'a', wp).outcome;
-    assert.equal(describePointOutcome(outcome, wp, pointSeries(weight), 'days'), 'A set to Oct 1, 2026, 80.9 kg.');
+    assert.equal(describePointOutcome(outcome, wp, pointSeries(weight), 'days'), 'A set to 01/10/2026, 80.9 kg.');
     const dup = togglePick(togglePick(EMPTY_PICKS, 'a', wp).picks, 'b', wp).outcome;
     assert.match(describePointOutcome(dup, wp, pointSeries(weight), 'days'), /^That is already A\. Compare needs two different days/);
   });
@@ -221,7 +221,7 @@ describe('A and B slots: toggle, replace, swap, duplicates, reconcile (shared wi
     const result = reconcilePicks(picks, available);
     assert.equal(result.picks.a, null);
     assert.equal(result.picks.b?.rowId, '2026-10-05');
-    assert.equal(describePointDropped(result.dropped, pointSeries(dataset), 'date'), 'A (Oct 1, 2026) is no longer on this chart (outside the date range, or the entry was removed), so it was cleared.');
+    assert.equal(describePointDropped(result.dropped, pointSeries(dataset), 'date'), 'A (01/10/2026) is no longer on this chart (outside the date range, or the entry was removed), so it was cleared.');
     const widened = new Map(comparePoints(dataset).map((p) => [p.recordId, p] as const));
     assert.equal(reconcilePicks(result.picks, widened).picks.a, null, 'the dropped pick stays dropped');
   });

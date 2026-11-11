@@ -181,7 +181,7 @@ describe('WHOOP page: failed first loads are never "0 entries" or "No WHOOP data
     behaviour.fittrack_whoop_data = ok([row(), row({ id: 'w2', date: '2020-03-03' })]);
     await mount();
     const latest = [...env.window.document.querySelectorAll('p')].find((p: HTMLElement) => p.textContent?.includes('Latest reading')) as HTMLElement;
-    expect(latest.textContent).toContain('Latest reading: Wed, Mar 4, 2020');
+    expect(latest.textContent).toContain('Latest reading: Wed, 04/03/2020');
     expect(latest.textContent).not.toContain('2020-03-04');
     expect(latest.querySelector('time')?.getAttribute('dateTime')).toBe('2020-03-04');
     // grouped rows: no raw ISO text is drawn (aria labels keep the exact day for assistive tech)

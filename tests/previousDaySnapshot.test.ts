@@ -18,7 +18,7 @@ describe('previous day snapshot: no data vs data', () => {
       if (s.kind === 'no-data') {
         expect(s.headline).toBe('No data');
         expect(s.detail).toBe('No meals logged');
-        expect(s.dateLabel).toBe('Thursday, Nov 5');
+        expect(s.dateLabel).toBe('Thursday, 05/11');
       }
       expect(JSON.stringify(s)).not.toMatch(/target|under|over|on target/i);
     }
@@ -80,7 +80,7 @@ describe('previous day snapshot: honest wording and markup', () => {
 
   test('no data never shows 0 cal or a status, and has no details button', () => {
     const out = text(renderToStaticMarkup(states[0]));
-    expect(out).toContain('Thursday, Nov 5');
+    expect(out).toContain('Thursday, 05/11');
     expect(out).toContain('No data');
     expect(out).toContain('No meals logged');
     expect(out).not.toMatch(/\b0\b|cal|target/i);
@@ -96,7 +96,7 @@ describe('previous day snapshot: honest wording and markup', () => {
     expect(html).toContain('aria-hidden="true">\u2193');
     expect(html).toContain('text-chart-warn');
     expect(html).toContain('aria-label="Details for yesterday"');
-    expect(html).toContain('aria-label="Previous day, Thursday, Nov 5"');
+    expect(html).toContain('aria-label="Previous day, Thursday, 05/11"');
     expect(renderToStaticMarkup(states[3])).toContain('text-chart-max');
   });
 

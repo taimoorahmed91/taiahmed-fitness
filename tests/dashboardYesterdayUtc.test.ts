@@ -37,7 +37,7 @@ describe('Dashboard yesterday is the UTC day before today, in every time zone', 
 
   test('America/New_York after the US fallback (2026-11-02T00:30Z)', () => {
     process.env.TZ = 'America/New_York';
-    const now = new Date('2026-11-02T00:30:00Z'); // 19:30 on Nov 1 local
+    const now = new Date('2026-11-02T00:30:00Z'); // 19:30 on 01/11 local
     if (zoneInEffect(now, 300)) expect(oldLocalYesterday(now)).toBe('2026-10-31'); // the bug: two days back (EST = UTC-5)
     expect(yesterdayIso(todayUtc(now))).toBe('2026-11-01');
   });

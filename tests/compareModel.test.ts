@@ -60,16 +60,16 @@ describe('compare: picking records', () => {
 
 describe('compare: dates are calendar days, never shifted by the time zone', () => {
   test('a plain ISO day keeps its own date', () => {
-    assert.equal(formatCompactDay('2026-10-30'), 'Oct 30, 2026');
-    assert.equal(formatCompactDay('2026-01-01'), 'Jan 1, 2026');
-    assert.equal(formatFullDay('2026-10-30'), 'Fri, Oct 30, 2026');
+    assert.equal(formatCompactDay('2026-10-30'), '30/10/2026');
+    assert.equal(formatCompactDay('2026-01-01'), '01/01/2026');
+    assert.equal(formatFullDay('2026-10-30'), 'Fri, 30/10/2026');
   });
   test('the formatter gives the same text whatever the process time zone', () => {
     const before = process.env.TZ;
     try {
       for (const tz of ['Pacific/Honolulu', 'UTC', 'Pacific/Kiritimati']) {
         process.env.TZ = tz;
-        assert.equal(formatCompactDay('2026-03-01'), 'Mar 1, 2026', tz);
+        assert.equal(formatCompactDay('2026-03-01'), '01/03/2026', tz);
       }
     } finally {
       if (before === undefined) delete process.env.TZ;
@@ -262,8 +262,8 @@ describe('compare: records and guidance', () => {
   test('the spoken status follows the picks', () => {
     const [a, b] = buildEntries('weight', { ...source, weight: [{ id: 'w1', weight: 70, date: '2026-10-02' }, { id: 'w2', weight: 71, date: '2026-10-09' }] });
     assert.match(selectionStatus([]), /0 of 2/);
-    assert.match(selectionStatus([a]), /1 of 2 records selected: A is 70 kg on Oct 2, 2026/);
-    assert.match(selectionStatus([a, b]), /2 of 2.*B is 71 kg on Oct 9, 2026.*ready/);
+    assert.match(selectionStatus([a]), /1 of 2 records selected: A is 70 kg on 02/10/2026/);
+    assert.match(selectionStatus([a, b]), /2 of 2.*B is 71 kg on 09/10/2026.*ready/);
   });
 });
 

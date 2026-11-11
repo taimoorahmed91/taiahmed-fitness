@@ -47,13 +47,13 @@ const session = (id: string, date: string, extra: Partial<GymSession> = {}): Gym
 
 describe('history dates: calendar days never shift', () => {
   test('a YYYY-MM-DD day formats as that same day', () => {
-    assert.equal(formatDay('2026-10-30', '2026-10-30'), 'Fri, Oct 30');
-    assert.equal(formatShortDay('2026-01-01', '2026-06-01'), 'Jan 1');
-    assert.equal(formatDay('2026-03-01', '2026-03-01'), 'Sun, Mar 1');
+    assert.equal(formatDay('2026-10-30', '2026-10-30'), 'Fri, 30/10');
+    assert.equal(formatShortDay('2026-01-01', '2026-06-01'), '01/01');
+    assert.equal(formatDay('2026-03-01', '2026-03-01'), 'Sun, 01/03');
   });
   test('the year shows only when it is not the current year', () => {
-    assert.equal(formatDay('2025-12-31', '2026-01-02'), 'Wed, Dec 31, 2025');
-    assert.equal(formatShortDay('2025-12-31', '2026-01-02'), 'Dec 31, 2025');
+    assert.equal(formatDay('2025-12-31', '2026-01-02'), 'Wed, 31/12/2025');
+    assert.equal(formatShortDay('2025-12-31', '2026-01-02'), '31/12/2025');
   });
   test('does not shift the day in a timezone west of UTC (the new Date("YYYY-MM-DD") bug)', () => {
     for (const tz of ['America/Los_Angeles', 'Pacific/Honolulu', 'Pacific/Kiritimati', 'Europe/Warsaw']) {
@@ -62,7 +62,7 @@ describe('history dates: calendar days never shift', () => {
         ['-e', "import { formatDay, weekStartIso } from './src/lib/historyDates.ts'; console.log(formatDay('2026-10-30', '2026-10-30') + '|' + weekStartIso('2026-11-01'))"],
         { cwd: new URL('../', import.meta.url).pathname, env: { ...process.env, TZ: tz }, encoding: 'utf8' },
       );
-      assert.equal(out.stdout.trim(), 'Fri, Oct 30|2026-10-26', `${tz}: ${out.stdout}${out.stderr}`);
+      assert.equal(out.stdout.trim(), 'Fri, 30/10|2026-10-26', `${tz}: ${out.stdout}${out.stderr}`);
     }
   });
   test('invalid days are reported, not guessed', () => {
@@ -101,9 +101,9 @@ describe('history dates: weeks run Monday to Sunday', () => {
   test('titles and ranges', () => {
     assert.equal(weekTitle('2026-10-26', '2026-10-30'), 'This week');
     assert.equal(weekTitle('2026-10-19', '2026-10-30'), 'Last week');
-    assert.equal(weekTitle('2026-10-05', '2026-10-30'), 'Week of Oct 5');
-    assert.equal(formatWeekRange('2026-10-26', '2026-10-30'), 'Oct 26 – Nov 1');
-    assert.equal(formatWeekRange('2026-12-28', '2026-12-30'), 'Dec 28, 2026 – Jan 3, 2027');
+    assert.equal(weekTitle('2026-10-05', '2026-10-30'), 'Week of 05/10');
+    assert.equal(formatWeekRange('2026-10-26', '2026-10-30'), '26/10 – 01/11');
+    assert.equal(formatWeekRange('2026-12-28', '2026-12-30'), '28/12/2026 – 03/01/2027');
   });
 });
 

@@ -63,8 +63,8 @@ describe('WHOOP latest readings: missing values', () => {
 
 describe('WHOOP date labels', () => {
   test('the Latest reading label is the shared UTC calendar format, never raw ISO', () => {
-    assert.equal(whoopDateLabel('2020-03-04', '2026-10-31'), 'Wed, Mar 4, 2020');
-    assert.equal(whoopDateLabel('2026-10-30', '2026-10-31'), 'Fri, Oct 30');
+    assert.equal(whoopDateLabel('2020-03-04', '2026-10-31'), 'Wed, 04/03/2020');
+    assert.equal(whoopDateLabel('2026-10-30', '2026-10-31'), 'Fri, 30/10');
   });
   test('an unreadable date falls back to its own text instead of "Invalid Date"', () => {
     assert.equal(whoopDateLabel('not-a-date', '2026-10-31'), 'not-a-date');

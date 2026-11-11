@@ -66,8 +66,8 @@ describe('calendar: dates are built from numbers, never from local time', () => 
     try {
       for (const tz of ['Pacific/Honolulu', 'UTC', 'Pacific/Kiritimati']) {
         process.env.TZ = tz;
-        assert.equal(formatLongDay('2026-10-30'), 'Friday, October 30, 2026', tz);
-        assert.equal(formatBriefDay('2026-03-01'), 'Sun, Mar 1', tz);
+        assert.equal(formatLongDay('2026-10-30'), 'Friday, 30/10/2026', tz);
+        assert.equal(formatBriefDay('2026-03-01'), 'Sun, 01/03', tz);
         assert.equal(formatMonthLabel('2026-10'), 'October 2026', tz);
       }
     } finally {
@@ -190,12 +190,12 @@ describe('calendar: day button names and cell lines', () => {
   test('weekday, date, today, then what was logged', () => {
     assert.equal(
       dayAriaLabel('2026-10-30', summarizeDay(entries), { today: '2026-10-30' }),
-      'Friday, October 30, 2026, today, 6 entries: 2 meals, 1,150 cal logged; 1 workout, 45 min; weight 70.5 kg; sleep 7.5 hours; 1 note',
+      'Friday, 30/10/2026, today, 6 entries: 2 meals, 1,150 cal logged; 1 workout, 45 min; weight 70.5 kg; sleep 7.5 hours; 1 note',
     );
   });
   test('an empty day says nothing was logged, but only once loaded', () => {
-    assert.equal(dayAriaLabel('2026-10-29', summarizeDay([]), { today: '2026-10-30' }), 'Thursday, October 29, 2026, nothing logged');
-    assert.equal(dayAriaLabel('2026-10-29', summarizeDay([]), { today: '2026-10-30', loading: true }), 'Thursday, October 29, 2026');
+    assert.equal(dayAriaLabel('2026-10-29', summarizeDay([]), { today: '2026-10-30' }), 'Thursday, 29/10/2026, nothing logged');
+    assert.equal(dayAriaLabel('2026-10-29', summarizeDay([]), { today: '2026-10-30', loading: true }), 'Thursday, 29/10/2026');
   });
   test('one entry is "1 entry"', () => {
     assert.match(dayAriaLabel('2026-10-12', summarizeDay(groupEntriesByDate(sources(), 'all').get('2026-10-12')!), { today: '2026-10-30' }), /1 entry: 1 meal, 200 cal logged$/);
@@ -349,8 +349,8 @@ describe('calendar: loading vs failure vs empty vs stale', () => {
   });
   test('a day with nothing in the loaded data is never called "nothing logged" while a table is missing', () => {
     const empty = summarizeDay([]);
-    assert.equal(dayAriaLabel('2026-10-29', empty, { today: '2026-10-30', missing: ['sleep'] }), 'Thursday, October 29, 2026, no entries in the data that loaded');
-    assert.equal(dayAriaLabel('2026-10-29', empty, { today: '2026-10-30', missing: [] }), 'Thursday, October 29, 2026, nothing logged');
+    assert.equal(dayAriaLabel('2026-10-29', empty, { today: '2026-10-30', missing: ['sleep'] }), 'Thursday, 29/10/2026, no entries in the data that loaded');
+    assert.equal(dayAriaLabel('2026-10-29', empty, { today: '2026-10-30', missing: [] }), 'Thursday, 29/10/2026, nothing logged');
     assert.equal(describeDayTotals(empty, false, 'all', ['sleep', 'daily_notes']), "Nothing found in the data that loaded. Couldn't load your sleep logs and notes.");
     assert.equal(/nothing logged/i.test(describeDayTotals(empty, false, 'all', ['sleep'])), false);
     assert.equal(describeDayTotals(empty, false, 'all', []), 'Nothing logged on this day.');

@@ -72,7 +72,7 @@ describe('SelectedDay contract identity', () => {
     }
   });
   test('labels and indexes can not become part of the identity', () => {
-    const a = createSelectedDay('2026-10-30', { kind: 'record', metric: 'weight', recordId: 'w1', label: 'Oct 30', index: 4 })!;
+    const a = createSelectedDay('2026-10-30', { kind: 'record', metric: 'weight', recordId: 'w1', label: '30/10', index: 4 })!;
     const b = createSelectedDay('2026-10-30', { kind: 'record', metric: 'weight', recordId: 'w1', label: '30 Oct', index: 9 })!;
     assert.deepEqual(a.origin, { kind: 'record', metric: 'weight', recordId: 'w1' });
     assert.equal(selectedDayKey(a), selectedDayKey(b));
@@ -158,7 +158,7 @@ describe('day-entry adapters', () => {
     assert.equal(calorieHistoryDay('nope'), null);
   });
   test('the open label names the day in words', () => {
-    assert.equal(openDayLabel('2026-10-30'), 'Open Friday, October 30, 2026 in Calendar');
+    assert.equal(openDayLabel('2026-10-30'), 'Open Friday, 30/10/2026 in Calendar');
     assert.equal(openDayLabel('bad'), 'Open bad in Calendar');
   });
 });
@@ -187,12 +187,12 @@ describe('pure lib layering (selected day contract)', () => {
       assert.equal(libLong(iso), modelLong(iso), iso);
       assert.equal(libBrief(iso), modelBrief(iso), iso);
     }
-    assert.equal(libLong('2026-10-30'), 'Friday, October 30, 2026');
-    assert.equal(libBrief('2026-10-30'), 'Fri, Oct 30');
+    assert.equal(libLong('2026-10-30'), 'Friday, 30/10/2026');
+    assert.equal(libBrief('2026-10-30'), 'Fri, 30/10');
     for (const bad of ['2026-02-30', '10/30', '', 'banana']) {
       assert.equal(libLong(bad), bad);
       assert.equal(libBrief(bad), bad);
     }
-    assert.equal(openDayLabel('2026-10-30'), 'Open Friday, October 30, 2026 in Calendar');
+    assert.equal(openDayLabel('2026-10-30'), 'Open Friday, 30/10/2026 in Calendar');
   });
 });

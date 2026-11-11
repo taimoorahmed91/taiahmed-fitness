@@ -92,8 +92,8 @@ describe('body history: change from the previous entry is a plain difference', (
     assert.equal(formatChange(-0.9, 'kg'), '−0.9 kg');
     assert.equal(formatChange(0.35, 'cm'), '+0.35 cm');
     assert.equal(formatChange(0, 'kg'), 'No change');
-    assert.equal(spokenChange(changes.get('c')!, 'kilograms', 2, 'Oct 27'), 'Up 0.4 kilograms since Oct 27 (2 days earlier).');
-    assert.equal(spokenChange(changes.get('b')!, 'kilograms', 2, 'Oct 20'), 'Down 0.9 kilograms since Oct 20 (7 days earlier).');
+    assert.equal(spokenChange(changes.get('c')!, 'kilograms', 2, '27/10'), 'Up 0.4 kilograms since 27/10 (2 days earlier).');
+    assert.equal(spokenChange(changes.get('b')!, 'kilograms', 2, '20/10'), 'Down 0.9 kilograms since 20/10 (7 days earlier).');
     for (const text of [formatChange(0.4, 'kg'), spokenChange(changes.get('c')!, 'kilograms')]) {
       assert.doesNotMatch(text, /good|bad|better|worse|improv|gain|loss|lost|progress|goal/i);
     }

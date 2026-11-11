@@ -24,8 +24,8 @@ describe('DataFilter custom range', () => {
     const set = filter({ dateRange: { from: new Date(2026, 0, 3), to: new Date(2026, 0, 9) } });
     assert.match(set, />From</);
     assert.match(set, />To</);
-    assert.match(set, /aria-label="From date: Jan 3, 2026"/);
-    assert.match(set, /aria-label="To date: Jan 9, 2026"/);
+    assert.match(set, /aria-label="From date: 03/01/2026"/);
+    assert.match(set, /aria-label="To date: 09/01/2026"/);
     assert.match(set, /aria-label="Clear date range"/);
   });
   test('the fields share the width instead of a fixed 140px (two columns on a phone, fixed-width fields from sm)', () => {

@@ -44,7 +44,7 @@ describe('which rows are selectable days', () => {
   });
 
   test('impossible, non-ISO and label dates are never selectable (so there is never an Open day link for them)', () => {
-    const rows = ['10/30', '2026-02-30', '2025-02-29', '2026-13-01', 'Oct 30', '', '2026-10-30T10:00:00Z'].map((date) => ({ date, weight: 80 }));
+    const rows = ['10/30', '2026-02-30', '2025-02-29', '2026-13-01', '30/10', '', '2026-10-30T10:00:00Z'].map((date) => ({ date, weight: 80 }));
     assert.deepEqual(selectableChartPoints(make(rows)), []);
   });
 
@@ -143,7 +143,7 @@ describe('selection identity and visible-range reset', () => {
 
   test('an index or a label is never an id: only the dataset row id resolves', () => {
     assert.equal(resolveChartSelection(all, '0'), null);
-    assert.equal(resolveChartSelection(all, 'Oct 26'), null);
+    assert.equal(resolveChartSelection(all, '26/10'), null);
     assert.equal(resolveChartSelection(all, null), null);
     assert.equal(resolveChartSelection(all, undefined), null);
   });
