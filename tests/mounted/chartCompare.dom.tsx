@@ -1,3 +1,4 @@
+import { formatDMY } from '../../src/lib/dateFormat';
 import { describe, test, beforeAll as before, afterAll as after, afterEach, beforeEach, mock } from 'bun:test';
 import assert from 'node:assert/strict';
 import { click, installDom, loadJsdom, sleep } from './support/domHarness';
@@ -26,7 +27,7 @@ mock.module('jspdf', () => ({ jsPDF: class { internal = { pageSize: { getWidth: 
 mock.module('sonner', () => ({ toast: { error: () => {}, success: () => {}, info: () => {} } }));
 
 const iso = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
-const short = (date: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+const short = (date: string) => formatDMY(new Date(`${date}T00:00:00Z`), { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
 type Entry = Record<string, unknown>;
 const data = { weight: [] as Entry[], sleep: [] as Entry[], whoop: [] as Entry[] };

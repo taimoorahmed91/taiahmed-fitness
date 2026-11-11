@@ -1,3 +1,4 @@
+import { formatDMY } from '../../src/lib/dateFormat';
 import { describe, test, beforeAll as before, afterAll as after, afterEach, beforeEach, mock } from 'bun:test';
 import assert from 'node:assert/strict';
 import { click, installDom, loadJsdom, sleep } from './support/domHarness';
@@ -53,7 +54,7 @@ mock.module('@/contexts/userContextCore', () => ({
 
 const iso = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
 const days = (n: number) => Array.from({ length: n }, (_, i) => iso(n - 1 - i));
-const longDay = (d: string) => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
+const longDay = (d: string) => formatDMY(new Date(`${d}T00:00:00Z`), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
 describe('mounted: chart day selection', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
