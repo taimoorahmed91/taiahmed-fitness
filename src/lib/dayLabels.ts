@@ -15,7 +15,7 @@ export const yesterdayIso = (today: string = defaultToday()): string => addDaysI
 export const formatLongDay = (iso: string): string => {
   const ms = isoDayToMs(iso);
   if (ms === null) return iso;
-  return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(ms);
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(ms);
 };
 
 /** Default value for a "date" form field: today's UTC calendar day, the same day Meals and Dashboard use. */

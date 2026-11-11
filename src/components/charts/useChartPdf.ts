@@ -34,7 +34,7 @@ export const useChartPdf = ({ targetRef, title, subtitle, columns, rows }: Chart
       const m = 36;
       pdf.setFontSize(16); pdf.text(title, m, m + 6);
       pdf.setFontSize(10); pdf.setTextColor(110);
-      pdf.text(`${subtitle ? `${subtitle} · ` : ''}Generated ${new Date().toLocaleString()}`, m, m + 22);
+      pdf.text(`${subtitle ? `${subtitle} · ` : ''}Generated ${new Date().toLocaleString('en-GB')}`, m, m + 22);
       pdf.setTextColor(0);
       const imgW = pageW - m * 2;
       const imgH = Math.min(canvas.height * imgW / canvas.width, pageH * 0.5);

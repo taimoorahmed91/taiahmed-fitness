@@ -449,7 +449,7 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     const endTimeStr = formatHHMM(endAnchor);
     const lines: string[] = [
       `Workout: ${workoutName}`,
-      `Date: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`,
+      `Date: ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}`,
       `Start: ${startTimeStr} · End: ${endTimeStr} · Duration: ${durationMinutes} min`,
       `Total volume: ${Math.round(volume).toLocaleString()} kg`,
     ];

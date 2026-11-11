@@ -132,7 +132,7 @@ export const daysInMonth = (month: string): number => {
   return p ? new Date(Date.UTC(p.year, p.month, 0)).getUTCDate() : 0;
 };
 
-const fmtUtc = (ms: number, options: Intl.DateTimeFormatOptions): string => new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(ms);
+const fmtUtc = (ms: number, options: Intl.DateTimeFormatOptions): string => new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(ms);
 
 /** "October 2026" */
 export const formatMonthLabel = (month: string): string => {
@@ -143,13 +143,13 @@ export const formatMonthLabel = (month: string): string => {
 /** "Friday, October 30, 2026" */
 export const formatLongDay = (iso: string): string => {
   const ms = isoDayToMs(iso);
-  return ms === null ? iso : fmtUtc(ms, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  return ms === null ? iso : fmtUtc(ms, { weekday: 'long', month: '2-digit', day: '2-digit', year: 'numeric' });
 };
 
 /** "Fri, Oct 30" */
 export const formatBriefDay = (iso: string): string => {
   const ms = isoDayToMs(iso);
-  return ms === null ? iso : fmtUtc(ms, { weekday: 'short', month: 'short', day: 'numeric' });
+  return ms === null ? iso : fmtUtc(ms, { weekday: 'short', month: '2-digit', day: '2-digit' });
 };
 
 export const WEEKDAYS_SUN_FIRST = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;

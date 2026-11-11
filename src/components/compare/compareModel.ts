@@ -92,14 +92,14 @@ export const isCategory = (value: unknown): value is Category => typeof value ==
 const fmtUtc = (iso: string, options: Intl.DateTimeFormatOptions): string => {
   const ms = isoDayToMs(iso);
   if (ms === null) return iso;
-  return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(ms);
+  return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(ms);
 };
 
 /** "Fri, Oct 30, 2026" - always with the year, because two compared records can be far apart. */
-export const formatFullDay = (iso: string): string => fmtUtc(iso, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+export const formatFullDay = (iso: string): string => fmtUtc(iso, { weekday: 'short', month: '2-digit', day: '2-digit', year: 'numeric' });
 
 /** "Oct 30, 2026" - the shorter form for tight columns. */
-export const formatCompactDay = (iso: string): string => fmtUtc(iso, { month: 'short', day: 'numeric', year: 'numeric' });
+export const formatCompactDay = (iso: string): string => fmtUtc(iso, { month: '2-digit', day: '2-digit', year: 'numeric' });
 
 /** How far apart the two records are, from A to B. null when either date is not a real day. */
 export const describeGap = (aIso: string, bIso: string): string | null => {

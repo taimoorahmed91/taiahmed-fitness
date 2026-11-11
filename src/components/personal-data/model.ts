@@ -104,7 +104,7 @@ export const calcAge = (dob: string | null | undefined, now: Date = new Date()):
   return age >= 0 ? age : null;
 };
 
-const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' });
 
 /** "Oct 1, 2026" for an ISO timestamp, in UTC like every other date in the app. Falls back to the raw text. */
 export const formatChangedAt = (iso: string): string => {

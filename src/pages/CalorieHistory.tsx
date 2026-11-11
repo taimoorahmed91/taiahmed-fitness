@@ -346,9 +346,9 @@ const CalorieHistory = () => {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">
-                          {new Date(`${row.date}T00:00:00Z`).toLocaleDateString('en-US', {
+                          {new Date(`${row.date}T00:00:00Z`).toLocaleDateString('en-GB', {
                             weekday: 'short',
-                            day: 'numeric',
+                            day: '2-digit',
                             month: 'short',
                             year: 'numeric',
                             timeZone: 'UTC',
