@@ -132,7 +132,7 @@ const AdminApproval = () => {
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" aria-hidden="true" />
                           <span>
-                            Joined {format(new Date(user.created_at), 'MMM d, yyyy')}
+                            Joined {format(new Date(user.created_at), 'dd/MM/yyyy')}
                           </span>
                         </div>
                       )}

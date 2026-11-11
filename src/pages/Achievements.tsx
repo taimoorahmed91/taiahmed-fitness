@@ -194,8 +194,8 @@ import { AnimatedNumber } from '@/components/ui/animated-number';
                        </Badge>
                      </div>
                      <div className="text-sm text-muted-foreground mb-2">
-                       {format(new Date(week.week_start), 'MMM d')} -{' '}
-                       {format(new Date(week.week_end), 'MMM d, yyyy')}
+                       {format(new Date(week.week_start), 'dd/MM')} -{' '}
+                       {format(new Date(week.week_end), 'dd/MM/yyyy')}
                      </div>
                      <Progress value={week.percentage} className="h-2" />
                      <div className="text-xs text-muted-foreground mt-1">

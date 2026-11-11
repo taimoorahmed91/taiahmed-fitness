@@ -252,7 +252,7 @@ const ActivityLogs = () => {
                       <div
                         role="button"
                         tabIndex={0}
-                        aria-label={`${log.category.replace('_', ' ')} ${log.action}, ${format(new Date(log.created_at), 'MMM d, HH:mm:ss')}${log.status === 'error' ? ', error' : ''}`}
+                        aria-label={`${log.category.replace('_', ' ')} ${log.action}, ${format(new Date(log.created_at), 'dd/MM HH:mm:ss')}${log.status === 'error' ? ', error' : ''}`}
                         className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -275,7 +275,7 @@ const ActivityLogs = () => {
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" />
-                            {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
+                            {format(new Date(log.created_at), 'dd/MM HH:mm:ss')}
                           </div>
                           <ChevronDown
                             aria-hidden="true"

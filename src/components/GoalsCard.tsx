@@ -139,7 +139,7 @@ export const GoalsCard = () => {
                       )}
                     >
                       <CalendarIcon className="mr-1 h-3 w-3" />
-                      {startDate ? format(startDate, "MMM d, yyyy") : "Pick date"}
+                      {startDate ? format(startDate, "dd/MM/yyyy") : "Pick date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -168,7 +168,7 @@ export const GoalsCard = () => {
                       )}
                     >
                       <CalendarIcon className="mr-1 h-3 w-3" />
-                      {endDate ? format(endDate, "MMM d, yyyy") : "Pick date"}
+                      {endDate ? format(endDate, "dd/MM/yyyy") : "Pick date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
