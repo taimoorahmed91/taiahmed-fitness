@@ -349,7 +349,7 @@ const CalorieHistory = () => {
                           {new Date(`${row.date}T00:00:00Z`).toLocaleDateString('en-GB', {
                             weekday: 'short',
                             day: '2-digit',
-                            month: 'short',
+                            month: '2-digit',
                             year: 'numeric',
                             timeZone: 'UTC',
                           })}
