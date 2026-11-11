@@ -476,28 +476,24 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
     // Prefer the latest per-set timestamp as the end anchor — that's the real
     // moment the workout finished, independent of when "Complete" was tapped.
     let endAnchor = completedAt;
-    let bestMin = -1;
+    // Set times are HH:MM; measure them as minutes after the start so sets logged after midnight count as later.
+    const startMins = startTime.getHours() * 60 + startTime.getMinutes();
+    let bestRel = -1;
     Object.values(data.exerciseTimestamps).forEach((ts) => {
       if (!ts) return;
       Object.values(ts).forEach((t) => {
         if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return;
         const [h, m] = t.split(':').map((x) => parseInt(x, 10));
-        const mins = h * 60 + m;
-        if (mins > bestMin) bestMin = mins;
+        const rel = (h * 60 + m - startMins + 1440) % 1440;
+        if (rel > bestRel) bestRel = rel;
       });
     });
-    if (bestMin >= 0) {
+    // A set stamped in the same minute the workout started keeps the real completion time.
+    if (bestRel > 0) {
       const candidate = new Date(startTime);
-      candidate.setHours(Math.floor(bestMin / 60), bestMin % 60, 0, 0);
-      const behind = startTime.getTime() - candidate.getTime();
-      if (behind > 60 * 60000) {
-        candidate.setDate(candidate.getDate() + 1); // crossed midnight
-        endAnchor = candidate;
-      } else if (behind <= 0) {
-        endAnchor = candidate;
-      }
-      // A set stamped in the same minute the workout started (HH:MM has no
-      // seconds) is not a midnight crossing; keep the real completion time.
+      candidate.setSeconds(0, 0);
+      candidate.setMinutes(candidate.getMinutes() + bestRel);
+      endAnchor = candidate;
     }
     const durationMinutes = Math.max(1, Math.round((endAnchor.getTime() - startTime.getTime()) / 60000));
 
@@ -530,7 +526,8 @@ export const ActiveWorkoutModal = ({ template, open, onClose, onFinish, getLastS
       success = await onFinish({
         exercise: workoutName,
         duration: durationMinutes,
-        date: new Date().toISOString().split('T')[0],
+        // The workout belongs to the day it started (local calendar), even if it ended after midnight.
+        date: `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`,
         notes: notes || undefined,
         start_time: formattedStartTime,
         end_time: endAnchor.toISOString(),

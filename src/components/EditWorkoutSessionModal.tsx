@@ -181,7 +181,10 @@ const nowHHMM = () => {
 };
 
 // Find the latest HH:MM timestamp across all parsed set entries.
-const getLastSetHHMM = (p: ParsedSession): string | null => {
+const getLastSetHHMM = (p: ParsedSession, startHHMM?: string): string | null => {
+  // Compare clock times relative to the start so sets after midnight count as later.
+  const sm = startHHMM && /^\d{1,2}:\d{2}$/.test(startHHMM) ? startHHMM.split(':').map(Number) : null;
+  const startMins = sm ? sm[0] * 60 + sm[1] : 0;
   let bestMin = -1;
   let best: string | null = null;
   for (const ex of p.exercises) {
@@ -197,7 +200,7 @@ const getLastSetHHMM = (p: ParsedSession): string | null => {
     for (const t of stamps) {
       if (!t || !/^\d{1,2}:\d{2}$/.test(t)) continue;
       const [h, m] = t.split(':').map((x) => parseInt(x, 10));
-      const mins = h * 60 + m;
+      const mins = (h * 60 + m - startMins + 1440) % 1440;
       if (mins > bestMin) {
         bestMin = mins;
         best = t;
@@ -281,7 +284,7 @@ export const EditWorkoutSessionModal = ({
       //   2) Stored end_time column
       //   3) start_time + duration fallback (legacy)
       let anchor: string | null = null;
-      const lastSet = getLastSetHHMM(p);
+      const lastSet = getLastSetHHMM(p, session.start_time || undefined);
       if (lastSet) {
         anchor = buildAnchorIso(session.date, lastSet, session.start_time || undefined);
       }
@@ -306,7 +309,7 @@ export const EditWorkoutSessionModal = ({
 
   // Keep the anchor in sync with edits to set timestamps inside the modal.
   useEffect(() => {
-    const lastSet = getLastSetHHMM(parsed);
+    const lastSet = getLastSetHHMM(parsed, startTimeField || undefined);
     if (!lastSet) return;
     const anchor = buildAnchorIso(date, lastSet, startTimeField || undefined);
     if (anchor) setEndAnchorIso(anchor);
@@ -421,7 +424,7 @@ export const EditWorkoutSessionModal = ({
     );
 
   // Computed span derived from notes (for the caption + Recalculate button).
-  const lastSetHHMM = getLastSetHHMM(parsed);
+  const lastSetHHMM = getLastSetHHMM(parsed, startTimeField || undefined);
   const computedSpanMin = (() => {
     if (!lastSetHHMM || !/^\d{1,2}:\d{2}$/.test(startTimeField)) return null;
     const startMs = new Date(`${date}T${startTimeField}:00`).getTime();
