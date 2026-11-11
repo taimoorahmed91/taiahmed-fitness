@@ -195,7 +195,7 @@ describe('reconcile: picks follow the records that are on the chart now', () => 
     const result = reconcilePicks({ a: available.get('w-1')!, b: available.get('w-3')! }, availablePicks(narrowed, selectableChartPoints(narrowed)));
     assert.deepEqual(result.picks, { a: null, b: available.get('w-3') });
     assert.deepEqual(result.dropped.map((d) => [d.slot, d.pick.recordId]), [['a', 'w-1']]);
-    assert.match(describeDropped(result.dropped, 'kg'), /^A \(01/10/2026, 82 kg\) is no longer on this chart .* it was cleared\.$/);
+    assert.match(describeDropped(result.dropped, 'kg'), /^A \(01\/10\/2026, 82 kg\) is no longer on this chart .* it was cleared\.$/);
   });
 
   test('widening the range does not bring a dropped pick back (the stored picks are what was reconciled)', () => {

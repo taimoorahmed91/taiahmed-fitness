@@ -120,7 +120,7 @@ describe('mounted: body and WHOOP history', () => {
       assert.equal(row.querySelector('button'), null);
       const summary = text(row);
       assert.match(summary, /29/);
-      assert.match(summary, /\+0\.4 kg since 27/10/);
+      assert.match(summary, /\+0\.4 kg since 27\/10/);
       assert.match(summary, /After a long walk/);
       assert.ok(row.querySelector('time[datetime="2026-10-29"]'), 'semantic <time> with the real date');
       // No colour carries a verdict on the change: nothing in the row uses a chart or destructive colour.
@@ -132,7 +132,7 @@ describe('mounted: body and WHOOP history', () => {
       await mountWeight({ onEdit: (e: W) => edited.push(e.id) });
       await clickEl(disclosure('70.4'));
       const panel = doc().getElementById(disclosure('70.4')!.getAttribute('aria-controls')!)!;
-      assert.match(text(panel), /Up 0\.4 kilograms since 27/10 \(2 days earlier\)\./);
+      assert.match(text(panel), /Up 0\.4 kilograms since 27\/10 \(2 days earlier\)\./);
       const tray = byLabel('Actions for weight entry from 2026-10-29')!;
       assert.deepEqual(
         [...tray.querySelectorAll('button')].map((b) => b.getAttribute('aria-label')),
@@ -162,7 +162,7 @@ describe('mounted: body and WHOOP history', () => {
       await root0unmount();
       await mountWeight({ entries: [weights[0]] });
       const row = disclosure('70.4')!;
-      assert.match(text(row), /\+0\.4 kg since 27/10/, 'still compared with the real previous entry');
+      assert.match(text(row), /\+0\.4 kg since 27\/10/, 'still compared with the real previous entry');
       const [oct] = all('section h4');
       assert.match(headerOf(oct), /1 of 3 entries shown/);
       assert.doesNotMatch(headerOf(oct), /Range/, 'no subset facts presented as the month');
@@ -260,8 +260,8 @@ describe('mounted: body and WHOOP history', () => {
       assert.match(text(tile('w5')), /No change/);
       assert.match(text(tile('w1')), /First entry/);
       assert.ok(tile('w4').querySelector('svg'), 'arrow icon');
-      assert.match(text(tile('w4').querySelector('.sr-only')), /Up 0\.4 kilograms since 27/10/);
-      assert.match(text(tile('w3').querySelector('.sr-only')), /Down 0\.9 kilograms since 20/10/);
+      assert.match(text(tile('w4').querySelector('.sr-only')), /Up 0\.4 kilograms since 27\/10/);
+      assert.match(text(tile('w3').querySelector('.sr-only')), /Down 0\.9 kilograms since 20\/10/);
     });
 
     test('comparison is with the previous entry of ALL entries, so a filter does not change a tile', async () => {
@@ -380,14 +380,14 @@ describe('mounted: body and WHOOP history', () => {
       assert.equal(tile('b').getAttribute('data-tone'), 'down');
       assert.match(tile('b').className, /bg-delta-up/, 'the soft red token');
       assert.match(text(tile('b')), /−1\.5 h/);
-      assert.match(text(tile('b').querySelector('.sr-only')), /Down 1\.5 hours since 01/10/);
+      assert.match(text(tile('b').querySelector('.sr-only')), /Down 1\.5 hours since 01\/10/);
     });
 
     test('an increase keeps its up arrow and plus sign even though it is green', async () => {
       await mountSleepTiles();
       assert.equal(tile('s4').getAttribute('data-tone'), 'up');
       assert.match(text(tile('s4')), /\+0\.5 h/);
-      assert.match(text(tile('s4').querySelector('.sr-only')), /Up 0\.5 hours since 28/10/);
+      assert.match(text(tile('s4').querySelector('.sr-only')), /Up 0\.5 hours since 28\/10/);
     });
 
     test('the same data without higherIsBetter is the other way round (Weight and Waist)', async () => {
@@ -459,7 +459,7 @@ describe('mounted: body and WHOOP history', () => {
       assert.match(text(tile('e1')), /toward target/);
       assert.match(text(tile('e3')), /away from target/);
       assert.match(text(tile('e4')), /reached target/);
-      assert.match(text(tile('e1').querySelector('.sr-only')), /Down 1 kilograms since 30/09.*Toward target\./);
+      assert.match(text(tile('e1').querySelector('.sr-only')), /Down 1 kilograms since 30\/09.*Toward target\./);
       assert.match(text(tile('e3').querySelector('.sr-only')), /Up 2 kilograms.*Away from target\./);
       assert.match(text(tile('e7').querySelector('.sr-only')), /Past target, away from it\./);
       assert.doesNotMatch(text(tile('e2')), /target/, 'no change says nothing about the target');
@@ -589,7 +589,7 @@ describe('mounted: body and WHOOP history', () => {
     test('measurement rows: the change is a neutral chip with an arrow and words, and no colour for good or bad', async () => {
       await mountVariant('measurement', { showChange: true });
       const row = disclosure('7.5')!;
-      assert.match(text(row), /\+1\.5 cm since 28/10/);
+      assert.match(text(row), /\+1\.5 cm since 28\/10/);
       assert.equal(row.querySelector('[class*="text-chart"], [class*="bg-chart"], [class*="text-destructive"], [class*="text-primary"]'), null);
       assert.ok(row.querySelector('svg[aria-hidden="true"]'), 'the arrow is decorative');
     });
@@ -636,7 +636,7 @@ describe('mounted: body and WHOOP history', () => {
       await mountWhoop();
       const h = all('section h4');
       assert.equal(h.length, 2);
-      assert.match(text(h[0]), /^(This week|Last week|Week of 26/10) · /);
+      assert.match(text(h[0]), /^(This week|Last week|Week of 26\/10) · /);
       assert.ok(h[0].querySelector('time[datetime="2026-W44"]'));
       const first = headerOf(h[0]);
       assert.match(first, /4 days/);

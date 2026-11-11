@@ -184,11 +184,11 @@ describe('rendered pieces', () => {
     ];
     const out = html(createElement(ValueHistory, { rows, unit: 'kcal', label: 'Gym day calories' }));
     assert.match(out, /Current:/);
-    assert.match(out, /01/10/2026/);
+    assert.match(out, /01\/10\/2026/);
     assert.match(out, /Show 2 earlier/);
     assert.match(out, /Gym day calories values/);
     assert.match(out, /aria-expanded="false"/);
-    assert.doesNotMatch(out, /01/09/2026/); // earlier rows only after opening
+    assert.doesNotMatch(out, /01\/09\/2026/); // earlier rows only after opening
   });
   test('history: a long list is previewed, then "Show all"', () => {
     const src = read(`${DIR}/ValueHistory.tsx`);

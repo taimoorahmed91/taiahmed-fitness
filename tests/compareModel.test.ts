@@ -262,8 +262,8 @@ describe('compare: records and guidance', () => {
   test('the spoken status follows the picks', () => {
     const [a, b] = buildEntries('weight', { ...source, weight: [{ id: 'w1', weight: 70, date: '2026-10-02' }, { id: 'w2', weight: 71, date: '2026-10-09' }] });
     assert.match(selectionStatus([]), /0 of 2/);
-    assert.match(selectionStatus([a]), /1 of 2 records selected: A is 70 kg on 02/10/2026/);
-    assert.match(selectionStatus([a, b]), /2 of 2.*B is 71 kg on 09/10/2026.*ready/);
+    assert.match(selectionStatus([a]), /1 of 2 records selected: A is 70 kg on 02\/10\/2026/);
+    assert.match(selectionStatus([a, b]), /2 of 2.*B is 71 kg on 09\/10\/2026.*ready/);
   });
 });
 

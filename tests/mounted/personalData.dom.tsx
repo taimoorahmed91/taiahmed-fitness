@@ -162,7 +162,7 @@ describe('mounted: Personal Data page', () => {
   test('history: the current value is shown, earlier values open as one merged range per change', async () => {
     await mount();
     const targets = q('#targets')!;
-    assert.match(text(targets), /Current: 2,300.2,600 kcal.* · set 01/10/2026/);
+    assert.match(text(targets), /Current: 2,300.2,600 kcal.* · set 01\/10\/2026/);
     const toggle = [...targets.querySelectorAll('button')].find((b) => b.textContent?.includes('Show 1 earlier')) as HTMLButtonElement;
     assert.equal(toggle.getAttribute('aria-expanded'), 'false');
     assert.equal(targets.querySelector('ol'), null);
@@ -172,7 +172,7 @@ describe('mounted: Personal Data page', () => {
     const rows = [...targets.querySelectorAll('ol li')].map(text);
     assert.equal(rows.length, 1);
     assert.match(rows[0], /2,200.2,500 kcal/);
-    assert.match(rows[0], /01/09/2026/);
+    assert.match(rows[0], /01\/09\/2026/);
   });
 
   test('range check: Max below Min shows the inline error, marks both inputs, blocks Save with the original toast', async () => {

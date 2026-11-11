@@ -207,7 +207,7 @@ describe('messages', () => {
     const m = describeLinkResult({ category: 'weight', requested: 2, missingSlots: [], found: [w1, w2], fromLink: true });
     assert.equal(m.notice, null);
     assert.match(m.announcement, /^Opened from a link\./);
-    assert.match(m.announcement, /A is 70\.5 kg on 30/10/2026, B is 70\.2 kg on 29/10/2026/);
+    assert.match(m.announcement, /A is 70\.5 kg on 30\/10\/2026, B is 70\.2 kg on 29\/10\/2026/);
   });
   test('B missing: says so, never invents a replacement', () => {
     const m = describeLinkResult({ category: 'weight', requested: 2, missingSlots: ['B'], found: [w1], fromLink: true });
