@@ -133,12 +133,12 @@ describe('Dashboard: yesterday data and label share one UTC day', () => {
     return (env.window.document.querySelector('[data-testid="yesterday"]')?.textContent ?? '') as string;
   };
 
-  test('Europe/Warsaw at 2026-10-26T00:30Z (after the fallback): Oct 25 totals, Oct 25 label', async () => {
+  test('Europe/Warsaw at 2026-10-26T00:30Z (after the fallback): 25/10 totals, 25/10 label', async () => {
     const out = await mountAt('Europe/Warsaw', '2026-10-26T00:30:00Z', [meal('a', '2026-10-25', 640), meal('b', '2026-10-24', 999)]);
     expect(out).toBe('yesterday 640 cal on 2026-10-25');
   });
 
-  test('America/New_York at 2026-11-02T00:30Z (after the US fallback): Nov 1 totals, Nov 1 label', async () => {
+  test('America/New_York at 2026-11-02T00:30Z (after the US fallback): 01/11 totals, 01/11 label', async () => {
     const out = await mountAt('America/New_York', '2026-11-02T00:30:00Z', [meal('a', '2026-11-01', 480), meal('b', '2026-10-31', 999)]);
     expect(out).toBe('yesterday 480 cal on 2026-11-01');
   });

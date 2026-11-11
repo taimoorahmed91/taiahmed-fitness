@@ -1,3 +1,4 @@
+import { formatDMY } from '@/lib/dateFormat';
 /**
  * Calendar-date helpers for the Meals and Gym history lists.
  *
@@ -46,7 +47,7 @@ export const dayDiff = (a: string, b: string): number | null => {
 export const defaultToday = (): string => getMealDate();
 
 const fmt = (ms: number, options: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(ms);
+  formatDMY(ms, { ...options, timeZone: 'UTC' });
 
 const yearOf = (iso: string): number | null => {
   const ms = isoDayToMs(iso);
@@ -58,7 +59,7 @@ export const formatDay = (iso: string, today: string = defaultToday()): string =
   const ms = isoDayToMs(iso);
   if (ms === null) return iso;
   const withYear = yearOf(iso) !== yearOf(today);
-  return fmt(ms, { weekday: 'short', month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}) });
+  return fmt(ms, { weekday: 'short', month: '2-digit', day: '2-digit', ...(withYear ? { year: 'numeric' } : {}) });
 };
 
 /** "Oct 30" (year added only when it is not the current year). */
@@ -66,7 +67,7 @@ export const formatShortDay = (iso: string, today: string = defaultToday()): str
   const ms = isoDayToMs(iso);
   if (ms === null) return iso;
   const withYear = yearOf(iso) !== yearOf(today);
-  return fmt(ms, { month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}) });
+  return fmt(ms, { month: '2-digit', day: '2-digit', ...(withYear ? { year: 'numeric' } : {}) });
 };
 
 /** "Today" / "Yesterday" for those two days, otherwise null. */
@@ -102,8 +103,8 @@ export const formatWeekRange = (weekStart: string, today: string = defaultToday(
   const startYear = yearOf(weekStart);
   const endYear = yearOf(end);
   const currentYear = yearOf(today);
-  const start = fmt(isoDayToMs(weekStart) ?? 0, { month: 'short', day: 'numeric', ...(startYear !== endYear ? { year: 'numeric' } : {}) });
-  const stop = fmt(isoDayToMs(end) ?? 0, { month: 'short', day: 'numeric', ...(endYear !== currentYear || startYear !== endYear ? { year: 'numeric' } : {}) });
+  const start = fmt(isoDayToMs(weekStart) ?? 0, { month: '2-digit', day: '2-digit', ...(startYear !== endYear ? { year: 'numeric' } : {}) });
+  const stop = fmt(isoDayToMs(end) ?? 0, { month: '2-digit', day: '2-digit', ...(endYear !== currentYear || startYear !== endYear ? { year: 'numeric' } : {}) });
   return `${start} – ${stop}`;
 };
 

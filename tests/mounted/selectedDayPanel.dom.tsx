@@ -1,3 +1,4 @@
+import { formatDMY } from '../../src/lib/dateFormat';
 import { describe, test, mock, beforeAll as before, afterAll as after, afterEach, beforeEach } from 'bun:test';
 import assert from 'node:assert/strict';
 import * as ReactNS from 'react';
@@ -151,7 +152,7 @@ describe('mounted: selected day, Calendar address and safe notes', () => {
     assert.ok(el, 'element to click exists');
     await act(async () => click(env.window, el!));
   };
-  const longDay = (iso: string) => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
+  const longDay = (iso: string) => formatDMY(new Date(`${iso}T00:00:00Z`), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const monthLabel = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
   const byLabel = (label: string) => q(`[aria-label="${label}"]`);
   const dayButtons = () => all('[role="group"][aria-label^="Days of"] button');

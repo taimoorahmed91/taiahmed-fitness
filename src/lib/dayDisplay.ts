@@ -1,3 +1,4 @@
+import { formatDMY } from '@/lib/dateFormat';
 /**
  * How a calendar day is written for people (pure, no component imports): "Friday, October 30, 2026" and "Fri, Oct 30".
  * A day is the UTC calendar date, shown as that exact date; the viewer's time zone is never read. A value that is not a
@@ -8,16 +9,16 @@
  */
 import { isoDayToMs } from '@/lib/historyDates';
 
-const fmtUtc = (ms: number, options: Intl.DateTimeFormatOptions): string => new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(ms);
+const fmtUtc = (ms: number, options: Intl.DateTimeFormatOptions): string => formatDMY(ms, { ...options, timeZone: 'UTC' });
 
 /** "Friday, October 30, 2026" */
 export const formatLongDay = (iso: string): string => {
   const ms = isoDayToMs(iso);
-  return ms === null ? iso : fmtUtc(ms, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  return ms === null ? iso : fmtUtc(ms, { weekday: 'long', month: '2-digit', day: '2-digit', year: 'numeric' });
 };
 
 /** "Fri, Oct 30" */
 export const formatBriefDay = (iso: string): string => {
   const ms = isoDayToMs(iso);
-  return ms === null ? iso : fmtUtc(ms, { weekday: 'short', month: 'short', day: 'numeric' });
+  return ms === null ? iso : fmtUtc(ms, { weekday: 'short', month: '2-digit', day: '2-digit' });
 };

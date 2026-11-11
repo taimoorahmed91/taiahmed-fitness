@@ -28,7 +28,7 @@ interface DateFieldProps {
 
 /** One end of the custom range: a small visible label on top, and a date button whose accessible name always starts with it. */
 const DateField = ({ label, value, onSelect, disabled }: DateFieldProps) => {
-  const shown = value ? format(value, 'MMM d, yyyy') : 'Pick a date';
+  const shown = value ? format(value, 'dd/MM/yyyy') : 'Pick a date';
   return (
     <div className="min-w-0 space-y-1 sm:w-44">
       <span aria-hidden="true" className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>

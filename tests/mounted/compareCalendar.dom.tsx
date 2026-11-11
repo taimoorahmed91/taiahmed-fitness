@@ -1,3 +1,4 @@
+import { formatDMY } from '../../src/lib/dateFormat';
 import { describe, test, mock, beforeAll as before, afterAll as after, afterEach, beforeEach } from 'bun:test';
 import assert from 'node:assert/strict';
 import * as ReactNS from 'react';
@@ -311,7 +312,7 @@ describe('mounted: Compare and Calendar', () => {
     const loadCalendar = async () => mountPage((await import('../../src/pages/Calendar')).default);
     const dayButtons = () => all('[role="group"][aria-label^="Days of"] button');
     const dayButton = (iso: string) => dayButtons().find((b) => (b.getAttribute('aria-label') ?? '').startsWith(longDay(iso)))!;
-    const longDay = (iso: string) => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
+    const longDay = (iso: string) => formatDMY(new Date(`${iso}T00:00:00Z`), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
     const monthLabel = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
 
     test('outline: one h1, the month as h2, the selected day as h2, areas as h3', async () => {

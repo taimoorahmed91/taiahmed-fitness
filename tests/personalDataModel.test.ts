@@ -177,7 +177,7 @@ describe('history timelines', () => {
     assert.deepEqual(rangeHistoryRows([], [p('x1', 2500, '2026-09-01T10:00:00Z')]), []);
   });
   test('dates are UTC calendar days', () => {
-    assert.equal(formatChangedAt('2026-10-01T23:30:00-05:00'), 'Oct 2, 2026');
+    assert.equal(formatChangedAt('2026-10-01T23:30:00-05:00'), '02/10/2026');
     assert.equal(formatChangedAt('not a date'), 'not a date');
   });
 });

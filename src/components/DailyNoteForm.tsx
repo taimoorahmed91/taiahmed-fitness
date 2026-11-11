@@ -141,8 +141,8 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
   const rangeLabel =
     range?.from
       ? range.to && format(range.to, 'yyyy-MM-dd') !== format(range.from, 'yyyy-MM-dd')
-        ? `${format(range.from, 'PPP')} — ${format(range.to, 'PPP')}`
-        : format(range.from, 'PPP')
+        ? `${format(range.from, 'dd/MM/yyyy')} — ${format(range.to, 'dd/MM/yyyy')}`
+        : format(range.from, 'dd/MM/yyyy')
       : 'Pick a date range';
 
   const rangeCount =
@@ -199,7 +199,7 @@ export const DailyNoteForm = ({ onSubmit }: DailyNoteFormProps) => {
                 >
                   <CalendarIcon aria-hidden="true" className="mr-2 h-4 w-4" />
                   {mode === 'single' ? (
-                    date ? format(date, 'PPP') : <span>Pick a date</span>
+                    date ? format(date, 'dd/MM/yyyy') : <span>Pick a date</span>
                   ) : (
                     <span>{rangeLabel}</span>
                   )}

@@ -29,11 +29,11 @@ describe('calorie balance source dates', () => {
   });
 
   test('a long batch with one created_at keeps every distinct day (nothing is deduped by accident)', () => {
-    const days = Array.from({ length: 30 }, (_, i) => new Date(Date.UTC(2026, 9, 1 + i)).toISOString().slice(0, 10)); // Oct 1..30
+    const days = Array.from({ length: 30 }, (_, i) => new Date(Date.UTC(2026, 9, 1 + i)).toISOString().slice(0, 10)); // 01/10..30
     const whoop = days.map((d) => entry(d));
     const meals = days.map((d) => meal(d, 2000));
     const rows = buildCalorieBalanceRows(whoop, meals, TODAY);
-    // cycle Oct 2..Oct 30 -> days Oct 1..Oct 29; cycle Oct 1 -> Sep 30 has no meals in the list
+    // cycle 02/10..30/10 -> days 01/10..29/10; cycle 01/10 -> 30/09 has no meals in the list
     assert.equal(rows.length, 29);
     assert.equal(new Set(rows.map((r) => r.date)).size, 29);
     assert.equal(rows[0].date, '2026-10-01');

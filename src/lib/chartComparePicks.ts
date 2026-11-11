@@ -260,7 +260,7 @@ export const compareHrefForPicks = (picks: ComparePicks, metric: string): string
 /** "Oct 30, 2026": the date as people read it (UTC calendar day, no time zone shifts). Falls back to the text itself. */
 export const formatPickDate = (iso: string): string => {
   const parts = parseIsoDate(iso);
-  return parts ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(parts.year, parts.month - 1, parts.day))) : iso;
+  return parts ? new Intl.DateTimeFormat('en-GB', { month: '2-digit', day: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(parts.year, parts.month - 1, parts.day))) : iso;
 };
 
 export const describePick = (pick: ComparePick, unit: string, digits = 2): string => `${formatPickDate(pick.isoDate)}, ${formatPickValue(pick.value, unit, digits)}`;

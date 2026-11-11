@@ -90,7 +90,7 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-medium text-sm">
-                          {format(new Date(note.date), 'EEE, MMM d, yyyy')}
+                          {format(new Date(note.date), 'dd/MM/yyyy')}
                         </span>
                         {note.severity && (
                           <Badge variant="secondary" className={`gap-1.5 ${getSeverityColor(note.severity)}`}>
@@ -144,7 +144,7 @@ export const DailyNotesList = ({ notes, onDelete, onEdit }: DailyNotesListProps)
         <DialogContent layout="mobile-full">
           <DialogHeader>
             <DialogTitle>
-              Edit Note {editing && `— ${format(new Date(editing.date), 'PPP')}`}
+              Edit Note {editing && `— ${format(new Date(editing.date), 'dd/MM/yyyy')}`}
             </DialogTitle>
             <DialogDescription className="sr-only">
               Change the tags, severity or text of this note. Nothing is saved until you press Save.

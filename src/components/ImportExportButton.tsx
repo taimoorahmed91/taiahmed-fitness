@@ -269,7 +269,7 @@ export const ImportExportButton = () => {
           
           {importData && (
             <div className="space-y-2 text-sm">
-              <p>Backup from: {new Date(importData.exportDate).toLocaleDateString()}</p>
+              <p>Backup from: {new Date(importData.exportDate).toLocaleDateString('en-GB')}</p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                 <li>{importData.data.meals.length} meals</li>
                 <li>{importData.data.workouts.length} workouts</li>

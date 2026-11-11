@@ -92,7 +92,7 @@ const prefersReducedMotion = () =>
 
 const longDate = (iso: string) => {
   const d = new Date(`${iso}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? iso : new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(d);
+  return Number.isNaN(d.getTime()) ? iso : new Intl.DateTimeFormat('en-GB', { month: '2-digit', day: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(d);
 };
 
 export const RecordTrendChart = ({ id, title, icon, data, series, unit, defaultStyle, cap, summary, empty, noData, extendedRanges, status, link }: RecordTrendChartProps) => {

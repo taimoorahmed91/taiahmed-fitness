@@ -1,3 +1,4 @@
+import { formatDMY } from '@/lib/dateFormat';
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContainer, PageHeader, PageSection, PageLoading, PageEmptyState } from '@/components/layout/Page';
@@ -346,10 +347,10 @@ const CalorieHistory = () => {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">
-                          {new Date(`${row.date}T00:00:00Z`).toLocaleDateString('en-US', {
+                          {formatDMY(new Date(`${row.date}T00:00:00Z`), {
                             weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
+                            day: '2-digit',
+                            month: '2-digit',
                             year: 'numeric',
                             timeZone: 'UTC',
                           })}

@@ -12,7 +12,7 @@ interface ShareableSummaryProps {
 
 export const ShareableSummary = forwardRef<HTMLDivElement, ShareableSummaryProps>(
   ({ stats, dateRange, userName }, ref) => {
-    const dateRangeText = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d, yyyy')}`;
+    const dateRangeText = `${format(dateRange.from, 'dd/MM')} - ${format(dateRange.to, 'dd/MM/yyyy')}`;
 
     return (
       <div

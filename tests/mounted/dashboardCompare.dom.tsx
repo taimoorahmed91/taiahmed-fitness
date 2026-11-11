@@ -1,3 +1,4 @@
+import { formatDMY } from '../../src/lib/dateFormat';
 import { describe, test, beforeAll as before, afterAll as after, afterEach, beforeEach, mock } from 'bun:test';
 import assert from 'node:assert/strict';
 import { click, installDom, loadJsdom, sleep } from './support/domHarness';
@@ -58,7 +59,7 @@ const stub = (name: string, testid: string) => { mock.module(`@/components/${nam
 for (const [name, id] of [['CalorieGoalProgress', 'calorie-goal'], ['ProteinTargetCard', 'protein-target'], ['CarbTargetCard', 'carb-target'], ['PreviousDaySnapshot', 'yesterday'], ['GoalsCard', 'goals-card'], ['CrossMetricSummaryCard', 'insights-card'], ['WeightIntervalSetting', 'interval-setting'], ['BodyRecompositionCard', 'recomp'], ['WeeklyDigestCard', 'digest']]) stub(name, id);
 
 const iso = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
-const short = (date: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+const short = (date: string) => formatDMY(new Date(`${date}T00:00:00Z`), { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const TABLES = ['meals', 'gym_sessions', 'weight', 'waist', 'sleep', 'whoop_data', 'extra_activities', 'daily_notes'].map((t) => `fittrack_${t}`);
 const rowsOf = (rows: unknown[]) => () => ({ data: rows });
 const whoopRow = (id: string, date: string, inBed: number | null, recovery: number | null = null) => ({ id, date, created_at: `${date}T07:00:00Z`, total_in_bed_hours: inBed, recovery_score: recovery });

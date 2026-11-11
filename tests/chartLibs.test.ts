@@ -51,7 +51,7 @@ describe('calendar ranges', () => {
 
   test('date label', () => {
     assert.equal(formatChartDate('2026-10-30'), '10/30');
-    assert.equal(formatChartDate('Oct 5'), 'Oct 5');
+    assert.equal(formatChartDate('05/10'), '05/10');
   });
 });
 
