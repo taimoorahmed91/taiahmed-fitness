@@ -1,3 +1,4 @@
+import { formatDMY } from '@/lib/dateFormat';
 /**
  * Pure logic behind the Calendar page: grouping records by day, building the month grid, and turning a
  * day's records into short summaries. No React in here, so every rule is tested on its own
@@ -132,7 +133,7 @@ export const daysInMonth = (month: string): number => {
   return p ? new Date(Date.UTC(p.year, p.month, 0)).getUTCDate() : 0;
 };
 
-const fmtUtc = (ms: number, options: Intl.DateTimeFormatOptions): string => new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(ms);
+const fmtUtc = (ms: number, options: Intl.DateTimeFormatOptions): string => formatDMY(ms, { ...options, timeZone: 'UTC' });
 
 /** "October 2026" */
 export const formatMonthLabel = (month: string): string => {

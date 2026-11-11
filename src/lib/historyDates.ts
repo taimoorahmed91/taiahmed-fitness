@@ -1,3 +1,4 @@
+import { formatDMY } from '@/lib/dateFormat';
 /**
  * Calendar-date helpers for the Meals and Gym history lists.
  *
@@ -46,7 +47,7 @@ export const dayDiff = (a: string, b: string): number | null => {
 export const defaultToday = (): string => getMealDate();
 
 const fmt = (ms: number, options: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(ms);
+  formatDMY(ms, { ...options, timeZone: 'UTC' });
 
 const yearOf = (iso: string): number | null => {
   const ms = isoDayToMs(iso);

@@ -1,3 +1,4 @@
+import { formatDMY } from '@/lib/dateFormat';
 /**
  * Pure logic behind the Compare page: which records can be picked, how a pick changes, and what the
  * comparison says. No React in here, so every rule is tested on its own (tests/compareModel.test.ts).
@@ -92,7 +93,7 @@ export const isCategory = (value: unknown): value is Category => typeof value ==
 const fmtUtc = (iso: string, options: Intl.DateTimeFormatOptions): string => {
   const ms = isoDayToMs(iso);
   if (ms === null) return iso;
-  return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(ms);
+  return formatDMY(ms, { ...options, timeZone: 'UTC' });
 };
 
 /** "Fri, Oct 30, 2026" - always with the year, because two compared records can be far apart. */
