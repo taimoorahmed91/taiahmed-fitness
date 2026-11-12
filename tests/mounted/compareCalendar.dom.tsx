@@ -177,7 +177,7 @@ describe('mounted: Compare and Calendar', () => {
       for (const cb of boxes) assert.ok(cb.closest('label'), 'every checkbox sits in a label');
       const first = text(labelOf(boxes[0]));
       assert.match(first, /70\.5 kg/);
-      assert.match(first, /Today|[A-Z][a-z]{2}, [A-Z][a-z]{2} \d+/);
+      assert.match(first, /Today|[A-Z][a-z]{2}, \d{2}\/\d{2}/);
       assert.match(text(doc().body), /Pick two records/);
     });
 
