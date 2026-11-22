@@ -762,6 +762,7 @@ export type Database = {
           protein_multiplier_max: number | null
           rest_day_calorie_target: number | null
           rest_day_calorie_target_max: number | null
+          supplements: Json
           target_weight_kg: number | null
           updated_at: string
           user_id: string
@@ -784,6 +785,7 @@ export type Database = {
           protein_multiplier_max?: number | null
           rest_day_calorie_target?: number | null
           rest_day_calorie_target_max?: number | null
+          supplements?: Json
           target_weight_kg?: number | null
           updated_at?: string
           user_id: string
@@ -806,6 +808,7 @@ export type Database = {
           protein_multiplier_max?: number | null
           rest_day_calorie_target?: number | null
           rest_day_calorie_target_max?: number | null
+          supplements?: Json
           target_weight_kg?: number | null
           updated_at?: string
           user_id?: string

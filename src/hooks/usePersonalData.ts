@@ -5,6 +5,7 @@ import {
   INITIAL_SOURCE_STATUS, LOADED_SOURCE_STATUS, deriveSourceState, type SourceStatus,
 } from '@/app/globalRefresh';
 import { useRefreshSource } from '@/app/globalRefreshContext';
+import { readSupplements, type Supplement } from '@/components/personal-data/supplements';
 
 export interface PersonalData {
   id?: string;
@@ -25,6 +26,7 @@ export interface PersonalData {
   workout_days: number[];
   /** Map of weekday index (0=Sun..6=Sat, as string) to workout template id. */
   workout_day_templates: Record<string, string>;
+  supplements?: Supplement[];
 }
 
 const empty: PersonalData = {
@@ -44,6 +46,7 @@ const empty: PersonalData = {
   carb_multiplier_max: null,
   workout_days: [],
   workout_day_templates: {},
+  supplements: [],
 };
 
 export const usePersonalData = () => {
@@ -87,6 +90,7 @@ export const usePersonalData = () => {
           carb_multiplier_max: (row as any).carb_multiplier_max != null ? Number((row as any).carb_multiplier_max) : null,
           workout_days: ((row as any).workout_days ?? []) as number[],
           workout_day_templates: ((row as any).workout_day_templates ?? {}) as Record<string, string>,
+          supplements: readSupplements(row.supplements),
         });
       } else {
         setData({ ...empty, full_name: user.user_metadata?.full_name ?? null });
@@ -122,7 +126,7 @@ export const usePersonalData = () => {
     const { error } = await supabase
       .from('fittrack_personal_data')
       .upsert(
-        { user_id: user.id, ...payload },
+        { user_id: user.id, ...payload, supplements: payload.supplements?.map((item) => ({ ...item })) ?? [] },
         { onConflict: 'user_id' }
       );
     // A change was saved: never accept a load that started before it.

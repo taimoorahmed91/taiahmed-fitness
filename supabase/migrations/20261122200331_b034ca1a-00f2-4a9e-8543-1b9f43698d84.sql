@@ -1,0 +1,1 @@
+ALTER TABLE public.fittrack_personal_data ADD COLUMN supplements jsonb NOT NULL DEFAULT '[]'::jsonb;

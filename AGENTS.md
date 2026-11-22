@@ -7,3 +7,4 @@ Use the shared range-only chart control for categorical charts and aggregate mea
 - The public demo account is approved (never owner) and read-only via restrictive RLS (is_demo_user); only the demo-login edge function (service role) seeds it — on first login and on its "regenerate" action — using a server-minted magic-link token, since email/password sign-in is disabled.
 - Route user-facing destructive buttons through ConfirmDeleteButton; its AlertDialog, cancel-first focus, touch arming delay and single-flight save guard prevent accidental deletion or mobile outside-dismiss races.
 - Format every user-facing date through formatDMY (src/lib/dateFormat.ts) or date-fns dd/MM/yyyy patterns; one helper keeps the chosen day-first format consistent everywhere.
+- Store supplement names, free-text dose/usage and weekday selections in the personal-data supplements field and save through its existing draft flow; this keeps account access and unsaved-edit protection consistent.

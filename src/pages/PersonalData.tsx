@@ -19,6 +19,8 @@ import { ProfileSummary } from '@/components/personal-data/ProfileSummary';
 import { RangeField } from '@/components/personal-data/RangeField';
 import { RestTimersSection } from '@/components/personal-data/RestTimersSection';
 import { ScheduleEditor } from '@/components/personal-data/ScheduleEditor';
+import { SupplementsSection } from '@/components/personal-data/SupplementsSection';
+import { findSupplementError } from '@/components/personal-data/supplements';
 import { FieldLabel, SettingsRow } from '@/components/personal-data/SettingsRow';
 import { SettingsSection } from '@/components/personal-data/SettingsSection';
 import { ValueHistory } from '@/components/personal-data/ValueHistory';
@@ -82,7 +84,7 @@ const PersonalDataPage = () => {
   };
 
   const handleSave = async () => {
-    const rangeError = findRangeError(draft);
+    const rangeError = findRangeError(draft) ?? findSupplementError(draft.supplements);
     if (rangeError) {
       toast.error(rangeError);
       return;
@@ -321,6 +323,8 @@ const PersonalDataPage = () => {
                 </div>
               </SettingsRow>
             </SettingsSection>
+
+            <SupplementsSection supplements={draft.supplements} onChange={(supplements) => patch({ supplements })} disabled={saving} />
 
             <div className="flex flex-col gap-3 rounded-lg border bg-card p-[var(--card-pad)] shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <p role="status" className="flex items-start gap-2 text-sm">

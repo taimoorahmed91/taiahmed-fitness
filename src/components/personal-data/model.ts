@@ -8,6 +8,7 @@
  *  - dates are UTC calendar days (a date of birth is "YYYY-MM-DD"; history times are shown in UTC).
  */
 import type { PersonalData } from '@/hooks/usePersonalData';
+import { readSupplements, type Supplement } from './supplements';
 
 // --------------------------------------------------------------------------- weekdays
 
@@ -132,6 +133,7 @@ export interface PersonalDraft {
   carbMax: string;
   workoutDays: number[];
   dayTemplates: Record<string, string>;
+  supplements: Supplement[];
 }
 
 export const draftFromData = (data: PersonalData, now: Date = new Date()): PersonalDraft => ({
@@ -151,6 +153,7 @@ export const draftFromData = (data: PersonalData, now: Date = new Date()): Perso
   carbMax: data.carb_multiplier_max?.toString() || '',
   workoutDays: data.workout_days || [],
   dayTemplates: data.workout_day_templates || {},
+  supplements: readSupplements(data.supplements),
 });
 
 /** The first range whose max is below its min, as the toast text the page has always shown. null when all are fine. */
@@ -192,6 +195,10 @@ export const buildSavePayload = (d: PersonalDraft, validTemplateIds: readonly st
   workout_day_templates: Object.fromEntries(
     Object.entries(d.dayTemplates).filter(([k, v]) => d.workoutDays.includes(Number(k)) && validTemplateIds.includes(v)),
   ),
+  supplements: d.supplements.map((supplement) => ({
+    ...supplement, name: supplement.name.trim(), usage: supplement.usage.trim(),
+    days: WEEKDAYS.filter((day) => supplement.days.includes(day.v)).map((day) => day.v),
+  })),
 });
 
 /** True when saving the draft would store something different from what is saved now. */
