@@ -119,7 +119,7 @@ describe('mounted: Personal Data page', () => {
     const h1 = [...doc().querySelectorAll('h1')].map(text);
     assert.deepEqual(h1, ['Personal Data']);
     const h2 = [...doc().querySelectorAll('h2')].map(text);
-    assert.deepEqual(h2, ['Your settings at a glance', 'Profile & body', 'Nutrition targets', 'Training schedule', 'More settings']);
+    assert.deepEqual(h2, ['Your settings at a glance', 'Profile & body', 'Nutrition targets', 'Training schedule', 'Supplements', 'More settings']);
     const h3 = [...doc().querySelectorAll('h3')].map((h) => text(h.querySelector('button')) ? h.querySelector('button')!.getAttribute('aria-label') : text(h));
     assert.deepEqual(h3.slice(-3), ['Workout rest timers', 'Insight cutoffs', 'MCP token']);
     const summary = text(q('#summary'));
@@ -128,6 +128,32 @@ describe('mounted: Personal Data page', () => {
     assert.match(summary, /Mon · Wed/);
     assert.match(summary, /Overweight/);
     assert.equal(text(q('[role="status"]')), 'All changes saved.');
+  });
+
+  test('supplements save independent names, usage and weekday choices with the profile', async () => {
+    await mount();
+    await act(async () => click(env.window, byText('Add supplement')));
+    const name = q('#supplements input[id^="supplement-name-"]') as HTMLInputElement;
+    const usage = q('#supplements input[id^="supplement-usage-"]') as HTMLInputElement;
+    await act(async () => typeInto(env.window, name, 'Creatine'));
+    await act(async () => typeInto(env.window, usage, '2.5 g'));
+    await act(async () => click(env.window, q('button[aria-label="Monday for Creatine"]')));
+    await act(async () => click(env.window, q('button[aria-label="Wednesday for Creatine"]')));
+    await act(async () => click(env.window, byText('Add supplement')));
+    const names = [...doc().querySelectorAll('#supplements input[id^="supplement-name-"]')] as HTMLInputElement[];
+    const usages = [...doc().querySelectorAll('#supplements input[id^="supplement-usage-"]')] as HTMLInputElement[];
+    await act(async () => typeInto(env.window, names[1], 'Vitamin D'));
+    await act(async () => typeInto(env.window, usages[1], '1 capsule with breakfast'));
+    await act(async () => click(env.window, q('button[aria-label="Sunday for Vitamin D"]')));
+    await act(async () => click(env.window, byText('Save profile, targets & schedule')));
+    await flush(10);
+    const payload = saves[0] as { supplements: { name: string; usage: string; days: number[] }[]; full_name: string };
+    assert.equal(saves.length, 1);
+    assert.equal(payload.full_name, 'Alex Test');
+    assert.deepEqual(payload.supplements.map(({ name, usage, days }) => ({ name, usage, days })), [
+      { name: 'Creatine', usage: '2.5 g', days: [1, 3] },
+      { name: 'Vitamin D', usage: '1 capsule with breakfast', days: [0] },
+    ]);
   });
 
   test('folded settings show their current value while closed, and open on click', async () => {
