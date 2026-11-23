@@ -98,13 +98,18 @@ describe('mounted: Personal Data page', () => {
   });
   after(() => env?.window.close());
 
-  const mount = async () => {
+  const mount = async (openSections = true) => {
     const host = env.window.document.createElement('div');
     env.window.document.body.appendChild(host);
     const root = createRoot(host);
     roots.push(root);
     await act(async () => root.render(React.createElement(TooltipProvider, null, React.createElement(Page))));
     await act(async () => { await sleep(10); });
+    if (openSections) {
+      for (const id of ['profile', 'targets', 'schedule', 'supplements']) {
+        await act(async () => click(env.window, host.querySelector(`#${id} button[aria-expanded="false"]`)));
+      }
+    }
     return host as HTMLElement;
   };
   const doc = () => env.window.document as Document;
@@ -114,11 +119,11 @@ describe('mounted: Personal Data page', () => {
   const flush = async (ms = 0) => act(async () => { await sleep(ms); });
   const text = (el: Element | null) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-  test('shows the summary first, then three open sections, the save bar and the folded settings', async () => {
+  test('shows the summary first, then the main sections, the save bar and the folded settings', async () => {
     await mount();
     const h1 = [...doc().querySelectorAll('h1')].map(text);
     assert.deepEqual(h1, ['Personal Data']);
-    const h2 = [...doc().querySelectorAll('h2')].map(text);
+    const h2 = [...doc().querySelectorAll('h2')].map((h) => h.querySelector('button')?.getAttribute('aria-label') ?? text(h));
     assert.deepEqual(h2, ['Your settings at a glance', 'Profile & body', 'Nutrition targets', 'Training schedule', 'Supplements', 'More settings']);
     const h3 = [...doc().querySelectorAll('h3')].map((h) => text(h.querySelector('button')) ? h.querySelector('button')!.getAttribute('aria-label') : text(h));
     assert.deepEqual(h3.slice(-3), ['Workout rest timers', 'Insight cutoffs', 'MCP token']);
@@ -154,6 +159,18 @@ describe('mounted: Personal Data page', () => {
       { name: 'Creatine', usage: '2.5 g', days: [1, 3] },
       { name: 'Vitamin D', usage: '1 capsule with breakfast', days: [0] },
     ]);
+  });
+
+  test('closing and reopening a section retains unsaved profile values', async () => {
+    await mount(false);
+    const toggle = q('#profile button[aria-label="Profile & body"]');
+    await act(async () => click(env.window, toggle));
+    await act(async () => typeInto(env.window, q('#height') as HTMLInputElement, '185'));
+    await act(async () => click(env.window, toggle));
+    await act(async () => click(env.window, toggle));
+    assert.equal((q('#height') as HTMLInputElement).value, '185');
+    await act(async () => click(env.window, byText('Save profile, targets & schedule')));
+    assert.equal((saves[0] as { height_cm: number }).height_cm, 185);
   });
 
   test('folded settings show their current value while closed, and open on click', async () => {
@@ -314,6 +331,8 @@ describe('mounted: Personal Data page load states', () => {
     root = createRoot(host);
     await act(async () => root.render(React.createElement(TooltipProvider, null, React.createElement(Page))));
     await act(async () => { await sleep(10); });
+    const profileToggle = q('#profile button[aria-expanded="false"]');
+    if (profileToggle) await act(async () => click(env.window, profileToggle));
   };
   const rerender = async () => {
     await act(async () => root.render(React.createElement(TooltipProvider, null, React.createElement(Page))));
@@ -363,6 +382,7 @@ describe('mounted: Personal Data page load states', () => {
     await rerender();
     assert.equal(q('[role="alert"]'), null);
     assert.match(text(q('#summary')), /Alex Test/);
+    await act(async () => click(env.window, q('#profile button[aria-expanded="false"]')));
     assert.equal((q('#fullName') as HTMLInputElement).value, 'Alex Test');
     assert.equal(text(q('[role="status"]')), 'All changes saved.');
   });

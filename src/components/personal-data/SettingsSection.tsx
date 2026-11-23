@@ -1,4 +1,4 @@
-import { useId, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ComponentType, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,8 @@ import { cn } from '@/lib/utils';
 type IconComponent = ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
 
 /**
- * One titled block of settings. There are two kinds, and the page uses each for one job:
- *
- *  - Always open (default): the main profile, targets and schedule. Their current values must never be hidden.
- *  - `collapsible`: occasional settings (rest timers, insight cutoffs, the MCP token). The header stays visible and
- *    always carries a one-line `summary` of the current value, so closing the section never hides what is set.
+ * One titled block of settings, optionally collapsible. The header keeps its summary or description visible.
+ * Anchor links open collapsible sections so summary Edit links still reach the fields.
  *
  * Both draw the same header (icon tile, heading, one-line text) so the page reads as one system.
  * The heading is an h2 for page sections and an h3 when the section sits under another h2.
@@ -47,6 +44,21 @@ export const SettingsSection = ({
   const headingId = useId();
   const summaryId = useId();
   const Heading = headingLevel;
+  const [expanded, setExpanded] = useState(defaultOpen);
+  const headerText = summary ?? description;
+
+  useEffect(() => {
+    if (!collapsible || !id) return;
+    const revealAnchor = () => {
+      if (window.location.hash === `#${id}`) {
+        setExpanded(true);
+        onOpenChange?.(true);
+      }
+    };
+    revealAnchor();
+    window.addEventListener('hashchange', revealAnchor);
+    return () => window.removeEventListener('hashchange', revealAnchor);
+  }, [collapsible, id, onOpenChange]);
 
   if (!collapsible) {
     return (
@@ -67,7 +79,7 @@ export const SettingsSection = ({
 
   return (
     <section id={id} aria-labelledby={headingId} className={cn('scroll-mt-20', className)}>
-      <Collapsible open={open} defaultOpen={defaultOpen} onOpenChange={onOpenChange} className="group/section">
+      <Collapsible open={open ?? expanded} onOpenChange={(next) => { setExpanded(next); onOpenChange?.(next); }} className="group/section">
         <Card>
           <Heading id={headingId}>
             <CollapsibleTrigger asChild>
@@ -76,13 +88,13 @@ export const SettingsSection = ({
                 type="button"
                 variant="ghost"
                 aria-label={title}
-                aria-describedby={summary ? summaryId : undefined}
+                aria-describedby={headerText ? summaryId : undefined}
                 className="h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-lg p-[var(--card-pad)] text-left font-normal"
               >
                 <IconTile icon={icon} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-lg font-semibold leading-tight tracking-tight">{title}</span>
-                  {summary && <span id={summaryId} className="mt-1 block text-sm text-muted-foreground">{summary}</span>}
+                  {headerText && <span id={summaryId} className="mt-1 block text-sm text-muted-foreground">{headerText}</span>}
                 </span>
                 <ChevronDown
                   aria-hidden="true"
@@ -92,7 +104,7 @@ export const SettingsSection = ({
             </CollapsibleTrigger>
           </Heading>
           <CollapsibleContent>
-            <CardContent className="border-t pt-[var(--card-pad)]">{children}</CardContent>
+            <CardContent className="divide-y divide-border border-t pt-[var(--card-pad)]">{children}</CardContent>
           </CollapsibleContent>
         </Card>
       </Collapsible>

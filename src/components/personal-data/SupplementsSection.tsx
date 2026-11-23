@@ -18,7 +18,8 @@ export function SupplementsSection({ supplements, onChange, disabled }: Props) {
     onChange(supplements.map((supplement) => supplement.id === id ? { ...supplement, ...patch } : supplement));
 
   return (
-    <SettingsSection id="supplements" title="Supplements" icon={Pill}>
+    <SettingsSection id="supplements" title="Supplements" icon={Pill} collapsible
+      summary={supplements.length === 0 ? 'No supplements added.' : `${supplements.length} supplement${supplements.length === 1 ? '' : 's'}`}>
       {supplements.length === 0 && <p className="pb-4 text-sm text-muted-foreground">No supplements added.</p>}
       {supplements.map((supplement, index) => (
         <SettingsRow key={supplement.id} label={`Supplement ${index + 1}`} htmlFor={`supplement-name-${supplement.id}`}>

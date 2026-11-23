@@ -8,3 +8,4 @@ Use the shared range-only chart control for categorical charts and aggregate mea
 - Route user-facing destructive buttons through ConfirmDeleteButton; its AlertDialog, cancel-first focus, touch arming delay and single-flight save guard prevent accidental deletion or mobile outside-dismiss races.
 - Format every user-facing date through formatDMY (src/lib/dateFormat.ts) or date-fns dd/MM/yyyy patterns; one helper keeps the chosen day-first format consistent everywhere.
 - Store supplement names, free-text dose/usage and weekday selections in the personal-data supplements field and save through its existing draft flow; this keeps account access and unsaved-edit protection consistent.
+- Use SettingsSection for collapsible Personal Data groups and reveal matching hash anchors; this keeps summary Edit links usable without changing draft ownership.

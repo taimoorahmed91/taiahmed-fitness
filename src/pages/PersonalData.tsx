@@ -33,10 +33,10 @@ import {
  * Personal Data: one page, read top to bottom.
  *
  *   1. Your settings at a glance          what is SAVED now (read only), with Edit links to the sections below
- *   2. Profile & body                     always open. name, birth date and age, gender, height, target weight (+ history), BMI
- *   3. Nutrition targets                  always open. gym-day and rest-day calories, protein and carbs, each a Min/Max range (+ history)
- *   4. Training schedule                  always open. weekday checkboxes with a workout template per day
- *      Save bar                           ONE Save for sections 2 to 4, and a plain "unsaved changes" status
+ *   2. Profile & body                     collapsible. name, birth date and age, gender, height, target weight (+ history), BMI
+ *   3. Nutrition targets                  collapsible. gym-day and rest-day calories, protein and carbs, each a Min/Max range (+ history)
+ *   4. Training schedule and supplements  collapsible. weekday selections and supplement usage
+ *      Save bar                           ONE Save for these sections, and a plain "unsaved changes" status
  *   5. More settings (separate Saves)     collapsed cards that always show their current value in one line:
  *        Workout rest timers (account), Insight cutoffs (this device), MCP token (account)
  *
@@ -44,8 +44,7 @@ import {
  * unknown, so nothing says "Not set" or "All changes saved"). A failed refresh keeps the form and its unsaved edits and
  * adds a notice. A true empty profile still shows the setup form.
  *
- * Sections 2 to 4 are never collapsed because their current values are the point of the page; only the
- * occasional settings in 5 fold away. History lives next to the value it belongs to, not in a list of its own.
+ * Closing a section preserves the page draft. History lives next to the value it belongs to.
  */
 const PersonalDataPage = () => {
   const { data, loading, save, refetch, phase, loadFailed, refreshFailed } = usePersonalData();
@@ -136,6 +135,7 @@ const PersonalDataPage = () => {
               id="profile"
               icon={User}
               title="Profile & body"
+              collapsible
               description="Who you are and the body measurements your targets are based on."
             >
               <SettingsRow label="Name" htmlFor="fullName">
@@ -234,6 +234,7 @@ const PersonalDataPage = () => {
               id="targets"
               icon={Flame}
               title="Nutrition targets"
+              collapsible
               description="Daily ranges your meals are compared against. Each one is a minimum and a maximum."
             >
               <RangeField
@@ -290,6 +291,7 @@ const PersonalDataPage = () => {
               id="schedule"
               icon={CalendarDays}
               title="Training schedule"
+              collapsible
               description="The dashboard uses these days to tell workout days from rest days."
             >
               <SettingsRow

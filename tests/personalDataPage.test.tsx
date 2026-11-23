@@ -60,10 +60,10 @@ describe('information architecture', () => {
     ].map(at);
     assert.deepEqual(order, [...order].sort((a, b) => a - b));
     assert.equal(count(page, /Save profile, targets/g), 1, 'one main save button');
-    assert.equal(count(page, /<SettingsSection\b/g), 3, 'three always-open sections on the page itself');
+    assert.equal(count(page, /<SettingsSection\b/g), 3, 'three core sections on the page itself');
   });
-  test('the three core sections are always open; only the occasional ones fold away', () => {
-    assert.equal(/<SettingsSection[^>]*\bcollapsible\b/.test(page), false);
+  test('core sections and occasional settings fold away', () => {
+    assert.equal(count(page, /<SettingsSection[^>]*\bcollapsible\b/g), 3);
     for (const f of ['RestTimersSection', 'InsightCutoffsSection', 'ApiTokenSection']) {
       const src = read(`${DIR}/${f}.tsx`);
       assert.match(src, /collapsible/, f);
